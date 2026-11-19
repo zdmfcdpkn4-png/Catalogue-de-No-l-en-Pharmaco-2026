@@ -286,6 +286,42 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .adv-panel figure img{display:block;width:100%;height:auto;max-height:320px;object-fit:contain;border:3px solid var(--line);border-radius:12px;background:#fff}
 .adv-panel figcaption{margin-top:6px;font-size:.86rem;color:var(--muted)}
 .adv-panel a.go{display:inline-block;text-decoration:none}
+/* Chanson avec pochette : la pochette surgit, le disque en sort puis tourne pendant la lecture */
+.ap-song{position:relative;height:214px;margin:14px 0 2px}
+.ap-song .sleeve{position:absolute;left:0;top:0;z-index:1;display:grid;grid-template-rows:1fr auto;justify-items:center;align-items:center;width:200px;height:200px;margin:0;padding:10px 10px 12px;background:radial-gradient(circle at 30% 22%,#fff 0 28%,#FFFBF2 62%);border:3px solid var(--line);border-radius:10px;box-shadow:6px 6px 0 var(--shadow);animation:sleeveIn .75s cubic-bezier(.3,1.5,.5,1) both}
+.adv-panel .ap-song .sleeve img{width:138px;height:138px;max-height:none;object-fit:contain;border:0;border-radius:0;background:none}
+.ap-song figcaption{font:800 1.08rem/1 var(--display);letter-spacing:-.02em;color:#26076D;text-align:center}
+.ap-song .disc{position:absolute;left:10px;top:10px;width:180px;height:180px;animation:vinylOut .7s cubic-bezier(.2,.8,.2,1) .45s both,oOn 0s .45s both}
+.ap-song .disc i{position:absolute;inset:0;border-radius:50%;border:3px solid var(--line);background:radial-gradient(circle,#ECD567 0 16%,#26076D 16.5% 18%,transparent 18.5%),repeating-radial-gradient(circle,#1b0552 0 2px,#2c0c7a 2px 4px)}
+.ap-song .disc i::after{content:"";position:absolute;inset:0;border-radius:50%;background:linear-gradient(130deg,rgba(255,255,255,.22),transparent 42%)}
+.ap-song.playing .disc i{animation:spin 2.4s linear infinite}
+@keyframes sleeveIn{0%{opacity:0;transform:translateY(26px) scale(.5) rotate(-12deg)}100%{opacity:1;transform:none}}
+@keyframes vinylOut{from{transform:translateX(0)}to{transform:translateX(96px)}}
+.ap-audio{display:block;width:100%;margin-top:12px;accent-color:#26076D}
+@media(max-width:380px){.ap-song{zoom:.78}}
+/* Origami : la poche pliée tremble, ses quatre rabats se déplient (recto crème, verso aux couleurs du logo),
+   puis les gouttes du logo éclosent en fleur autour du P. Retournement simulé par scaleX/Y de -1 sur la charnière. */
+.ap-ori{max-width:300px;margin:10px auto 0}
+.ap-ori svg{display:block;width:100%;height:auto;overflow:visible;filter:drop-shadow(5px 5px 0 #26076D);animation:oIn .6s cubic-bezier(.16,1,.3,1) both}
+.ap-ori .o-j{transform-box:fill-box;transform-origin:50% 50%;animation:oJig .5s .55s ease-in-out both}
+.ap-ori .o-fl{transform-box:fill-box;animation:oFlipY .6s var(--d) both}
+.ap-ori .o-t{transform-origin:50% 0}.ap-ori .o-b{transform-origin:50% 100%}
+.ap-ori .o-l{transform-origin:0 50%;animation-name:oFlipX}.ap-ori .o-r{transform-origin:100% 50%;animation-name:oFlipX}
+.ap-ori .o-f{animation:oOff 0s calc(var(--d) + .3s) both}
+.ap-ori .o-k{animation:oOn 0s calc(var(--d) + .3s) both}
+.ap-ori .o-bl{transform-box:fill-box;transform-origin:50% 50%;animation:oTwist 1.1s 1.45s cubic-bezier(.16,1,.3,1) both}
+.ap-ori .o-p{transform-box:fill-box;transform-origin:50% 100%;animation:oBloom .55s var(--d) cubic-bezier(.2,.9,.3,1.25) both}
+.ap-ori .o-c{transform-box:fill-box;transform-origin:50% 50%;animation:oPop .5s 2.15s cubic-bezier(.3,1.6,.5,1) both}
+.ap-ori .o-lab{font:600 11px var(--mono);letter-spacing:.06em;fill:#26076D}
+@keyframes oIn{from{opacity:0;transform:translateY(28px) scale(.45) rotate(-10deg)}to{opacity:1;transform:none}}
+@keyframes oJig{20%{transform:rotate(-7deg)}45%{transform:rotate(6deg)}70%{transform:rotate(-3deg)}100%{transform:none}}
+@keyframes oFlipY{0%{transform:scaleY(1);animation-timing-function:cubic-bezier(.5,0,.9,.5)}50%{transform:scaleY(0);animation-timing-function:cubic-bezier(.1,.5,.3,1)}100%{transform:scaleY(-1)}}
+@keyframes oFlipX{0%{transform:scaleX(1);animation-timing-function:cubic-bezier(.5,0,.9,.5)}50%{transform:scaleX(0);animation-timing-function:cubic-bezier(.1,.5,.3,1)}100%{transform:scaleX(-1)}}
+@keyframes oOff{to{opacity:0}}
+@keyframes oOn{from{opacity:0}to{opacity:1}}
+@keyframes oTwist{from{transform:rotate(-40deg)}to{transform:none}}
+@keyframes oBloom{from{transform:scale(0) rotate(-25deg)}to{transform:none}}
+@keyframes oPop{from{transform:scale(0)}to{transform:none}}
 .ap-next{display:flex;gap:8px;align-items:center;margin:14px 0 0;padding:9px 11px;border:2.5px dashed var(--line);border-radius:12px;font-size:.86rem}
 .ap-next .avi{width:18px;height:18px;flex:0 0 auto}
 @media(max-width:860px){.adv-body{grid-template-columns:minmax(0,1fr)}}
@@ -348,7 +384,7 @@ footer{padding:26px 0 34px;font-size:.86rem}
   <p class="adv-back"><a class="go" href="#">Retour au catalogue</a></p>
   <div class="adv-head">
     <h2 id="avent-t">Le sapin <span>de l'Avent</span></h2>
-    <p class="adv-intro">Une dose par jour du 1<sup>er</sup> au 25 décembre : une chanson, une image ou une citation. Chaque goutte reste sous scellé jusqu'à sa date.</p>
+    <p class="adv-intro">Une dose par jour du 1<sup>er</sup> au 25 décembre : une chanson, une image, une citation ou un origami. Chaque goutte reste sous scellé jusqu'à sa date.</p>
   </div>
   <div class="adv-body">
     <div class="adv-tree" id="avTree"></div>
@@ -579,11 +615,11 @@ function pensee(){
 /* ---------- Sapin de l'Avent ----------
    Une goutte par jour du 1er au 25 décembre 2026, déverrouillée selon la date de l'appareil ;
    les gouttes ouvertes sont mémorisées dans le navigateur. Contenu : outils/calendrier_avent.json. */
-const AVENT=[{"jour": 1}, {"jour": 2}, {"jour": 3}, {"jour": 4}, {"jour": 5}, {"jour": 6}, {"jour": 7}, {"jour": 8}, {"jour": 9}, {"jour": 10}, {"jour": 11}, {"jour": 12}, {"jour": 13}, {"jour": 14}, {"jour": 15}, {"jour": 16}, {"jour": 17}, {"jour": 18}, {"jour": 19}, {"jour": 20}, {"jour": 21}, {"jour": 22}, {"jour": 23}, {"jour": 24}, {"jour": 25}];
+const AVENT=[{"jour": 1, "type": "chanson", "titre": "Noël en Pharmaco", "audio": "audio/noel-en-pharmaco.mp3", "pochette": "img/logo-pharmacotechnie.webp"}, {"jour": 2, "type": "origami", "texte": "Pliée en poche, dépliée en fleur."}, {"jour": 3}, {"jour": 4}, {"jour": 5}, {"jour": 6}, {"jour": 7}, {"jour": 8}, {"jour": 9}, {"jour": 10}, {"jour": 11}, {"jour": 12}, {"jour": 13}, {"jour": 14}, {"jour": 15}, {"jour": 16}, {"jour": 17}, {"jour": 18}, {"jour": 19}, {"jour": 20}, {"jour": 21}, {"jour": 22}, {"jour": 23}, {"jour": 24}, {"jour": 25}];
 const AV_ROWS=[[12,3,19],[7,22,1,15,10],[17,5,24,8,13,2,20],[11,23,4,16,6,21,9,14,18]],AV_Y=[186,268,350,432],AV_KEY="pharmacotechnie-avent-2026";
-const AV_T={chanson:"Chanson",image:"Image",citation:"Citation"};
+const AV_T={chanson:"Chanson",image:"Image",citation:"Citation",origami:"Origami"};
 const AV_C={lock:"#D9CEF5",ready:"#F59A62",today:"#ECD567",open:"#E5B4D9"};
-const AV_IC={chanson:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 17-5-5-9 8"/>',citation:'<path d="M4 18c2.5-1 4-3.4 4-7V6H4v5h4M14 18c2.5-1 4-3.4 4-7V6h-4v5h4"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',wait:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
+const AV_IC={origami:'<path d="M4 4h16v16H4z"/><path d="M4 4l16 16M20 4 4 20"/>',chanson:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 17-5-5-9 8"/>',citation:'<path d="M4 18c2.5-1 4-3.4 4-7V6H4v5h4M14 18c2.5-1 4-3.4 4-7V6h-4v5h4"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',wait:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
 const AVO=new Set();
 try{JSON.parse(localStorage.getItem(AV_KEY)||"[]").forEach(n=>AVO.add(n))}catch(e){}
 function avSave(){try{localStorage.setItem(AV_KEY,JSON.stringify([...AVO]))}catch(e){}}
@@ -656,9 +692,40 @@ function avContent(d){
   let h=avHead(t||"wait","Dose du "+avDate(d),(t?AV_T[t]:"En préparation")+(d===avNow()?" · dose du jour":""));
   if(!t)h+='<p class="ap-p">Cette surprise est encore au laboratoire. Repassez un peu plus tard.</p>';
   else if(t==="citation")h+='<blockquote>« '+esc(c.texte)+' »</blockquote><p class="ap-src">'+esc(c.source)+'</p>';
-  else if(t==="chanson")h+='<p class="ap-t">'+esc(c.titre)+'</p>'+(c.source?'<p class="ap-src">'+esc(c.source)+'</p>':'')+'<a class="go main" href="'+esc(c.lien)+'" target="_blank" rel="noopener">Écouter</a>';
+  else if(t==="chanson")h+=(c.pochette?'<div class="ap-song"><span class="disc" aria-hidden="true"><i></i></span><figure class="sleeve"><img src="'+esc(c.pochette)+'" alt=""><figcaption>'+esc(c.titre)+'</figcaption></figure></div>':'<p class="ap-t">'+esc(c.titre)+'</p>')
+    +(c.source?'<p class="ap-src">'+esc(c.source)+'</p>':'')
+    +(c.audio?'<audio class="ap-audio" controls preload="auto" src="'+esc(c.audio)+'" aria-label="'+esc(c.titre)+'"></audio>':'')
+    +(c.lien?'<a class="go main" href="'+esc(c.lien)+'" target="_blank" rel="noopener">Écouter</a>':'');
   else if(t==="image")h+='<figure><img src="'+esc(c.image)+'" alt="'+esc(c.titre)+'" loading="lazy"><figcaption>'+esc(c.titre)+'</figcaption></figure>';
+  else if(t==="origami")h+=avOri(d)+(c.texte?'<p class="ap-p">'+esc(c.texte)+'</p>':'')+'<button class="go" type="button" data-replay>Replier et rejouer</button>';
   return h+avNext();
+}
+/* Origami : poche carrée (4 rabats en triangle, embout en haut, connecteurs en bas) qui se déplie en fleur de gouttes. */
+const AV_LOGO="img/logo-pharmacotechnie.webp";
+function avOri(d){
+  const S=78,pt=a=>a.map(p=>p.join(",")).join(" "),V="#26076D";
+  const face=(A,B,c1,c2)=>{const M=[(A[0]+B[0])/2,(A[1]+B[1])/2];
+    return '<polygon points="'+pt([A,M,[0,0]])+'" fill="'+c1+'"/><polygon points="'+pt([M,B,[0,0]])+'" fill="'+c2+'"/>'
+      +'<path d="M'+M.join(" ")+'L0 0" stroke="'+(c1===V?"#FFFBF2":V)+'" stroke-width="1.5" stroke-dasharray="4 5" opacity=".35"/>'
+      +'<polygon points="'+pt([A,B,[0,0]])+'" fill="none" stroke="'+V+'" stroke-width="3" stroke-linejoin="round"/>'};
+  const FL=[["t",[-S,-S],[S,-S],"#D3C8F0","#BFB1E6",1.05],["r",[S,-S],[S,S],"#F8C9AA","#F3B48C",1.15],["b",[S,S],[-S,S],"#F6EAB2","#EFDD8E",1.25],["l",[-S,S],[-S,-S],"#F2D9EC","#E9C5DF",1.35]];
+  const lab='<rect x="-27" y="-54" width="54" height="21" rx="5" fill="#ECD567" stroke="'+V+'" stroke-width="2.5"/><text class="o-lab" x="0" y="-39.5" text-anchor="middle">DOSE '+d+'</text>';
+  let fl="";for(let i=FL.length-1;i>=0;i--){const[k,A,B,c1,c2,t]=FL[i];
+    fl+='<g class="o-fl o-'+k+'" style="--d:'+t+'s"><g class="o-f">'+face(A,B,"#FFFBF2","#F1E3CA")+(k==="t"?lab:"")+'</g><g class="o-k">'+face(A,B,c1,c2)+'</g></g>'}
+  const PT=[[V,"#45249A"],["#EC7739","#D45F25"],["#ECD567","#D6BC45"],["#E5B4D9","#CF94C2"]],f=v=>v.toFixed(1);
+  let pe="";for(let i=0;i<12;i++){const L=i%2?76:106,w=L*.27,y=-(L*.76+w),[c1,c2]=PT[i%4];
+    pe+='<g transform="rotate('+(i*30+15)+') translate(0 -14)"><g class="o-p" style="--d:'+(1.45+i*.05).toFixed(2)+'s">'
+      +'<path d="M0 0C'+f(-w*.15)+' '+f(-L*.3)+' '+f(-w)+' '+f(-L*.52)+' '+f(-w)+' '+f(-L*.76)+'A'+f(w)+' '+f(w)+' 0 0 1 0 '+f(y)+'Z" fill="'+c1+'"/>'
+      +'<path d="M0 0L0 '+f(y)+'A'+f(w)+' '+f(w)+' 0 0 1 '+f(w)+' '+f(-L*.76)+'C'+f(w)+' '+f(-L*.52)+' '+f(w*.15)+' '+f(-L*.3)+' 0 0Z" fill="'+c2+'"/>'
+      +'<path d="M0 -5V'+f(y+7)+'" stroke="'+(c1===V?"#FFFBF2":V)+'" stroke-width="1.5" stroke-linecap="round" opacity=".35"/>'
+      +'<path d="'+dropD(L,w)+'" fill="none" stroke="'+V+'" stroke-width="2.5" stroke-linejoin="round"/></g></g>'}
+  return '<div class="ap-ori"><svg viewBox="-172 -172 344 344" role="img" aria-label="Une poche de perfusion en origami se déplie en fleur aux couleurs de la pharmacotechnie"><g class="o-j">'
+    +'<path d="M-15 -76V-92Q-15 -100 -7 -100H7Q15 -100 15 -92V-76Z" fill="'+V+'"/><ellipse cx="0" cy="-91" rx="7" ry="3.2" fill="#EC7739"/>'
+    +'<rect x="-15" y="76" width="10" height="16" rx="3" fill="'+V+'"/><rect x="5" y="76" width="10" height="11" rx="3" fill="'+V+'"/>'
+    +'<rect x="-78" y="-78" width="156" height="156" fill="#FFFBF2" stroke="'+V+'" stroke-width="3" stroke-linejoin="round"/>'
+    +'<path d="M-78 -78L78 78M78 -78L-78 78M0 -78V78M-78 0H78" stroke="'+V+'" stroke-width="1.5" stroke-dasharray="4 5" opacity=".3"/>'+fl+'</g>'
+    +'<g class="o-bl"><circle r="126" fill="none"/>'+pe+'</g>'
+    +'<g class="o-c"><circle r="31" fill="#FFFBF2" stroke="'+V+'" stroke-width="3"/><image href="'+AV_LOGO+'" x="-25" y="-25" width="50" height="50"/></g></svg></div>';
 }
 function avLocked(d){
   const j=avDays(d);
@@ -668,9 +735,11 @@ function avLocked(d){
 function avView(){
   const on=location.hash==="#sapin";
   $("#avent").hidden=!on;document.querySelectorAll(".ind,.bar,main").forEach(e=>e.hidden=on);
-  if(on)$("#avent").scrollIntoView({block:"start"});
+  if(on){$("#avent").scrollIntoView({block:"start"});AVENT.forEach(c=>{if(avSt(c.jour)==="lock")return;if(c.pochette)new Image().src=c.pochette;if(c.type==="origami")new Image().src=AV_LOGO})}else avHush();
 }
+function avHush(){document.querySelectorAll("#avPanel audio").forEach(a=>a.pause())}
 function avOpen(d,viaBtn){
+  avHush();
   if(avSt(d)==="lock"){
     $("#avPanel").innerHTML=avLocked(d);
     const g=$('#avTree [data-d="'+d+'"]');if(g){g.classList.remove("shake");void g.getBoundingClientRect();g.classList.add("shake")}
@@ -681,6 +750,8 @@ function avOpen(d,viaBtn){
   const g=$('#avTree [data-d="'+d+'"]');
   if(g){if(!viaBtn)g.focus({preventScroll:true});if(first)g.classList.add("pop")}
   $("#avPanel").innerHTML=avContent(d);
+  const au=$("#avPanel audio");if(au)au.play().catch(()=>{});
+  if(matchMedia("(max-width:860px)").matches)$("#avPanel").scrollIntoView({block:"nearest",behavior:"smooth"});
 }
 const FACES={1:["c"],2:["tl","br"],3:["tl","c","br"],4:["tl","tr","bl","br"],5:["tl","tr","c","bl","br"],6:["tl","tr","ml","mr","bl","br"]};
 function setFace(n){document.querySelectorAll("#pips .pip").forEach(p=>p.classList.toggle("on",FACES[n].includes(p.dataset.k)))}
@@ -730,7 +801,8 @@ function start(saved){
   $("#bag").addEventListener("click",openBag);
   $("#avTree").addEventListener("click",e=>{const g=e.target.closest(".dp");if(g)avOpen(+g.dataset.d)});
   $("#avTree").addEventListener("keydown",e=>{if(e.key!=="Enter"&&e.key!==" ")return;const g=e.target.closest(".dp");if(!g)return;e.preventDefault();avOpen(+g.dataset.d)});
-  $("#avPanel").addEventListener("click",e=>{const b=e.target.closest("[data-av]");if(b)avOpen(+b.dataset.av,true)});
+  $("#avPanel").addEventListener("click",e=>{if(e.target.closest("[data-replay]")){const o=$("#avPanel .ap-ori");if(o)o.replaceWith(o.cloneNode(true));return}const b=e.target.closest("[data-av]");if(b)avOpen(+b.dataset.av,true)});
+  ["play","pause","ended"].forEach(ev=>$("#avPanel").addEventListener(ev,()=>{const s=$("#avPanel .ap-song");if(s)s.classList.toggle("playing",ev==="play")},true));
   $("#bagout").addEventListener("click",e=>{if(e.target.closest("[data-again]")){openBag();return}const b=e.target.closest("[data-go]");if(b)goTo(+b.dataset.go)});
   $("#list").addEventListener("click",e=>{const b=e.target.closest(".rxbtn");if(!b)return;const n=b.dataset.n,on=!RX.has(n);on?RX.add(n):RX.delete(n);saveRx();b.setAttribute("aria-pressed",on);b.setAttribute("aria-label",(on?"Retirer de mon ordonnance":"Prescrire")+" : "+n);b.lastElementChild.textContent=on?"Prescrit":"Prescrire";b.classList.remove("pop");void b.offsetWidth;b.classList.add("pop");rxBar();if(S.rx&&!on)render()});
   $("#rxSee").addEventListener("click",()=>{S.rx=!S.rx;render();rxBar();$(".bar").scrollIntoView({block:"start"})});
