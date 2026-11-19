@@ -1,6 +1,6 @@
 // Vote du jeu favori de l'équipe.
 // Un vote par prénom, enregistré dans un seul fichier JSON privé (Vercel Blob).
-// Tout passe par le code d'équipe (variable VOTE_CODE) : lecture du classement comme vote.
+// Tout passe par le code d'équipe (variable VOTE_CODE) : lecture du classement, vote et retrait d'un vote.
 const crypto = require('crypto');
 const { get, put } = require('@vercel/blob');
 
@@ -50,7 +50,8 @@ module.exports = async (req, res) => {
     const prenom = typeof b.prenom === 'string' ? b.prenom.trim().replace(/’/g, "'") : '';
     const jeu = typeof b.jeu === 'string' ? b.jeu.trim() : '';
     if (prenom.length < 2 || prenom.length > 24 || !PRENOM.test(prenom)) return res.status(400).json({ error: 'prenom' });
-    if (!jeu || jeu.length > 80 || /[\u0000-\u001f]/.test(jeu)) return res.status(400).json({ error: 'jeu' });
+    const retrait = b.retirer === true; // retrait d'un vote : le jeu n'est pas demandé
+    if (!retrait && (!jeu || jeu.length > 80 || /[\u0000-\u001f]/.test(jeu))) return res.status(400).json({ error: 'jeu' });
     const cle = norm(prenom);
 
     let echec;
@@ -59,6 +60,17 @@ module.exports = async (req, res) => {
       if (essai) await new Promise(r => setTimeout(r, Math.random() * 60 * essai));
       const { votes, etag } = await readVotes();
       const ancien = votes[cle];
+      if (retrait) {
+        if (!ancien) return res.status(200).json({ ok: true, retire: false, votes: liste(votes) });
+        delete votes[cle];
+        try {
+          await writeVotes(votes, etag);
+          return res.status(200).json({ ok: true, retire: true, votes: liste(votes) });
+        } catch (e) {
+          echec = e;
+          continue;
+        }
+      }
       if (ancien && ancien.g === jeu) return res.status(200).json({ ok: true, inchange: true, votes: liste(votes) });
       if (ancien && b.remplacer !== true) return res.status(409).json({ error: 'deja', prenom: ancien.p, jeu: ancien.g });
       if (!ancien && Object.keys(votes).length >= MAX_VOTANTS) return res.status(403).json({ error: 'complet' });
