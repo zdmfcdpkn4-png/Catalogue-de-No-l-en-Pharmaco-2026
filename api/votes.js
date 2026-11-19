@@ -8,7 +8,8 @@ const FILE = 'votes.json';
 const MAX_VOTANTS = 300;
 const PRENOM = /^\p{L}+(?:[-']\p{L}+)*$/u;
 
-const ready = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN && process.env.VOTE_CODE);
+// Stockage connecté : par jeton (BLOB_READ_WRITE_TOKEN) ou, mode par défaut des connexions récentes, par OIDC (BLOB_STORE_ID).
+const ready = () => Boolean(process.env.VOTE_CODE && (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID));
 const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const digest = s => crypto.createHash('sha256').update(s).digest();
 const codeOk = c =>
