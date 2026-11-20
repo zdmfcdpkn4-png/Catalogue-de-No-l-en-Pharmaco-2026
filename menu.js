@@ -1,54 +1,61 @@
 /* Menu des quatre pages : catalogue, sapin de l'Avent, Pharmacogames, palmarès.
-   Propre au site Vercel. Quatre logos inspirés de la pharmacotechnie remplacent les boutons d'accès de l'en-tête ;
-   la page ouverte est repérée. Les logos du concours et du palmarès n'apparaissent que si leur page existe,
-   c'est-à-dire si le serveur répond. Sans ce fichier, les boutons d'origine restent en place. */
+   Propre au site Vercel. Quatre boutons ronds remplacent les boutons d'accès de l'en-tête : chacun reprend le logo
+   de la pharmacotechnie (le P et sa fleur de gouttes), recoloré selon la page et coiffé d'un accessoire.
+   Les images img/menu-*.webp sont tirées de img/logo-p-verre.png : seul le P garde sa couleur.
+   Les boutons du concours et du palmarès n'apparaissent que si leur page existe, c'est-à-dire si le serveur répond.
+   Sans ce fichier, les boutons d'origine restent en place. */
 (() => {
   const q = s => document.querySelector(s);
   const ancre = q(".hero .pensee") || q(".hero .lead");
   if (!ancre) return;
-  const LOGOS = {
-    // la boîte de médicament qui contient un jeu
-    catalogue: '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="1.5" y="1.5" width="45" height="45" rx="12" fill="#F59A62" stroke="#26076D" stroke-width="2.5"/><path d="M12 17l4-6.5h16l4 6.5z" fill="#FFFBF2" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><rect x="9" y="17" width="30" height="22" rx="3" fill="#FFFBF2" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M9 23h30" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M10.2 18.2h27.6v3.7H10.2z" fill="#ECD567"/><path d="M14 29.5h3v-3h3.4v3h3v3.4h-3v3h-3.4v-3h-3z" fill="#3E9B76" stroke="#26076D" stroke-width="1.5" stroke-linejoin="round"/><g transform="translate(25.6 24.8) scale(.125)"><path d="M50 4c-9 0-16 7-16 16 0 6 3 11 8 14-14 3-34 12-36 20-1 5 6 14 10 13 6-1 13-6 19-8-3 11-13 26-13 33 0 3 2 4 5 4h16c2 0 3-1 4-3l3-10 3 10c1 2 2 3 4 3h16c3 0 5-1 5-4 0-7-10-22-13-33 6 2 13 7 19 8 4 1 11-8 10-13-2-8-22-17-36-20 5-3 8-8 8-14 0-9-7-16-16-16z" fill="#EC7739" stroke="#26076D" stroke-width="13" stroke-linejoin="round"/></g></svg>',
-    // l'erlenmeyer vert, étoile au goulot, bulles en guise de boules
-    sapin: '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="1.5" y="1.5" width="45" height="45" rx="12" fill="#F2E39A" stroke="#26076D" stroke-width="2.5"/><path d="M21 14v7L11.6 36.4C10.3 38.6 11.8 41 14.4 41h19.2c2.6 0 4.1-2.4 2.8-4.6L27 21v-7z" fill="#FFFBF2" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M17.6 27h12.8l6 9.4c1.3 2.2-.2 4.6-2.8 4.6H14.4c-2.6 0-4.1-2.4-2.8-4.6z" fill="#3E9B76" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M19.5 14h9" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="19" cy="34" r="2" fill="#ECD567" stroke="#26076D" stroke-width="1.2"/><circle cx="27.5" cy="36.6" r="2" fill="#EC7739" stroke="#26076D" stroke-width="1.2"/><circle cx="24.6" cy="30.6" r="1.7" fill="#FFFBF2" stroke="#26076D" stroke-width="1.2"/><path d="M24.0 3.2L25.5 6.6L29.1 6.9L26.4 9.4L27.2 13.0L24.0 11.1L20.8 13.0L21.6 9.4L18.9 6.9L22.5 6.6Z" fill="#ECD567" stroke="#26076D" stroke-width="1.6" stroke-linejoin="round"/></svg>',
-    // la gélule et le dé
-    pharmacogames: '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="1.5" y="1.5" width="45" height="45" rx="12" fill="#B9A6F0" stroke="#26076D" stroke-width="2.5"/><g transform="rotate(-42 19 19)"><rect x="4.5" y="13" width="29" height="12" rx="6" fill="#FFFBF2" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M19 13h8.5a6 6 0 0 1 0 12H19z" fill="#EC7739" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></g><g transform="rotate(9 30 31)"><rect x="20.5" y="21.5" width="19" height="19" rx="4.5" fill="#ECD567" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="25.5" cy="26.5" r="1.9" fill="#26076D"/><circle cx="34.5" cy="26.5" r="1.9" fill="#26076D"/><circle cx="30" cy="31" r="1.9" fill="#26076D"/><circle cx="25.5" cy="35.5" r="1.9" fill="#26076D"/><circle cx="34.5" cy="35.5" r="1.9" fill="#26076D"/></g></svg>',
-    // le mortier d'or, pilon compris
-    vote: '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="1.5" y="1.5" width="45" height="45" rx="12" fill="#EFC7E4" stroke="#26076D" stroke-width="2.5"/><path d="M31.5 5.5l4.2 2.4-7.4 13-3.4-2z" fill="#FFFBF2" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M13 19.5c-5.5-.4-5.5 8 1.8 8M35 19.5c5.5-.4 5.5 8-1.8 8" fill="none" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17h25c0 9.5-4.5 15.5-12.5 15.5S11.5 26.5 11.5 17z" fill="#ECD567" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M21.3 32.3h5.4v4.2h-5.4z" fill="#ECD567" stroke="#26076D" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><rect x="15.5" y="36.5" width="17" height="5" rx="1.6" fill="#26076D"/><path d="M24.0 19.4L25.2 22.3L28.4 22.6L26.0 24.7L26.7 27.7L24.0 26.1L21.3 27.7L22.0 24.7L19.6 22.6L22.8 22.3Z" fill="#EC7739" stroke="#26076D" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+  // Accessoire dessiné par-dessus le logo, dans un repère de 100 sur 100.
+  const PLUS = {
+    // un pion au pied du P
+    catalogue: '<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><g transform="translate(60 55) scale(.38)"><path d="M50 4c-9 0-16 7-16 16 0 6 3 11 8 14-14 3-34 12-36 20-1 5 6 14 10 13 6-1 13-6 19-8-3 11-13 26-13 33 0 3 2 4 5 4h16c2 0 3-1 4-3l3-10 3 10c1 2 2 3 4 3h16c3 0 5-1 5-4 0-7-10-22-13-33 6 2 13 7 19 8 4 1 11-8 10-13-2-8-22-17-36-20 5-3 8-8 8-14 0-9-7-16-16-16z" fill="none" stroke="#FFFBF2" stroke-width="22" stroke-linejoin="round"/><path d="M50 4c-9 0-16 7-16 16 0 6 3 11 8 14-14 3-34 12-36 20-1 5 6 14 10 13 6-1 13-6 19-8-3 11-13 26-13 33 0 3 2 4 5 4h16c2 0 3-1 4-3l3-10 3 10c1 2 2 3 4 3h16c3 0 5-1 5-4 0-7-10-22-13-33 6 2 13 7 19 8 4 1 11-8 10-13-2-8-22-17-36-20 5-3 8-8 8-14 0-9-7-16-16-16z" fill="#EC7739" stroke="#26076D" stroke-width="8" stroke-linejoin="round"/></g></svg>',
+    // la fleur devient couronne de Noël, étoile au sommet
+    sapin: '<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><path d="M38.0 -2.0L42.1 7.4L52.3 8.4L44.6 15.1L46.8 25.1L38.0 19.9L29.2 25.1L31.4 15.1L23.7 8.4L33.9 7.4Z" fill="none" stroke="#FFFBF2" stroke-width="7" stroke-linejoin="round"/><path d="M38.0 -2.0L42.1 7.4L52.3 8.4L44.6 15.1L46.8 25.1L38.0 19.9L29.2 25.1L31.4 15.1L23.7 8.4L33.9 7.4Z" fill="#ECD567" stroke="#26076D" stroke-width="2.6" stroke-linejoin="round"/></svg>',
+    // un dé roule au pied du P
+    pharmacogames: '<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><g transform="rotate(12 76 74)"><rect x="60" y="58" width="32" height="32" rx="8" fill="none" stroke="#FFFBF2" stroke-width="7"/><rect x="60" y="58" width="32" height="32" rx="8" fill="#ECD567" stroke="#26076D" stroke-width="2.8"/><circle cx="68" cy="66" r="3.1" fill="#26076D"/><circle cx="84" cy="66" r="3.1" fill="#26076D"/><circle cx="76" cy="74" r="3.1" fill="#26076D"/><circle cx="68" cy="82" r="3.1" fill="#26076D"/><circle cx="84" cy="82" r="3.1" fill="#26076D"/></g></svg>',
+    // le P couronné
+    vote: '<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><g transform="translate(39 11) rotate(-10) scale(1.08)"><path d="M-17 9V-7l8.5 8L0-11l8.5 12L17-7V9z" fill="none" stroke="#FFFBF2" stroke-width="7" stroke-linejoin="round"/><path d="M-17 9V-7l8.5 8L0-11l8.5 12L17-7V9z" fill="#ECD567" stroke="#26076D" stroke-width="2.6" stroke-linejoin="round"/><circle cx="-17" cy="-8" r="2.6" fill="#EC7739" stroke="#26076D" stroke-width="1.6"/><circle cx="0" cy="-12" r="2.6" fill="#EC7739" stroke="#26076D" stroke-width="1.6"/><circle cx="17" cy="-8" r="2.6" fill="#EC7739" stroke="#26076D" stroke-width="1.6"/></g></svg>',
   };
   const n = typeof G !== "undefined" && Array.isArray(G) ? G.length : 0;
-  // sel : la section qui doit exister pour que le logo s'affiche.
+  // sel : la section qui doit exister pour que le bouton s'affiche ; img : la déclinaison du logo ; fond : la teinte du disque.
   const PAGES = [
-    { id: "catalogue", href: "#", t: "Catalogue", s: n ? n + " jeux à prescrire" : "Les jeux à prescrire" },
-    { id: "sapin", href: "#sapin", t: "Sapin de l'Avent", s: "Une dose par jour", sel: "#avent" },
-    { id: "pharmacogames", href: "#pharmacogames", t: "Pharmacogames", s: "Le concours à points", sel: "#pharmacogames" },
-    { id: "vote", href: "#vote", t: "Palmarès", s: "Votez pour votre jeu", sel: "#vote" },
+    { id: "catalogue", href: "#", t: "Catalogue", s: n ? n + " jeux à prescrire" : "Les jeux à prescrire", img: "menu-catalogue.webp", fond: "#F59A62" },
+    { id: "sapin", href: "#sapin", t: "Sapin de l'Avent", s: "Une dose par jour", sel: "#avent", img: "menu-sapin.webp", fond: "#BFE3C9" },
+    { id: "pharmacogames", href: "#pharmacogames", t: "Pharmacogames", s: "Le concours à points", sel: "#pharmacogames", img: "menu-pharmacogames.webp", fond: "#B9A6F0" },
+    { id: "vote", href: "#vote", t: "Palmarès", s: "Votez pour votre jeu", sel: "#vote", img: "menu-palmares.webp", fond: "#F2E39A" },
   ];
 
   const st = document.createElement("style");
   st.textContent = `
 .hero .avgo{display:none!important}
-.pm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:58ch;margin:20px 0 0}
-.pm a{display:flex;align-items:center;gap:10px;min-width:0;padding:7px 12px 7px 7px;background:var(--surface);color:var(--on-surface);border:3px solid var(--line);border-radius:16px;box-shadow:4px 4px 0 var(--shadow);text-decoration:none;transition:transform .12s,box-shadow .12s}
-.pm svg{flex:0 0 auto;width:52px;height:52px}
-.pm span{min-width:0}
-.pm b{display:block;font-weight:800;font-size:1rem;line-height:1.1}
-.pm small{display:block;margin-top:3px;font:600 .66rem/1.2 var(--mono);letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
-@media(hover:hover){.pm a:hover{transform:translate(-1px,-1px);box-shadow:6px 6px 0 var(--shadow)}}
-.pm a:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow)}
-.pm a:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
-.pm a[aria-current="page"]{background:var(--pressed);color:var(--pressed-on)}
-.pm a[aria-current="page"] small{color:inherit;opacity:.85}
+.pm{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 10px;max-width:640px;margin:24px 0 0}
+.pm a{display:grid;justify-items:center;align-content:start;gap:7px;min-width:0;text-align:center;color:var(--on-bg);text-decoration:none;-webkit-tap-highlight-color:transparent}
+.pm-d{position:relative;display:block;width:86px;height:86px;border-radius:50%;border:3px solid var(--line);box-shadow:4px 4px 0 var(--shadow);background:radial-gradient(120% 120% at 30% 18%,#fff,#FFFBF2 46%,var(--fond) 100%);transition:transform .12s,box-shadow .12s}
+.pm-d img{position:absolute;left:8%;top:8%;width:84%;height:84%}
+.pm-d svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.pm b{display:block;padding:2px 8px;border-radius:999px;font-weight:800;font-size:1rem;line-height:1.15;white-space:nowrap}
+.pm small{display:block;font:600 .64rem/1.2 var(--mono);letter-spacing:.03em;text-transform:uppercase}
+@media(hover:hover){.pm a:hover .pm-d{transform:translate(-1px,-2px);box-shadow:6px 7px 0 var(--shadow)}}
+.pm a:active .pm-d{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow)}
+.pm a:focus-visible{outline:0}
+.pm a:focus-visible .pm-d{outline:3px solid var(--focus);outline-offset:4px}
+.pm a[aria-current="page"] .pm-d{box-shadow:0 0 0 4px var(--mu),0 0 0 7px var(--line)}
+.pm a[aria-current="page"] b{background:var(--pressed);color:var(--pressed-on)}
 .pm a.att{visibility:hidden}
 .pm a[hidden]{display:none}
-@media(max-width:560px){.pm{gap:10px}.pm a{flex-direction:column;gap:6px;padding:10px 6px 9px;text-align:center}.pm svg{width:48px;height:48px}.pm b{font-size:.95rem}}
-@media(prefers-reduced-motion:reduce){.pm a{transition:none}}`;
+@media(max-width:720px){.pm{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 10px;max-width:420px}}
+@media(max-width:360px){.pm b{font-size:.86rem;padding:2px 6px}}
+@media(prefers-reduced-motion:reduce){.pm-d{transition:none}}`;
   document.head.appendChild(st);
 
   const nav = document.createElement("nav");
   nav.className = "pm";
   nav.setAttribute("aria-label", "Les quatre pages du site");
-  nav.innerHTML = PAGES.map(p => '<a href="' + p.href + '" data-page="' + p.id + '"' + (p.sel && !q(p.sel) ? ' class="att"' : "") + ">" + LOGOS[p.id] + "<span><b>" + p.t + "</b><small>" + p.s + "</small></span></a>").join("");
+  nav.innerHTML = PAGES.map(p => '<a href="' + p.href + '" data-page="' + p.id + '"' + (p.sel && !q(p.sel) ? ' class="att"' : "") + '><span class="pm-d" style="--fond:' + p.fond + '">'
+    + '<img src="img/' + p.img + '" alt="" width="224" height="224" decoding="async">' + PLUS[p.id] + "</span><b>" + p.t + "</b><small>" + p.s + "</small></a>").join("");
   ancre.insertAdjacentElement("afterend", nav);
 
   const page = () => (location.hash === "#sapin" ? "sapin" : location.hash === "#vote" ? "vote" : location.hash === "#pharmacogames" || location.hash === "#enigme" ? "pharmacogames" : "catalogue");
@@ -56,17 +63,17 @@
     const ici = page();
     nav.querySelectorAll("a").forEach(a => { if (a.dataset.page === ici) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   }
-  // Le logo du catalogue ramène aux fiches, pas seulement en haut de page.
+  // Le bouton du catalogue ramène aux fiches, pas seulement en haut de page.
   nav.addEventListener("click", e => {
     const a = e.target.closest('a[data-page="catalogue"]');
     if (!a) return;
     setTimeout(() => { const c = q(".bar") || q("main"); if (c && !c.hidden) c.scrollIntoView({ block: "start" }); }, 0);
   });
-  // Les pages du vote et du concours arrivent après la réponse du serveur : leur logo se montre à ce moment-là.
+  // Les pages du vote et du concours arrivent après la réponse du serveur : leur bouton se montre à ce moment-là.
   const montrer = () => PAGES.forEach(p => { if (p.sel && q(p.sel)) { const a = nav.querySelector('[data-page="' + p.id + '"]'); a.classList.remove("att"); a.hidden = false; } });
   const obs = new MutationObserver(montrer);
   obs.observe(document.body, { childList: true });
-  // Serveur muet : on retire les logos restés en attente plutôt que de laisser deux cases vides.
+  // Serveur muet : on retire les boutons restés en attente plutôt que de laisser deux places vides.
   setTimeout(() => { nav.querySelectorAll("a.att").forEach(a => { a.hidden = true; }); }, 6000);
   window.addEventListener("hashchange", repere);
   repere();
