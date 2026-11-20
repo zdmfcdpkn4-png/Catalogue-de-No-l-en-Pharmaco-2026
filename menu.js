@@ -2,7 +2,8 @@
    Propre au site Vercel. Quatre boutons ronds remplacent les boutons d'accès de l'en-tête : chacun reprend le logo
    de la pharmacotechnie (le P et sa fleur de gouttes), recoloré selon la page et coiffé d'un accessoire.
    Les images img/menu-*.webp sont tirées de img/logo-p-verre.png : seul le P garde sa couleur.
-   Chaque bouton est un jeton épais qui se retourne en trois dimensions ; son dos porte l'accessoire en grand.
+   Chaque bouton est un jeton épais qui se retourne en trois dimensions ; sa tranche et son dos sont en verre,
+   le dos porte l'accessoire en grand.
    Les boutons du concours et du palmarès n'apparaissent que si leur page existe, c'est-à-dire si le serveur répond.
    Sans ce fichier, les boutons d'origine restent en place. */
 (() => {
@@ -50,8 +51,9 @@
 .pm-f,.pm-v,.pm-t{position:absolute;inset:0;display:block;border-radius:50%;border:3px solid var(--line)}
 .pm-f,.pm-v{-webkit-backface-visibility:hidden;backface-visibility:hidden}
 .pm-f{background:radial-gradient(120% 120% at 30% 18%,#fff,#FFFBF2 46%,var(--fond) 100%);transform:translateZ(6px)}
-.pm-v{background:radial-gradient(120% 120% at 30% 18%,#FFFBF2,var(--fond) 78%);transform:rotateY(180deg) translateZ(6px)}
-.pm-t{background:var(--foil-b);transform:translateZ(var(--z))}
+.pm-v{border-color:rgba(255,255,255,.85);background:radial-gradient(70% 55% at 30% 20%,rgba(255,255,255,.9),rgba(255,255,255,0) 70%),linear-gradient(135deg,rgba(255,255,255,.72),color-mix(in srgb,var(--fond) 55%,transparent) 60%,rgba(255,255,255,.5));box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.45),inset -5px -7px 12px rgba(38,7,109,.14),inset 4px 5px 10px rgba(255,255,255,.7);transform:rotateY(180deg) translateZ(6px)}
+.pm-t{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.07);box-shadow:inset 0 0 6px rgba(255,255,255,.35);transform:translateZ(var(--z))}
+.pm-t:nth-child(odd){border-color:color-mix(in srgb,var(--fond) 60%,rgba(255,255,255,.55))}
 .pm-d img{position:absolute;left:8%;top:8%;width:84%;height:84%}
 .pm-d svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .pm a.tourne .pm-j{animation:pmTour 1.25s linear both}
@@ -69,7 +71,7 @@
 .pm a:nth-child(odd) .pm-s{transform:rotate(3deg);animation-delay:-1.3s}
 .pm-s i{display:block;font-style:normal;font-weight:500;font-size:.9em;text-transform:none;letter-spacing:0}
 @keyframes pmPend{0%,100%{rotate:-2deg}50%{rotate:2deg}}
-.pm a[aria-current="page"] .pm-f,.pm a[aria-current="page"] .pm-v{box-shadow:0 0 0 4px var(--mu),0 0 0 7px var(--line)}
+.pm a[aria-current="page"] .pm-f{box-shadow:0 0 0 4px var(--mu),0 0 0 7px var(--line)}
 .pm a[aria-current="page"] .pm-o{opacity:0}
 .pm a[aria-current="page"] b{background:var(--pressed);color:var(--pressed-on)}
 .pm a.att{visibility:hidden}
