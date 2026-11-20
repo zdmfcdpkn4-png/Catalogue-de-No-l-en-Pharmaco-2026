@@ -992,7 +992,218 @@
   /* ----- Fin [basket] ----- */
 
   /* ----- Repère [penalty] : le penalty ----- */
-  // (session « Jeu » correspondante : écrire ici, entre ce repère et le suivant)
+  /* Penalty au préparatoire : dix tirs au bouchon face à l'automate de garde. Le cœur d'abord, le dessin ensuite. */
+  // Réglages étalonnés par simulation (node outils/etalon-penalty.js) : ils fixent la difficulté.
+  // reac, alea : temps de réaction de l'automate et son aléa ; vit, dvit : vitesse de plongeon et son gain par tir ; rg : rayon de la pince ;
+  // amp, w, dw : va-et-vient de l'automate avant le tir ; mou, fort : durée du vol du tir le plus mou et du plus fort ;
+  // pmin, pmax : en dessous le bouchon n'arrive pas, au-dessus il passe la barre ; but, prime : points bruts d'un but et prime de placement.
+  const RP = { tirs: 10, reac: 0.2, alea: 0.03, vit: 30, dvit: 34, rg: 20, amp: 45, w: 2.1, dw: 0.14, mou: 0.8, fort: 0.45, pmin: 0.15, pmax: 0.85, pause: 0.95, but: 100, prime: 50 };
+  // La cage est vue de face : montants en PN_G et PN_D, sol en PN_SOL, barre PN_HAUT plus haut. Le bouchon part de (PN_X0, PN_Y0).
+  const PN = { PAS: 1 / 240, G: 60, D: 300, SOL: 190, HAUT: 110, RB: 9, X0: 180, Y0: 410, KZ: 30, AMAX: 0.62, TIRE: 190 };
+  function creerPenalty(graine) {
+    let a = graine || 20261224;
+    const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const pat = h() * 6.283;
+    return { t: 0, acc: 0, phase: "vise", n: 0, buts: 0, lucarnes: 0, brut: 0, pat, kx: 180 + RP.amp * Math.sin(pat), kz: PN.KZ, tir: null, attente: 0, issues: [], h, fini: false };
+  }
+  // Un tir : angle en radians (0 = plein axe, positif vers la droite), puissance de 0 à 1. La direction fixe l'endroit où le bouchon
+  // coupe la ligne de but, la puissance fixe sa hauteur et sa vitesse : trop mou il n'arrive pas, trop fort il passe au-dessus.
+  function tirerPenalty(s, angle, puissance) {
+    if (s.fini || s.phase !== "vise" || !isFinite(angle) || !isFinite(puissance)) return false;
+    const a = borne(angle, -PN.AMAX, PN.AMAX), p = borne(puissance, 0, 1), ax = PN.X0 + Math.tan(a) * (PN.Y0 - PN.SOL);
+    const z = Math.max(0, (p - RP.pmin) / (RP.pmax - RP.pmin) * PN.HAUT), court = p < RP.pmin;
+    const issue = court ? "court" : ax < PN.G - PN.RB || ax > PN.D + PN.RB ? "cote" : z > PN.HAUT + PN.RB ? "dessus"
+      : Math.abs(ax - PN.G) <= PN.RB || Math.abs(ax - PN.D) <= PN.RB ? "poteau" : z >= PN.HAUT - PN.RB ? "barre" : "cadre";
+    const g = (s.h() + s.h() + s.h() + s.h() - 2) * 1.7;
+    s.tir = { a, p, ax, z, t: 0, T: RP.mou - (RP.mou - RP.fort) * p, issue, portee: court ? 0.3 + 0.45 * p / RP.pmin : 1,
+      reac: court ? 99 : Math.max(0.08, RP.reac + g * RP.alea), vit: RP.vit + RP.dvit * s.n,
+      gx: borne(ax, PN.G + RP.rg / 2, PN.D - RP.rg / 2), gz: borne(z, 14, PN.HAUT - 10) };
+    s.phase = "vol";
+    return true;
+  }
+  // Le placement d'un tir cadré, de 0 (plein centre, au ras du sol) à 1 (au ras d'un montant et de la barre).
+  function placementPenalty(v) {
+    const u = Math.min(1, Math.abs(v.ax - 180) / ((PN.D - PN.G) / 2 - PN.RB)), w = Math.min(1, v.z / (PN.HAUT - PN.RB));
+    return { u, w, part: 0.6 * u + 0.4 * w, lucarne: u > 0.8 && w > 0.75 };
+  }
+  const versPenalty = (s, x, z, pas) => { const dx = x - s.kx, dz = z - s.kz, d = Math.hypot(dx, dz); if (d <= pas) { s.kx = x; s.kz = z; } else { s.kx += dx / d * pas; s.kz += dz / d * pas; } };
+  function unPasPenalty(s, duree) {
+    const dt = PN.PAS, v = s.tir;
+    s.t += dt;
+    if (s.phase === "vise") {
+      if (s.t >= duree) { s.fini = true; return; }
+      s.pat += (RP.w + RP.dw * s.n) * dt;
+      s.kx = 180 + RP.amp * Math.sin(s.pat);
+    } else if (s.phase === "vol") {
+      v.t += dt;
+      if (v.t > v.reac) versPenalty(s, v.gx, v.gz, v.vit * dt);
+      if (v.t >= v.T) {
+        if (v.issue === "cadre") {
+          if (Math.hypot(s.kx - v.ax, s.kz - v.z) <= RP.rg + PN.RB) v.issue = "arret";
+          else { const q = placementPenalty(v); v.issue = "but"; v.lucarne = q.lucarne; v.points = RP.but + Math.round(RP.prime * q.part); s.buts++; s.lucarnes += q.lucarne ? 1 : 0; s.brut += v.points; }
+        }
+        s.issues.push(v.issue); s.phase = "bilan"; s.attente = RP.pause;
+      }
+    } else {
+      s.attente -= dt;
+      if (s.attente < RP.pause - 0.4) versPenalty(s, 180 + RP.amp * Math.sin(s.pat), PN.KZ, 420 * dt);
+      if (s.attente <= 0) { s.n++; s.tir = null; if (s.n >= RP.tirs || s.t >= duree) s.fini = true; else { s.phase = "vise"; s.kz = PN.KZ; } }
+    }
+  }
+  // Pas fixe, comme le tennis : la partie avance par tranches de 1/240 s quel que soit le rythme d'affichage.
+  function pasPenalty(s, dt, duree) { s.acc += dt; while (s.acc >= PN.PAS && !s.fini) { s.acc -= PN.PAS; unPasPenalty(s, duree); } }
+  // La note : le nombre de buts sur les dix tirs (un tir non joué faute de temps compte comme manqué).
+  const notePenalty = s => Math.round(10 * s.buts / RP.tirs);
+
+  function penalty(el, opt) {
+    const duree = opt.duree || 50, { cv, ctx, liberer } = monter(el, H);
+    cv.style.touchAction = "none";
+    cv.setAttribute("aria-label", "Penalty au préparatoire. Glissez vers la cage puis lâchez pour tirer le bouchon : la direction du geste vise, sa longueur dose la force. Au clavier : flèches gauche et droite pour viser, haut et bas pour la force, Espace pour tirer.");
+    const media = q => typeof matchMedia === "function" && matchMedia(q).matches, tactile = media("(pointer: coarse)"), calme = media("(prefers-reduced-motion: reduce)");
+    const s = creerPenalty(opt.graine || Math.floor(Math.random() * 2147483646) + 1);
+    let clos = false, minuterie = 0, prise = null, visee = null, auClavier = false, ka = 0, kp = 0.5, vuIssue = 0, horloge = 0;
+    const touches = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false }, eclats = [];
+    const MSG = { but: "Lot libéré !", arret: "Intercepté par l'automate", poteau: "Sur le montant…", barre: "Sur la barre…", cote: "À côté de la cage…", dessus: "Au-dessus…", court: "Trop mou…" };
+    const point = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
+    const mesurer = e => {
+      const [x, y] = point(e), dx = x - prise.x, dy = y - prise.y, l = Math.hypot(dx, dy);
+      visee = dy < -4 && l >= 12 ? { a: borne(Math.atan2(dx, -dy), -PN.AMAX, PN.AMAX), p: Math.min(1, l / PN.TIRE) } : null;
+    };
+    const appui = e => { if (clos) return; e.preventDefault(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } const [x, y] = point(e); prise = { id: e.pointerId, x, y }; visee = null; auClavier = false; };
+    const glisse = e => { if (prise && e.pointerId === prise.id) { e.preventDefault(); mesurer(e); } };
+    const leve = e => { if (!prise || e.pointerId !== prise.id) return; mesurer(e); if (visee && !clos) tirerPenalty(s, visee.a, visee.p); prise = visee = null; };
+    const annule = e => { if (prise && e.pointerId === prise.id) prise = visee = null; };
+    const clavier = (e, v) => {
+      const tir = e.key === " " || e.key === "Spacebar" || e.key === "Enter";
+      if (!(e.key in touches) && !tir) return;
+      if (v && (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(e.target && e.target.tagName || ""))) return;
+      if (v) { e.preventDefault(); auClavier = true; prise = visee = null; }
+      if (tir) { if (v && !e.repeat && !clos) tirerPenalty(s, ka, kp); } else touches[e.key] = v;
+    };
+    const enfonce = e => clavier(e, true), relache = e => clavier(e, false), lache = () => { for (const k in touches) touches[k] = false; }, menu = e => e.preventDefault();
+    cv.addEventListener("pointerdown", appui); cv.addEventListener("pointermove", glisse); cv.addEventListener("pointerup", leve); cv.addEventListener("pointercancel", annule); cv.addEventListener("contextmenu", menu);
+    window.addEventListener("keydown", enfonce); window.addEventListener("keyup", relache); window.addEventListener("blur", lache);
+    const retirer = () => {
+      cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointermove", glisse); cv.removeEventListener("pointerup", leve); cv.removeEventListener("pointercancel", annule); cv.removeEventListener("contextmenu", menu);
+      window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", relache); window.removeEventListener("blur", lache);
+    };
+    // Où dessiner le bouchon : il rapetisse en s'éloignant, monte vers sa hauteur d'arrivée, et son ombre reste au sol.
+    function bouchonEn(v) {
+      const u = Math.min(1, v.t / v.T) * v.portee, sol = PN.Y0 - (PN.Y0 - PN.SOL) * u;
+      return { x: PN.X0 + (v.ax - PN.X0) * u, sol, y: sol - v.z * u - Math.sin(Math.PI * Math.min(1, v.t / v.T)) * 16 * v.p * (v.portee < 1 ? 0 : 1), r: 15 - (15 - PN.RB) * u };
+    }
+    function bouchon(x, y, r, tour) {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(tour);
+      trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = O; ctx.beginPath(); ctx.arc(0, 0, r * 0.58, 0, 6.3); ctx.fill(); ctx.lineWidth = 1.6; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-r * 0.3, 0); ctx.lineTo(r * 0.3, 0); ctx.stroke();
+      ctx.restore();
+    }
+    function fleche(a, p) {
+      const l = 34 + p * 150, x = PN.X0 + Math.sin(a) * l, y = PN.Y0 - Math.cos(a) * l, coul = p < RP.pmin ? "#B56AA0" : p > RP.pmax ? R : N;
+      ctx.strokeStyle = coul; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.setLineDash([2, 11]);
+      ctx.beginPath(); ctx.moveTo(PN.X0 + Math.sin(a) * 22, PN.Y0 - Math.cos(a) * 22); ctx.lineTo(x, y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.fillStyle = coul; ctx.beginPath(); ctx.moveTo(0, -13); ctx.lineTo(9, 4); ctx.lineTo(-9, 4); ctx.closePath(); ctx.fill(); ctx.restore();
+      // La jauge de force : rose trop mou, verte dans le cadre, rouge au-dessus de la barre.
+      const jx = 328, jy = 300, jh = 124, yDe = q => jy + jh * (1 - q);
+      ctx.fillStyle = R; ctx.fillRect(jx, jy, 12, jh); ctx.fillStyle = G; ctx.fillRect(jx, yDe(RP.pmax), 12, yDe(RP.pmin) - yDe(RP.pmax)); ctx.fillStyle = P; ctx.fillRect(jx, yDe(RP.pmin), 12, jy + jh - yDe(RP.pmin));
+      trait(ctx, 2.4); ctx.beginPath(); ctx.rect(jx, jy, 12, jh); ctx.stroke();
+      ctx.fillStyle = N; ctx.beginPath(); ctx.moveTo(jx - 3, yDe(p)); ctx.lineTo(jx - 14, yDe(p) - 7); ctx.lineTo(jx - 14, yDe(p) + 7); ctx.closePath(); ctx.fill();
+      texte(ctx, "FORCE", jx + 6, jy - 10, 9, "rgba(38,7,109,.6)");
+    }
+    function automate(vif) {
+      const x = s.kx, y = PN.SOL - s.kz, rg = RP.rg;
+      trait(ctx, 4); ctx.beginPath(); ctx.moveTo(x, PN.SOL - PN.HAUT + 4); ctx.lineTo(x, y - rg + 2); ctx.stroke();                 // le bras télescopique
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(x - 15, PN.SOL - PN.HAUT - 9, 30, 13, 4); ctx.fill();                     // le chariot sur la barre
+      trait(ctx, 2.6);
+      for (const c of [-1, 1]) { ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(x + c * (rg + 1) - 4, y - 9, 8, 18, 3); ctx.fill(); }   // les mors de la pince
+      ctx.fillStyle = vif ? Y : V; ctx.beginPath(); ctx.arc(x, y, rg, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(x - 12, y - 8, 24, 12, 5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = vif ? O : G; ctx.beginPath(); ctx.arc(x - 5, y - 2, 2.6, 0, 6.3); ctx.arc(x + 5, y - 2, 2.6, 0, 6.3); ctx.fill();
+    }
+    function dessiner() {
+      const v = s.tir, issue = s.phase === "bilan" && v ? v.issue : "", fete = issue === "but" && !calme;
+      ctx.fillStyle = "#EDEAF6"; ctx.fillRect(0, 0, W, PN.SOL);                                                    // le mur du préparatoire
+      ctx.strokeStyle = "rgba(38,7,109,.07)"; ctx.lineWidth = 2;
+      for (let x = 20; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 39); ctx.lineTo(x, PN.SOL); ctx.stroke(); }
+      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(0, PN.SOL, W, H - PN.SOL);                                           // la paillasse, en perspective
+      ctx.strokeStyle = "rgba(38,7,109,.09)";
+      for (let i = -5; i <= 5; i++) { ctx.beginPath(); ctx.moveTo(180 + i * 36, PN.SOL); ctx.lineTo(180 + i * 92, H); ctx.stroke(); }
+      for (let k = 1; k < 6; k++) { const y = PN.SOL + k * k * 11.6; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+      ctx.strokeStyle = "rgba(38,7,109,.22)"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(36, PN.SOL); ctx.lineTo(8, 262); ctx.lineTo(352, 262); ctx.lineTo(324, PN.SOL); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(PN.X0, PN.Y0 + 4, 20, 7, 0, 0, 6.3); ctx.stroke();
+      // Les spectateurs : quatre flacons, qui sautent de joie sur un but.
+      for (const [i, x] of [16, 38, 322, 344].entries()) flacon(ctx, x, PN.SOL - 13 - (fete ? Math.abs(Math.sin(horloge * 11 + i)) * 9 : 0), 0, [P, B, Y, P][i]);
+      // La cage : le filet, puis les montants et la barre.
+      ctx.fillStyle = "rgba(255,251,242,.7)"; ctx.fillRect(PN.G, PN.SOL - PN.HAUT, PN.D - PN.G, PN.HAUT);
+      ctx.strokeStyle = "rgba(38,7,109,.16)"; ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let x = PN.G + 20; x < PN.D; x += 20) { ctx.moveTo(x, PN.SOL - PN.HAUT); ctx.lineTo(x, PN.SOL); }
+      for (let y = PN.SOL - PN.HAUT + 18; y < PN.SOL; y += 18) { ctx.moveTo(PN.G, y); ctx.lineTo(PN.D, y); }
+      ctx.stroke();
+      ctx.strokeStyle = N; ctx.lineWidth = 9; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(PN.G, PN.SOL); ctx.lineTo(PN.G, PN.SOL - PN.HAUT); ctx.lineTo(PN.D, PN.SOL - PN.HAUT); ctx.lineTo(PN.D, PN.SOL); ctx.stroke();
+      ctx.strokeStyle = C; ctx.lineWidth = 3.5; ctx.stroke();
+      ctx.strokeStyle = N; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, PN.SOL); ctx.lineTo(W, PN.SOL); ctx.stroke();
+      // Le tableau de marque : une pastille par tir.
+      for (let i = 0; i < RP.tirs; i++) {
+        const x = 180 + (i - (RP.tirs - 1) / 2) * 22, r = s.issues[i];
+        trait(ctx, 2); ctx.fillStyle = r === "but" ? G : r ? R : C; ctx.beginPath(); ctx.arc(x, 57, 7, 0, 6.3); ctx.fill(); ctx.stroke();
+        if (i === s.n && !r && !clos) { ctx.strokeStyle = O; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, 57, 10.5, 0, 6.3); ctx.stroke(); }
+      }
+      automate(issue === "arret");
+      // Le bouchon : posé sur son point, en vol, ou là où il a fini.
+      if (v) {
+        const b = bouchonEn(v);
+        ctx.fillStyle = "rgba(38,7,109,.18)"; ctx.beginPath(); ctx.ellipse(b.x, b.sol + b.r * 0.7, b.r, b.r * 0.35, 0, 0, 6.3); ctx.fill();
+        if (s.phase === "vol" && !calme) for (let k = 3; k > 0; k--) { const q = bouchonEn({ ...v, t: Math.max(0, v.t - k * 0.035) }); ctx.globalAlpha = 0.12 * (4 - k); ctx.fillStyle = O; ctx.beginPath(); ctx.arc(q.x, q.y, q.r * 0.8, 0, 6.3); ctx.fill(); ctx.globalAlpha = 1; }
+        bouchon(b.x, b.y, b.r, calme ? 0 : v.t * 9 * (v.a < 0 ? -1 : 1));
+      } else if (!clos) {
+        ctx.fillStyle = "rgba(38,7,109,.18)"; ctx.beginPath(); ctx.ellipse(PN.X0, PN.Y0 + 11, 15, 5, 0, 0, 6.3); ctx.fill();
+        bouchon(PN.X0, PN.Y0, 15, 0);
+        if (visee) fleche(visee.a, visee.p); else if (auClavier) fleche(ka, kp);
+      }
+      for (const e of eclats) { const k = e.t / e.d; ctx.globalAlpha = 1 - k; ctx.fillStyle = e.c; ctx.beginPath(); ctx.arc(e.x + e.vx * e.t, e.y + e.vy * e.t + 260 * e.t * e.t, 3.5, 0, 6.3); ctx.fill(); ctx.globalAlpha = 1; }
+      if (s.n === 0 && s.phase === "vise" && !visee && !auClavier && !clos) {
+        ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(28, 300, 284, 50, 14); ctx.fill();
+        texte(ctx, "Glissez vers la cage, puis lâchez", 180, 316, 13, Y);
+        texte(ctx, tactile ? "Direction = visée · longueur = force" : "ou flèches ◀ ▶ ▲ ▼ puis Espace", 180, 335, 12, C);
+      }
+      bandeau(ctx, "Tir " + Math.min(RP.tirs, s.n + 1) + "/" + RP.tirs + " · " + s.buts + (s.buts > 1 ? " buts" : " but"), duree - s.t, duree);
+      if (issue && !clos) {
+        const m = v.lucarne ? "Pleine lucarne, lot libéré !" : MSG[issue];
+        ctx.fillStyle = "rgba(38,7,109,.88)"; ctx.beginPath(); ctx.roundRect(46, 222, 268, 40, 14); ctx.fill(); texte(ctx, m, 180, 243, 17, issue === "but" ? Y : P);
+      }
+      if (clos) {
+        ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 200, 280, 110, 18); ctx.fill();
+        texte(ctx, notePenalty(s) + " / 10", 180, 240, 40, Y); texte(ctx, s.buts + (s.buts > 1 ? " buts" : " but") + " sur " + RP.tirs + " tirs", 180, 282, 16, C);
+      }
+    }
+    const arret = boucle(dt => {
+      horloge += dt;
+      if (!clos) {
+        const g = touches.ArrowRight - touches.ArrowLeft, f = touches.ArrowUp - touches.ArrowDown;
+        if (g) ka = borne(ka + g * 0.75 * dt, -PN.AMAX, PN.AMAX);
+        if (f) kp = borne(kp + f * 0.5 * dt, 0, 1);
+        pasPenalty(s, dt, duree);
+        if (s.issues.length > vuIssue) {
+          vuIssue = s.issues.length;
+          const v = s.tir;
+          if (v && v.issue === "but" && !calme) for (let i = 0; i < 14; i++) eclats.push({ x: v.ax, y: PN.SOL - v.z, vx: (i - 6.5) * 22, vy: -150 - (i * 37 % 90), t: 0, d: 0.8, c: [Y, O, G, P][i % 4] });
+        }
+        if (s.fini) {
+          clos = true; lache(); prise = visee = null;
+          const n = notePenalty(s), joues = s.issues.length, pl = (k, un, des) => k + " " + (k > 1 ? des : un);
+          const bilan = pl(s.buts, "bouchon", "bouchons") + " au fond de la cage sur " + RP.tirs + " tirs" + (s.lucarnes ? ", dont " + s.lucarnes + " en pleine lucarne" : "") + (joues < RP.tirs ? " (" + pl(RP.tirs - joues, "tir non joué", "tirs non joués") + " faute de temps)" : "") + " : " + n + " sur 10 (la note est le nombre de buts).";
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.brut); }, 1300);
+        }
+      }
+      for (let i = eclats.length - 1; i >= 0; i--) { eclats[i].t += dt; if (eclats[i].t >= eclats[i].d) eclats.splice(i, 1); }
+      dessiner();
+    });
+    cv.focus({ preventScroll: true });
+    return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
+  }
+  api.penalty = penalty;
+  Object.assign(api._coeur, { REGL_PENALTY: RP, PN, creerPenalty, tirerPenalty, pasPenalty, notePenalty, placementPenalty });
   /* ----- Fin [penalty] ----- */
 
   /* ----- Repère [volley] : le volley ----- */
