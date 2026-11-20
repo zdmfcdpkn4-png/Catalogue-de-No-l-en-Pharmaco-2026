@@ -7,10 +7,10 @@
   const W = 360, H = 480; // repère logique des deux jeux
 
   /* ================= Bowling des flacons : le cœur ================= */
-  const RB = 15, RQ = 11, RS = 7, GAUCHE = 46, DROITE = 314, DEPART = 432;
+  const RB = 15, RQ = 11, RS = 7, GAUCHE = 46, DROITE = 314, DEPART = 552, HB = 600; // HB : hauteur propre au bowling, la paillasse est plus longue que le repère commun
   // Réglages étalonnés par simulation (voir le banc d'essai) : ils fixent la difficulté.
-  const REGL = { elan: 180, frein: 5, relais: 0.55, seuil: 60, cadence: 0.4, vitesse: 280, chute: 85, acc: 3, pas: 0.9, portee: 2, sy: 290, sl: 40, sv: 2.4 };
-  const PLACES = (() => { const q = []; for (let r = 0; r < 4; r++) for (let i = 0; i <= r; i++) q.push({ x: 180 + (i - r / 2) * 37, y: 150 - r * 32 }); return q; })();
+  const REGL = { elan: 180, frein: 5, relais: 0.55, seuil: 60, cadence: 0.4, vitesse: 280, chute: 85, acc: 3, pas: 0.9, portee: 2, sy: 390, sl: 40, sv: 2.4 };
+  const PLACES = (() => { const q = []; for (let r = 0; r < 4; r++) for (let i = 0; i <= r; i++) q.push({ x: 180 + (i - r / 2) * 37, y: 206 - r * 32 }); return q; })();
   // La seringue de garde : elle balaie la paillasse d'un bord à l'autre, à la hauteur sy. sl = demi-longueur, sv = cadence.
   const xSeringue = t => 180 + ((DROITE - GAUCHE) / 2 - REGL.sl - RS) * Math.sin(t * REGL.sv);
   // Un lancer : la boule part de x avec un angle en degrés (0 = tout droit). debout[i] dit si le flacon i est encore là.
@@ -36,7 +36,7 @@
     if (!b.sortie) {
       b.x += b.vx * dt; b.y += b.vy * dt; b.tour += dt * 9;
       if (!b.rigole && (b.x < GAUCHE + RB - 4 || b.x > DROITE - RB + 4)) { b.rigole = true; b.x = b.x < 180 ? GAUCHE - 8 : DROITE + 8; b.vx = 0; }
-      if (b.y < -30 || b.y > H + 30) b.sortie = true;
+      if (b.y < -30 || b.y > HB + 30) b.sortie = true;
       if (!b.rigole) for (const q of s.quilles) {
         if (!q.la || q.tombee) continue;
         const dx = q.x - b.x, dy = q.y - b.y, d = Math.hypot(dx, dy);
@@ -146,13 +146,33 @@
     return () => { vivant = false; };
   }
 
-  /* ----- Bowling des flacons ----- */
+  /* ----- Bowling des flacons : une partie de SERIES séries de 2 lancers, note = flacons à terre ramenés sur 10 ----- */
+  const SERIES = 5, noteBowling = total => Math.round(total / SERIES);
   function bowling(el, opt) {
-    const duree = opt.duree || 30, { cv, ctx, liberer } = monter(el, H);
-    cv.setAttribute("aria-label", "Bowling des flacons. Appuyez ou tapez Espace pour fixer la position, puis l'angle du lancer. Une seringue balaie la paillasse : lancez quand la voie est libre.");
+    const duree = opt.duree || 30, { cv, ctx, liberer } = monter(el, HB);
+    cv.setAttribute("aria-label", "Bowling des flacons. Cinq séries de deux lancers. Appuyez ou tapez Espace pour fixer la position, puis l'angle du lancer. Une seringue balaie la paillasse : lancez quand la voie est libre.");
     const debout = PLACES.map(() => true);
-    let phase = "position", lancerN = 1, t = 0, reste = duree, posX = 180, angle = 0, sim = null, total = 0, annonce = "", annonceT = 0, clos = false, horloge = 0;
+    let phase = "position", lancerN = 1, serie = 1, aTerre = 0, t = 0, reste = duree, posX = 180, angle = 0, sim = null, total = 0, annonce = "", annonceT = 0, clos = false, horloge = 0;
     const COUL = [O, Y, P, V, Y, O, V, P, O, Y];
+    const feuille = [];                       // feuille[série - 1] = [flacons du tir 1, flacons du tir 2]
+    const logo = new Image(); logo.src = "img/menu-pharmacogames.webp"; // le logo de l'unité roule sur la boule ; sans image, un comprimé sécable
+    // L'écran suspendu : une case par série (les deux tirs, puis le cumul), et le total.
+    function ecran() {
+      const y0 = 43, h = 46, lc = 54, x0 = 12;
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(x0 - 4, y0 - 2, W - 2 * x0 + 8, h + 4, 8); ctx.fill();
+      let cumul = 0;
+      for (let i = 0; i < SERIES; i++) {
+        const x = x0 + i * lc, f = feuille[i] || [], actif = i === serie - 1 && phase !== "fin";
+        ctx.fillStyle = actif ? "rgba(236,213,103,.22)" : "rgba(255,251,242,.08)"; ctx.beginPath(); ctx.roundRect(x + 2, y0 + 2, lc - 4, h - 4, 5); ctx.fill();
+        if (actif) { ctx.strokeStyle = Y; ctx.lineWidth = 1.5; ctx.stroke(); }
+        const m1 = f[0] == null ? "" : f[0] === 10 ? "X" : f[0] || "–", m2 = f[1] == null ? "" : f[0] + f[1] === 10 ? "/" : f[1] || "–";
+        texte(ctx, m1, x + lc / 2 - 11, y0 + 14, 13, f[0] === 10 ? O : C); texte(ctx, m2, x + lc / 2 + 11, y0 + 14, 13, m2 === "/" ? O : C);
+        if (f.length) { cumul += f[0] + (f[1] || 0); texte(ctx, cumul, x + lc / 2, y0 + 33, 15, Y); }
+      }
+      const xt = x0 + SERIES * lc;
+      ctx.fillStyle = Y; ctx.beginPath(); ctx.roundRect(xt + 2, y0 + 2, W - x0 - xt - 4, h - 4, 5); ctx.fill();
+      texte(ctx, "TOTAL", xt + (W - x0 - xt) / 2, y0 + 13, 10, N); texte(ctx, total, xt + (W - x0 - xt) / 2, y0 + 31, 18, N);
+    }
     function agir() {
       if (clos) return;
       if (phase === "position") { phase = "angle"; t = 0; }
@@ -165,15 +185,15 @@
     function finir() {
       if (clos) return;
       clos = true; phase = "fin";
-      setTimeout(() => { arret(); liberer(); opt.onFin(total, total === 10 ? "Strike de laboratoire : les 10 flacons sont tombés." : total + (total > 1 ? " flacons renversés" : " flacon renversé") + " sur 10."); }, 1100);
+      setTimeout(() => { arret(); liberer(); opt.onFin(noteBowling(total), total === 10 * SERIES ? "Lot parfait : les " + total + " flacons sont tombés." : total + (total > 1 ? " flacons renversés" : " flacon renversé") + " sur " + 10 * SERIES + "."); }, 1100);
     }
     function dessiner() {
-      ctx.fillStyle = "#F4F2F8"; ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = "#D8D3E3"; ctx.fillRect(0, 39, GAUCHE - 16, H); ctx.fillRect(DROITE + 16, 39, W, H); // bords
-      ctx.fillStyle = N; ctx.fillRect(GAUCHE - 16, 39, 16, H); ctx.fillRect(DROITE, 39, 16, H);              // rigoles
-      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(GAUCHE, 39, DROITE - GAUCHE, H);                                // paillasse
+      ctx.fillStyle = "#F4F2F8"; ctx.fillRect(0, 0, W, HB);
+      ctx.fillStyle = "#D8D3E3"; ctx.fillRect(0, 39, GAUCHE - 16, HB); ctx.fillRect(DROITE + 16, 39, W, HB); // bords
+      ctx.fillStyle = N; ctx.fillRect(GAUCHE - 16, 39, 16, HB); ctx.fillRect(DROITE, 39, 16, HB);              // rigoles
+      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(GAUCHE, 39, DROITE - GAUCHE, HB);                                // paillasse
       ctx.strokeStyle = "rgba(38,7,109,.12)"; ctx.lineWidth = 2;
-      for (let x = GAUCHE + 38; x < DROITE; x += 38) { ctx.beginPath(); ctx.moveTo(x, 39); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let x = GAUCHE + 38; x < DROITE; x += 38) { ctx.beginPath(); ctx.moveTo(x, 39); ctx.lineTo(x, HB); ctx.stroke(); }
       ctx.strokeStyle = O; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(GAUCHE, DEPART - 26); ctx.lineTo(DROITE, DEPART - 26); ctx.stroke();
       const Q = sim ? sim.quilles : PLACES.map((p, i) => ({ x: p.x, y: p.y, la: debout[i], tombee: false, rot: 0 }));
       Q.forEach((q, i) => { if (q.la) { ctx.globalAlpha = q.tombee ? 0.55 : 1; flacon(ctx, q.x, q.y, q.tombee ? q.rot : 0, COUL[i]); ctx.globalAlpha = 1; } });
@@ -192,19 +212,21 @@
       if (!sim || !b.sortie) {
         ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.tour || 0);
         trait(ctx, 3); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, RB, 0, 6.3); ctx.fill(); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-RB + 4, 0); ctx.lineTo(RB - 4, 0); ctx.stroke();
+        if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, -RB + 1.5, -RB + 1.5, 2 * RB - 3, 2 * RB - 3);
+        else { ctx.beginPath(); ctx.moveTo(-RB + 4, 0); ctx.lineTo(RB - 4, 0); ctx.stroke(); }
         ctx.restore();
       }
       if (phase === "position" || phase === "angle") {
         const a = (phase === "angle" ? angle : 0) * Math.PI / 180;
         ctx.strokeStyle = O; ctx.lineWidth = 4; ctx.setLineDash([9, 8]);
         ctx.beginPath(); ctx.moveTo(posX, DEPART - 20); ctx.lineTo(posX + Math.sin(a) * 150, DEPART - 20 - Math.cos(a) * 150); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(60, H - 30, 240, 24, 12); ctx.fill();
-        texte(ctx, phase === "position" ? "Touchez pour fixer la position" : "Touchez pour fixer l'angle", 180, H - 18, 13, Y);
+        ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(60, HB - 30, 240, 24, 12); ctx.fill();
+        texte(ctx, phase === "position" ? "Touchez pour fixer la position" : "Touchez pour fixer l'angle", 180, HB - 18, 13, Y);
       }
-      bandeau(ctx, "Lancer " + Math.min(lancerN, 2) + "/2 · " + total + " à terre", reste, duree);
-      if (annonceT > 0) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(60, 210, 240, 60, 16); ctx.fill(); texte(ctx, annonce, 180, 241, 24, Y); }
-      if (phase === "fin") { ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(50, 190, 260, 100, 18); ctx.fill(); texte(ctx, total + " / 10", 180, 228, 40, Y); texte(ctx, total === 10 ? "Tout est tombé !" : "Lot contrôlé", 180, 266, 16, C); }
+      bandeau(ctx, "Série " + serie + "/" + SERIES + " · tir " + lancerN + "/2", reste, duree);
+      ecran();
+      if (annonceT > 0) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(60, 250, 240, 60, 16); ctx.fill(); texte(ctx, annonce, 180, 281, 24, Y); }
+      if (phase === "fin") { ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(50, 230, 260, 100, 18); ctx.fill(); texte(ctx, noteBowling(total) + " / 10", 180, 268, 40, Y); texte(ctx, total + " flacons sur " + 10 * SERIES, 180, 306, 16, C); }
     }
     const arret = boucle(dt => {
       t += dt; annonceT -= dt; horloge += dt;
@@ -217,9 +239,11 @@
         if (sim.fini) {
           const n = tombees(sim), pique = sim.boule.bloquee;
           sim.quilles.forEach((q, i) => { if (q.la && q.tombee) debout[i] = false; });
-          total += n; sim = null;
-          annonce = total === 10 ? (lancerN === 1 ? "Strike !" : "Spare !") : pique ? "Piqué au vif !" : n === 0 ? "Dans le vide" : "+" + n; annonceT = 0.9;
-          if (total === 10 || lancerN === 2) finir(); else { lancerN = 2; phase = "position"; t = 0; }
+          total += n; aTerre += n; sim = null; (feuille[serie - 1] = feuille[serie - 1] || []).push(n);
+          annonce = aTerre === 10 ? (lancerN === 1 ? "Strike !" : "Spare !") : pique ? "Piqué au vif !" : n === 0 ? "Dans le vide" : "+" + n; annonceT = 0.9;
+          if (aTerre < 10 && lancerN === 1) { lancerN = 2; phase = "position"; t = 0; }
+          else if (serie === SERIES) finir();
+          else { serie++; lancerN = 1; aTerre = 0; debout.fill(true); phase = "position"; t = 0; } // série suivante : on redresse le lot
         }
       }
       dessiner();
@@ -279,6 +303,6 @@
     return () => { arret(); liberer(); };
   }
 
-  const api = { bowling, tir, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, xSeringue, creerTir, pasTir, noteTir, TOTAL } };
+  const api = { bowling, tir, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, xSeringue, SERIES, noteBowling, creerTir, pasTir, noteTir, TOTAL } };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PharmacoJeux = api;
 })(typeof window !== "undefined" ? window : globalThis);
