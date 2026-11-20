@@ -90,6 +90,89 @@
   }
   const noteTir = s => Math.round(10 * s.touches / TOTAL);
 
+  /* ================= Le flipper du préparatoire : le cœur ================= */
+  // Réglages étalonnés par simulation (node outils/etalon.js) : ils fixent la difficulté.
+  const RF = { g: 820, vmax: 960, monte: 20, descend: 14, repos: 0.5, leve: -0.5, long: 62, kick: 400, bouchon: 10, etiquette: 25, deja: 5, lot: 150, relance: 2, perte: 30, palier: 100 };
+  const F_PAS = 1 / 240, F_RB = 8, F_EP = 5;
+  const F_MURS = [[10, 330, 10, 110], [10, 110, 70, 49], [70, 49, 290, 49], [290, 49, 350, 110], [350, 110, 350, 330], [10, 330, 104, 408], [350, 330, 256, 408], [104, 408, 120, 480], [256, 408, 240, 480]];
+  const F_BOUCHONS = [{ x: 112, y: 160, r: 19 }, { x: 248, y: 160, r: 19 }, { x: 180, y: 238, r: 19 }];
+  const F_ETIQ = [[17, 165, 17, 197], [17, 232, 17, 264], [164, 57, 196, 57], [343, 165, 343, 197], [343, 232, 343, 264]];
+  const F_PIVOTS = [{ x: 108, y: 414, sens: 1 }, { x: 252, y: 414, sens: -1 }];
+  const boutBatteur = (i, ang) => { const p = F_PIVOTS[i]; return [p.x + p.sens * Math.cos(ang) * RF.long, p.y + Math.sin(ang) * RF.long]; };
+  // Une partie : g et d disent si les batteurs gauche et droit sont tenus levés.
+  function creerFlipper(graine) {
+    let a = graine || 20261207;
+    const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    return { t: 0, acc: 0, score: 0, pertes: 0, lots: 0, coups: 0, lancers: 0, lot: F_ETIQ.map(() => false), tape: F_BOUCHONS.map(() => -9), bille: null, attente: 0.9, g: false, d: false, ang: [RF.repos, RF.repos], vit: [0, 0], calme: 0, msg: "", msgT: -9, h, fini: false };
+  }
+  // La bille touche-t-elle le segment (épaisseur ep) ? Si oui, elle est repoussée dehors et on rend la normale.
+  function contact(b, x1, y1, x2, y2, ep) {
+    const dx = x2 - x1, dy = y2 - y1, u = Math.max(0, Math.min(1, ((b.x - x1) * dx + (b.y - y1) * dy) / (dx * dx + dy * dy)));
+    const cx = x1 + dx * u, cy = y1 + dy * u, nx = b.x - cx, ny = b.y - cy, d = Math.hypot(nx, ny), R = F_RB + ep;
+    if (d >= R || d === 0) return null;
+    b.x = cx + nx / d * R; b.y = cy + ny / d * R;
+    return { nx: nx / d, ny: ny / d, cx, cy };
+  }
+  // Rebond d'élasticité e sur une surface qui se déplace à (vsx, vsy). Rend la vitesse d'approche.
+  function rebond(b, c, e, vsx, vsy) {
+    const vn = (b.vx - vsx) * c.nx + (b.vy - vsy) * c.ny;
+    if (vn < 0) { b.vx -= (1 + e) * vn * c.nx; b.vy -= (1 + e) * vn * c.ny; }
+    return -vn;
+  }
+  function unPasFlipper(s, duree) {
+    const dt = F_PAS;
+    s.t += dt;
+    if (s.t >= duree) { s.fini = true; return; }
+    for (let i = 0; i < 2; i++) {
+      const vise = (i ? s.d : s.g) ? RF.leve : RF.repos, av = s.ang[i], w = vise < av ? -RF.monte : vise > av ? RF.descend : 0;
+      let n = av + w * dt; if ((w < 0 && n < vise) || (w > 0 && n > vise)) n = vise;
+      s.vit[i] = (n - av) / dt; s.ang[i] = n;
+    }
+    if (!s.bille) {
+      s.attente -= dt;
+      if (s.attente <= 0) { const k = s.lancers++ % 2 ? -1 : 1; s.bille = { x: 180 - k * (136 + s.h() * 10), y: 104, vx: k * (12 + s.h() * 40), vy: 0 }; s.calme = 0; }
+      return;
+    }
+    const b = s.bille;
+    b.vy += RF.g * dt; b.x += b.vx * dt; b.y += b.vy * dt;
+    let tenue = false;
+    for (let i = 0; i < 2; i++) {
+      const p = F_PIVOTS[i], bout = boutBatteur(i, s.ang[i]), c = contact(b, p.x, p.y, bout[0], bout[1], F_EP);
+      if (!c) continue;
+      const w = s.vit[i] * p.sens;
+      rebond(b, c, 0.3, -w * (c.cy - p.y), w * (c.cx - p.x));
+      if ((i ? s.d : s.g)) tenue = true;
+    }
+    for (const m of F_MURS) { const c = contact(b, m[0], m[1], m[2], m[3], 0); if (c) rebond(b, c, 0.45, 0, 0); }
+    F_ETIQ.forEach((m, i) => {
+      const c = contact(b, m[0], m[1], m[2], m[3], 3);
+      if (!c || rebond(b, c, 0.5, 0, 0) < 40) return;
+      if (s.lot[i]) { s.score += RF.deja; return; }
+      s.lot[i] = true; s.score += RF.etiquette;
+      if (s.lot.every(Boolean)) { s.score += RF.lot; s.lots++; s.lot = s.lot.map(() => false); s.msg = "Lot libéré ! +" + RF.lot; s.msgT = s.t; }
+    });
+    F_BOUCHONS.forEach((o, i) => {
+      const nx = b.x - o.x, ny = b.y - o.y, d = Math.hypot(nx, ny), R = o.r + F_RB;
+      if (d >= R || d === 0) return;
+      const ux = nx / d, uy = ny / d, vn = b.vx * ux + b.vy * uy, sortie = Math.max(-vn, RF.kick);
+      b.x = o.x + ux * R; b.y = o.y + uy * R;
+      b.vx += (sortie - vn) * ux; b.vy += (sortie - vn) * uy;
+      s.score += RF.bouchon; s.tape[i] = s.t;
+    });
+    if (b.y < 330) b.x = Math.max(10 + F_RB, Math.min(350 - F_RB, b.x));   // filet de sécurité : jamais hors des parois
+    if (b.y < 49 + F_RB) { b.y = 49 + F_RB; if (b.vy < 0) b.vy = -b.vy * 0.45; }
+    const v = Math.hypot(b.vx, b.vy);
+    if (v > RF.vmax) { b.vx *= RF.vmax / v; b.vy *= RF.vmax / v; }
+    // Déblocage : une bille immobile ailleurs que sur un batteur tenu levé reçoit un coup de pouce.
+    s.calme = v < 30 && !tenue ? s.calme + dt : 0;
+    if (s.calme > 1.2) { b.vx = (s.h() - 0.5) * 300; b.vy = -330; s.calme = 0; s.coups++; }
+    if (b.y > 496) { s.bille = null; s.pertes++; s.attente = RF.relance; s.score = Math.max(0, s.score - RF.perte); s.lot = s.lot.map(() => false); s.msg = "Bille perdue : -" + RF.perte; s.msgT = s.t; }
+    else if (!(b.x > -20 && b.x < W + 20 && b.y > 0)) { s.bille = null; s.attente = 0.3; }                   // ne devrait pas arriver
+  }
+  // Pas fixe : quel que soit le rythme d'affichage, la physique avance par tranches de 1/240 s.
+  function pasFlipper(s, dt, duree) { s.acc += dt; while (s.acc >= F_PAS && !s.fini) { s.acc -= F_PAS; unPasFlipper(s, duree); } }
+  const noteFlipper = s => Math.min(10, Math.floor(s.score / RF.palier));
+
   /* ================= Dessin et commandes (navigateur seulement) ================= */
   function monter(el, hauteur) {
     const cv = document.createElement("canvas");
@@ -258,6 +341,98 @@
     return () => { arret(); liberer(); };
   }
 
-  const api = { bowling, tir, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, creerTir, pasTir, noteTir, TOTAL } };
+  /* ----- Le flipper du préparatoire ----- */
+  function flipper(el, opt) {
+    const duree = opt.duree || 60, { cv, ctx, xDe, liberer } = monter(el, H);
+    cv.style.touchAction = "none";
+    cv.setAttribute("aria-label", "Le flipper du préparatoire. Batteur gauche : flèche gauche, touche S ou moitié gauche de l'écran. Batteur droit : flèche droite, touche L ou moitié droite.");
+    const s = creerFlipper(), tactile = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+    let clos = false, minuterie = 0;
+    const doigts = new Map(), touches = { g: false, d: false };
+    const maj = () => { let g = touches.g, d = touches.d; doigts.forEach(c => { if (c === "g") g = true; else d = true; }); s.g = g; s.d = d; };
+    const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } doigts.set(e.pointerId, xDe(e) < W / 2 ? "g" : "d"); maj(); };
+    const relache = e => { doigts.delete(e.pointerId); maj(); };
+    const cote = e => { const k = e.key; return k === "ArrowLeft" || k === "s" || k === "S" ? "g" : k === "ArrowRight" || k === "l" || k === "L" ? "d" : null; };
+    const enfonce = e => { const c = cote(e); if (!c || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target && e.target.tagName || "")) return; e.preventDefault(); touches[c] = true; maj(); };
+    const leve = e => { const c = cote(e); if (c) { touches[c] = false; maj(); } };
+    const lache = () => { doigts.clear(); touches.g = touches.d = false; maj(); };
+    const menu = e => e.preventDefault();
+    cv.addEventListener("pointerdown", appui); cv.addEventListener("pointerup", relache); cv.addEventListener("pointercancel", relache); cv.addEventListener("contextmenu", menu);
+    window.addEventListener("keydown", enfonce); window.addEventListener("keyup", leve); window.addEventListener("blur", lache);
+    const retirer = () => {
+      cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointerup", relache); cv.removeEventListener("pointercancel", relache); cv.removeEventListener("contextmenu", menu);
+      window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
+    };
+    const COUL = [O, P, V];
+    function dessiner() {
+      ctx.fillStyle = N; ctx.fillRect(0, 0, W, H);
+      // Le plateau : une paillasse, avec le bac de rebut en bas.
+      ctx.fillStyle = "#F7E7B8"; ctx.beginPath();
+      [[10, 110], [70, 49], [290, 49], [350, 110], [350, 330], [256, 408], [240, H], [120, H], [104, 408], [10, 330]].forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(38,7,109,.09)"; ctx.lineWidth = 2;
+      for (let y = 90; y < 400; y += 40) { ctx.beginPath(); ctx.moveTo(14, y); ctx.lineTo(346, y); ctx.stroke(); }
+      ctx.fillStyle = "rgba(38,7,109,.16)"; ctx.fillRect(120, 462, 120, 18);
+      texte(ctx, "REBUT", 180, 472, 11, "rgba(38,7,109,.55)");
+      texte(ctx, "LOT", 180, 92, 13, "rgba(38,7,109,.4)");
+      s.lot.forEach((v, i) => { ctx.fillStyle = v ? G : "rgba(38,7,109,.18)"; ctx.beginPath(); ctx.arc(148 + i * 16, 110, 5, 0, 6.3); ctx.fill(); });
+      // Les deux distributeurs de billes.
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(28, 84, 26, 9, 3); ctx.roundRect(306, 84, 26, 9, 3); ctx.fill();
+      trait(ctx, 5); ctx.beginPath();
+      F_MURS.forEach(m => { ctx.moveTo(m[0], m[1]); ctx.lineTo(m[2], m[3]); }); ctx.stroke();
+      // Les étiquettes : blanches, puis vertes une fois collées.
+      F_ETIQ.forEach((m, i) => {
+        const hz = m[1] === m[3];
+        trait(ctx, 2); ctx.fillStyle = s.lot[i] ? G : C; ctx.beginPath();
+        if (hz) ctx.roundRect(m[0] - 3, m[1] - 4, m[2] - m[0] + 6, 8, 3); else ctx.roundRect(m[0] - 4, m[1] - 3, 8, m[3] - m[1] + 6, 3);
+        ctx.fill(); ctx.stroke();
+      });
+      // Les bouchons : ils renvoient la bille.
+      F_BOUCHONS.forEach((o, i) => {
+        const k = Math.max(0, 1 - (s.t - s.tape[i]) / 0.16), r = o.r + k * 3;
+        trait(ctx, 3); ctx.fillStyle = k > 0 ? Y : COUL[i]; ctx.beginPath(); ctx.arc(o.x, o.y, r, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.lineWidth = 2; for (let j = 0; j < 10; j++) { const a = j * Math.PI / 5; ctx.beginPath(); ctx.moveTo(o.x + Math.cos(a) * (r - 5), o.y + Math.sin(a) * (r - 5)); ctx.lineTo(o.x + Math.cos(a) * r, o.y + Math.sin(a) * r); ctx.stroke(); }
+        ctx.fillStyle = C; ctx.beginPath(); ctx.arc(o.x, o.y, r - 8, 0, 6.3); ctx.fill(); ctx.stroke();
+      });
+      // Les batteurs.
+      for (let i = 0; i < 2; i++) {
+        const p = F_PIVOTS[i], bout = boutBatteur(i, s.ang[i]);
+        ctx.lineCap = "round"; ctx.strokeStyle = N; ctx.lineWidth = F_EP * 2 + 4; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(bout[0], bout[1]); ctx.stroke();
+        ctx.strokeStyle = O; ctx.lineWidth = F_EP * 2 - 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(bout[0], bout[1]); ctx.stroke();
+        ctx.fillStyle = Y; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, 6.3); ctx.fill();
+      }
+      if (s.bille) {
+        const b = s.bille;
+        trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(b.x, b.y, F_RB, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = B; ctx.beginPath(); ctx.arc(b.x - 2.5, b.y - 2.5, 2.6, 0, 6.3); ctx.fill();
+      } else if (!clos) texte(ctx, "Nouvelle bille…", 180, 330, 14, "rgba(38,7,109,.6)");
+      if (s.t < 5 && !clos) {
+        ctx.globalAlpha = Math.min(1, 5 - s.t) * 0.9;
+        ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(16, 286, 150, 28, 14); ctx.roundRect(194, 286, 150, 28, 14); ctx.fill();
+        texte(ctx, tactile ? "Touchez à gauche" : "Gauche : ◀ ou S", 91, 301, 13, Y); texte(ctx, tactile ? "Touchez à droite" : "Droite : ▶ ou L", 269, 301, 13, Y);
+        ctx.globalAlpha = 1;
+      }
+      const n = noteFlipper(s);
+      bandeau(ctx, s.score + " pts · " + n + "/10", duree - s.t, duree);
+      if (!clos && s.t - s.msgT < 1) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(70, 340, 220, 40, 14); ctx.fill(); texte(ctx, s.msg, 180, 361, 17, Y); }
+      if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 180, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 220, 40, Y); texte(ctx, s.score + " points au compteur", 180, 262, 16, C); }
+    }
+    const arret = boucle(dt => {
+      if (!clos) {
+        pasFlipper(s, dt, duree);
+        if (s.fini) {
+          clos = true; lache();
+          const n = noteFlipper(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
+          const bilan = pl(s.score, "point", "points") + " : " + n + " sur 10 (1 point de note par tranche de " + RF.palier + " points). " + pl(s.lots, "lot libéré", "lots libérés") + ", " + pl(s.pertes, "bille perdue", "billes perdues") + ".";
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan); }, 1300);
+        }
+      }
+      dessiner();
+    });
+    cv.focus({ preventScroll: true });
+    return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
+  }
+
+  const api = { bowling, tir, flipper, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, F_PIVOTS, boutBatteur } };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PharmacoJeux = api;
 })(typeof window !== "undefined" ? window : globalThis);
