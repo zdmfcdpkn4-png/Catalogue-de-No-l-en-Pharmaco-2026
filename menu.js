@@ -56,8 +56,8 @@
 .pm-t:nth-child(odd){border-color:color-mix(in srgb,var(--fond) 60%,rgba(255,255,255,.55))}
 .pm-d img{position:absolute;left:8%;top:8%;width:84%;height:84%}
 .pm-d svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.pm a.tourne .pm-j{animation:pmTour 1.25s linear both}
-.pm a.tourne .pm-o{animation:pmOmbre 1.25s linear both}
+.pm a.tourne .pm-j{animation:pmTour 1.6s linear both}
+.pm a.tourne .pm-o{animation:pmOmbre 1.6s linear both}
 @keyframes pmTour{0%{transform:rotateX(0) rotateY(0)}12%{transform:rotateX(14deg) rotateY(-24deg)}30%{transform:translateY(-5px) rotateX(10deg) rotateY(60deg)}40%{transform:translateY(-7px) rotateX(8deg) rotateY(90deg)}55%{transform:translateY(-7px) rotateX(8deg) rotateY(180deg)}68%{transform:translateY(-5px) rotateX(6deg) rotateY(270deg)}80%{transform:rotateX(2deg) rotateY(345deg)}90%{transform:rotateX(0) rotateY(367deg)}100%{transform:rotateX(0) rotateY(360deg)}}
 @keyframes pmOmbre{0%{transform:translate(4px,4px) scaleX(1)}12%{transform:translate(4px,5px) scaleX(.91)}30%{transform:translate(6px,8px) scaleX(.5)}40%{transform:translate(7px,9px) scaleX(.12)}55%{transform:translate(7px,9px) scaleX(1)}68%{transform:translate(6px,8px) scaleX(.12)}80%{transform:translate(4px,5px) scaleX(.97)}90%,100%{transform:translate(4px,4px) scaleX(1)}}
 .pm b{display:block;padding:2px 8px;border-radius:999px;font-weight:800;font-size:1rem;line-height:1.15;white-space:nowrap}
@@ -97,16 +97,25 @@
   // Le bouton du catalogue ramène aux fiches, pas seulement en haut de page.
   nav.addEventListener("click", e => {
     const a = e.target.closest('a[data-page="catalogue"]');
-    if (!a) return;
+    if (!a || e.defaultPrevented) return;
     setTimeout(() => { const c = q(".bar") || q("main"); if (c && !c.hidden) c.scrollIntoView({ block: "start" }); }, 0);
   });
   // Le jeton fait un tour sur lui-même au survol de la souris et au clic. Rien ne bouge si l'animation est réduite.
   const calme = window.matchMedia("(prefers-reduced-motion:reduce)");
   const tourner = a => { if (a && !calme.matches && !a.hidden && !a.classList.contains("att")) a.classList.add("tourne"); };
   nav.addEventListener("animationend", e => { if (e.animationName === "pmTour") e.target.closest("a").classList.remove("tourne"); });
+  let attente = 0;
   nav.querySelectorAll("a").forEach(a => {
     a.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") tourner(a); });
-    a.addEventListener("click", () => tourner(a));
+    a.addEventListener("click", e => {
+      tourner(a);
+      // Clic ou toucher simple : la page attend que le jeton montre son dos, sinon elle défile et l'emporte hors de l'écran.
+      // Pas d'attente au clavier (detail à 0), avec une touche de modification (nouvel onglet), ni en animation réduite.
+      if (calme.matches || e.detail === 0 || e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      clearTimeout(attente);
+      attente = setTimeout(() => a.click(), 800);
+    });
   });
   // Les pages du vote et du concours arrivent après la réponse du serveur : leur bouton se montre à ce moment-là.
   const montrer = () => PAGES.forEach(p => { if (p.sel && q(p.sel)) { const a = nav.querySelector('[data-page="' + p.id + '"]'); a.classList.remove("att"); a.hidden = false; } });
