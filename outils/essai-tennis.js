@@ -5,7 +5,7 @@ const fs = require('fs');
 const repo = require('path').join(__dirname, '..'), dir = require('path').resolve(process.argv[2] || '.');
 fs.mkdirSync(dir, { recursive: true });
 const ff = (fs.readFileSync(repo + '/index.html', 'utf8').match(/@font-face\{[^}]*\}/g) || []).join('').replace(/url\(fonts\//g, 'url(file://' + repo + '/fonts/');
-const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;padding:12px;background:#EC7739;font-family:"Bricolage Grotesque",sans-serif}#z{width:366px}.pj-cv{display:block;border:3px solid #26076D;border-radius:14px;touch-action:none}</style><div id="z"></div><script src="file://${repo}/jeux.js"></script>`;
+const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;padding:12px;background:#EC7739;font-family:"Bricolage Grotesque",sans-serif}#z{width:366px}.pj-cv{display:block;border:3px solid #26076D;border-radius:14px;touch-action:none}</style><div id="z"></div><script>var LOGO='file://${repo}/img/logo-pharmacotechnie.webp'</script><script src="file://${repo}/jeux.js"></script>`;
 (async () => {
   fs.writeFileSync(dir + '/tennis.html', html);
   const b = await chromium.launch();
@@ -17,7 +17,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
     await p.evaluate(l => { if (l) document.querySelector('#z').style.width = l + 'px'; return document.fonts.ready; }, largeur);
     return p;
   };
-  const lancer = (p, duree) => p.evaluate(d => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.tennis(document.querySelector('#z'), { duree: d, onFin: (n, t) => { window.fois++; window.fin = [n, t]; } }); }, duree);
+  const lancer = (p, duree) => p.evaluate(d => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.tennis(document.querySelector('#z'), { duree: d, logo: LOGO, onFin: (n, t) => { window.fois++; window.fin = [n, t]; } }); }, duree);
   const fin = async p => { await p.waitForFunction(() => window.fin, null, { timeout: 90000 }); return p.evaluate(() => window.fin); };
   // 1. Téléphone large, à la souris. Un joueur automatique suit le comprimé : le banc lit sa position en écoutant le seul
   //    appel à translate() du dessin, puis envoie des déplacements de souris, avec un léger décalage pour donner de l'angle.
