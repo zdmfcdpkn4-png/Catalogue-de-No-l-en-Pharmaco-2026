@@ -100,18 +100,16 @@
     if (!a) return;
     setTimeout(() => { const c = q(".bar") || q("main"); if (c && !c.hidden) c.scrollIntoView({ block: "start" }); }, 0);
   });
-  // Le jeton fait un tour sur lui-même : à l'arrivée, au survol, au focus et au clic. Rien ne bouge si l'animation est réduite.
+  // Le jeton fait un tour sur lui-même au survol de la souris et au clic. Rien ne bouge si l'animation est réduite.
   const calme = window.matchMedia("(prefers-reduced-motion:reduce)");
   const tourner = a => { if (a && !calme.matches && !a.hidden && !a.classList.contains("att")) a.classList.add("tourne"); };
   nav.addEventListener("animationend", e => { if (e.animationName === "pmTour") e.target.closest("a").classList.remove("tourne"); });
-  nav.querySelectorAll("a").forEach((a, i) => {
+  nav.querySelectorAll("a").forEach(a => {
     a.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") tourner(a); });
-    a.addEventListener("focus", () => tourner(a));
     a.addEventListener("click", () => tourner(a));
-    setTimeout(() => tourner(a), 350 + i * 130);
   });
   // Les pages du vote et du concours arrivent après la réponse du serveur : leur bouton se montre à ce moment-là.
-  const montrer = () => PAGES.forEach(p => { if (p.sel && q(p.sel)) { const a = nav.querySelector('[data-page="' + p.id + '"]'); if (a.classList.contains("att") || a.hidden) { a.classList.remove("att"); a.hidden = false; tourner(a); } } });
+  const montrer = () => PAGES.forEach(p => { if (p.sel && q(p.sel)) { const a = nav.querySelector('[data-page="' + p.id + '"]'); a.classList.remove("att"); a.hidden = false; } });
   const obs = new MutationObserver(montrer);
   obs.observe(document.body, { childList: true });
   // Serveur muet : on retire les boutons restés en attente plutôt que de laisser deux places vides.
