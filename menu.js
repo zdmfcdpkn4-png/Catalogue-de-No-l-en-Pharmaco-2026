@@ -2,6 +2,7 @@
    Propre au site Vercel. Quatre boutons ronds remplacent les boutons d'accès de l'en-tête : chacun reprend le logo
    de la pharmacotechnie (le P et sa fleur de gouttes), recoloré selon la page et coiffé d'un accessoire.
    Les images img/menu-*.webp sont tirées de img/logo-p-verre.png : seul le P garde sa couleur.
+   Chaque bouton est un jeton épais qui se retourne en trois dimensions ; son dos porte l'accessoire en grand.
    Les boutons du concours et du palmarès n'apparaissent que si leur page existe, c'est-à-dire si le serveur répond.
    Sans ce fichier, les boutons d'origine restent en place. */
 (() => {
@@ -19,6 +20,15 @@
     // le P couronné
     vote: '<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><g transform="translate(39 11) rotate(-10) scale(1.08)"><path d="M-17 9V-7l8.5 8L0-11l8.5 12L17-7V9z" fill="none" stroke="#FFFBF2" stroke-width="7" stroke-linejoin="round"/><path d="M-17 9V-7l8.5 8L0-11l8.5 12L17-7V9z" fill="#ECD567" stroke="#26076D" stroke-width="2.6" stroke-linejoin="round"/><circle cx="-17" cy="-8" r="2.6" fill="#EC7739" stroke="#26076D" stroke-width="1.6"/><circle cx="0" cy="-12" r="2.6" fill="#EC7739" stroke="#26076D" stroke-width="1.6"/><circle cx="17" cy="-8" r="2.6" fill="#EC7739" stroke="#26076D" stroke-width="1.6"/></g></svg>',
   };
+  // Le dos de chaque jeton, visible quand il se retourne : l'accessoire de la page, en grand.
+  const DOS = {
+    catalogue: '<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><g transform="translate(21 20) scale(.58)"><path d="M50 4c-9 0-16 7-16 16 0 6 3 11 8 14-14 3-34 12-36 20-1 5 6 14 10 13 6-1 13-6 19-8-3 11-13 26-13 33 0 3 2 4 5 4h16c2 0 3-1 4-3l3-10 3 10c1 2 2 3 4 3h16c3 0 5-1 5-4 0-7-10-22-13-33 6 2 13 7 19 8 4 1 11-8 10-13-2-8-22-17-36-20 5-3 8-8 8-14 0-9-7-16-16-16z" fill="#EC7739" stroke="#26076D" stroke-width="7" stroke-linejoin="round"/></g></svg>',
+    sapin: '<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><rect x="44" y="76" width="12" height="11" rx="2" fill="#A9440F" stroke="#26076D" stroke-width="4"/><path d="M50 20L65 42H58L71 60H62L76 79H24L38 60H29L42 42H35Z" fill="#3E9B76" stroke="#26076D" stroke-width="4" stroke-linejoin="round"/><path d="M50 8L53.2 15.3L61 16.1L55.1 21.3L56.8 29L50 25L43.2 29L44.9 21.3L39 16.1L46.8 15.3Z" fill="#ECD567" stroke="#26076D" stroke-width="3" stroke-linejoin="round"/></svg>',
+    pharmacogames: '<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><g transform="rotate(12 50 50)"><rect x="26" y="26" width="48" height="48" rx="11" fill="#ECD567" stroke="#26076D" stroke-width="4.5"/><circle cx="38" cy="38" r="4.6" fill="#26076D"/><circle cx="62" cy="38" r="4.6" fill="#26076D"/><circle cx="50" cy="50" r="4.6" fill="#26076D"/><circle cx="38" cy="62" r="4.6" fill="#26076D"/><circle cx="62" cy="62" r="4.6" fill="#26076D"/></g></svg>',
+    vote: '<svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><g transform="translate(50 54) scale(2)"><path d="M-17 9V-7l8.5 8L0-11l8.5 12L17-7V9z" fill="#ECD567" stroke="#26076D" stroke-width="2.3" stroke-linejoin="round"/><circle cx="-17" cy="-8" r="2.6" fill="#EC7739" stroke="#26076D" stroke-width="1.5"/><circle cx="0" cy="-12" r="2.6" fill="#EC7739" stroke="#26076D" stroke-width="1.5"/><circle cx="17" cy="-8" r="2.6" fill="#EC7739" stroke="#26076D" stroke-width="1.5"/></g></svg>',
+  };
+  // La tranche du jeton : onze disques empilés entre la face et le dos.
+  const TRANCHE = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5].map(z => '<span class="pm-t" style="--z:' + z + 'px"></span>').join("");
   const n = typeof G !== "undefined" && Array.isArray(G) ? G.length : 0;
   // sel : la section qui doit exister pour que le bouton s'affiche ; img : la déclinaison du logo ; fond : la teinte du disque.
   const PAGES = [
@@ -33,29 +43,43 @@
 .hero .avgo{display:none!important}
 .pm{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 10px;max-width:640px;margin:24px 0 0}
 .pm a{display:grid;justify-items:center;align-content:start;gap:7px;min-width:0;text-align:center;color:var(--on-bg);text-decoration:none;-webkit-tap-highlight-color:transparent}
-.pm-d{position:relative;display:block;width:86px;height:86px;border-radius:50%;border:3px solid var(--line);box-shadow:4px 4px 0 var(--shadow);background:radial-gradient(120% 120% at 30% 18%,#fff,#FFFBF2 46%,var(--fond) 100%);transition:transform .12s,box-shadow .12s}
+.pm-d{position:relative;display:block;width:86px;height:86px;border-radius:50%;perspective:520px;transition:transform .12s}
+.pm-o{position:absolute;inset:0;display:block;border-radius:50%;background:var(--shadow);transform:translate(4px,4px);transition:transform .12s}
+.pm-j{position:absolute;inset:0;display:block;transform-style:preserve-3d}
+.pm-f,.pm-v,.pm-t{position:absolute;inset:0;display:block;border-radius:50%;border:3px solid var(--line)}
+.pm-f,.pm-v{-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.pm-f{background:radial-gradient(120% 120% at 30% 18%,#fff,#FFFBF2 46%,var(--fond) 100%);transform:translateZ(6px)}
+.pm-v{background:radial-gradient(120% 120% at 30% 18%,#FFFBF2,var(--fond) 78%);transform:rotateY(180deg) translateZ(6px)}
+.pm-t{background:var(--foil-b);transform:translateZ(var(--z))}
 .pm-d img{position:absolute;left:8%;top:8%;width:84%;height:84%}
 .pm-d svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.pm a.tourne .pm-j{animation:pmTour 1.25s linear both}
+.pm a.tourne .pm-o{animation:pmOmbre 1.25s linear both}
+@keyframes pmTour{0%{transform:rotateX(0) rotateY(0)}12%{transform:rotateX(14deg) rotateY(-24deg)}30%{transform:translateY(-5px) rotateX(10deg) rotateY(60deg)}40%{transform:translateY(-7px) rotateX(8deg) rotateY(90deg)}55%{transform:translateY(-7px) rotateX(8deg) rotateY(180deg)}68%{transform:translateY(-5px) rotateX(6deg) rotateY(270deg)}80%{transform:rotateX(2deg) rotateY(345deg)}90%{transform:rotateX(0) rotateY(367deg)}100%{transform:rotateX(0) rotateY(360deg)}}
+@keyframes pmOmbre{0%{transform:translate(4px,4px) scaleX(1)}12%{transform:translate(4px,5px) scaleX(.91)}30%{transform:translate(6px,8px) scaleX(.5)}40%{transform:translate(7px,9px) scaleX(.12)}55%{transform:translate(7px,9px) scaleX(1)}68%{transform:translate(6px,8px) scaleX(.12)}80%{transform:translate(4px,5px) scaleX(.97)}90%,100%{transform:translate(4px,4px) scaleX(1)}}
 .pm b{display:block;padding:2px 8px;border-radius:999px;font-weight:800;font-size:1rem;line-height:1.15;white-space:nowrap}
 .pm small{display:block;font:600 .64rem/1.2 var(--mono);letter-spacing:.03em;text-transform:uppercase}
-@media(hover:hover){.pm a:hover .pm-d{transform:translate(-1px,-2px);box-shadow:6px 7px 0 var(--shadow)}}
-.pm a:active .pm-d{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--shadow)}
+@media(hover:hover){.pm a:hover .pm-d{transform:translate(-1px,-2px)}.pm a:hover .pm-o{transform:translate(7px,9px)}}
+.pm a:active .pm-d{transform:translate(2px,2px)}
+.pm a:active .pm-o{transform:translate(-1px,-1px)}
 .pm a:focus-visible{outline:0}
 .pm a:focus-visible .pm-d{outline:3px solid var(--focus);outline-offset:4px}
-.pm a[aria-current="page"] .pm-d{box-shadow:0 0 0 4px var(--mu),0 0 0 7px var(--line)}
+.pm a[aria-current="page"] .pm-f,.pm a[aria-current="page"] .pm-v{box-shadow:0 0 0 4px var(--mu),0 0 0 7px var(--line)}
+.pm a[aria-current="page"] .pm-o{opacity:0}
 .pm a[aria-current="page"] b{background:var(--pressed);color:var(--pressed-on)}
 .pm a.att{visibility:hidden}
 .pm a[hidden]{display:none}
 @media(max-width:720px){.pm{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 10px;max-width:420px}}
 @media(max-width:360px){.pm b{font-size:.86rem;padding:2px 6px}}
-@media(prefers-reduced-motion:reduce){.pm-d{transition:none}}`;
+@media(prefers-reduced-motion:reduce){.pm-d,.pm-o{transition:none}.pm a.tourne .pm-j,.pm a.tourne .pm-o{animation:none}}`;
   document.head.appendChild(st);
 
   const nav = document.createElement("nav");
   nav.className = "pm";
   nav.setAttribute("aria-label", "Les quatre pages du site");
   nav.innerHTML = PAGES.map(p => '<a href="' + p.href + '" data-page="' + p.id + '"' + (p.sel && !q(p.sel) ? ' class="att"' : "") + '><span class="pm-d" style="--fond:' + p.fond + '">'
-    + '<img src="img/' + p.img + '" alt="" width="224" height="224" decoding="async">' + PLUS[p.id] + "</span><b>" + p.t + "</b><small>" + p.s + "</small></a>").join("");
+    + '<span class="pm-o"></span><span class="pm-j"><span class="pm-f"><img src="img/' + p.img + '" alt="" width="224" height="224" decoding="async">' + PLUS[p.id] + "</span>" + TRANCHE
+    + '<span class="pm-v" style="--fond:' + p.fond + '">' + DOS[p.id] + "</span></span></span><b>" + p.t + "</b><small>" + p.s + "</small></a>").join("");
   ancre.insertAdjacentElement("afterend", nav);
 
   const page = () => (location.hash === "#sapin" ? "sapin" : location.hash === "#vote" ? "vote" : location.hash === "#pharmacogames" || location.hash === "#enigme" ? "pharmacogames" : "catalogue");
@@ -69,8 +93,18 @@
     if (!a) return;
     setTimeout(() => { const c = q(".bar") || q("main"); if (c && !c.hidden) c.scrollIntoView({ block: "start" }); }, 0);
   });
+  // Le jeton fait un tour sur lui-même : à l'arrivée, au survol, au focus et au clic. Rien ne bouge si l'animation est réduite.
+  const calme = window.matchMedia("(prefers-reduced-motion:reduce)");
+  const tourner = a => { if (a && !calme.matches && !a.hidden && !a.classList.contains("att")) a.classList.add("tourne"); };
+  nav.addEventListener("animationend", e => { if (e.animationName === "pmTour") e.target.closest("a").classList.remove("tourne"); });
+  nav.querySelectorAll("a").forEach((a, i) => {
+    a.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") tourner(a); });
+    a.addEventListener("focus", () => tourner(a));
+    a.addEventListener("click", () => tourner(a));
+    setTimeout(() => tourner(a), 350 + i * 130);
+  });
   // Les pages du vote et du concours arrivent après la réponse du serveur : leur bouton se montre à ce moment-là.
-  const montrer = () => PAGES.forEach(p => { if (p.sel && q(p.sel)) { const a = nav.querySelector('[data-page="' + p.id + '"]'); a.classList.remove("att"); a.hidden = false; } });
+  const montrer = () => PAGES.forEach(p => { if (p.sel && q(p.sel)) { const a = nav.querySelector('[data-page="' + p.id + '"]'); if (a.classList.contains("att") || a.hidden) { a.classList.remove("att"); a.hidden = false; tourner(a); } } });
   const obs = new MutationObserver(montrer);
   obs.observe(document.body, { childList: true });
   // Serveur muet : on retire les boutons restés en attente plutôt que de laisser deux places vides.
