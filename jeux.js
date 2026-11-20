@@ -7,25 +7,36 @@
   const W = 360, H = 480; // repère logique des deux jeux
 
   /* ================= Bowling des flacons : le cœur ================= */
-  const RB = 15, RQ = 11, GAUCHE = 46, DROITE = 314, DEPART = 432;
+  const RB = 15, RQ = 11, RS = 7, GAUCHE = 46, DROITE = 314, DEPART = 432;
   // Réglages étalonnés par simulation (voir le banc d'essai) : ils fixent la difficulté.
-  const REGL = { elan: 180, frein: 5, relais: 0.55, seuil: 60, cadence: 0.4, vitesse: 280, chute: 85, acc: 3, pas: 0.9, portee: 2 };
+  const REGL = { elan: 180, frein: 5, relais: 0.55, seuil: 60, cadence: 0.4, vitesse: 280, chute: 85, acc: 3, pas: 0.9, portee: 2, sy: 290, sl: 40, sv: 2.4 };
   const PLACES = (() => { const q = []; for (let r = 0; r < 4; r++) for (let i = 0; i <= r; i++) q.push({ x: 180 + (i - r / 2) * 37, y: 150 - r * 32 }); return q; })();
+  // La seringue de garde : elle balaie la paillasse d'un bord à l'autre, à la hauteur sy. sl = demi-longueur, sv = cadence.
+  const xSeringue = t => 180 + ((DROITE - GAUCHE) / 2 - REGL.sl - RS) * Math.sin(t * REGL.sv);
   // Un lancer : la boule part de x avec un angle en degrés (0 = tout droit). debout[i] dit si le flacon i est encore là.
-  function creerLancer(x, angle, debout) {
+  // t0 = horloge de la seringue à l'instant du lancer (sans t0, pas de seringue).
+  function creerLancer(x, angle, debout, t0) {
     const a = angle * Math.PI / 180;
     return {
-      boule: { x, y: DEPART, vx: Math.sin(a) * 540, vy: -Math.cos(a) * 540, rigole: false, sortie: false, tour: 0 },
+      boule: { x, y: DEPART, vx: Math.sin(a) * 540, vy: -Math.cos(a) * 540, rigole: false, sortie: false, bloquee: false, tour: 0 },
       quilles: PLACES.map((p, i) => ({ x: p.x, y: p.y, vx: 0, vy: 0, la: debout[i], tombee: false, rot: 0 })),
-      fini: false,
+      ts: t0, fini: false,
     };
   }
   function pasLancer(s, dt) {
     const b = s.boule;
+    if (s.ts != null) {
+      s.ts += dt;
+      if (!b.sortie && !b.bloquee && !b.rigole) {
+        const sx = xSeringue(s.ts), px = Math.max(sx - REGL.sl, Math.min(sx + REGL.sl, b.x));
+        // Touchée, la boule repart vers le lanceur : le lancer est perdu.
+        if (Math.hypot(b.x - px, b.y - REGL.sy) < RB + RS) { b.bloquee = true; b.vy = Math.abs(b.vy) * 0.45; b.vx = b.vx * 0.45 + (xSeringue(s.ts) - xSeringue(s.ts - dt)) / dt * 0.5; }
+      }
+    }
     if (!b.sortie) {
       b.x += b.vx * dt; b.y += b.vy * dt; b.tour += dt * 9;
       if (!b.rigole && (b.x < GAUCHE + RB - 4 || b.x > DROITE - RB + 4)) { b.rigole = true; b.x = b.x < 180 ? GAUCHE - 8 : DROITE + 8; b.vx = 0; }
-      if (b.y < -30) b.sortie = true;
+      if (b.y < -30 || b.y > H + 30) b.sortie = true;
       if (!b.rigole) for (const q of s.quilles) {
         if (!q.la || q.tombee) continue;
         const dx = q.x - b.x, dy = q.y - b.y, d = Math.hypot(dx, dy);
@@ -138,14 +149,14 @@
   /* ----- Bowling des flacons ----- */
   function bowling(el, opt) {
     const duree = opt.duree || 30, { cv, ctx, liberer } = monter(el, H);
-    cv.setAttribute("aria-label", "Bowling des flacons. Appuyez ou tapez Espace pour fixer la position, puis l'angle du lancer.");
+    cv.setAttribute("aria-label", "Bowling des flacons. Appuyez ou tapez Espace pour fixer la position, puis l'angle du lancer. Une seringue balaie la paillasse : lancez quand la voie est libre.");
     const debout = PLACES.map(() => true);
-    let phase = "position", lancerN = 1, t = 0, reste = duree, posX = 180, angle = 0, sim = null, total = 0, annonce = "", annonceT = 0, clos = false;
+    let phase = "position", lancerN = 1, t = 0, reste = duree, posX = 180, angle = 0, sim = null, total = 0, annonce = "", annonceT = 0, clos = false, horloge = 0;
     const COUL = [O, Y, P, V, Y, O, V, P, O, Y];
     function agir() {
       if (clos) return;
       if (phase === "position") { phase = "angle"; t = 0; }
-      else if (phase === "angle") { sim = creerLancer(posX, angle, debout); phase = "roule"; }
+      else if (phase === "angle") { sim = creerLancer(posX, angle, debout, horloge); phase = "roule"; }
     }
     const surClic = e => { e.preventDefault(); cv.focus({ preventScroll: true }); agir(); };
     const surTouche = e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); agir(); } };
@@ -166,6 +177,16 @@
       ctx.strokeStyle = O; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(GAUCHE, DEPART - 26); ctx.lineTo(DROITE, DEPART - 26); ctx.stroke();
       const Q = sim ? sim.quilles : PLACES.map((p, i) => ({ x: p.x, y: p.y, la: debout[i], tombee: false, rot: 0 }));
       Q.forEach((q, i) => { if (q.la) { ctx.globalAlpha = q.tombee ? 0.55 : 1; flacon(ctx, q.x, q.y, q.tombee ? q.rot : 0, COUL[i]); ctx.globalAlpha = 1; } });
+      // La seringue de garde, aiguille en avant dans le sens de la marche.
+      const ts = sim ? sim.ts : horloge, L = REGL.sl;
+      ctx.save(); ctx.translate(xSeringue(ts), REGL.sy); ctx.scale(Math.cos(ts * REGL.sv) < 0 ? -1 : 1, 1);
+      trait(ctx, 2.4);
+      ctx.beginPath(); ctx.moveTo(L - 16, 0); ctx.lineTo(L, 0); ctx.stroke();                              // aiguille
+      ctx.beginPath(); ctx.moveTo(-L + 2, 0); ctx.lineTo(-L + 14, 0); ctx.moveTo(-L + 2, -RS); ctx.lineTo(-L + 2, RS); ctx.stroke(); // piston
+      ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-L + 12, -RS, 2 * L - 28, 2 * RS, 3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = B; ctx.beginPath(); ctx.roundRect(-L + 30, -RS, 2 * L - 46, 2 * RS, [0, 3, 3, 0]); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = N; ctx.fillRect(-L + 9, -RS - 3, 4, 2 * RS + 6);                                    // collerette
+      ctx.restore();
       // La boule : un gros comprimé sécable.
       const b = sim ? sim.boule : { x: posX, y: DEPART, tour: 0 };
       if (!sim || !b.sortie) {
@@ -186,7 +207,7 @@
       if (phase === "fin") { ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(50, 190, 260, 100, 18); ctx.fill(); texte(ctx, total + " / 10", 180, 228, 40, Y); texte(ctx, total === 10 ? "Tout est tombé !" : "Lot contrôlé", 180, 266, 16, C); }
     }
     const arret = boucle(dt => {
-      t += dt; annonceT -= dt;
+      t += dt; annonceT -= dt; horloge += dt;
       if (phase === "position" || phase === "angle") {
         reste -= dt;
         if (phase === "position") posX = 180 + Math.sin(t * 2.5) * 100; else angle = Math.sin(t * 3.6) * 12;
@@ -194,10 +215,10 @@
       } else if (phase === "roule") {
         for (let i = 0; i < 4; i++) pasLancer(sim, dt / 4);
         if (sim.fini) {
-          const n = tombees(sim);
+          const n = tombees(sim), pique = sim.boule.bloquee;
           sim.quilles.forEach((q, i) => { if (q.la && q.tombee) debout[i] = false; });
           total += n; sim = null;
-          annonce = total === 10 ? (lancerN === 1 ? "Strike !" : "Spare !") : n === 0 ? "Dans le vide" : "+" + n; annonceT = 0.9;
+          annonce = total === 10 ? (lancerN === 1 ? "Strike !" : "Spare !") : pique ? "Piqué au vif !" : n === 0 ? "Dans le vide" : "+" + n; annonceT = 0.9;
           if (total === 10 || lancerN === 2) finir(); else { lancerN = 2; phase = "position"; t = 0; }
         }
       }
@@ -258,6 +279,6 @@
     return () => { arret(); liberer(); };
   }
 
-  const api = { bowling, tir, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, creerTir, pasTir, noteTir, TOTAL } };
+  const api = { bowling, tir, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, xSeringue, creerTir, pasTir, noteTir, TOTAL } };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PharmacoJeux = api;
 })(typeof window !== "undefined" ? window : globalThis);
