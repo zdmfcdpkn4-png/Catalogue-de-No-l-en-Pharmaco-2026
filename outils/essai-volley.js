@@ -17,7 +17,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
     await p.evaluate(l => { if (l) document.querySelector('#z').style.width = l + 'px'; return document.fonts.ready; }, largeur);
     return p;
   };
-  const lancer = (p, duree) => p.evaluate(d => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.volley(document.querySelector('#z'), { duree: d, onFin: (n, t, brut) => { window.fois++; window.fin = [n, t, brut]; } }); }, duree);
+  const lancer = (p, duree) => p.evaluate(([d, R]) => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.volley(document.querySelector('#z'), { duree: d, logo: 'file://' + R + '/img/logo-p-verre.png', onFin: (n, t, brut) => { window.fois++; window.fin = [n, t, brut]; } }); }, [duree, repo]);
   const fin = async p => { await p.waitForFunction(() => window.fin, null, { timeout: 90000 }); return p.evaluate(() => window.fin); };
   // 1. Téléphone large, à la souris. Un joueur automatique se place un peu en arrière de la poche : le banc lit la position
   //    de la poche en écoutant le seul appel à translate() du dessin, puis envoie des déplacements de souris.

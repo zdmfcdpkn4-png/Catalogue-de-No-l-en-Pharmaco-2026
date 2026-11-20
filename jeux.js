@@ -999,7 +999,7 @@
   /* Le volley des poches. Vue de côté : une poche de perfusion retombe sous son poids, il faut la renvoyer par-dessus le pied
      à perfusion sans qu'elle touche le sol, face à un automate sur roulettes. Le cœur d'abord (simulable hors navigateur). */
   // Réglages étalonnés par simulation (node outils/etalon-volley.js) : ils fixent la difficulté.
-  const RVO = { g: 880, frappe: 470, gain: 1.03, vmax: 640, elan: 0.35, main: 320, clavier: 280, saut: 480, poids: 1350, robot: 190, reflexe: 0.25, erreur: 8, malice: 0.5, pause: 0.7, touches: 3 };
+  const RVO = { g: 880, frappe: 470, gain: 1.03, vmax: 640, elan: 0.35, main: 320, clavier: 280, saut: 480, poids: 1350, robot: 190, reflexe: 0.25, erreur: 8, malice: 0.5, pause: 0.7, touches: 3, smash: 1.4, haut: 22 };
   const VO_PAS = 1 / 240, VO_RB = 12, VO_RJ = 18, VO_G = 14, VO_D = 346, VO_SOL = 404, VO_HAUT = 39, VO_FX = 180, VO_FE = 4, VO_FH = 92, VO_TETE = 34, VO_H = 460;
   // Le vol libre de la poche pendant dt : pesanteur, murs, plafond et pied à perfusion (un trait vertical au bout arrondi).
   function volPoche(b, dt) {
@@ -1027,7 +1027,7 @@
   function creerVolley(graine) {
     let a = graine || 20261219;
     const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-    return { t: 0, acc: 0, x: 40, y: 0, vy: 0, cible: 40, saut: 0, ax: 268, avise: 268, avu: -1, aquand: 1e9, balle: null, attente: 1.4, vers: -1, pour: 0, contre: 0, echange: 0, record: 0, dernier: -1, touches: 0, tape: [-9, -9], msg: "", msgT: -9, impact: null, h, fini: false };
+    return { t: 0, acc: 0, x: 40, y: 0, vy: 0, cible: 40, saut: 0, ax: 268, avise: 268, avu: -1, aquand: 1e9, balle: null, attente: 1.4, vers: -1, pour: 0, contre: 0, echange: 0, record: 0, dernier: -1, touches: 0, tape: [-9, -9], smashT: -9, smashs: 0, msg: "", msgT: -9, impact: null, h, fini: false };
   }
   // L'automate lit la trajectoire à chaque nouvelle frappe : si la poche retombe chez lui, il choisit où la renvoyer (plutôt loin
   // du joueur, selon sa malice), cherche l'angle de frappe qui y mène et se place en conséquence, après un
@@ -1061,6 +1061,15 @@
     b.vx = nx * v + vx * RVO.elan; b.vy = ny * v + vy * RVO.elan;
     const w = Math.hypot(b.vx, b.vy); if (w > RVO.vmax) { b.vx *= RVO.vmax / w; b.vy *= RVO.vmax / w; }
     b.x = cx + nx * r; b.y = cy + ny * r; b.n++; s.tape[qui] = s.t;
+    // Le smash : le joueur frappe en l'air (pieds à plus de RVO.haut du sol) une poche qui est devant lui. Elle part alors tout
+    // droit et plus vite, selon l'angle le plus plongeant qui passe encore le pied à perfusion.
+    if (qui === 0 && s.y > RVO.haut && nx > 0.15 && b.x < VO_FX) {
+      const vs = Math.min(RVO.vmax * 1.25, v * RVO.smash);
+      for (let a = 0.7; a > -0.75; a -= 0.05) {
+        const sx = Math.cos(a) * vs, sy = Math.sin(a) * vs, tf = (VO_FX - b.x) / sx;
+        if (b.y + sy * tf + RVO.g * tf * tf / 2 < VO_SOL - VO_FH - VO_RB - VO_FE - 5) { b.vx = sx; b.vy = sy; s.smashT = s.t; s.smashs++; break; }
+      }
+    }
     return s.touches > RVO.touches;
   }
   function pointVolley(s, pourJoueur, msg) {
@@ -1099,11 +1108,13 @@
   function volley(el, opt) {
     const duree = opt.duree || 60, { cv, ctx, xDe, liberer } = monter(el, VO_H);
     cv.style.touchAction = "none";
-    cv.setAttribute("aria-label", "Le volley des poches. Glissez le doigt, bougez la souris ou utilisez les flèches gauche et droite pour vous déplacer ; touchez l'écran, cliquez ou appuyez sur Espace pour sauter. Renvoyez la poche par-dessus le pied à perfusion sans qu'elle touche le sol, en trois touches au plus.");
+    cv.setAttribute("aria-label", "Le volley des poches. Glissez le doigt, bougez la souris ou utilisez les flèches gauche et droite pour vous déplacer ; touchez l'écran, cliquez ou appuyez sur Espace pour sauter. Renvoyez la poche par-dessus le pied à perfusion sans qu'elle touche le sol, en trois touches au plus. Frappée en l'air, la poche part en smash.");
     const s = creerVolley(), media = q => typeof matchMedia === "function" && matchMedia(q).matches;
     const tactile = media("(pointer: coarse)"), calme = media("(prefers-reduced-motion: reduce)");
     const XMIN = VO_G + VO_RJ, XMAX = VO_FX - VO_FE - VO_RJ, PALE = "rgba(38,7,109,.5)";
     let clos = false, minuterie = 0, gauche = false, droite = false, pilote = null;
+    // La poche porte le logo de la pharmacotechnie sur son étiquette ; tant que l'image n'est pas là (ou si elle manque), l'étiquette reste vierge.
+    const logo = new Image(); logo.src = opt.logo || api._logo;
     const viser = e => { s.cible = borne(xDe(e), XMIN, XMAX); };
     // Tout appui fait sauter. Au doigt, le premier doigt posé dirige ; un autre doigt (l'autre pouce) ne fait que sauter.
     const appui = e => {
@@ -1159,18 +1170,45 @@
       trait(ctx, 2.2);
       ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(-2.5, 10, 5, 5, 1.5); ctx.fill();
       ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-9.5, -13, 19, 25, 6); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = B; ctx.beginPath(); ctx.roundRect(-9.5, -2, 19, 14, [0, 0, 6, 6]); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(0, -8.5, 1.8, 0, 6.3); ctx.fill();
+      ctx.fillStyle = B; ctx.beginPath(); ctx.roundRect(-9.5, 3, 19, 9, [0, 0, 6, 6]); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(0, -10, 1.5, 0, 6.3); ctx.fill();
+      if (logo.complete && logo.naturalWidth) { ctx.save(); ctx.beginPath(); ctx.arc(0, -1, 6.6, 0, 6.3); ctx.clip(); ctx.drawImage(logo, -6.6, -7.6, 13.2, 13.2); ctx.restore(); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(0, -1, 6.6, 0, 6.3); ctx.stroke(); }
       ctx.restore();
+    }
+    // Le fond : le mur carrelé de la salle, un hublot de sas et une étagère de flacons de chaque côté, et au milieu le tableau
+    // d'affichage du score, en chiffres à segments (ceux du flipper).
+    function decor() {
+      ctx.strokeStyle = "rgba(38,7,109,.07)"; ctx.lineWidth = 2; ctx.beginPath();
+      for (let y = VO_HAUT + 73; y < VO_SOL; y += 73) { ctx.moveTo(VO_G, y); ctx.lineTo(VO_D, y); }
+      for (let x = VO_G + 83; x < VO_D - 10; x += 83) { ctx.moveTo(x, VO_HAUT); ctx.lineTo(x, VO_SOL); }
+      ctx.stroke();
+      ctx.fillStyle = "rgba(38,7,109,.1)"; ctx.fillRect(VO_G, VO_SOL - 16, VO_D - VO_G, 16);                         // la plinthe
+      for (const [x, coul] of [[56, B], [304, P]]) {                                                                 // les hublots
+        ctx.strokeStyle = "rgba(38,7,109,.28)"; ctx.lineWidth = 4; ctx.fillStyle = "rgba(255,251,242,.55)";
+        ctx.beginPath(); ctx.arc(x, 182, 22, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = coul; ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.arc(x, 182, 22, 0.35, Math.PI - 0.35); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+        ctx.strokeStyle = "rgba(255,251,242,.9)"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, 182, 15, 3.5, 4.4); ctx.stroke();
+      }
+      ctx.globalAlpha = 0.45;                                                                                         // les étagères
+      for (const x0 of [28, 276]) {
+        [G, O, V].forEach((c, i) => flacon(ctx, x0 + 10 + i * 18, 262, 0, c));
+        ctx.fillStyle = N; ctx.fillRect(x0, 274, 56, 4);
+      }
+      ctx.globalAlpha = 1;
+      // Le tableau d'affichage, pendu au plafond.
+      trait(ctx, 2.4); ctx.beginPath(); ctx.moveTo(122, VO_HAUT); ctx.lineTo(122, 56); ctx.moveTo(238, VO_HAUT); ctx.lineTo(238, 56); ctx.stroke();
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(84, 54, 192, 66, 10); ctx.fill();
+      ctx.strokeStyle = Y; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(88.5, 58.5, 183, 57, 7); ctx.stroke();
+      texte(ctx, "VOUS", 133, 69, 9, C); texte(ctx, "AUTOMATE", 227, 69, 9, C);
+      const deux = (x, n, coul) => { const m = Math.min(99, n); chiffre(ctx, x - 18, 79, 15, 28, m > 9 ? Math.floor(m / 10) : -1, coul); chiffre(ctx, x + 3, 79, 15, 28, m % 10, coul); };
+      deux(133, s.pour, s.msg.endsWith("!") && s.t - s.msgT < 1 ? Y : O); deux(227, s.contre, !s.msg.endsWith("!") && s.t - s.msgT < 1 ? Y : V);
+      ctx.fillStyle = Y; ctx.beginPath(); ctx.arc(180, 87, 2, 0, 6.3); ctx.arc(180, 99, 2, 0, 6.3); ctx.fill();
     }
     function dessiner() {
       ctx.fillStyle = N; ctx.fillRect(0, 0, W, VO_H);
       ctx.fillStyle = "#F7E7B8"; ctx.fillRect(VO_G, VO_HAUT, VO_D - VO_G, VO_SOL - VO_HAUT);                    // le mur de la salle
       ctx.fillStyle = "rgba(143,199,232,.3)"; ctx.fillRect(VO_FX, VO_HAUT, VO_D - VO_FX, VO_SOL - VO_HAUT);     // le camp de l'automate
-      ctx.strokeStyle = "rgba(38,7,109,.07)"; ctx.lineWidth = 2;
-      for (let y = VO_HAUT + 73; y < VO_SOL; y += 73) { ctx.beginPath(); ctx.moveTo(VO_G, y); ctx.lineTo(VO_D, y); ctx.stroke(); }
-      texte(ctx, "VOUS", 97, 66, 10, PALE); texte(ctx, String(s.pour), 97, 96, 40, "rgba(38,7,109,.2)");
-      texte(ctx, "AUTOMATE", 263, 66, 10, PALE); texte(ctx, String(s.contre), 263, 96, 40, "rgba(38,7,109,.2)");
+      decor();
       // Le sol : c'est aussi là que se pose le doigt.
       ctx.fillStyle = V; ctx.fillRect(VO_G, VO_SOL, VO_D - VO_G, VO_H - VO_SOL);
       trait(ctx, 3); ctx.beginPath(); ctx.moveTo(VO_G, VO_SOL); ctx.lineTo(VO_D, VO_SOL); ctx.stroke();
@@ -1187,6 +1225,10 @@
       preparateur(s.x, VO_SOL - s.y, vifJ);
       // Les touches du joueur : trois pastilles au-dessus de sa tête, qui s'allument à chaque frappe.
       if (b && s.dernier === 0) for (let i = 0; i < RVO.touches; i++) { trait(ctx, 1.6); ctx.fillStyle = i < s.touches ? (s.touches >= RVO.touches ? R : O) : C; ctx.beginPath(); ctx.arc(s.x - 9 + i * 9, VO_SOL - s.y - VO_TETE - VO_RJ - 9, 3.2, 0, 6.3); ctx.fill(); ctx.stroke(); }
+      if (b && s.t - s.smashT < 0.45) {
+        if (!calme) { ctx.strokeStyle = "rgba(236,119,57," + (0.75 * (1 - (s.t - s.smashT) / 0.45)).toFixed(2) + ")"; ctx.lineWidth = 9; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx * 0.07, b.y - b.vy * 0.07); ctx.stroke(); }
+        texte(ctx, "SMASH !", 97, 146, 20, O);
+      }
       if (b) poche(b);
       else if (s.impact && s.t - s.impact.t < 0.7) {
         // La poche à terre, et l'onde de sa chute.
@@ -1198,7 +1240,7 @@
         ctx.globalAlpha = Math.min(1, 5 - s.t) * 0.92;
         ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(42, 196, 276, 48, 14); ctx.fill();
         texte(ctx, tactile ? "Glissez le doigt pour vous déplacer" : "Souris ou flèches ◀ ▶ pour vous déplacer", 180, 211, 13, Y);
-        texte(ctx, tactile ? "Touchez l'écran pour sauter" : "Clic ou Espace pour sauter", 180, 229, 13, Y);
+        texte(ctx, tactile ? "Touchez pour sauter : en l'air, smash !" : "Clic ou Espace pour sauter : en l'air, smash !", 180, 229, 13, Y);
         ctx.globalAlpha = 1;
       }
       const n = noteVolley(s);
