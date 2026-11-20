@@ -173,6 +173,134 @@
   function pasFlipper(s, dt, duree) { s.acc += dt; while (s.acc >= F_PAS && !s.fini) { s.acc -= F_PAS; unPasFlipper(s, duree); } }
   const noteFlipper = s => Math.min(10, Math.floor(s.score / RF.palier));
 
+  /* ================= Le labyrinthe de la ZAC : le cœur ================= */
+  // Une grille de 15 x 18 cases, parcourue case par case, sans aucune impasse. Le préparateur ramasse les étiquettes ;
+  // trois germes le cherchent, chacun à sa façon, et ne le sentent que de près (flair, en cases de couloir).
+  const RL = { allure: 4.6, germe: 4.3, palier: 13, amende: 8, fige: 4, abri: 2, arret: 0.8, contact: 0.6, avance: 4 };
+  const L_PLAN = [
+    "###############",
+    "#......#......#",
+    "#.####.#.####.#",
+    "#.............#",
+    "#.##.#####.##.#",
+    "#....#.o.#....#",
+    "##.#.#.#.#.#.##",
+    "#..#...#...#..#",
+    "#.####.#.####.#",
+    "#o...........o#",
+    "#.##.##.##.##.#",
+    "#..#.......#..#",
+    "##.#.#####.#.##",
+    "#......#......#",
+    "#.####.#.####.#",
+    "#.#.... ....#.#",
+    "#...#######...#",
+    "###############"];
+  const L_NC = 15, L_NR = 18, L_PAS = 1 / 120, L_DEPART = [7, 15];
+  const L_DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];                       // haut, droite, bas, gauche
+  // Le pisteur suit la trace, l'embusqué vise quelques cases devant le préparateur, le vagabond erre et ne réagit que de près.
+  const L_GERMES = [{ c: 1, r: 1, flair: 9, zele: 0.85, attente: 1 }, { c: 13, r: 1, flair: 11, zele: 0.75, attente: 2.5 }, { c: 7, r: 3, flair: 5, zele: 0.9, attente: 4 }];
+  const lOuvert = (c, r) => { const k = (L_PLAN[r] || "")[c]; return !!k && k !== "#"; };
+  // Distance en cases de couloir depuis une case vers toutes les autres.
+  function lDistances(c, r) {
+    const d = new Int16Array(L_NC * L_NR).fill(999), f = [c + r * L_NC];
+    d[f[0]] = 0;
+    for (let i = 0; i < f.length; i++) {
+      const k = f[i], x = k % L_NC, y = (k - x) / L_NC;
+      for (const [dx, dy] of L_DIRS) { const n = k + dx + dy * L_NC; if (d[n] === 999 && lOuvert(x + dx, y + dy)) { d[n] = d[k] + 1; f.push(n); } }
+    }
+    return d;
+  }
+  const lPos = e => e.d < 0 ? [e.c, e.r] : [e.c + L_DIRS[e.d][0] * e.p, e.r + L_DIRS[e.d][1] * e.p];
+  function lRemplir(s) {
+    s.reste = 0;
+    for (let r = 0; r < L_NR; r++) for (let c = 0; c < L_NC; c++) { const k = L_PLAN[r][c]; s.objets[c + r * L_NC] = k === "." ? 1 : k === "o" ? 2 : 0; if (k === ".") s.reste++; }
+  }
+  function lRenvoi(g, attente) { const o = L_GERMES[g.type]; g.c = o.c; g.r = o.r; g.d = -1; g.p = 0; g.attente = attente; }
+  function creerLaby(graine) {
+    let a = graine || 20261219;
+    const hasard = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const s = { t: 0, acc: 0, hasard, j: { c: L_DEPART[0], r: L_DEPART[1], d: -1, p: 0, veut: -1, vu: 2 }, germes: L_GERMES.map((o, i) => ({ type: i, c: o.c, r: o.r, d: -1, p: 0, flair: o.flair, zele: o.zele, attente: o.attente })),
+      objets: new Uint8Array(L_NC * L_NR), reste: 0, etiq: 0, compte: 0, prises: 0, sprays: 0, lots: 0, fige: 0, abri: 0, arret: 0, msg: "", msgT: -9, fini: false };
+    lRemplir(s); lFlairer(s);
+    return s;
+  }
+  // Ce que les germes peuvent sentir : la trace du préparateur, et la case qu'il vise quelques pas plus loin.
+  function lFlairer(s) {
+    const j = s.j; let c = j.c, r = j.r;
+    s.piste = lDistances(c, r);
+    if (j.d >= 0) for (let i = 0; i < RL.avance && lOuvert(c + L_DIRS[j.d][0], r + L_DIRS[j.d][1]); i++) { c += L_DIRS[j.d][0]; r += L_DIRS[j.d][1]; }
+    s.devant = c === j.c && r === j.r ? s.piste : lDistances(c, r);
+  }
+  function lRamasser(s) {
+    const k = s.j.c + s.j.r * L_NC, o = s.objets[k];
+    if (!o) return;
+    s.objets[k] = 0;
+    if (o === 2) { s.fige = RL.fige; s.sprays++; s.msg = "Bionettoyage !"; s.msgT = s.t; return; }
+    s.etiq++; s.compte++;
+    if (--s.reste === 0) { lRemplir(s); s.lots++; s.msg = "Lot complet !"; s.msgT = s.t; }
+  }
+  // Le préparateur : le virage demandé (veut) est gardé en mémoire jusqu'à la première case où il devient possible.
+  function lJoueur(s, dist) {
+    const j = s.j, va = d => d >= 0 && lOuvert(j.c + L_DIRS[d][0], j.r + L_DIRS[d][1]);
+    const choix = () => { const d = va(j.veut) ? j.veut : va(j.d) ? j.d : -1; if (d !== j.d) { j.d = d; if (d >= 0) j.vu = d; lFlairer(s); } };
+    if (j.d >= 0 && j.p > 0 && j.veut === (j.d + 2) % 4) { j.c += L_DIRS[j.d][0]; j.r += L_DIRS[j.d][1]; j.p = 1 - j.p; j.d = j.vu = j.veut; lFlairer(s); }   // demi-tour immédiat
+    if (j.p === 0) choix();
+    if (j.d < 0) return;
+    j.p += dist;
+    if (j.p >= 1) {
+      const reste = j.p - 1;
+      j.c += L_DIRS[j.d][0]; j.r += L_DIRS[j.d][1]; j.p = 0;
+      lRamasser(s);
+      const avant = j.d; choix(); if (j.d === avant) lFlairer(s);
+      if (j.d >= 0) j.p = reste;
+    }
+  }
+  // Un germe ne fait jamais demi-tour. À chaque case, s'il sent le préparateur et ne se trompe pas, il prend le plus court ; sinon il erre.
+  function lChoisir(s, g) {
+    const dos = g.d < 0 ? -1 : (g.d + 2) % 4, opts = [];
+    for (let d = 0; d < 4; d++) if (d !== dos && lOuvert(g.c + L_DIRS[d][0], g.r + L_DIRS[d][1])) opts.push(d);
+    if (!opts.length) opts.push(dos);
+    let d = opts[Math.floor(s.hasard() * opts.length)];
+    const k = g.c + g.r * L_NC, carte = g.type === 1 ? s.devant : s.piste, suit = s.hasard() < g.zele;
+    if (suit && s.abri <= 0 && s.piste[k] <= g.flair) { let m = 1e9; for (const o of opts) { const v = carte[k + L_DIRS[o][0] + L_DIRS[o][1] * L_NC]; if (v < m) { m = v; d = o; } } }
+    g.d = d;
+  }
+  function unPasLaby(s, duree) {
+    const dt = L_PAS, j = s.j;
+    s.t += dt;
+    if (s.t >= duree) { s.fini = true; return; }
+    if (s.fige > 0) s.fige -= dt;
+    if (s.abri > 0) s.abri -= dt;
+    if (s.arret > 0) s.arret -= dt; else lJoueur(s, RL.allure * dt);
+    const pj = lPos(j);
+    for (const g of s.germes) {
+      if (g.attente > 0) {                                                 // encore dans sa bouche d'aération : inoffensif
+        g.attente -= dt;
+        if (g.attente <= 0 && Math.abs(g.c - pj[0]) + Math.abs(g.r - pj[1]) < 2.5) g.attente = 0.3;   // il ne sort pas sous les pieds du préparateur
+        continue;
+      }
+      if (s.fige <= 0) {
+        if (g.d < 0) lChoisir(s, g);
+        g.p += RL.germe * dt;
+        if (g.p >= 1) { g.c += L_DIRS[g.d][0]; g.r += L_DIRS[g.d][1]; g.p -= 1; lChoisir(s, g); }
+      }
+      const pg = lPos(g);
+      if (Math.abs(pg[0] - pj[0]) + Math.abs(pg[1] - pj[1]) >= RL.contact) continue;
+      if (s.fige > 0) { lRenvoi(g, 2); continue; }                         // germe figé : un coup de lingette, retour à l'aération
+      if (s.abri > 0) continue;
+      // Contamination : amende au compteur, tout le monde repart de sa place, la partie continue.
+      s.prises++; s.compte = Math.max(0, s.compte - RL.amende);
+      s.germes.forEach((x, i) => lRenvoi(x, 1 + i * 1.2));
+      j.c = L_DEPART[0]; j.r = L_DEPART[1]; j.d = j.veut = -1; j.p = 0; j.vu = 2;
+      s.arret = RL.arret; s.abri = RL.arret + RL.abri; s.msg = "Contamination ! −" + RL.amende; s.msgT = s.t;
+      lFlairer(s);
+      break;
+    }
+  }
+  function pasLaby(s, dt, duree) { s.acc += dt; while (s.acc >= L_PAS && !s.fini) { s.acc -= L_PAS; unPasLaby(s, duree); } }
+  const noteLaby = s => Math.min(10, Math.floor(s.compte / RL.palier));
+
   /* ================= Dessin et commandes (navigateur seulement) ================= */
   function monter(el, hauteur) {
     const cv = document.createElement("canvas");
@@ -433,6 +561,122 @@
     return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
   }
 
-  const api = { bowling, tir, flipper, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, F_PIVOTS, boutBatteur } };
+  /* ----- Le labyrinthe de la ZAC ----- */
+  function labyrinthe(el, opt) {
+    const duree = opt.duree || 60, { cv, ctx, liberer } = monter(el, H);
+    cv.style.touchAction = "none";
+    cv.setAttribute("aria-label", "Le labyrinthe de la ZAC. Guidez le préparateur avec les flèches ou les touches Z, Q, S, D, ou en glissant le doigt dans la direction voulue. Ramassez les étiquettes, évitez les germes.");
+    const s = creerLaby(), tactile = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+    const T = 24, Y0 = 44, cx = c => c * T + T / 2, cy = r => Y0 + r * T + T / 2;
+    let clos = false, minuterie = 0, ancre = null;
+    const TOUCHES = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3, z: 0, w: 0, d: 1, s: 2, q: 3, a: 3 };
+    const enfonce = e => {
+      const d = TOUCHES[e.key && e.key.length === 1 ? e.key.toLowerCase() : e.key];
+      if (d === undefined || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target && e.target.tagName || "")) return;
+      e.preventDefault(); s.j.veut = d;
+    };
+    // Au doigt ou à la souris : un glissement donne la direction (plusieurs virages possibles sans lever le doigt) ;
+    // un simple appui vise le point touché par rapport au préparateur.
+    const point = e => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * W, (e.clientY - b.top) / b.width * W]; };
+    const vers = (dx, dy) => { s.j.veut = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0); };
+    const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } const p = point(e); ancre = { id: e.pointerId, x: p[0], y: p[1], glisse: false }; };
+    const bouge = e => {
+      if (!ancre || e.pointerId !== ancre.id) return;
+      const p = point(e), dx = p[0] - ancre.x, dy = p[1] - ancre.y;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) >= 16) { vers(dx, dy); ancre.x = p[0]; ancre.y = p[1]; ancre.glisse = true; }
+    };
+    const relache = e => {
+      if (!ancre || e.pointerId !== ancre.id) return;
+      if (!ancre.glisse && e.type === "pointerup") { const q = lPos(s.j), dx = ancre.x - cx(q[0]), dy = ancre.y - cy(q[1]); if (Math.max(Math.abs(dx), Math.abs(dy)) > 10) vers(dx, dy); }
+      ancre = null;
+    };
+    const menu = e => e.preventDefault();
+    cv.addEventListener("pointerdown", appui); cv.addEventListener("pointermove", bouge); cv.addEventListener("pointerup", relache); cv.addEventListener("pointercancel", relache); cv.addEventListener("contextmenu", menu);
+    window.addEventListener("keydown", enfonce);
+    const retirer = () => {
+      cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointermove", bouge); cv.removeEventListener("pointerup", relache); cv.removeEventListener("pointercancel", relache); cv.removeEventListener("contextmenu", menu);
+      window.removeEventListener("keydown", enfonce);
+    };
+    // Les cloisons : un trait épais d'un centre de case pleine à l'autre, tracé une fois pour toutes.
+    const cloisons = new Path2D();
+    for (let r = 0; r < L_NR; r++) for (let c = 0; c < L_NC; c++) if (!lOuvert(c, r)) {
+      cloisons.moveTo(cx(c), cy(r)); cloisons.lineTo(cx(c), cy(r));
+      if (c + 1 < L_NC && !lOuvert(c + 1, r)) { cloisons.moveTo(cx(c), cy(r)); cloisons.lineTo(cx(c + 1), cy(r)); }
+      if (r + 1 < L_NR && !lOuvert(c, r + 1)) { cloisons.moveTo(cx(c), cy(r)); cloisons.lineTo(cx(c), cy(r + 1)); }
+    }
+    const COUL = [G, R, V];
+    function germe(g) {
+      const q = lPos(g), dort = g.attente > 0, fige = s.fige > 0 && !dort, r = dort ? 5 : 7.5;
+      ctx.save(); ctx.translate(cx(q[0]), cy(q[1]));
+      if (dort) ctx.globalAlpha = 0.45;
+      ctx.save(); ctx.rotate(fige ? 0.4 : s.t * 1.6 + g.type * 2);
+      trait(ctx, 2);
+      for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * 0.8, Math.sin(a) * r * 0.8); ctx.lineTo(Math.cos(a) * (r + 3.5), Math.sin(a) * (r + 3.5)); ctx.stroke(); }
+      ctx.restore();
+      trait(ctx, 2); ctx.fillStyle = fige ? "#D9D6E4" : COUL[g.type]; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.3); ctx.fill(); ctx.stroke();
+      if (fige) { ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-4.5, -1); ctx.lineTo(-1.5, -1); ctx.moveTo(1.5, -1); ctx.lineTo(4.5, -1); ctx.stroke(); }
+      else if (!dort) { ctx.fillStyle = N; ctx.beginPath(); ctx.arc(-2.8, -1, 1.7, 0, 6.3); ctx.arc(2.8, -1, 1.7, 0, 6.3); ctx.fill(); }
+      ctx.restore();
+    }
+    function preparateur() {
+      const j = s.j, q = lPos(j), v = L_DIRS[j.vu], pas = j.d >= 0 && s.arret <= 0 ? Math.sin(s.t * 18) * 1.2 : 0;
+      if (s.abri > 0 && !clos && Math.floor(s.t * 8) % 2) return;        // il clignote tant qu'il est à l'abri
+      ctx.save(); ctx.translate(cx(q[0]), cy(q[1]) + pas * 0.4);
+      trait(ctx, 2.2);
+      ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, 9.5, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = B; ctx.beginPath(); ctx.arc(0, 0, 9.5, Math.PI * 1.08, Math.PI * 1.92); ctx.quadraticCurveTo(0, -1, -9.2, -2.3); ctx.closePath(); ctx.fill(); ctx.stroke();   // la charlotte
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, 9.5, Math.PI * 0.14, Math.PI * 0.86); ctx.quadraticCurveTo(0, 1.5, 8.6, 4); ctx.closePath(); ctx.fill(); ctx.stroke();   // le masque
+      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(-3.2 + v[0] * 1.6, 0.6 + v[1] * 1, 1.6, 0, 6.3); ctx.arc(3.2 + v[0] * 1.6, 0.6 + v[1] * 1, 1.6, 0, 6.3); ctx.fill();
+      ctx.restore();
+    }
+    function dessiner() {
+      const fige = s.fige > 0 && (s.fige > 1 || Math.floor(s.t * 8) % 2);
+      ctx.fillStyle = N; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = fige ? "#DDF1E7" : "#EDEAF6"; ctx.fillRect(cx(0), cy(0), cx(L_NC - 1) - cx(0), cy(L_NR - 1) - cy(0));   // le sol de la ZAC
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.strokeStyle = N; ctx.lineWidth = 15; ctx.stroke(cloisons);
+      ctx.strokeStyle = V; ctx.lineWidth = 6; ctx.stroke(cloisons);
+      // Le sas du préparateur et les bouches d'aération d'où sortent les germes.
+      ctx.strokeStyle = O; ctx.lineWidth = 2; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.roundRect(cx(L_DEPART[0]) - 11, cy(L_DEPART[1]) - 11, 22, 22, 6); ctx.stroke(); ctx.setLineDash([]);
+      for (const o of L_GERMES) { ctx.fillStyle = "rgba(38,7,109,.2)"; ctx.beginPath(); ctx.roundRect(cx(o.c) - 9, cy(o.r) - 9, 18, 18, 4); ctx.fill(); ctx.strokeStyle = "rgba(38,7,109,.35)"; ctx.lineWidth = 1.5; ctx.beginPath(); for (let i = -1; i <= 1; i++) { ctx.moveTo(cx(o.c) - 6, cy(o.r) + i * 5); ctx.lineTo(cx(o.c) + 6, cy(o.r) + i * 5); } ctx.stroke(); }
+      for (let r = 1; r < L_NR - 1; r++) for (let c = 1; c < L_NC - 1; c++) {
+        const o = s.objets[c + r * L_NC], x = cx(c), y = cy(r);
+        if (o === 1) { trait(ctx, 1.4); ctx.fillStyle = Y; ctx.beginPath(); ctx.roundRect(x - 4.5, y - 3, 9, 6, 1.5); ctx.fill(); ctx.stroke(); }
+        else if (o === 2) {                                                // le flacon de désinfectant
+          const k = 1 + Math.sin(s.t * 6) * 0.08;
+          ctx.save(); ctx.translate(x, y); ctx.scale(k, k); trait(ctx, 1.8);
+          ctx.fillStyle = G; ctx.beginPath(); ctx.roundRect(-5.5, -2, 11, 11, 3); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(-2.5, -8, 5, 6, 1); ctx.roundRect(-7.5, -8, 6, 3, 1); ctx.fill();
+          ctx.fillStyle = C; ctx.fillRect(-3, 2, 6, 3.5);
+          ctx.restore();
+        }
+      }
+      for (const g of s.germes) germe(g);
+      preparateur();
+      // Le cartouche du bas : le rappel des commandes, remplacé un instant par les annonces (rien ne masque les couloirs).
+      const annonce = !clos && s.t - s.msgT < 1.3;
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(100, 438, 160, 28, 10); ctx.fill();
+      texte(ctx, annonce ? s.msg : tactile ? "Glissez pour tourner" : "Flèches ou Z Q S D", 180, 453, 13, annonce ? Y : V);
+      const n = noteLaby(s);
+      bandeau(ctx, s.compte + " étiquettes · " + n + "/10", duree - s.t, duree);
+      if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 180, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 220, 40, Y); texte(ctx, s.compte + " étiquettes au compteur", 180, 262, 16, C); }
+    }
+    const arret = boucle(dt => {
+      if (!clos) {
+        pasLaby(s, dt, duree);
+        if (s.fini) {
+          clos = true; ancre = null;
+          const n = noteLaby(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
+          const bilan = pl(s.etiq, "étiquette ramassée", "étiquettes ramassées") + ", " + pl(s.prises, "contamination", "contaminations") + (s.prises ? " (−" + (s.etiq - s.compte) + ")" : "") + " : " + s.compte + " au compteur, soit " + n + " sur 10 (1 point de note par tranche de " + RL.palier + " étiquettes).";
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan); }, 1300);
+        }
+      }
+      dessiner();
+    });
+    cv.focus({ preventScroll: true });
+    return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
+  }
+
+  const api = { bowling, tir, flipper, labyrinthe, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, F_PIVOTS, boutBatteur, REGL_LABY: RL, creerLaby, pasLaby, noteLaby, L_PLAN, L_DIRS, L_GERMES, L_DEPART, lOuvert, lDistances } };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PharmacoJeux = api;
 })(typeof window !== "undefined" ? window : globalThis);
