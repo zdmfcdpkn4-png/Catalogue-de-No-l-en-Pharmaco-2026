@@ -983,5 +983,33 @@
   }
 
   const api = { bowling, tir, flipper, tennis, labyrinthe, _logo: ICI + "img/logo-p-verre.png", _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, DEPART, xSeringue, SERIES, noteBowling, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, F_PIVOTS, boutBatteur, REGL_LABY: RL, creerLaby, pasLaby, noteLaby, L_PLAN, L_DIRS, L_GERMES, L_DEPART, lOuvert, lDistances, REGL_TENNIS: RT, creerTennis, pasTennis, noteTennis, viseTennis, T_YJ } };
+
+  /* ===== Nouveaux jeux : chacun vit en entier sous son repère (cœur, dessin, inscription), sans toucher au reste du fichier.
+     Inscription : api.<nom> = <fonction> ; Object.assign(api._coeur, { … }) pour ce que les outils doivent voir. ===== */
+
+  /* ----- Repère [basket] : le basket ----- */
+  // (session « Jeu » correspondante : écrire ici, entre ce repère et le suivant)
+  /* ----- Fin [basket] ----- */
+
+  /* ----- Repère [penalty] : le penalty ----- */
+  // (session « Jeu » correspondante : écrire ici, entre ce repère et le suivant)
+  /* ----- Fin [penalty] ----- */
+
+  /* ----- Repère [volley] : le volley ----- */
+  // (session « Jeu » correspondante : écrire ici, entre ce repère et le suivant)
+  /* ----- Fin [volley] ----- */
+
+  /* ----- Repère [haies] : le saut de haies ----- */
+  // (session « Jeu » correspondante : écrire ici, entre ce repère et le suivant)
+  /* ----- Fin [haies] ----- */
+
+  /* ----- Repère [etageres] : le jeu de plateformes ----- */
+  // (session « Jeu » correspondante : écrire ici, entre ce repère et le suivant)
+  /* ----- Fin [etageres] ----- */
+
+  /* ----- Repère [pastilles] : le jeu du poseur ----- */
+  // (session « Jeu » correspondante : écrire ici, entre ce repère et le suivant)
+  /* ----- Fin [pastilles] ----- */
+
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PharmacoJeux = api;
 })(typeof window !== "undefined" ? window : globalThis);
