@@ -21,7 +21,7 @@ et le **palmarès** (vote de chacun pour son jeu préféré, avec hall of fame).
 | `vote.js`, `api/votes.js` | Palmarès : un vote par prénom, hall of fame des jeux. |
 | `enigme.js`, `api/enigme.js` | Pharmacogames : 25 portes, une par jour du 1er au 25 décembre, ouvertes jusqu'à J+2. Le serveur décide de tout : dates (heure de Paris), chrono, tentatives, points, classement. |
 | `api/_banque.js` | Les 25 portes (énoncés, réponses, illustrations), **chiffrées**. Ne jamais écrire de question ni de réponse en clair dans le dépôt. |
-| `jeux.js` | Les deux jeux d'adresse (bowling des flacons, la hotte en folie), chargés à la demande. Cœur du jeu séparé du dessin. |
+| `jeux.js` | Les trois jeux d'adresse (bowling des flacons, la hotte en folie, le flipper du préparatoire), chargés à la demande. Cœur du jeu séparé du dessin. |
 | `outils/` | Outils de développement, non publiés sur le site (voir `.vercelignore`). |
 
 Le stockage des votes et des parties est un magasin Vercel Blob privé. Les modules `vote.js` et `enigme.js` ne s'affichent que si leur serveur répond.
@@ -52,6 +52,7 @@ pour une demande qui en sort, elle indique la session concernée.
 |---|---|---|
 | Jeu : Bowling des flacons | La partie bowling de `jeux.js` et ses réglages | `claude/jeu-bowling` |
 | Jeu : La hotte en folie | La partie tir de `jeux.js` et ses réglages | `claude/jeu-hotte` |
+| Jeu : Le flipper du préparatoire | La partie flipper de `jeux.js` et ses réglages | `claude/jeu-flipper` |
 | Design | Apparence : `menu.js`, logos, blocs de styles de `enigme.js` et `vote.js`, habillage des jeux | `claude/design` |
 | Organisation et orchestration | Serveur, banque, intégration des branches, bancs d'essai complets, publication, suivi | `claude/vibrant-edison-rs93fn` |
 
