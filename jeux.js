@@ -4,7 +4,8 @@
    Le cœur de chaque jeu (règles, trajectoires) est séparé du dessin pour pouvoir être vérifié hors navigateur. */
 (root => {
   const N = "#26076D", C = "#FFFBF2", Y = "#ECD567", O = "#EC7739", P = "#E5B4D9", V = "#B9A6F0", G = "#3E9B76", R = "#D8402B", B = "#8FC7E8";
-  const W = 360, H = 480; // repère logique des deux jeux
+  const W = 360, H = 480; // repère logique des jeux
+  const ICI = (typeof document !== "undefined" && document.currentScript && document.currentScript.src || "").replace(/[^/]*$/, "");
 
   /* ================= Bowling des flacons : le cœur ================= */
   const RB = 15, RQ = 11, GAUCHE = 46, DROITE = 314, DEPART = 432;
@@ -92,7 +93,7 @@
 
   /* ================= Le flipper du préparatoire : le cœur ================= */
   // Réglages étalonnés par simulation (node outils/etalon.js) : ils fixent la difficulté.
-  const RF = { g: 820, vmax: 960, monte: 20, descend: 14, repos: 0.5, leve: -0.5, long: 62, kick: 400, bouchon: 10, etiquette: 25, deja: 5, lot: 150, relance: 2, perte: 30, palier: 100 };
+  const RF = { g: 820, vmax: 960, monte: 20, descend: 14, repos: 0.5, leve: -0.5, long: 62, kick: 400, bouchon: 10, etiquette: 25, deja: 5, lot: 150, relance: 2, perte: 30, palier: 100, delai: 1.2 };
   const F_PAS = 1 / 240, F_RB = 8, F_EP = 5;
   const F_MURS = [[10, 330, 10, 110], [10, 110, 70, 49], [70, 49, 290, 49], [290, 49, 350, 110], [350, 110, 350, 330], [10, 330, 104, 408], [350, 330, 256, 408], [104, 408, 120, 480], [256, 408, 240, 480]];
   const F_BOUCHONS = [{ x: 112, y: 160, r: 19 }, { x: 248, y: 160, r: 19 }, { x: 180, y: 238, r: 19 }];
@@ -103,7 +104,7 @@
   function creerFlipper(graine) {
     let a = graine || 20261207;
     const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-    return { t: 0, acc: 0, score: 0, pertes: 0, lots: 0, coups: 0, lancers: 0, lot: F_ETIQ.map(() => false), tape: F_BOUCHONS.map(() => -9), bille: null, attente: 0.9, g: false, d: false, ang: [RF.repos, RF.repos], vit: [0, 0], calme: 0, msg: "", msgT: -9, h, fini: false };
+    return { t: 0, acc: 0, score: 0, pertes: 0, lots: 0, coups: 0, lancers: 0, lot: F_ETIQ.map(() => false), tape: F_BOUCHONS.map(() => -9), bille: null, attente: 0.9, g: false, d: false, ang: [RF.repos, RF.repos], vit: [0, 0], calme: 0, msg: "", msgT: -9, serie: 0, serieT: -9, choc: null, h, fini: false };
   }
   // La bille touche-t-elle le segment (épaisseur ep) ? Si oui, elle est repoussée dehors et on rend la normale.
   function contact(b, x1, y1, x2, y2, ep) {
@@ -119,6 +120,8 @@
     if (vn < 0) { b.vx -= (1 + e) * vn * c.nx; b.vy -= (1 + e) * vn * c.ny; }
     return -vn;
   }
+  // Une série : des touches qui s'enchaînent à moins de RF.delai secondes. Elle ne rapporte rien, elle sert au spectacle.
+  function marquer(s, x, y) { s.serie = s.t - s.serieT < RF.delai ? s.serie + 1 : 1; s.serieT = s.t; s.choc = { x, y, n: s.serie }; }
   function unPasFlipper(s, duree) {
     const dt = F_PAS;
     s.t += dt;
@@ -147,6 +150,7 @@
     F_ETIQ.forEach((m, i) => {
       const c = contact(b, m[0], m[1], m[2], m[3], 3);
       if (!c || rebond(b, c, 0.5, 0, 0) < 40) return;
+      marquer(s, c.cx, c.cy);
       if (s.lot[i]) { s.score += RF.deja; return; }
       s.lot[i] = true; s.score += RF.etiquette;
       if (s.lot.every(Boolean)) { s.score += RF.lot; s.lots++; s.lot = s.lot.map(() => false); s.msg = "Lot libéré ! +" + RF.lot; s.msgT = s.t; }
@@ -157,7 +161,7 @@
       const ux = nx / d, uy = ny / d, vn = b.vx * ux + b.vy * uy, sortie = Math.max(-vn, RF.kick);
       b.x = o.x + ux * R; b.y = o.y + uy * R;
       b.vx += (sortie - vn) * ux; b.vy += (sortie - vn) * uy;
-      s.score += RF.bouchon; s.tape[i] = s.t;
+      s.score += RF.bouchon; s.tape[i] = s.t; marquer(s, o.x + ux * o.r, o.y + uy * o.r);
     });
     if (b.y < 330) b.x = Math.max(10 + F_RB, Math.min(350 - F_RB, b.x));   // filet de sécurité : jamais hors des parois
     if (b.y < 49 + F_RB) { b.y = 49 + F_RB; if (b.vy < 0) b.vy = -b.vy * 0.45; }
@@ -166,7 +170,7 @@
     // Déblocage : une bille immobile ailleurs que sur un batteur tenu levé reçoit un coup de pouce.
     s.calme = v < 30 && !tenue ? s.calme + dt : 0;
     if (s.calme > 1.2) { b.vx = (s.h() - 0.5) * 300; b.vy = -330; s.calme = 0; s.coups++; }
-    if (b.y > 496) { s.bille = null; s.pertes++; s.attente = RF.relance; s.score = Math.max(0, s.score - RF.perte); s.lot = s.lot.map(() => false); s.msg = "Bille perdue : -" + RF.perte; s.msgT = s.t; }
+    if (b.y > 496) { s.bille = null; s.pertes++; s.attente = RF.relance; s.score = Math.max(0, s.score - RF.perte); s.lot = s.lot.map(() => false); s.serie = 0; s.msg = "Bille perdue : -" + RF.perte; s.msgT = s.t; }
     else if (!(b.x > -20 && b.x < W + 20 && b.y > 0)) { s.bille = null; s.attente = 0.3; }                   // ne devrait pas arriver
   }
   // Pas fixe : quel que soit le rythme d'affichage, la physique avance par tranches de 1/240 s.
@@ -342,12 +346,27 @@
   }
 
   /* ----- Le flipper du préparatoire ----- */
+  // Un chiffre à sept segments, comme sur les afficheurs des vieilles bornes.
+  const SEG = [0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F];
+  function chiffre(ctx, x, y, w, h, n, coul) {
+    const e = 2.4, m = h / 2, T = [[x + e, y, w - 2 * e, e], [x + w - e, y + e, e, m - 1.5 * e], [x + w - e, y + m + e / 2, e, m - 1.5 * e], [x + e, y + h - e, w - 2 * e, e], [x, y + m + e / 2, e, m - 1.5 * e], [x, y + e, e, m - 1.5 * e], [x + e, y + m - e / 2, w - 2 * e, e]];
+    T.forEach((r, i) => { ctx.fillStyle = n >= 0 && SEG[n] >> i & 1 ? coul : "rgba(255,251,242,.07)"; ctx.fillRect(r[0], r[1], r[2], r[3]); });
+  }
+  // Une goutte, pointe au centre et ventre vers l'extérieur : le pétale de la fleur du logo.
+  function goutte(ctx, ang, r0, r1, larg, coul) {
+    ctx.save(); ctx.rotate(ang); ctx.fillStyle = coul; ctx.beginPath(); ctx.moveTo(r0, 0);
+    ctx.bezierCurveTo(r0 + (r1 - r0) * 0.5, -larg * 0.15, r1 + larg * 0.1, -larg, r1, 0);
+    ctx.bezierCurveTo(r1 + larg * 0.1, larg, r0 + (r1 - r0) * 0.5, larg * 0.15, r0, 0);
+    ctx.fill(); ctx.restore();
+  }
   function flipper(el, opt) {
     const duree = opt.duree || 60, { cv, ctx, xDe, liberer } = monter(el, H);
     cv.style.touchAction = "none";
     cv.setAttribute("aria-label", "Le flipper du préparatoire. Batteur gauche : flèche gauche, touche S ou moitié gauche de l'écran. Batteur droit : flèche droite, touche L ou moitié droite.");
-    const s = creerFlipper(), tactile = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
-    let clos = false, minuterie = 0;
+    const s = creerFlipper(), media = q => typeof matchMedia === "function" && matchMedia(q).matches, tactile = media("(pointer: coarse)"), calme = media("(prefers-reduced-motion: reduce)");
+    const logo = new Image(); logo.src = api._logo;
+    let clos = false, minuterie = 0, tFin = 0, affiche = 0, vu = null, secousse = 0, eclair = 0;
+    const etincelles = [], bulles = [];
     const doigts = new Map(), touches = { g: false, d: false };
     const maj = () => { let g = touches.g, d = touches.d; doigts.forEach(c => { if (c === "g") g = true; else d = true; }); s.g = g; s.d = d; };
     const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } doigts.set(e.pointerId, xDe(e) < W / 2 ? "g" : "d"); maj(); };
@@ -363,9 +382,76 @@
       cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointerup", relache); cv.removeEventListener("pointercancel", relache); cv.removeEventListener("contextmenu", menu);
       window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
     };
-    const COUL = [O, P, V];
+    const COUL = [O, P, V], FETE = [O, Y, P, V, C];
+    // Les effets : chaque touche lance des gouttelettes, et une série qui s'allonge fait monter le spectacle.
+    function effets(dt) {
+      if (s.choc && s.choc !== vu) {
+        vu = s.choc;
+        const n = vu.n, k = Math.min(3 + n * 2, 16);
+        for (let i = 0; i < k; i++) { const a = Math.random() * 6.283, v = 60 + Math.random() * (60 + n * 14); etincelles.push({ x: vu.x, y: vu.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, t: 0, c: FETE[(i + n) % FETE.length] }); }
+        if (n >= 3) bulles.push({ x: Math.max(40, Math.min(W - 40, vu.x)), y: vu.y, t: 0, n, onde: n === 3 || n === 5 || n >= 8 });
+        if (n === 5 || n >= 8) { eclair = 0.35; if (!calme) secousse = 0.18; }
+      }
+      for (const e of etincelles) { e.t += dt; e.vy += 420 * dt; e.x += e.vx * dt; e.y += e.vy * dt; }
+      for (const b of bulles) b.t += dt;
+      while (etincelles.length && etincelles[0].t > 0.55) etincelles.shift();
+      while (bulles.length && bulles[0].t > 0.9) bulles.shift();
+      if (etincelles.length > 90) etincelles.splice(0, etincelles.length - 90);
+      secousse -= dt; eclair -= dt;
+      affiche += (s.score - affiche) * Math.min(1, dt * 9); if (Math.abs(s.score - affiche) < 0.6) affiche = s.score;
+    }
+    const enSerie = () => s.serie >= 3 && s.t - s.serieT < RF.delai;
+    // L'afficheur en tête de plateau : score et chrono en sept segments, messages défilants, guirlande de lampes.
+    function afficheur() {
+      const reste = Math.max(0, duree - s.t);
+      ctx.fillStyle = "#12033A"; ctx.fillRect(0, 0, W, 47);
+      ctx.fillStyle = "#1D0A52"; ctx.beginPath(); ctx.roundRect(4, 4, 104, 32, 5); ctx.roundRect(112, 4, 198, 32, 5); ctx.roundRect(314, 4, 42, 32, 5); ctx.fill();
+      const neuf = Math.round(affiche) !== s.score, sc = String(Math.max(0, Math.round(affiche))).padStart(6, " ");
+      for (let i = 0; i < 6; i++) chiffre(ctx, 10 + i * 16, 9, 11, 22, sc[i] === " " ? -1 : +sc[i], neuf ? C : Y);
+      const sec = String(Math.ceil(reste)).padStart(2, " "), alerte = reste <= 5 && !clos;
+      for (let i = 0; i < 2; i++) chiffre(ctx, 320 + i * 16, 9, 11, 22, sec[i] === " " ? -1 : +sec[i], alerte ? (Math.floor(s.t * 4) % 2 ? O : R) : C);
+      // Le message : un événement, une série en cours, ou sinon un tour d'horizon qui défile.
+      let msg, coul = Y, dx = 0, clign = false;
+      if (clos) { msg = "LOT CONTRÔLÉ"; clign = true; }
+      else if (s.t - s.msgT < 1.5) { msg = s.msg.toUpperCase(); coul = s.msg.indexOf("perdue") > 0 ? O : G; clign = true; }
+      else if (enSerie()) { msg = (s.serie >= 8 ? "CADENCE DE PROD ×" : s.serie >= 5 ? "BELLE SÉRIE ×" : "COMBO ×") + s.serie; coul = FETE[s.serie % 4]; dx = calme ? 0 : Math.sin(s.t * 30) * 1.5; }
+      else {
+        const tour = ["NOTE " + noteFlipper(s) + "/10", "LOT " + s.lot.filter(Boolean).length + "/5", "PHARMACOGAMES"], k = s.t / 2.6, f = k % 1;
+        msg = tour[Math.floor(k) % tour.length]; dx = calme ? 0 : f < 0.14 ? (1 - f / 0.14) * 190 : f > 0.9 ? -(f - 0.9) / 0.1 * 190 : 0;
+      }
+      ctx.save(); ctx.beginPath(); ctx.rect(114, 5, 194, 30); ctx.clip();
+      if (!clign || Math.floor(s.t * 6) % 3) { ctx.font = "800 15px 'Courier New',monospace"; ctx.fillStyle = coul; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(msg, 211 + dx, 21, 186); }
+      ctx.fillStyle = "rgba(18,3,58,.5)"; for (let y = 6; y < 35; y += 2.5) ctx.fillRect(114, y, 194, 0.9);        // trame de l'écran
+      ctx.restore();
+      const N_L = 36, allume = Math.ceil(N_L * reste / duree), pas = Math.floor(s.t * 7);
+      for (let i = 0; i < N_L; i++) {
+        const on = i < allume, fete = enSerie() || eclair > 0;
+        ctx.fillStyle = !on ? "rgba(255,251,242,.14)" : fete ? FETE[(i + pas) % 4] : alerte ? (pas % 2 ? O : R) : (i + pas) % 4 === 0 && !calme ? C : Y;
+        ctx.beginPath(); ctx.arc(5 + i * 10, 42, 2.3, 0, 6.3); ctx.fill();
+      }
+    }
+    // Le score final, au cœur d'une fleur de gouttes qui s'ouvre.
+    function fleur() {
+      const n = noteFlipper(s), cx = 180, cy = 252, tons = [N, Y, O, P, N, Y, P, O, N, O, Y, P];
+      ctx.fillStyle = "rgba(38,7,109,.55)"; ctx.fillRect(0, 47, W, H - 47);
+      const fond = Math.min(1, tFin / 0.25);
+      trait(ctx, 3); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(cx, cy, 122 * fond, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(calme ? 0 : tFin * 0.25);
+      for (let i = 0; i < 30; i++) {
+        const u = calme ? 1 : Math.max(0, Math.min(1, (tFin - 0.1 - i * 0.012) / 0.35)), k = u === 0 ? 0 : 1 + 2.2 * Math.pow(u - 1, 3) + 1.2 * Math.pow(u - 1, 2);
+        const long = 62 + (i * 37 % 5) * 12, larg = 9 + (i * 53 % 4) * 3.5;
+        if (k > 0) goutte(ctx, i * 6.283 / 30 + (i % 3) * 0.05, 44, 44 + long * 0.66 * k, larg * k, tons[i % tons.length]);
+      }
+      ctx.restore();
+      trait(ctx, 3); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(cx, cy, 40, 0, 6.3); ctx.fill(); ctx.stroke();
+      texte(ctx, String(n), cx, cy - 5, 38, N); texte(ctx, "sur 10", cx, cy + 22, 12, N);
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(90, 392, 180, 30, 15); ctx.fill();
+      texte(ctx, s.score + (s.score > 1 ? " points" : " point") + " au compteur", 180, 408, 14, Y);
+    }
     function dessiner() {
       ctx.fillStyle = N; ctx.fillRect(0, 0, W, H);
+      ctx.save();
+      if (secousse > 0) ctx.translate((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4);
       // Le plateau : une paillasse, avec le bac de rebut en bas.
       ctx.fillStyle = "#F7E7B8"; ctx.beginPath();
       [[10, 110], [70, 49], [290, 49], [350, 110], [350, 330], [256, 408], [240, H], [120, H], [104, 408], [10, 330]].forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
@@ -378,7 +464,7 @@
       s.lot.forEach((v, i) => { ctx.fillStyle = v ? G : "rgba(38,7,109,.18)"; ctx.beginPath(); ctx.arc(148 + i * 16, 110, 5, 0, 6.3); ctx.fill(); });
       // Les deux distributeurs de billes.
       ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(28, 84, 26, 9, 3); ctx.roundRect(306, 84, 26, 9, 3); ctx.fill();
-      trait(ctx, 5); ctx.beginPath();
+      trait(ctx, 5); if (eclair > 0) ctx.strokeStyle = FETE[Math.floor(s.t * 14) % 4]; ctx.beginPath();
       F_MURS.forEach(m => { ctx.moveTo(m[0], m[1]); ctx.lineTo(m[2], m[3]); }); ctx.stroke();
       // Les étiquettes : blanches, puis vertes une fois collées.
       F_ETIQ.forEach((m, i) => {
@@ -387,12 +473,15 @@
         if (hz) ctx.roundRect(m[0] - 3, m[1] - 4, m[2] - m[0] + 6, 8, 3); else ctx.roundRect(m[0] - 4, m[1] - 3, 8, m[3] - m[1] + 6, 3);
         ctx.fill(); ctx.stroke();
       });
-      // Les bouchons : ils renvoient la bille.
+      // Les bouchons : ils renvoient la bille, et portent le logo de la pharmacotechnie.
       F_BOUCHONS.forEach((o, i) => {
-        const k = Math.max(0, 1 - (s.t - s.tape[i]) / 0.16), r = o.r + k * 3;
+        const k = Math.max(0, 1 - (s.t - s.tape[i]) / 0.3), r = o.r + k * 3, ri = r - 4;
         trait(ctx, 3); ctx.fillStyle = k > 0 ? Y : COUL[i]; ctx.beginPath(); ctx.arc(o.x, o.y, r, 0, 6.3); ctx.fill(); ctx.stroke();
-        ctx.lineWidth = 2; for (let j = 0; j < 10; j++) { const a = j * Math.PI / 5; ctx.beginPath(); ctx.moveTo(o.x + Math.cos(a) * (r - 5), o.y + Math.sin(a) * (r - 5)); ctx.lineTo(o.x + Math.cos(a) * r, o.y + Math.sin(a) * r); ctx.stroke(); }
-        ctx.fillStyle = C; ctx.beginPath(); ctx.arc(o.x, o.y, r - 8, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = C; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(o.x, o.y, ri, 0, 6.3); ctx.fill(); ctx.stroke();
+        if (logo.complete && logo.naturalWidth) {
+          ctx.save(); ctx.translate(o.x, o.y); if (!calme) ctx.rotate(k * k * (i % 2 ? -1.6 : 1.6));
+          ctx.beginPath(); ctx.arc(0, 0, ri - 1, 0, 6.3); ctx.clip(); ctx.drawImage(logo, -ri + 0.5, -ri + 0.5, ri * 2 - 1, ri * 2 - 1); ctx.restore();
+        } else texte(ctx, "P", o.x, o.y + 1, 20, N);
       });
       // Les batteurs.
       for (let i = 0; i < 2; i++) {
@@ -401,6 +490,16 @@
         ctx.strokeStyle = O; ctx.lineWidth = F_EP * 2 - 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(bout[0], bout[1]); ctx.stroke();
         ctx.fillStyle = Y; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, 6.3); ctx.fill();
       }
+      for (const e of etincelles) { ctx.globalAlpha = 1 - e.t / 0.55; ctx.fillStyle = e.c; ctx.strokeStyle = N; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(e.x, e.y, 3.2 - e.t * 3, 0, 6.3); ctx.fill(); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+      for (const b of bulles) {
+        const u = b.t / 0.9, px = Math.min(30, 15 + b.n * 1.6) * (u < 0.15 ? 0.6 + u / 0.15 * 0.6 : 1.2 - Math.min(0.2, (u - 0.15) * 0.8));
+        if (b.onde) { ctx.globalAlpha = 1 - u; ctx.strokeStyle = FETE[b.n % 4]; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(b.x, b.y, 12 + u * 70, 0, 6.3); ctx.stroke(); }
+        ctx.globalAlpha = u > 0.7 ? (1 - u) / 0.3 : 1;
+        ctx.font = "800 " + px + "px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+        ctx.strokeStyle = N; ctx.lineWidth = 5; ctx.strokeText("×" + b.n, b.x, b.y - 18 - u * 26); ctx.fillStyle = FETE[b.n % 4]; ctx.fillText("×" + b.n, b.x, b.y - 18 - u * 26);
+      }
+      ctx.globalAlpha = 1;
       if (s.bille) {
         const b = s.bille;
         trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(b.x, b.y, F_RB, 0, 6.3); ctx.fill(); ctx.stroke();
@@ -412,10 +511,10 @@
         texte(ctx, tactile ? "Touchez à gauche" : "Gauche : ◀ ou S", 91, 301, 13, Y); texte(ctx, tactile ? "Touchez à droite" : "Droite : ▶ ou L", 269, 301, 13, Y);
         ctx.globalAlpha = 1;
       }
-      const n = noteFlipper(s);
-      bandeau(ctx, s.score + " pts · " + n + "/10", duree - s.t, duree);
       if (!clos && s.t - s.msgT < 1) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(70, 340, 220, 40, 14); ctx.fill(); texte(ctx, s.msg, 180, 361, 17, Y); }
-      if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 180, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 220, 40, Y); texte(ctx, s.score + " points au compteur", 180, 262, 16, C); }
+      ctx.restore();
+      if (clos) fleur();
+      afficheur();
     }
     const arret = boucle(dt => {
       if (!clos) {
@@ -424,15 +523,16 @@
           clos = true; lache();
           const n = noteFlipper(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
           const bilan = pl(s.score, "point", "points") + " : " + n + " sur 10 (1 point de note par tranche de " + RF.palier + " points). " + pl(s.lots, "lot libéré", "lots libérés") + ", " + pl(s.pertes, "bille perdue", "billes perdues") + ".";
-          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan); }, 1300);
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan); }, 2200);
         }
-      }
+      } else tFin += dt;
+      effets(dt);
       dessiner();
     });
     cv.focus({ preventScroll: true });
     return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
   }
 
-  const api = { bowling, tir, flipper, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, F_PIVOTS, boutBatteur } };
+  const api = { bowling, tir, flipper, _logo: ICI + "img/logo-p-verre.png", _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, F_PIVOTS, boutBatteur } };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PharmacoJeux = api;
 })(typeof window !== "undefined" ? window : globalThis);
