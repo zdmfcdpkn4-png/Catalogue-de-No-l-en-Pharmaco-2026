@@ -78,6 +78,9 @@
 .pm a[hidden]{display:none}
 @media(max-width:720px){.pm{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 10px;max-width:420px}}
 @media(max-width:360px){.pm b{font-size:.86rem;padding:2px 6px}}
+/* Téléphone : haut de page resserré, les quatre jetons sur une ligne, sans sous-titre ni motif sous « Bientôt disponible ». */
+@media(max-width:560px){.hero .hero-in{padding-top:18px;padding-bottom:18px;gap:10px 34px}.hero .lead{margin-top:14px}.hero .pensee{margin-top:12px}.pm{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 6px;max-width:none;margin-top:18px}.pm a{gap:5px}.pm-d{width:62px;height:62px}.pm b{padding:1px 4px;font-size:.66rem;line-height:1.15}.pm small{display:none}.pm-s{max-width:66px;margin-top:1px;padding:2px 4px 3px;font-size:.5rem;letter-spacing:0;border-width:1.5px;border-radius:6px}.pm-s i{display:none}.ind{padding-top:14px}}
+@media(max-width:350px){.pm{gap:8px 3px}.pm-d{width:56px;height:56px}.pm b{font-size:.56rem;padding:1px 2px}}
 @media(prefers-reduced-motion:reduce){.pm-d,.pm-o{transition:none}.pm a.tourne .pm-j,.pm a.tourne .pm-o,.pm-s{animation:none}}`;
   document.head.appendChild(st);
 
