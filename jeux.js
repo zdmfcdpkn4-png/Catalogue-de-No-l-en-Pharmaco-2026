@@ -1671,7 +1671,230 @@
   /* ----- Fin [volley] ----- */
 
   /* ----- Repère [haies] : le saut de haies ----- */
-  // (session « Jeu » correspondante : écrire ici, entre ce repère et le suivant)
+  /* Le sprint du couloir : une livraison urgente à porter au bout du couloir de la ZAC. Le préparateur court tout seul ;
+     un seul bouton pour sauter (appui bref : petit saut, appui maintenu : grand saut). Une chute fait perdre du temps et l'élan,
+     pas la partie. Le score brut est la distance parcourue, en décimètres. */
+  // Le cœur. Distances en px (HA_M px pour un mètre), hauteurs comptées depuis le sol.
+  const RH = { v0: 190, vmax: 285, acc: 7, g: 1800, saut: 420, seuil: 0.14, tenue: 0.34, gTenu: 150, chute: 0.8, tampon: 0.08, ecart: 270, serre: 60, flou: 120, double: 175, plein: 9000, base: 4.7, palier: 0.6 };
+  const HA_PAS = 1 / 120, HA_M = 25, HA_DEMI = 7, HA_TAILLE = 44;
+  // w : longueur, h : hauteur à franchir ; grand : demande un grand saut ; sol : ne gêne que les pieds posés ; bas : hauteur libre sous un portique.
+  const HA_TYPES = { carton: { w: 26, h: 24 }, bidon: { w: 22, h: 28 }, chariot: { w: 54, h: 38, grand: 1 }, flaque: { w: 84, h: 1, sol: 1, grand: 1 }, portique: { w: 26, h: 24, bas: 100 } };
+  // Même couloir pour tout le monde : le hasard est tiré d'une graine fixe. Les obstacles se resserrent avec la distance.
+  function parcoursHaies(graine, longueur) {
+    let a = graine || 20261224;
+    const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const L = [], vus = {}, debut = ["carton", "carton", "bidon", "flaque", "carton", "chariot", "bidon", "flaque", "chariot"];
+    const poser = (k, x) => { const o = Object.assign({ k, x }, HA_TYPES[k]); vus[k] = (vus[k] || 0) + 1; if ((o.grand || o.bas) && vus[k] <= 2) o.aide = true; L.push(o); return x + o.w; };
+    let x = 430;
+    while (x < longueur) {
+      const prog = Math.min(1, x / RH.plein), r = h();
+      let k = debut[L.length];
+      if (!k) k = r < 0.2 ? "carton" : r < 0.36 ? "bidon" : r < 0.55 ? "flaque" : r < 0.74 ? "chariot" : r < 0.88 ? "double" : "portique";
+      if (k === "double") { poser("carton", x); x = poser(h() < 0.5 ? "carton" : "bidon", x + RH.double); }
+      else x = poser(k, x);
+      x += RH.ecart - RH.serre * prog + h() * RH.flou;
+    }
+    return L;
+  }
+  function creerHaies(graine, duree) {
+    return { t: 0, x: 0, y: 0, vy: 0, v: RH.v0, elan: 0, sol: true, tenu: false, lache: true, grand: false, demande: -1, tSaut: -9, arret: 0, tChute: -9, dernier: null,
+      file: parcoursHaies(graine, RH.vmax * (duree || 50) + 500), suivant: 0, francs: 0, chutes: 0, sauts: 0, fini: false };
+  }
+  // Le bouton : enfoncé (true) ou relâché (false). Un appui juste avant de toucher le sol est gardé en mémoire un instant.
+  function appuiHaies(s, on) { s.tenu = !!on; if (on) s.demande = s.t; }
+  function unPasHaies(s, duree) {
+    s.t += HA_PAS;
+    if (s.t >= duree) { s.fini = true; return; }
+    if (s.arret > 0) { s.arret -= HA_PAS; s.demande = -1; return; }             // à terre : le temps de se relever
+    s.elan = Math.min(RH.vmax - RH.v0, s.elan + RH.acc * HA_PAS); s.v = RH.v0 + s.elan;
+    s.x += s.v * HA_PAS;
+    if (s.sol && s.demande >= 0 && s.t - s.demande <= RH.tampon) { s.sol = false; s.vy = RH.saut; s.tSaut = s.t; s.demande = -1; s.lache = false; s.grand = false; s.sauts++; }
+    if (!s.sol) {
+      const ts = s.t - s.tSaut;
+      if (!s.tenu) s.lache = true;
+      const plane = !s.lache && ts >= RH.seuil && ts < RH.tenue;                // bouton tenu : le saut s'allonge
+      if (plane) s.grand = true;
+      s.vy -= (plane ? RH.gTenu : RH.g) * HA_PAS; s.y += s.vy * HA_PAS;
+      if (s.y <= 0) { s.y = 0; s.vy = 0; s.sol = true; }
+    }
+    let o = s.file[s.suivant];
+    while (o && o.x + o.w < s.x - HA_DEMI) { if (!o.touche) s.francs++; o = s.file[++s.suivant]; }
+    if (!o || o.touche) return;
+    const d = o.sol ? 0 : HA_DEMI;
+    if (o.x < s.x + d && o.x + o.w > s.x - d && (s.y < o.h || (o.bas && s.y + HA_TAILLE > o.bas))) {
+      o.touche = true; o.tete = !(s.y < o.h); s.dernier = o; s.chutes++; s.tChute = s.t; s.arret = RH.chute; s.elan = 0; s.v = 0; s.y = 0; s.vy = 0; s.sol = true; s.demande = -1;
+    }
+  }
+  function pasHaies(s, dt, duree) { s.acc = (s.acc || 0) + dt; while (s.acc >= HA_PAS && !s.fini) { s.acc -= HA_PAS; unPasHaies(s, duree); } }
+  const metresHaies = s => s.x / HA_M;
+  // La note suit l'allure moyenne (mètres par seconde) : RH.base pour 0, puis un point par tranche de RH.palier.
+  const noteHaies = (s, duree) => borne(Math.floor((metresHaies(s) / duree - RH.base) / RH.palier + 1e-9), 0, 10);
+  const brutHaies = s => Math.round(s.x / HA_M * 10);
+
+  // Le dessin et les commandes. Le coureur reste à HA_XJ et le couloir défile ; en mouvement réduit, le décor ne défile pas
+  // (mur et sol unis), le coureur ne s'agite pas et seuls les obstacles avancent.
+  const HA_H = 330, HA_SOL = 262, HA_XJ = 78, HA_HAUT = 66;
+  const HA_PORTES = ["SAS", "ZAC", "STOCK", "LABO", "VESTIAIRE"];
+  const HA_MOTS = { carton: "Carton renversé !", bidon: "Aïe, le bidon !", chariot: "Chariot percuté !", flaque: "Ça glisse !", portique: "Carton renversé !" };
+  function haies(el, opt) {
+    const duree = opt.duree || 50, { cv, ctx, liberer } = monter(el, HA_H);
+    cv.style.touchAction = "none";
+    cv.setAttribute("aria-label", "Le sprint du couloir. Le préparateur court tout seul : touchez, cliquez ou appuyez sur Espace pour sauter les obstacles. Appui bref : petit saut. Appui maintenu : grand saut.");
+    const media = q => typeof matchMedia === "function" && matchMedia(q).matches, tactile = media("(pointer: coarse)"), calme = media("(prefers-reduced-motion: reduce)");
+    const s = creerHaies(0, duree);
+    if (opt.essai) opt.essai(s);                                                                       // pour le banc d'essai : l'état du jeu
+    let clos = false, minuterie = 0;
+    const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } appuiHaies(s, true); };
+    const lache = () => appuiHaies(s, false);
+    const clavier = (e, v) => {
+      if (e.key !== " " && e.key !== "Spacebar" && e.key !== "ArrowUp") return;
+      if (v && (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(e.target && e.target.tagName || ""))) return;
+      if (v) { e.preventDefault(); if (e.repeat) return; }
+      appuiHaies(s, v);
+    };
+    const enfonce = e => clavier(e, true), leve = e => clavier(e, false), menu = e => e.preventDefault();
+    cv.addEventListener("pointerdown", appui); cv.addEventListener("contextmenu", menu);
+    window.addEventListener("pointerup", lache); window.addEventListener("pointercancel", lache);
+    window.addEventListener("keydown", enfonce); window.addEventListener("keyup", leve); window.addEventListener("blur", lache);
+    const retirer = () => {
+      cv.removeEventListener("pointerdown", appui); cv.removeEventListener("contextmenu", menu);
+      window.removeEventListener("pointerup", lache); window.removeEventListener("pointercancel", lache);
+      window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
+    };
+    const boite = (x, y, w, h, r, coul) => { ctx.fillStyle = coul; ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); ctx.stroke(); };
+    const pastille = (t, x, y, coul) => { ctx.font = "800 9px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; const w = ctx.measureText(t).width + 14; ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(x - w / 2, y - 8, w, 16, 8); ctx.fill(); texte(ctx, t, x, y + 0.5, 9, coul || Y); };
+    function decor(cam) {
+      ctx.fillStyle = "#EDEAF6"; ctx.fillRect(0, 39, W, HA_SOL - 39);                                  // le mur
+      ctx.fillStyle = "#D9D2EE"; ctx.fillRect(0, 39, W, HA_HAUT - 39);                                  // le faux plafond
+      ctx.fillStyle = "rgba(185,166,240,.32)"; ctx.fillRect(0, HA_SOL - 44, W, 44);                     // le soubassement
+      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(0, HA_SOL, W, HA_H - HA_SOL);                             // le sol
+      if (!calme) {
+        ctx.strokeStyle = "rgba(38,7,109,.1)"; ctx.lineWidth = 2;                                       // les joints du sol
+        for (let x = -((cam % 60) + 60) % 60; x < W + 40; x += 60) { ctx.beginPath(); ctx.moveTo(x, HA_SOL); ctx.lineTo(x - 26, HA_H); ctx.stroke(); }
+        for (let i = Math.floor((cam - 80) / 190); i * 190 < cam + W; i++) { trait(ctx, 2); boite(i * 190 + 40 - cam, 47, 62, 9, 4, C); }   // les néons
+        for (let i = Math.max(0, Math.floor((cam - 380) / 560)); i * 560 + 300 < cam + W; i++) {       // les portes
+          const x = i * 560 + 300 - cam;
+          trait(ctx, 2.6); boite(x, HA_SOL - 120, 64, 120, [6, 6, 0, 0], i % 2 ? P : B);
+          boite(x + 20, HA_SOL - 98, 24, 24, 12, C); ctx.fillStyle = N; ctx.fillRect(x + 52, HA_SOL - 62, 5, 14);
+          pastille(HA_PORTES[i % HA_PORTES.length], x + 32, HA_SOL - 132, C);
+        }
+        for (let i = Math.max(1, Math.floor(cam / (50 * HA_M))); i * 50 * HA_M < cam + W + 40; i++) {   // un repère tous les 50 m
+          const x = i * 50 * HA_M - cam;
+          ctx.strokeStyle = "rgba(38,7,109,.35)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, HA_SOL + 4); ctx.lineTo(x - 22, HA_H - 6); ctx.stroke();
+          texte(ctx, i * 50 + " m", x + 6, HA_SOL + 16, 11, "rgba(38,7,109,.5)", "left");
+        }
+      }
+      ctx.strokeStyle = "rgba(38,7,109,.25)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, HA_SOL - 44); ctx.lineTo(W, HA_SOL - 44); ctx.moveTo(0, HA_HAUT); ctx.lineTo(W, HA_HAUT); ctx.stroke();
+      trait(ctx, 3); ctx.beginPath(); ctx.moveTo(0, HA_SOL); ctx.lineTo(W, HA_SOL); ctx.stroke();
+    }
+    function carton(x, w, h) {
+      boite(x, HA_SOL - h, w, h, 2, "#E0B77A");
+      ctx.fillStyle = C; ctx.fillRect(x + w / 2 - 3, HA_SOL - h + 1.2, 6, h - 2.4);
+      ctx.fillStyle = N; ctx.fillRect(x + 3, HA_SOL - 8, 6, 2); ctx.fillRect(x + 3, HA_SOL - 5, 4, 2);
+    }
+    function obstacle(o, x) {
+      const renverse = o.touche && !o.tete, k = o.touche ? Math.min(1, (s.t - o.quand) / 0.2) : 0;
+      trait(ctx, 2.4);
+      if (o.k === "flaque") {
+        ctx.fillStyle = "rgba(143,199,232,.9)"; ctx.beginPath(); ctx.ellipse(x + o.w / 2, HA_SOL + 7, o.w / 2, 6, 0, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = C; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + 16, HA_SOL + 5); ctx.lineTo(x + 34, HA_SOL + 5); ctx.moveTo(x + 46, HA_SOL + 9); ctx.lineTo(x + 60, HA_SOL + 9); ctx.stroke();
+        return;
+      }
+      if (o.bas) {                                                                                     // le rideau du sas, pendu au plafond
+        const y = HA_SOL - o.bas - 3, balance = o.tete && !calme ? Math.sin((s.t - o.quand) * 14) * Math.exp(-(s.t - o.quand) * 3) * 0.12 : 0;
+        ctx.save(); ctx.translate(x + o.w / 2, HA_HAUT); ctx.rotate(balance);
+        ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(-16, y - 26 - HA_HAUT); ctx.moveTo(16, 0); ctx.lineTo(16, y - 26 - HA_HAUT); ctx.stroke();
+        boite(-24, y - 26 - HA_HAUT, 48, 26, 4, Y);
+        texte(ctx, "SAS", 0, y - 15 - HA_HAUT, 11, N);
+        ctx.fillStyle = N; for (let i = -20; i < 20; i += 10) { ctx.beginPath(); ctx.moveTo(i, y - HA_HAUT - 1); ctx.lineTo(i + 5, y - HA_HAUT - 1); ctx.lineTo(i + 8, y - HA_HAUT - 6); ctx.lineTo(i + 3, y - HA_HAUT - 6); ctx.fill(); }
+        ctx.restore();
+      }
+      ctx.save();
+      if (renverse) { ctx.translate(x + o.w + (o.k === "chariot" ? 16 * k : 6 * k), HA_SOL); ctx.rotate(o.k === "chariot" ? 0.07 * k : 0.6 * k); ctx.translate(-x - o.w, -HA_SOL); }
+      if (o.k === "carton" || o.k === "portique") carton(x, o.w, o.h);
+      else if (o.k === "bidon") {
+        ctx.fillStyle = N; ctx.fillRect(x + 3, HA_SOL - o.h, 8, 6);
+        boite(x, HA_SOL - o.h + 5, o.w, o.h - 5, 5, B);
+        trait(ctx, 2); boite(x + 4, HA_SOL - o.h + 12, o.w - 8, 9, 2, C);
+        ctx.fillStyle = O; ctx.beginPath(); ctx.arc(x + o.w / 2, HA_SOL - o.h + 17, 2.4, 0, 6.3); ctx.fill();
+      } else {                                                                                         // le chariot et ses bacs
+        ctx.beginPath(); ctx.moveTo(x + 4, HA_SOL - 10); ctx.lineTo(x + 4, HA_SOL - o.h + 1); ctx.lineTo(x + 10, HA_SOL - o.h + 1); ctx.stroke();
+        boite(x + 12, HA_SOL - 25, 17, 13, 2, P); boite(x + 31, HA_SOL - 31, 19, 19, 2, G); boite(x + 14, HA_SOL - o.h + 1, 14, 12, 2, O);
+        boite(x + 2, HA_SOL - 13, o.w - 4, 5, 2, V);
+        ctx.fillStyle = N; ctx.beginPath(); ctx.arc(x + 10, HA_SOL - 4, 4, 0, 6.3); ctx.arc(x + o.w - 10, HA_SOL - 4, 4, 0, 6.3); ctx.fill();
+      }
+      ctx.restore();
+    }
+    // Le préparateur en tenue (charlotte, masque), sa caisse de transport à bout de bras.
+    function coureur() {
+      const tombe = s.arret > 0, k = tombe ? (calme ? 1 : Math.min(1, (s.t - s.tChute) / 0.16)) : 0, ph = s.x / 13, vif = s.sol && !tombe && !calme;
+      ctx.fillStyle = "rgba(38,7,109,.16)"; ctx.beginPath(); ctx.ellipse(HA_XJ + (tombe ? 20 * k : 0), HA_SOL + 3, 13 - Math.min(6, s.y / 14), 3.5, 0, 0, 6.3); ctx.fill();
+      ctx.save(); ctx.translate(HA_XJ, HA_SOL - s.y); ctx.rotate(1.3 * k);
+      ctx.strokeStyle = N; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      for (let i = 0; i < 2; i++) {                                                                    // les jambes
+        const a = ph + i * Math.PI, fx = !s.sol ? (i ? 9 : -8) : vif ? Math.sin(a) * 9 : (i ? 6 : -6), fy = !s.sol ? (i ? -9 : -5) : vif ? -Math.max(0, Math.cos(a)) * 6 : 0;
+        ctx.beginPath(); ctx.moveTo(0, -17); ctx.lineTo(fx, fy - 2.5); ctx.lineTo(fx + 4, fy - 2.5); ctx.stroke();
+      }
+      ctx.translate(0, vif ? -Math.abs(Math.sin(ph)) * 2 : 0);
+      trait(ctx, 2.4);
+      boite(-8, -33, 16, 19, 5, C);                                                                    // la tenue
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-1, -28); ctx.lineTo(9, -23); ctx.stroke();
+      trait(ctx, 2); boite(7, -30, 15, 12, 3, O); ctx.fillStyle = C; ctx.fillRect(12.5, -27, 4, 6); ctx.fillRect(11.5, -26, 6, 4);   // la caisse
+      trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(1, -38.5, 6, 0, 6.3); ctx.fill(); ctx.stroke();                  // la tête
+      ctx.fillStyle = V; ctx.beginPath(); ctx.arc(0.5, -40, 7.2, Math.PI * 0.95, Math.PI * 2.05); ctx.closePath(); ctx.fill(); ctx.stroke();  // la charlotte
+      trait(ctx, 1.6); boite(3, -38.5, 5, 5, 1.5, B);                                                  // le masque
+      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(4.4, -40, 1.1, 0, 6.3); ctx.fill();
+      ctx.restore();
+      if (tombe && !calme) for (let i = 0; i < 3; i++) { const a = s.t * 7 + i * 2.1; texte(ctx, "✦", HA_XJ + 38 + Math.cos(a) * 13, HA_SOL - 34 + Math.sin(a) * 6, 12, O); }
+      if (!calme && !tombe && s.elan > 55) {                                                           // les traits de vitesse
+        ctx.strokeStyle = "rgba(38,7,109," + (0.1 + 0.25 * (s.elan - 55) / 40) + ")"; ctx.lineWidth = 2;
+        for (let i = 0; i < 3; i++) { const y = HA_SOL - s.y - 12 - i * 11, l = 10 + ((s.t * 9 + i * 1.7) % 1) * 14; ctx.beginPath(); ctx.moveTo(HA_XJ - 16 - l, y); ctx.lineTo(HA_XJ - 16, y); ctx.stroke(); }
+      }
+    }
+    function dessiner() {
+      const cam = s.x - HA_XJ, m = Math.floor(metresHaies(s)), n = noteHaies(s, duree);
+      decor(cam);
+      for (let i = Math.max(0, s.suivant - 2); i < s.file.length; i++) {
+        const o = s.file[i], x = o.x - cam;
+        if (x > W + 30) break;
+        if (o.touche && o.quand === undefined) o.quand = s.t;
+        obstacle(o, x);
+        if (o.aide && !o.touche && x + o.w > HA_XJ) pastille(o.bas ? "SAUT BREF" : "MAINTENIR", x + o.w / 2, o.bas ? HA_SOL - o.bas - 40 : HA_SOL - 104);
+      }
+      coureur();
+      ctx.fillStyle = "rgba(38,7,109,.5)"; texte(ctx, "ÉLAN", 10, HA_H - 12, 9, "rgba(38,7,109,.6)", "left");   // la jauge d'élan
+      ctx.fillStyle = "rgba(38,7,109,.15)"; ctx.beginPath(); ctx.roundRect(40, HA_H - 16, 70, 8, 4); ctx.fill();
+      ctx.fillStyle = s.arret > 0 ? R : G; ctx.beginPath(); ctx.roundRect(40, HA_H - 16, 4 + 66 * s.elan / (RH.vmax - RH.v0), 8, 4); ctx.fill();
+      if (s.t < 5.5 && !clos) {
+        ctx.globalAlpha = Math.min(1, 5.5 - s.t) * 0.92;
+        ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(14, 282, 332, 26, 13); ctx.fill();
+        texte(ctx, tactile ? "Touchez : petit saut · maintenez : grand saut" : "Espace ou clic : petit saut · maintenu : grand saut", 180, 295.5, 12, Y);
+        ctx.globalAlpha = 1;
+      }
+      bandeau(ctx, m + " m · " + s.chutes + (s.chutes > 1 ? " chutes" : " chute") + " · " + n + "/10", duree - s.t, duree);
+      const cent = Math.floor(m / 100);
+      if (!clos && s.arret > 0 && s.dernier) pastilleGrande(s.dernier.tete ? "Attention la tête !" : HA_MOTS[s.dernier.k], P);
+      else if (!clos && cent > 0 && metresHaies(s) - cent * 100 < 9) pastilleGrande(cent * 100 + " m !", Y);
+      if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 96, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 136, 40, Y); texte(ctx, m + " m · " + s.francs + " obstacles franchis", 180, 178, 16, C); }
+    }
+    function pastilleGrande(t, coul) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(80, 78, 200, 34, 14); ctx.fill(); texte(ctx, t, 180, 96, 16, coul); }
+    const arret = boucle(dt => {
+      if (!clos) {
+        pasHaies(s, dt, duree);
+        if (s.fini) {
+          clos = true;
+          const n = noteHaies(s, duree), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
+          const bilan = Math.floor(metresHaies(s)) + " m parcourus en " + duree + " s, " + pl(s.francs, "obstacle franchi", "obstacles franchis") + ", " + pl(s.chutes, "chute", "chutes") + " : " + n + " sur 10 (la note suit la distance).";
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, brutHaies(s)); }, 1300);
+        }
+      }
+      dessiner();
+    });
+    cv.focus({ preventScroll: true });
+    return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
+  }
+  api.haies = haies;
+  Object.assign(api._coeur, { REGL_HAIES: RH, HA_TYPES, HA_M, HA_DEMI, HA_TAILLE, parcoursHaies, creerHaies, appuiHaies, pasHaies, noteHaies, metresHaies, brutHaies });
   /* ----- Fin [haies] ----- */
 
   /* ----- Repère [etageres] : le jeu de plateformes ----- */
