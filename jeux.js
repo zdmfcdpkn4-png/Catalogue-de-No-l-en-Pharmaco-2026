@@ -69,7 +69,7 @@
   /* ================= Le tennis de paillasse : le cœur ================= */
   // Réglages étalonnés par simulation (node outils/etalon-tennis.js) : ils fixent la difficulté.
   const RT = { v0: 300, vmax: 860, gain: 1.12, angle: 55, service: 22, demi: 34, demiA: 30, main: 1100, clavier: 430, robot: 210, erreur: 18, pause: 0.9 };
-  const T_PAS = 1 / 240, T_RB = 8, T_EP = 6, T_G = 14, T_D = 346, T_YJ = 436, T_YA = 86, T_HAUT = 39;
+  const T_PAS = 1 / 240, T_RB = 11, T_EP = 6, T_G = 14, T_D = 346, T_YJ = 436, T_YA = 86, T_HAUT = 39;
   const borne = (v, a, b) => Math.max(a, Math.min(b, v));
   // Où la balle b coupera-t-elle la ligne y, rebonds sur les bords compris ?
   function viseTennis(b, y) {
@@ -113,7 +113,7 @@
       }
       return;
     }
-    b.x += b.vx * dt; b.y += b.vy * dt; b.tour += dt * b.vx / 30;
+    b.x += b.vx * dt; b.y += b.vy * dt; b.tour += dt * b.vx / 110;
     if (b.x < T_G + T_RB) { b.x = 2 * (T_G + T_RB) - b.x; b.vx = Math.abs(b.vx); }
     else if (b.x > T_D - T_RB) { b.x = 2 * (T_D - T_RB) - b.x; b.vx = -Math.abs(b.vx); }
     // Zone de frappe plus épaisse que le plus grand pas de la balle : elle ne peut pas traverser une raquette.
@@ -535,6 +535,8 @@
     cv.setAttribute("aria-label", "Le tennis de paillasse. Glissez le doigt, bougez la souris ou utilisez les flèches gauche et droite pour déplacer la spatule et renvoyer le comprimé.");
     const s = creerTennis(), tactile = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
     let clos = false, minuterie = 0, gauche = false, droite = false;
+    // La balle porte le logo de l'unité ; tant que l'image n'est pas là (ou si elle manque), c'est un comprimé sécable.
+    const logo = new Image(); logo.src = opt.logo || "img/logo-pharmacotechnie.webp";
     const viser = e => { e.preventDefault(); s.cible = borne(xDe(e), T_G + RT.demi, T_D - RT.demi); };
     const appui = e => { cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } viser(e); };
     const glisse = e => { if (e.pointerType === "mouse" || e.buttons || e.pressure) viser(e); };
@@ -572,6 +574,9 @@
       ctx.lineWidth = 1.5; ctx.beginPath();
       for (let i = 1; i * 8 < T_D - T_G; i++) { ctx.moveTo(T_G + i * 8, 255); ctx.lineTo(T_G + i * 8, i % 5 ? 259 : 263); }
       ctx.stroke();
+      // Le score, sur le côté du terrain : celui de l'automate au-dessus de la réglette, le vôtre en dessous.
+      texte(ctx, "AUTOMATE", T_G + 8, 222, 9, "rgba(38,7,109,.5)", "left"); texte(ctx, String(s.contre), T_G + 8, 239, 22, "rgba(38,7,109,.75)", "left");
+      texte(ctx, String(s.pour), T_G + 8, 284, 22, "rgba(38,7,109,.75)", "left"); texte(ctx, "VOUS", T_G + 8, 301, 9, "rgba(38,7,109,.5)", "left");
       // L'automate : un chariot sur son rail, qui tient sa spatule.
       trait(ctx, 3); ctx.beginPath(); ctx.moveTo(T_G, T_YA - 24); ctx.lineTo(T_D, T_YA - 24); ctx.stroke();
       const vifA = s.t - s.tape[1] < 0.12, vifJ = s.t - s.tape[0] < 0.12;
@@ -584,7 +589,8 @@
         const b = s.balle;
         ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.tour);
         trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, T_RB, 0, 6.3); ctx.fill(); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-T_RB + 3, 0); ctx.lineTo(T_RB - 3, 0); ctx.stroke();
+        if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, -T_RB, -T_RB, T_RB * 2, T_RB * 2);
+        else { ctx.beginPath(); ctx.moveTo(-T_RB + 3, 0); ctx.lineTo(T_RB - 3, 0); ctx.stroke(); }
         ctx.restore();
       } else if (!clos && s.t - s.msgT >= 1) texte(ctx, "Nouveau comprimé…", 180, 300, 14, "rgba(38,7,109,.6)");
       if (s.t < 4.5 && !clos) {
@@ -595,7 +601,7 @@
       }
       const n = noteTennis(s);
       bandeau(ctx, "Vous " + s.pour + " · Automate " + s.contre + " · " + n + "/10", duree - s.t, duree);
-      if (!clos && s.t - s.msgT < 1) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(60, 196, 240, 40, 14); ctx.fill(); texte(ctx, s.msg, 180, 217, 17, s.msg.endsWith("!") ? Y : P); }
+      if (!clos && s.t - s.msgT < 1) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(60, 140, 240, 40, 14); ctx.fill(); texte(ctx, s.msg, 180, 161, 17, s.msg.endsWith("!") ? Y : P); }
       if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 180, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 220, 40, Y); texte(ctx, s.pour + " gagnés sur " + (s.pour + s.contre) + " joués", 180, 262, 16, C); }
     }
     const arret = boucle(dt => {
