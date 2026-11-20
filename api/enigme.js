@@ -1,5 +1,7 @@
-// La grande énigme de Noël : 25 portes, une par jour du 1er au 25 décembre 2026 (heure de Paris).
-// Chaque porte reste ouverte son jour, le lendemain et le surlendemain. Une seule réponse par prénom et par porte.
+// Pharmacogames de Noël (ex-grande énigme) : 25 portes, une par jour du 1er au 25 décembre 2026 (heure de Paris).
+// Chaque porte reste ouverte son jour, le lendemain et le surlendemain.
+// Questions : l'énoncé ne sort du serveur qu'au lancement du chrono, et la réponse doit arriver avant sa fin.
+// Une seule tentative. Jeux d'adresse : le navigateur renvoie une note de 0 à 10, deux tentatives, la meilleure compte.
 // La bonne réponse et les points ne sortent du serveur qu'à la clôture de la porte ; le classement suit.
 // Tout passe par le code d'équipe (VOTE_CODE). Le code d'administration (ADMIN_CODE) déchiffre la banque
 // de questions, ouvre la relecture des 25 portes et permet de retirer un joueur.
@@ -10,6 +12,8 @@ const COFFRE = require('./_banque.js');
 const FILE = 'enigme.json';
 const MAX_JOUEURS = 300;
 const DELAI = 2; // jours d'ouverture après le jour de la porte
+const GRACE = 4; // secondes tolérées après la fin du chrono d'une question, pour le trajet réseau
+const JEU_MIN = 3, JEU_MARGE = 45; // une note de jeu n'est acceptée ni trop tôt ni trop longtemps après le départ
 const JOUR1 = Date.UTC(2026, 11, 1);
 const PRENOM = /^\p{L}+(?:[-']\p{L}+)*$/u;
 
@@ -44,8 +48,17 @@ const rangDe = iso => { const [a, m, j] = iso.split('-').map(Number); return Mat
 const dateDe = n => new Date(JOUR1 + (n - 1) * 864e5).toISOString().slice(0, 10);
 const etatDe = (n, jour) => (jour < n ? 'avenir' : jour <= n + DELAI ? 'ouverte' : 'close');
 
-// Barème : 10 points pour le bon flacon ; au dosage, 10 points pile sur la cible, 1 point de moins par tranche de 2 d'écart.
-const points = (q, v) => (q.type === 'qcm' ? (v === q.bonne ? 10 : 0) : Math.max(0, 10 - Math.ceil(Math.abs(v - q.bonne) / 2)));
+// Ce que le serveur garde par joueur et par porte.
+//   question : { d: départ du chrono, v: réponse, t: heure de la réponse }   (v absent : chrono lancé, pas de réponse)
+//   jeu      : { e: [ { d: départ, k: jeton de la tentative, s: note de 0 à 10, t: heure de la note } ] }
+// Barème : 10 points pour le bon flacon ; au dosage, 10 points pile sur la cible, 1 point de moins par tranche de 2 d'écart ;
+// au jeu d'adresse, la meilleure note des tentatives.
+function points(q, r) {
+  if (!r) return 0;
+  if (q.type === 'jeu') return Math.max(0, ...r.e.map(a => (a.s === undefined ? 0 : a.s)));
+  if (r.v === undefined) return 0;
+  return q.type === 'qcm' ? (r.v === q.bonne ? 10 : 0) : Math.max(0, 10 - Math.ceil(Math.abs(r.v - q.bonne) / 2));
+}
 
 async function lire() {
   const r = await get(FILE, { access: 'private', useCache: false });
@@ -79,7 +92,7 @@ function classement(B, joueurs, jour) {
   const closes = B.portes.filter(q => etatDe(q.n, jour) === 'close');
   const L = Object.values(joueurs).map(j => {
     let pts = 0;
-    for (const q of closes) if (j.r[q.n]) pts += points(q, j.r[q.n].v);
+    for (const q of closes) pts += points(q, j.r[q.n]);
     return { p: j.p, pts, rep: Object.keys(j.r).length };
   }).sort((a, b) => b.pts - a.pts || a.p.localeCompare(b.p, 'fr'));
   let rang = 0;
@@ -87,24 +100,41 @@ function classement(B, joueurs, jour) {
   return L;
 }
 
-// Ce que le joueur a le droit de voir d'une porte : rien avant son jour, la solution seulement après la clôture.
-function vue(q, etat, rep, tout) {
+// Ce que le joueur a le droit de voir d'une porte : rien avant son jour ; l'énoncé d'une question seulement une fois
+// son chrono lancé ; la solution seulement après la clôture. La règle d'un jeu d'adresse se lit avant de jouer.
+function vue(q, etat, r, tout, maintenant) {
   const o = { n: q.n, etat, ouvre: dateDe(q.n), ferme: dateDe(q.n + DELAI) };
   if (etat === 'avenir' && !tout) return o;
-  Object.assign(o, { type: q.type, titre: q.titre, question: q.question, ill: q.ill });
-  if (q.type === 'qcm') o.options = q.options;
-  else { o.unite = q.unite; if (q.prefixe) o.prefixe = q.prefixe; }
-  if (rep) o.rep = rep.v;
-  if (etat === 'close' || tout) {
+  const clos = etat === 'close' || tout;
+  Object.assign(o, { type: q.type, titre: q.titre, duree: q.duree, essais: q.type === 'jeu' ? q.essais : 1 });
+  if (q.type === 'jeu') {
+    Object.assign(o, { jeu: q.jeu, question: q.question, ill: q.ill });
+    if (r) { o.scores = r.e.map(a => (a.s === undefined ? null : a.s)); o.meilleur = points(q, r); }
+    if (clos) { Object.assign(o, { explication: q.explication, source: q.source }); if (r && etat === 'close') o.pts = points(q, r); }
+    return o;
+  }
+  if (r || clos) {
+    Object.assign(o, { question: q.question, ill: q.ill });
+    if (q.type === 'qcm') o.options = q.options;
+    else { o.unite = q.unite; if (q.prefixe) o.prefixe = q.prefixe; }
+  }
+  if (r) {
+    if (r.v !== undefined) o.rep = r.v;
+    else {
+      const reste = q.duree - (maintenant - r.d) / 1000;
+      if (reste > 0 && etat === 'ouverte') o.reste = Math.round(reste * 10) / 10; else o.hors = true;
+    }
+  }
+  if (clos) {
     Object.assign(o, { bonne: q.bonne, explication: q.explication, source: q.source });
-    if (rep && etat === 'close') o.pts = points(q, rep.v);
+    if (r && etat === 'close') o.pts = points(q, r);
   }
   return o;
 }
 
-function etat(B, joueurs, cle, jour) {
+function etat(B, joueurs, cle, jour, maintenant) {
   const j = cle ? joueurs[cle] : null;
-  const portes = B.portes.map(q => vue(q, etatDe(q.n, jour), j && j.r[q.n]));
+  const portes = B.portes.map(q => vue(q, etatDe(q.n, jour), j && j.r[q.n], false, maintenant));
   return {
     jour,
     prenom: j ? j.p : undefined,
@@ -131,7 +161,8 @@ async function handler(req, res) {
 
   const B = banque();
   // L'administration peut se placer à une autre date, pour essayer le jeu avant décembre.
-  const jour = rangDe(admin && typeof b.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.date) ? b.date : PARIS.format(handler.maintenant()));
+  const instant = handler.maintenant(), maintenant = instant.getTime();
+  const jour = rangDe(admin && typeof b.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.date) ? b.date : PARIS.format(instant));
 
   try {
     if (admin && typeof b.retirer === 'string') {
@@ -145,32 +176,71 @@ async function handler(req, res) {
     // Code d'administration seul : relecture des 25 portes, solutions comprises. Rien ne s'enregistre.
     if (!equipe) {
       const { joueurs } = await lire();
-      return res.status(200).json({ relecture: true, jour, portes: B.portes.map(q => vue(q, etatDe(q.n, jour), null, true)), total: 0, classement: classement(B, joueurs, jour) });
+      return res.status(200).json({ relecture: true, jour, portes: B.portes.map(q => vue(q, etatDe(q.n, jour), null, true, maintenant)), total: 0, classement: classement(B, joueurs, jour) });
     }
 
     // Sans prénom : le calendrier et le classement, sans fiche personnelle.
-    if (b.prenom === undefined) return res.status(200).json(etat(B, (await lire()).joueurs, null, jour));
+    if (b.prenom === undefined) return res.status(200).json(etat(B, (await lire()).joueurs, null, jour, maintenant));
     const prenom = typeof b.prenom === 'string' ? b.prenom.trim().replace(/’/g, "'") : '';
     if (prenom.length < 2 || prenom.length > 24 || !PRENOM.test(prenom)) return res.status(400).json({ error: 'prenom' });
     const cle = norm(prenom);
-    if (b.n === undefined) return res.status(200).json(etat(B, (await lire()).joueurs, cle, jour));
+    if (b.n === undefined) return res.status(200).json(etat(B, (await lire()).joueurs, cle, jour, maintenant));
 
-    // Réponse à une porte.
+    // Action sur une porte ouverte.
     const q = Number.isInteger(b.n) ? B.portes[b.n - 1] : null;
     if (!q) return res.status(400).json({ error: 'porte' });
     const e = etatDe(q.n, jour);
     if (e !== 'ouverte') return res.status(403).json({ error: e === 'avenir' ? 'scellee' : 'close' });
-    const v = b.reponse;
-    if (!Number.isInteger(v) || v < 0 || v > (q.type === 'qcm' ? q.options.length - 1 : 100)) return res.status(400).json({ error: 'reponse' });
+    const vu = J => etat(B, J, cle, jour, maintenant);
+    const refus = (code, error) => ({ fin: J => ({ code, corps: { error, ...vu(J) } }) });
+    let sortie;
 
-    const sortie = await modifier(joueurs => {
-      const j = joueurs[cle];
-      if (j && j.r[q.n]) return { fin: J => ({ code: 409, corps: { error: 'deja', ...etat(B, J, cle, jour) } }) };
-      if (!j && Object.keys(joueurs).length >= MAX_JOUEURS) return { fin: () => ({ code: 403, corps: { error: 'complet' } }) };
-      if (!j) joueurs[cle] = { p: prenom, t: Date.now(), r: {} };
-      joueurs[cle].r[q.n] = { v, t: Date.now() };
-      return { ok: J => ({ code: 200, corps: { ok: true, ...etat(B, J, cle, jour) } }) };
-    });
+    if (b.action === 'ouvrir') {
+      // Lancement du chrono d'une question, ou d'une tentative de jeu.
+      let jeton;
+      sortie = await modifier(joueurs => {
+        if (!joueurs[cle]) {
+          if (Object.keys(joueurs).length >= MAX_JOUEURS) return { fin: () => ({ code: 403, corps: { error: 'complet' } }) };
+          joueurs[cle] = { p: prenom, t: maintenant, r: {} };
+        }
+        const j = joueurs[cle];
+        if (q.type === 'jeu') {
+          const r = j.r[q.n] || (j.r[q.n] = { e: [] });
+          if (r.e.length >= q.essais) return refus(409, 'essais');
+          jeton = crypto.randomBytes(8).toString('hex');
+          r.e.push({ d: maintenant, k: jeton });
+        } else {
+          if (j.r[q.n]) return { fin: J => ({ code: 200, corps: { ok: true, dejaLance: true, ...vu(J) } }) }; // chrono déjà parti : il continue
+          j.r[q.n] = { d: maintenant };
+        }
+        return { ok: J => ({ code: 200, corps: { ok: true, jeton, ...vu(J) } }) };
+      });
+    } else if (q.type === 'jeu') {
+      // Note d'une tentative de jeu, calculée par le navigateur.
+      if (!Number.isInteger(b.score) || b.score < 0 || b.score > 10 || typeof b.jeton !== 'string') return res.status(400).json({ error: 'reponse' });
+      sortie = await modifier(joueurs => {
+        const r = joueurs[cle] && joueurs[cle].r[q.n];
+        const a = r && r.e.find(x => x.k === b.jeton);
+        if (!a) return refus(403, 'nondemarre');
+        if (a.s !== undefined) return refus(409, 'deja');
+        const dt = (maintenant - a.d) / 1000;
+        if (dt < JEU_MIN || dt > q.duree + JEU_MARGE) return refus(403, 'delai');
+        a.s = b.score; a.t = maintenant;
+        return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
+      });
+    } else {
+      // Réponse à une question, chrono en cours.
+      const v = b.reponse;
+      if (!Number.isInteger(v) || v < 0 || v > (q.type === 'qcm' ? q.options.length - 1 : 100)) return res.status(400).json({ error: 'reponse' });
+      sortie = await modifier(joueurs => {
+        const r = joueurs[cle] && joueurs[cle].r[q.n];
+        if (!r) return refus(403, 'nondemarre');
+        if (r.v !== undefined) return refus(409, 'deja');
+        if ((maintenant - r.d) / 1000 > q.duree + GRACE) return refus(403, 'delai');
+        r.v = v; r.t = maintenant;
+        return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
+      });
+    }
     return res.status(sortie.code).json(sortie.corps);
   } catch (e) {
     console.error('enigme', e);

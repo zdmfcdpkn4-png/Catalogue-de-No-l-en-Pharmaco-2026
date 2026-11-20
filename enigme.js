@@ -2,7 +2,8 @@
    À ne pas confondre avec le vote du jeu préféré, qui vit dans vote.js.
    Propre au site Vercel : ce module parle à /api/enigme (prénom et code d'équipe exigés).
    Une porte par jour du 1er au 25 décembre, ouverte trois jours ; les questions, les solutions et les points
-   viennent du serveur, rien n'est écrit ici. Sans serveur, par exemple dans l'artefact claude.ai, rien ne s'affiche. */
+   viennent du serveur, rien n'est écrit ici. L'énoncé d'une question n'arrive qu'avec son chrono ; les jeux
+   d'adresse (jeux.js, chargé à la demande) renvoient une note de 0 à 10. Sans serveur, par exemple dans l'artefact claude.ai, rien ne s'affiche. */
 (() => {
   const API = "/api/enigme", KEY = "pharmacotechnie-enigme-2026", KEY_VOTE = "pharmacotechnie-vote-2026";
   const q = s => document.querySelector(s);
@@ -15,7 +16,9 @@
   try { mem = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { mem = {}; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} };
   // E : dernier état reçu du serveur ; choix : porte affichée ; brouillon : réponse en cours de saisie.
+  // echeance : fin du chrono de chaque question lancée, à l'horloge de l'appareil ; enJeu : arrêt du jeu en cours.
   let E = null, choix = 0, brouillon = null, aConfirmer = false, relecture = "", occupe = false, sec;
+  let echeance = {}, tic = 0, enJeu = null;
 
   const call = async body => {
     const r = await fetch(API, { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -35,12 +38,12 @@
 
   const NOTICE = `<details class="eg-panel eg-notice" id="egNotice" open><summary>Notice des Pharmacogames : à lire avant la première prise</summary>
 <ol class="eg-rules">
-<li><b>Composition.</b> 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, une question illustrée sur le jeu de société.</li>
-<li><b>Formes disponibles.</b> Quatre flacons, un seul bon : 10 points. Ou un dosage : une valeur à estimer entre 0 et 100.</li>
-<li><b>Posologie du dosage.</b> Pile sur la valeur cible : 10 points. Chaque tranche de 2 d'écart en retire 1. Le plus proche marque le plus.</li>
+<li><b>Composition.</b> 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre : des questions illustrées sur le jeu de société, et deux vrais jeux d'adresse, à la première et à la dernière porte.</li>
+<li><b>Chrono.</b> L'énoncé ne s'affiche qu'au lancement du chrono : 30 ou 40 secondes selon la porte, annoncées avant le départ. Une seule tentative, et pas le temps d'aller chercher la réponse ailleurs.</li>
+<li><b>Barème des questions.</b> Le bon flacon : 10 points. Au dosage, entre 0 et 100 : 10 points pile sur la cible, puis 1 de moins par tranche de 2 d'écart. Le plus proche marque le plus.</li>
+<li><b>Jeux d'adresse.</b> Deux tentatives chronométrées, la meilleure compte. La note va de 0 à 10, comme pour une question.</li>
 <li><b>Délai de péremption.</b> Une porte reste ouverte trois jours : le sien, le lendemain et le surlendemain jusqu'à minuit. Les week-ends se rattrapent.</li>
-<li><b>Précautions d'emploi.</b> Une seule prise par porte : la réponse est scellée, sans repentir. Chercher est permis, souffler la réponse au voisin ne l'est pas.</li>
-<li><b>Libération des résultats.</b> Bonne réponse, points et classement sortent à la clôture de la porte. D'ici là, tout reste sous scellé.</li>
+<li><b>Libération des résultats.</b> Bonne réponse, points et classement sortent à la clôture de la porte. D'ici là, tout reste sous scellé, et on ne souffle rien au voisin.</li>
 </ol>
 <p class="eg-fx">Effet indésirable très fréquent : consultation compulsive du classement.</p></details>`;
   const SCEAU = '<svg class="eg-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5l2.2 2 3-.3.7 2.9 2.6 1.5-1.2 2.7 1.2 2.7-2.6 1.5-.7 2.9-3-.3-2.2 2-2.2-2-3 .3-.7-2.9L1.5 13l1.2-2.7L1.5 7.6l2.6-1.5.7-2.9 3 .3z" fill="currentColor"/><path d="M6.4 10.3l2.4 2.4 4.6-4.9" fill="none" stroke="#26076D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -131,6 +134,20 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 .eg-step{flex:0 0 auto;width:44px;height:44px;border:2.5px solid var(--line);border-radius:50%;background:var(--mu);color:#26076D;font:800 1.4rem/1 var(--display);cursor:pointer}
 .eg-slide input{flex:1 1 auto;min-width:0;height:44px;margin:0;accent-color:#EC7739}
 .eg-scale{display:flex;justify-content:space-between;margin:0 54px;font:600 .68rem/1 var(--mono);color:var(--muted)}
+.eg-chrono{display:flex;align-items:center;gap:14px;margin:14px 0 0;padding:12px 14px;background:var(--mu);color:#26076D;border:2.5px solid var(--line);border-radius:14px}
+.eg-chrono b{flex:0 0 auto;display:grid;place-items:center;width:66px;height:66px;border-radius:50%;background:var(--surface);border:3px solid var(--line);font:800 1.2rem/1 var(--display);font-variant-numeric:tabular-nums}
+.eg-chrono span{font-size:.92rem;font-weight:700;line-height:1.35}
+.eg-time{display:flex;align-items:center;gap:10px;margin:12px 0 0}
+.eg-time b{flex:0 0 auto;min-width:3.4em;font:800 1.5rem/1 var(--display);font-variant-numeric:tabular-nums}
+.eg-time span{flex:1 1 auto;height:14px;border:2.5px solid var(--line);border-radius:999px;background:var(--foil-a);overflow:hidden}
+.eg-time i{display:block;height:100%;width:100%;background:var(--ok);transition:width .2s linear}
+.eg-time.fin b{color:var(--off)}.eg-time.fin i{background:var(--off)}
+.eg-ill.jeu{border:0;border-radius:0;background:none;overflow:visible}
+.pj-cv{display:block;margin:0 auto;border:3px solid var(--line);border-radius:14px;box-shadow:4px 4px 0 var(--shadow);touch-action:none;outline-offset:3px}
+.eg-tent{display:grid;gap:6px;margin:12px 0 0;padding:0;list-style:none}
+.eg-tent li{display:flex;justify-content:space-between;gap:10px;padding:7px 12px;background:#fff;border:2.5px solid var(--line);border-radius:12px;font-weight:800}
+.eg-tent li.top{background:var(--tI)}
+.eg-tent span{font:600 .72rem/1.6 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .eg-seal{display:flex;align-items:center;gap:12px;margin:14px 0 0;padding:12px 14px;background:var(--pressed);color:var(--pressed-on);border:2.5px solid var(--line);border-radius:14px}
 .eg-seal .eg-ic{width:34px;height:34px}
 .eg-seal small{display:block;font:600 .68rem/1.2 var(--mono);letter-spacing:.05em;text-transform:uppercase}
@@ -178,7 +195,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     sec.setAttribute("aria-labelledby", "pharmacogames-t");
     sec.innerHTML = '<p class="adv-back"><a class="go" href="#">Retour au catalogue</a></p>'
       + '<div class="adv-head"><h2 id="pharmacogames-t">Pharmacogames <span>de Noël</span></h2>'
-      + '<p class="adv-intro">Le concours de l\'équipe, chacun pour soi : 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, une question sur le jeu de société : quatre flacons au choix, ou une dose à estimer entre 0 et 100. Le plus précis marque le plus de points. Pour élire votre jeu préféré, c\'est au <a href="#vote">Palmarès</a>.</p></div>'
+      + '<p class="adv-intro">Le concours de l\'équipe, chacun pour soi : 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, une question au chrono sur le jeu de société (quatre flacons au choix, ou une dose à estimer entre 0 et 100) ou un vrai jeu d\'adresse. Le plus précis marque le plus de points. Pour élire votre jeu préféré, c\'est au <a href="#vote">Palmarès</a>.</p></div>'
       + NOTICE
       + '<form class="eg-panel eg-gate" id="egGate" novalidate><h3>Entrer dans le calendrier</h3>'
       + '<label for="egPrenom">Votre prénom</label><input id="egPrenom" type="text" autocomplete="given-name" maxlength="24" required>'
@@ -218,6 +235,9 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       if (o) noter(Number(o.dataset.v));
       else if (s) { const r = q("#egRange"); r.value = Math.max(0, Math.min(100, Number(r.value) + Number(s.dataset.d))); noter(Number(r.value)); }
       else if (e.target.closest("#egSend")) envoyer();
+      else if (e.target.closest("#egStart")) lancer();
+      else if (e.target.closest("#egPlay")) jouer(true);
+      else if (e.target.closest("#egTry")) jouer(false);
     });
     q("#egPanel").addEventListener("input", e => { if (e.target.id === "egRange") noter(Number(e.target.value)); });
     q("#egChange").addEventListener("click", sortir);
@@ -231,7 +251,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 
     window.addEventListener("hashchange", view);
     // Retour sur l'onglet resté ouvert : le calendrier se remet à jour, sauf si une réponse est en cours de saisie.
-    document.addEventListener("visibilitychange", () => { if (!document.hidden && !sec.hidden && E && brouillon === null) charger(); });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden && !sec.hidden && E && brouillon === null && !enJeu) charger(); });
     view();
   }
 
@@ -269,6 +289,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   }
 
   function sortir() {
+    if (enJeu) { enJeu(); enJeu = null; }
+    clearInterval(tic); echeance = {};
     relecture = "";
     E = null;
     q("#egBody").hidden = true; q("#egRank").hidden = true; q("#egBanner").hidden = true;
@@ -278,7 +300,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   }
 
   async function charger(msg) {
-    if (occupe) return;
+    if (occupe || enJeu) return;
     occupe = true;
     let r;
     try { r = await call(relecture ? { code: relecture } : { code: mem.code, prenom: mem.prenom }); } catch (e) { r = { status: 0, j: {} }; }
@@ -288,17 +310,24 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     recevoir(r.j, msg);
   }
 
-  // Porte montrée d'office : la plus ancienne encore à répondre, sinon la dernière ouverte, sinon la dernière close.
+  // Une porte ouverte reste « à faire » tant que la question n'a pas reçu de réponse ou qu'il reste une tentative de jeu.
+  const tentatives = p => (p.scores || []).length;
+  const aFaire = p => p.etat === "ouverte" && (p.type === "jeu" ? tentatives(p) < p.essais : p.rep === undefined && !p.hors);
+  // Porte montrée d'office : la plus ancienne encore à faire, sinon la dernière ouverte, sinon la dernière close.
   function parDefaut() {
     if (relecture) return 1;
     const P = E.portes, ouvertes = P.filter(p => p.etat === "ouverte"), closes = P.filter(p => p.etat === "close");
-    const aFaire = ouvertes.find(p => p.rep === undefined);
-    return aFaire ? aFaire.n : ouvertes.length ? ouvertes[ouvertes.length - 1].n : closes.length ? closes[closes.length - 1].n : 0;
+    const f = ouvertes.find(aFaire);
+    return f ? f.n : ouvertes.length ? ouvertes[ouvertes.length - 1].n : closes.length ? closes[closes.length - 1].n : 0;
   }
 
   function recevoir(j, msg, cls) {
     const premier = !E;
     E = j;
+    // Chronos en cours : le serveur donne le temps restant, on le convertit en échéance locale.
+    const vus = {};
+    E.portes.forEach(p => { if (p.reste !== undefined) vus[p.n] = echeance[p.n] || Date.now() + p.reste * 1000; });
+    echeance = vus;
     q("#egGate").hidden = true;
     q("#egBody").hidden = false;
     q("#egRank").hidden = false;
@@ -313,19 +342,30 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   function grille() {
     q("#egGrid").innerHTML = E.portes.map(p => {
       let k, lab, dit;
-      if (relecture) { k = "rl"; lab = p.type === "qcm" ? "QCM" : "Dose"; dit = "relecture"; }
+      if (relecture) { k = "rl"; lab = p.type === "qcm" ? "QCM" : p.type === "jeu" ? "Jeu" : "Dose"; dit = "relecture"; }
       else if (p.etat === "avenir") { k = "av"; lab = CADENAS; dit = "sous scellé jusqu'au " + jour(dt(p.ouvre)); }
-      else if (p.etat === "ouverte") { const f = p.rep !== undefined; k = f ? "sc" : "ou"; lab = f ? SCEAU + "Scellée" : "Ouverte"; dit = f ? "réponse scellée" : "ouverte, à répondre"; }
-      else { const f = p.rep !== undefined; k = f ? "ok" + (p.pts === 10 ? " max" : "") : "ko"; lab = f ? "+" + p.pts : "Manquée"; dit = f ? pl(p.pts, "point", "points") : "manquée"; }
+      else if (p.etat === "ouverte") {
+        if (p.type === "jeu") {
+          const nb = tentatives(p);
+          if (!nb) { k = "ou"; lab = "Ouverte"; dit = "jeu d'adresse ouvert"; }
+          else if (nb < p.essais) { k = "ou"; lab = p.meilleur + "/10"; dit = "note " + p.meilleur + " sur 10, une tentative restante"; }
+          else { k = "sc"; lab = SCEAU + p.meilleur + "/10"; dit = "note scellée, " + p.meilleur + " sur 10"; }
+        } else if (p.rep !== undefined) { k = "sc"; lab = SCEAU + "Scellée"; dit = "réponse scellée"; }
+        else if (p.hors) { k = "ko"; lab = "Hors délai"; dit = "chrono écoulé sans réponse"; }
+        else if (p.reste !== undefined) { k = "ou"; lab = "Chrono"; dit = "chrono en cours"; }
+        else { k = "ou"; lab = "Ouverte"; dit = "ouverte, à faire"; }
+      } else { const f = p.pts !== undefined; k = f ? "ok" + (p.pts === 10 ? " max" : "") : "ko"; lab = f ? "+" + p.pts : "Manquée"; dit = f ? pl(p.pts, "point", "points") : "manquée"; }
       return '<button class="eg-cell ' + k + (p.n === choix ? " sel" : "") + '" type="button" data-n="' + p.n + '" aria-pressed="' + (p.n === choix) + '" aria-label="' + h("Porte " + p.n + " : " + dit) + '">'
         + '<span class="eg-door"><b>' + p.n + "</b><small>" + lab + "</small></span></button>";
     }).join("");
-    const clos = E.portes.filter(p => p.etat === "close").length, att = E.portes.filter(p => p.etat === "ouverte" && p.rep !== undefined).length;
+    const clos = E.portes.filter(p => p.etat === "close").length;
+    const att = E.portes.filter(p => p.etat === "ouverte" && (p.rep !== undefined || tentatives(p) > 0)).length;
     q("#egScore").textContent = relecture ? "25 portes à relire, solutions comprises."
-      : "Total : " + pl(E.total, "point", "points") + " · " + pl(clos, "porte close", "portes closes") + (att ? " · " + pl(att, "réponse scellée en attente", "réponses scellées en attente") : "");
+      : "Total : " + pl(E.total, "point", "points") + " · " + pl(clos, "porte close", "portes closes") + (att ? " · " + pl(att, "résultat scellé en attente", "résultats scellés en attente") : "");
   }
 
   function choisir(n) {
+    if (enJeu) { if (!relecture) return; enJeu(); enJeu = null; } // partie en cours : on ne change pas de porte, sauf en relecture
     choix = n; brouillon = null; aConfirmer = false;
     grille();
     panneau();
@@ -336,18 +376,21 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   const LETTRES = ["A", "B", "C", "D"];
   const flacon = (o, i, tag, cls, note) => "<" + tag + ' class="eg-opt' + (cls ? " " + cls : "") + '"' + (tag === "button" ? ' type="button" data-v="' + i + '" aria-pressed="false"' : "") + "><i>" + LETTRES[i] + "</i>"
     + (o.img ? '<img src="img/' + h(o.img) + '" alt="" loading="lazy">' : "") + "<span>" + fr(o.t) + (note ? "<em>" + note + "</em>" : "") + "</span></" + tag + ">";
+  const forme = p => (p.type === "qcm" ? "quatre flacons" : p.type === "jeu" ? "jeu d'adresse" : "dosage de 0 à 100");
 
   function saisie(p) {
-    const fin = '<p class="eg-hint">Une seule prise par porte : la réponse est définitive. Clôture le ' + jour(dt(p.ferme)) + ' à minuit.</p>'
+    const fin = '<p class="eg-hint">Une seule prise par porte : la réponse est définitive. Si le chrono tombe à zéro, la proposition affichée part telle quelle.</p>'
       + '<button class="go main" type="button" id="egSend" disabled>Sceller ma réponse</button>';
-    if (p.type === "qcm") return '<div class="eg-opts' + (p.options.some(o => o.img) ? " img" : "") + '" role="group" aria-label="Quatre propositions">' + p.options.map((o, i) => flacon(o, i, "button")).join("") + "</div>" + fin;
-    return '<div class="eg-dose"><output class="eg-val" id="egVal" for="egRange">?<small>Réglez la dose</small></output>'
+    const chrono = '<div class="eg-time" id="egTime" role="timer" aria-live="off"><b>' + Math.ceil(p.reste) + ' s</b><span><i></i></span></div>';
+    if (p.type === "qcm") return chrono + '<div class="eg-opts' + (p.options.some(o => o.img) ? " img" : "") + '" role="group" aria-label="Quatre propositions">' + p.options.map((o, i) => flacon(o, i, "button")).join("") + "</div>" + fin;
+    return chrono + '<div class="eg-dose"><output class="eg-val" id="egVal" for="egRange">?<small>Réglez la dose</small></output>'
       + '<div class="eg-slide"><button class="eg-step" type="button" data-d="-1" aria-label="Un de moins">−</button>'
       + '<input id="egRange" type="range" min="0" max="100" step="1" value="50" aria-label="Votre réponse, de 0 à 100">'
       + '<button class="eg-step" type="button" data-d="1" aria-label="Un de plus">+</button></div>'
       + '<p class="eg-scale" aria-hidden="true"><span>0</span><span>50</span><span>100</span></p></div>' + fin;
   }
 
+  const origine = p => (p.source && p.source.t ? '<p class="eg-src">Source : ' + (p.source.url ? '<a href="' + h(p.source.url) + '" target="_blank" rel="noopener">' + h(p.source.t) + "</a>" : h(p.source.t)) + "</p>" : "");
   function solution(p) {
     const fait = p.rep !== undefined;
     let s;
@@ -357,11 +400,12 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       s = '<div class="eg-cible"><div class="bon"><small>Valeur cible</small><b>' + h(val(p, p.bonne)) + "</b></div>"
         + (fait ? "<div><small>Votre dose · écart " + Math.abs(p.rep - p.bonne) + "</small><b>" + h(val(p, p.rep)) + "</b></div>" : "") + "</div>";
     }
-    if (!relecture) s += '<p class="eg-pts' + (fait && p.pts ? "" : " zero") + '">' + (fait ? "+" + pl(p.pts, "point", "points") : "Porte manquée : 0 point") + "</p>";
-    s += '<p class="eg-ex">' + fr(p.explication) + "</p>";
-    if (p.source && p.source.t) s += '<p class="eg-src">Source : ' + (p.source.url ? '<a href="' + h(p.source.url) + '" target="_blank" rel="noopener">' + h(p.source.t) + "</a>" : h(p.source.t)) + "</p>";
-    return s;
+    if (!relecture) s += '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (fait ? "+" + pl(p.pts, "point", "points") : p.pts !== undefined ? "Chrono écoulé sans réponse : 0 point" : "Porte manquée : 0 point") + "</p>";
+    return s + '<p class="eg-ex">' + fr(p.explication) + "</p>" + origine(p);
   }
+
+  // Notes des tentatives d'un jeu d'adresse.
+  const essaisFaits = p => (tentatives(p) ? '<ul class="eg-tent">' + p.scores.map((n, i) => '<li' + (n !== null && n === p.meilleur ? ' class="top"' : "") + "><span>Tentative " + (i + 1) + "</span>" + (n === null ? "interrompue : 0 / 10" : n + " / 10") + "</li>").join("") + "</ul>" : "");
 
   function panneau(msg, cls) {
     const p = E.portes[choix - 1];
@@ -373,15 +417,72 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     } else if (p.etat === "avenir" && !relecture) {
       html = '<p class="ap-m">Porte ' + p.n + ' · sous scellé</p><h3>Patience</h3><p class="eg-d">Cette porte s\'ouvrira le ' + jour(dt(p.ouvre)) + ". D'ici là, elle reste en quarantaine.</p>";
     } else {
-      const ouverte = p.etat === "ouverte" && !relecture, fait = p.rep !== undefined;
-      html = '<p class="ap-m">Porte ' + p.n + " · " + jour(dt(p.ouvre)) + " · " + (p.type === "qcm" ? "quatre flacons" : "dosage de 0 à 100") + "</p><h3>" + fr(p.titre) + "</h3>"
-        + '<div class="eg-ill">' + p.ill + '</div><p class="eg-q">' + fr(p.question) + "</p>";
-      if (ouverte && !fait) html += saisie(p);
-      else if (ouverte) html += '<div class="eg-seal">' + SCEAU + "<span><small>Réponse scellée</small><b>" + h(val(p, p.rep)) + "</b></span></div>"
-        + '<p class="eg-d">Bonne réponse et points seront libérés à la clôture de la porte : rendez-vous le ' + jour(dt(p.ferme, 1)) + ".</p>";
-      else html += solution(p);
+      const ouverte = p.etat === "ouverte" && !relecture;
+      html = '<p class="ap-m">Porte ' + p.n + " · " + jour(dt(p.ouvre)) + " · " + forme(p) + "</p><h3>" + fr(p.titre) + "</h3>";
+      const enonce = () => '<div class="eg-ill" id="egJeu">' + p.ill + '</div><p class="eg-q">' + fr(p.question) + "</p>";
+      if (p.type === "jeu") {
+        const nb = tentatives(p);
+        html += enonce();
+        if (relecture) html += '<p class="eg-hint">Chrono de ' + p.duree + " s, " + pl(p.essais, "tentative", "tentatives") + ', la meilleure compte.</p><button class="go main" type="button" id="egTry">Essayer le jeu, sans rien enregistrer</button>'
+          + '<p class="eg-ex">' + fr(p.explication) + "</p>" + origine(p);
+        else if (ouverte) {
+          html += essaisFaits(p);
+          if (nb < p.essais) html += '<p class="eg-hint">Chrono de ' + p.duree + " s par tentative. " + pl(p.essais, "tentative", "tentatives") + ", la meilleure compte ; une tentative lancée est décomptée, même interrompue. Clôture le " + jour(dt(p.ferme)) + ' à minuit.</p>'
+            + '<button class="go main" type="button" id="egPlay">Lancer la tentative ' + (nb + 1) + " sur " + p.essais + "</button>";
+          else html += '<div class="eg-seal">' + SCEAU + "<span><small>Note scellée</small><b>" + p.meilleur + " / 10</b></span></div>"
+            + '<p class="eg-d">Vos points seront libérés à la clôture de la porte : rendez-vous le ' + jour(dt(p.ferme, 1)) + ".</p>";
+        } else html += essaisFaits(p) + '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (p.pts !== undefined ? "+" + pl(p.pts, "point", "points") : "Porte manquée : 0 point") + '</p><p class="eg-ex">' + fr(p.explication) + "</p>" + origine(p);
+      } else if (ouverte && p.rep === undefined && !p.hors && p.reste === undefined) {
+        // Énoncé encore sous scellé : il n'arrive qu'avec le chrono.
+        html += '<div class="eg-chrono"><b>' + p.duree + ' s</b><span>Une seule tentative. Le chrono part dès que l\'énoncé s\'affiche et ne s\'arrête plus, même si vous quittez la page.</span></div>'
+          + '<p class="eg-hint">Installez-vous : pas le temps d\'aller chercher la réponse ailleurs. Clôture de la porte le ' + jour(dt(p.ferme)) + ' à minuit.</p>'
+          + '<button class="go main" type="button" id="egStart">Lancer le chrono</button>';
+      } else {
+        html += enonce();
+        if (ouverte && p.rep === undefined && !p.hors) html += saisie(p);
+        else if (ouverte && p.hors) html += '<div class="eg-seal">' + SCEAU + "<span><small>Chrono écoulé</small><b>Aucune réponse scellée</b></span></div>"
+          + '<p class="eg-d">Le temps a filé : 0 point pour cette porte. La bonne réponse sortira à la clôture, le ' + jour(dt(p.ferme, 1)) + ".</p>";
+        else if (ouverte) html += '<div class="eg-seal">' + SCEAU + "<span><small>Réponse scellée</small><b>" + h(val(p, p.rep)) + "</b></span></div>"
+          + '<p class="eg-d">Bonne réponse et points seront libérés à la clôture de la porte : rendez-vous le ' + jour(dt(p.ferme, 1)) + ".</p>";
+        else html += solution(p);
+      }
     }
     q("#egPanel").innerHTML = html + '<p class="eg-msg ' + (cls || "ok") + '" id="egMsg" role="status">' + h(msg || "") + "</p>";
+    battre();
+  }
+
+  // Chrono d'une question : l'affichage suit l'échéance ; à zéro, la proposition en cours part d'office.
+  function battre() {
+    clearInterval(tic);
+    const p = E && E.portes[choix - 1];
+    if (!p || echeance[p.n] === undefined || !q("#egTime")) return;
+    const pas = () => {
+      const el = q("#egTime"), reste = (echeance[p.n] - Date.now()) / 1000;
+      if (!el) return clearInterval(tic);
+      el.querySelector("b").textContent = Math.max(0, Math.ceil(reste)) + " s";
+      el.querySelector("i").style.width = Math.max(0, Math.min(100, reste / p.duree * 100)) + "%";
+      el.classList.toggle("fin", reste <= 10);
+      if (reste <= 0) {
+        clearInterval(tic);
+        if (brouillon !== null) { aConfirmer = true; envoyer(); } else charger("Chrono écoulé : aucune réponse n'a été scellée.");
+      }
+    };
+    tic = setInterval(pas, 200);
+    pas();
+  }
+
+  // Lancement du chrono d'une question : le serveur note l'heure et livre l'énoncé.
+  async function lancer() {
+    const p = E.portes[choix - 1];
+    if (!p || occupe) return;
+    occupe = true;
+    q("#egStart").disabled = true;
+    let r;
+    try { r = await call({ code: mem.code, prenom: mem.prenom, n: p.n, action: "ouvrir" }); } catch (e) { r = { status: 0, j: {} }; }
+    occupe = false;
+    if (r.j && r.j.portes) return recevoir(r.j, r.status === 200 ? "" : "Cette porte n'accepte plus de réponse.", r.status === 200 ? "ok" : "err");
+    q("#egStart").disabled = false;
+    dire("#egMsg", "Le chrono n'est pas parti : le serveur ne répond pas. Réessayez dans un instant.", "err");
   }
 
   // Réponse en cours de saisie : rien ne part tant que le bouton n'a pas été confirmé.
@@ -401,17 +502,66 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     const p = E.portes[choix - 1], b = q("#egSend");
     if (!p || brouillon === null || occupe) return;
     if (!aConfirmer) { aConfirmer = true; b.textContent = "Confirmer : " + (p.type === "qcm" ? "flacon " + LETTRES[brouillon] : val(p, brouillon)) + ", définitif"; return; }
-    occupe = true; b.disabled = true;
+    occupe = true; if (b) b.disabled = true;
+    clearInterval(tic);
     let r;
     try { r = await call({ code: mem.code, prenom: mem.prenom, n: p.n, reponse: brouillon }); } catch (e) { r = { status: 0, j: {} }; }
     occupe = false;
     brouillon = null; aConfirmer = false;
     if (r.status === 200) return recevoir(r.j, "Réponse scellée. La traçabilité vous remercie.");
     if (r.status === 409) return recevoir(r.j, "Une réponse était déjà scellée pour cette porte : elle fait foi.", "err");
+    if (r.status === 403 && r.j.error === "delai") return recevoir(r.j, "Trop tard : le chrono était écoulé à l'arrivée de la réponse.", "err");
     if (r.status === 403 && (r.j.error === "close" || r.j.error === "scellee")) return charger("Trop tard : cette porte vient de se refermer.");
     if (r.status === 401) return charger();
-    b.disabled = false; b.textContent = "Sceller ma réponse";
-    dire("#egMsg", r.status === 403 ? "Le calendrier affiche complet." : "La réponse n'est pas partie. Réessayez dans un instant.", "err");
+    if (r.j && r.j.portes) return recevoir(r.j, "La réponse n'a pas été acceptée.", "err");
+    if (b) { b.disabled = false; b.textContent = "Sceller ma réponse"; }
+    dire("#egMsg", "La réponse n'est pas partie. Réessayez tout de suite : le chrono tourne.", "err");
+    battre();
+  }
+
+  // Jeux d'adresse : le code du jeu n'est chargé qu'au moment de jouer.
+  const chargerJeux = () => new Promise((ok, ko) => {
+    if (window.PharmacoJeux) return ok();
+    const sc = document.createElement("script");
+    sc.src = "jeux.js"; sc.onload = () => (window.PharmacoJeux ? ok() : ko()); sc.onerror = ko;
+    document.head.appendChild(sc);
+  });
+  const patience = ms => new Promise(r => setTimeout(r, ms));
+  // reel : la tentative compte et sa note part au serveur ; sinon c'est un essai libre de la relecture.
+  async function jouer(reel) {
+    const p = E.portes[choix - 1];
+    if (!p || p.type !== "jeu" || enJeu || occupe) return;
+    occupe = true;
+    try { await chargerJeux(); } catch (e) { occupe = false; return dire("#egMsg", "Le jeu ne s'est pas chargé. Vérifiez la connexion et réessayez : aucune tentative n'a été décomptée.", "err"); }
+    let jeton = "";
+    if (reel) {
+      let r;
+      try { r = await call({ code: mem.code, prenom: mem.prenom, n: p.n, action: "ouvrir" }); } catch (e) { r = { status: 0, j: {} }; }
+      if (r.status !== 200) {
+        occupe = false;
+        if (r.j && r.j.portes) return recevoir(r.j, "Plus de tentative disponible pour cette porte.", "err");
+        return dire("#egMsg", "La tentative n'est pas partie : le serveur ne répond pas. Rien n'a été décompté.", "err");
+      }
+      jeton = r.j.jeton; E = r.j; grille();
+    }
+    occupe = false;
+    const zone = q("#egJeu"), bouton = q("#egPlay") || q("#egTry");
+    if (bouton) bouton.hidden = true;
+    zone.classList.add("jeu");
+    dire("#egMsg", "");
+    enJeu = window.PharmacoJeux[p.jeu](zone, { duree: p.duree, onFin: async (note, bilan) => {
+      enJeu = null;
+      if (!reel) return panneau("Essai libre : " + note + " sur 10. " + bilan + " Rien n'a été enregistré.");
+      let r = { status: 0, j: {} };
+      for (let i = 0; i < 4 && !(r.j && r.j.portes); i++) {
+        if (i) await patience(1500);
+        try { r = await call({ code: mem.code, prenom: mem.prenom, n: p.n, jeton, score: note }); } catch (e) { r = { status: 0, j: {} }; }
+      }
+      if (r.status === 200) return recevoir(r.j, bilan + " Note enregistrée : " + note + " sur 10.");
+      if (r.j && r.j.portes) return recevoir(r.j, "La note de cette tentative n'a pas été acceptée par le serveur.", "err");
+      panneau("La note n'a pas pu partir : connexion perdue. La tentative compte pour 0.", "err");
+    } });
+    zone.scrollIntoView({ block: "nearest" });
   }
 
   function rang() {

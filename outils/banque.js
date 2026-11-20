@@ -25,7 +25,11 @@ function controler(b) {
     } else if (p.type === 'dose') {
       if (!Number.isInteger(p.bonne) || p.bonne < 0 || p.bonne > 100) e.push(ou + 'valeur cible entre 0 et 100');
       if (typeof p.unite !== 'string') e.push(ou + 'unité manquante');
+    } else if (p.type === 'jeu') {
+      if (!['bowling', 'tir'].includes(p.jeu)) e.push(ou + 'jeu inconnu');
+      if (!Number.isInteger(p.essais) || p.essais < 1 || p.essais > 3) e.push(ou + 'nombre de tentatives entre 1 et 3');
     } else e.push(ou + 'type inconnu');
+    if (!Number.isInteger(p.duree) || p.duree < 10 || p.duree > 120) e.push(ou + 'durée du chrono entre 10 et 120 secondes');
     if (/—/.test(JSON.stringify(p))) e.push(ou + 'tiret cadratin');
   });
   return e;
