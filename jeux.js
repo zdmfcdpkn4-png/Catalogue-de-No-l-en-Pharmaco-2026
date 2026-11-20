@@ -54,6 +54,67 @@
   }
   const tombees = s => s.quilles.filter(q => q.la && q.tombee).length;
 
+  /* ================= Le tennis de paillasse : le cœur ================= */
+  // Réglages étalonnés par simulation (node outils/etalon-tennis.js) : ils fixent la difficulté.
+  const RT = { v0: 300, vmax: 860, gain: 1.12, angle: 55, service: 22, demi: 34, demiA: 30, main: 1100, clavier: 430, robot: 210, erreur: 18, pause: 0.9 };
+  const T_PAS = 1 / 240, T_RB = 8, T_EP = 6, T_G = 14, T_D = 346, T_YJ = 436, T_YA = 86, T_HAUT = 39;
+  const borne = (v, a, b) => Math.max(a, Math.min(b, v));
+  // Où la balle b coupera-t-elle la ligne y, rebonds sur les bords compris ?
+  function viseTennis(b, y) {
+    const L = T_D - T_G - 2 * T_RB, u = (((b.x + b.vx * (y - b.y) / b.vy - T_G - T_RB) % (2 * L)) + 2 * L) % (2 * L);
+    return T_G + T_RB + (u > L ? 2 * L - u : u);
+  }
+  // Un match : cible est l'endroit où le joueur veut sa spatule. Le hasard (services, erreurs de l'automate) vient de la graine.
+  function creerTennis(graine) {
+    let a = graine || 20261213;
+    const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    return { t: 0, acc: 0, x: 180, cible: 180, ax: 180, avise: 180, balle: null, attente: 1.2, vers: 1, pour: 0, contre: 0, echange: 0, record: 0, tape: [-9, -9], msg: "", msgT: -9, h, fini: false };
+  }
+  // L'automate choisit où attendre la balle qui monte vers lui : le bon endroit, à une erreur près qui grandit avec la vitesse.
+  function automateVise(s, b) {
+    const g = (s.h() + s.h() + s.h() + s.h() - 2) * 1.7;
+    s.avise = viseTennis(b, T_YA + T_EP + T_RB) + g * RT.erreur * Math.hypot(b.vx, b.vy) / RT.v0;
+  }
+  // Renvoi par la raquette centrée en px : l'angle de départ dépend du point d'impact, et la balle accélère.
+  function renvoi(s, b, px, demi, sens) {
+    const u = borne((b.x - px) / (demi + T_RB * 0.7), -1, 1), a = u * RT.angle * Math.PI / 180, v = Math.min(RT.vmax, Math.hypot(b.vx, b.vy) * RT.gain);
+    b.vx = Math.sin(a) * v; b.vy = sens * Math.cos(a) * v;
+    b.y = sens < 0 ? T_YJ - T_EP - T_RB : T_YA + T_EP + T_RB;
+    s.echange++; s.record = Math.max(s.record, s.echange); s.tape[sens < 0 ? 0 : 1] = s.t;
+    if (sens < 0) automateVise(s, b);
+  }
+  function unPasTennis(s, duree) {
+    const dt = T_PAS;
+    s.t += dt;
+    if (s.t >= duree) { s.fini = true; return; }
+    s.x += borne(borne(s.cible, T_G + RT.demi, T_D - RT.demi) - s.x, -RT.main * dt, RT.main * dt);
+    const b = s.balle;
+    // Sans balle montante, l'automate se replace : au centre, en suivant un peu la balle qui descend.
+    if (!b) s.avise = 180; else if (b.vy > 0) s.avise = 180 + (b.x - 180) * 0.35;
+    s.ax += borne(borne(s.avise, T_G + RT.demiA, T_D - RT.demiA) - s.ax, -RT.robot * dt, RT.robot * dt);
+    if (!b) {
+      s.attente -= dt;
+      if (s.attente <= 0) {
+        const a = (s.h() * 2 - 1) * RT.service * Math.PI / 180;
+        s.balle = { x: 180, y: 261, vx: Math.sin(a) * RT.v0, vy: s.vers * Math.cos(a) * RT.v0, tour: 0 }; s.echange = 0;
+        if (s.vers < 0) automateVise(s, s.balle);
+      }
+      return;
+    }
+    b.x += b.vx * dt; b.y += b.vy * dt; b.tour += dt * b.vx / 30;
+    if (b.x < T_G + T_RB) { b.x = 2 * (T_G + T_RB) - b.x; b.vx = Math.abs(b.vx); }
+    else if (b.x > T_D - T_RB) { b.x = 2 * (T_D - T_RB) - b.x; b.vx = -Math.abs(b.vx); }
+    // Zone de frappe plus épaisse que le plus grand pas de la balle : elle ne peut pas traverser une raquette.
+    if (b.vy > 0 && b.y + T_RB >= T_YJ - T_EP && b.y <= T_YJ && Math.abs(b.x - s.x) <= RT.demi + T_RB * 0.7) renvoi(s, b, s.x, RT.demi, -1);
+    else if (b.vy < 0 && b.y - T_RB <= T_YA + T_EP && b.y >= T_YA && Math.abs(b.x - s.ax) <= RT.demiA + T_RB * 0.7) renvoi(s, b, s.ax, RT.demiA, 1);
+    if (b.y > H + 14) { s.contre++; s.vers = 1; s.msg = "En quarantaine…"; s.msgT = s.t; s.balle = null; s.attente = RT.pause; }
+    else if (b.y < T_HAUT + 6) { s.pour++; s.vers = -1; s.msg = "Comprimé libéré !"; s.msgT = s.t; s.balle = null; s.attente = RT.pause; }
+  }
+  // Pas fixe, comme le flipper : la physique avance par tranches de 1/240 s quel que soit le rythme d'affichage.
+  function pasTennis(s, dt, duree) { s.acc += dt; while (s.acc >= T_PAS && !s.fini) { s.acc -= T_PAS; unPasTennis(s, duree); } }
+  // La note : la part des points gagnés, ramenée sur 10 (6 points gagnés sur 10 joués = 6 sur 10).
+  const noteTennis = s => s.pour + s.contre ? Math.round(10 * s.pour / (s.pour + s.contre)) : 0;
+
   /* ================= La hotte en folie : le cœur ================= */
   const TOTAL = 40;
   // Même pluie de particules pour tout le monde : le hasard est tiré d'une graine fixe.
@@ -290,6 +351,93 @@
     return () => { arret(); liberer(); };
   }
 
+  /* ----- Le tennis de paillasse ----- */
+  function tennis(el, opt) {
+    const duree = opt.duree || 60, { cv, ctx, xDe, liberer } = monter(el, H);
+    cv.style.touchAction = "none";
+    cv.setAttribute("aria-label", "Le tennis de paillasse. Glissez le doigt, bougez la souris ou utilisez les flèches gauche et droite pour déplacer la spatule et renvoyer le comprimé.");
+    const s = creerTennis(), tactile = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+    let clos = false, minuterie = 0, gauche = false, droite = false;
+    const viser = e => { e.preventDefault(); s.cible = borne(xDe(e), T_G + RT.demi, T_D - RT.demi); };
+    const appui = e => { cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } viser(e); };
+    const glisse = e => { if (e.pointerType === "mouse" || e.buttons || e.pressure) viser(e); };
+    const fleche = (e, v) => {
+      const g = e.key === "ArrowLeft", d = e.key === "ArrowRight";
+      if (!g && !d) return;
+      if (v && (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target && e.target.tagName || ""))) return;
+      if (v) e.preventDefault();
+      if (g) gauche = v; else droite = v;
+    };
+    const enfonce = e => fleche(e, true), leve = e => fleche(e, false), lache = () => { gauche = droite = false; }, menu = e => e.preventDefault();
+    cv.addEventListener("pointerdown", appui); cv.addEventListener("pointermove", glisse); cv.addEventListener("contextmenu", menu);
+    window.addEventListener("keydown", enfonce); window.addEventListener("keyup", leve); window.addEventListener("blur", lache);
+    const retirer = () => {
+      cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointermove", glisse); cv.removeEventListener("contextmenu", menu);
+      window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
+    };
+    // Une spatule vue de dessus : la lame fait raquette, le manche part vers l'arrière (sens = 1 vers le bas).
+    function spatule(x, y, demi, sens, coul, vif) {
+      trait(ctx, 2.6);
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(x - 5, sens > 0 ? y + 3 : y - 25, 10, 22, 4); ctx.fill();
+      ctx.fillStyle = vif ? Y : coul; ctx.beginPath(); ctx.roundRect(x - demi, y - T_EP, demi * 2, T_EP * 2, 6); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = "rgba(38,7,109,.3)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - demi + 8, y); ctx.lineTo(x + demi - 8, y); ctx.stroke();
+    }
+    function dessiner() {
+      ctx.fillStyle = N; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(T_G, T_HAUT, T_D - T_G, H - T_HAUT);                          // la paillasse
+      ctx.fillStyle = "rgba(143,199,232,.35)"; ctx.fillRect(T_G, T_HAUT, T_D - T_G, 22);                     // derrière l'automate : la libération
+      ctx.fillStyle = "rgba(216,64,43,.16)"; ctx.fillRect(T_G, H - 20, T_D - T_G, 20);                       // derrière le joueur : la quarantaine
+      texte(ctx, "LIBÉRATION", 180, T_HAUT + 12, 10, "rgba(38,7,109,.5)"); texte(ctx, "QUARANTAINE", 180, H - 9, 10, "rgba(38,7,109,.5)");
+      ctx.strokeStyle = "rgba(38,7,109,.09)"; ctx.lineWidth = 2;
+      for (let x = T_G + 41.5; x < T_D - 10; x += 41.5) { ctx.beginPath(); ctx.moveTo(x, T_HAUT + 22); ctx.lineTo(x, H - 20); ctx.stroke(); }
+      // Le filet : une réglette graduée posée en travers.
+      trait(ctx, 2); ctx.fillStyle = C; ctx.beginPath(); ctx.rect(T_G, 255, T_D - T_G, 12); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = 1.5; ctx.beginPath();
+      for (let i = 1; i * 8 < T_D - T_G; i++) { ctx.moveTo(T_G + i * 8, 255); ctx.lineTo(T_G + i * 8, i % 5 ? 259 : 263); }
+      ctx.stroke();
+      // L'automate : un chariot sur son rail, qui tient sa spatule.
+      trait(ctx, 3); ctx.beginPath(); ctx.moveTo(T_G, T_YA - 24); ctx.lineTo(T_D, T_YA - 24); ctx.stroke();
+      const vifA = s.t - s.tape[1] < 0.12, vifJ = s.t - s.tape[0] < 0.12;
+      spatule(s.ax, T_YA, RT.demiA, -1, V, vifA);
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(s.ax - 13, T_YA - 31, 26, 14, 4); ctx.fill();
+      ctx.fillStyle = vifA ? Y : G; ctx.beginPath(); ctx.arc(s.ax - 5, T_YA - 24, 2.4, 0, 6.3); ctx.arc(s.ax + 5, T_YA - 24, 2.4, 0, 6.3); ctx.fill();
+      spatule(s.x, T_YJ, RT.demi, 1, O, vifJ);
+      // La balle : un comprimé sécable.
+      if (s.balle) {
+        const b = s.balle;
+        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.tour);
+        trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, T_RB, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-T_RB + 3, 0); ctx.lineTo(T_RB - 3, 0); ctx.stroke();
+        ctx.restore();
+      } else if (!clos && s.t - s.msgT >= 1) texte(ctx, "Nouveau comprimé…", 180, 300, 14, "rgba(38,7,109,.6)");
+      if (s.t < 4.5 && !clos) {
+        ctx.globalAlpha = Math.min(1, 4.5 - s.t) * 0.92;
+        ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(50, 366, 260, 28, 14); ctx.fill();
+        texte(ctx, tactile ? "Glissez le doigt pour bouger la spatule" : "Souris ou flèches ◀ ▶ pour la spatule", 180, 381, 13, Y);
+        ctx.globalAlpha = 1;
+      }
+      const n = noteTennis(s);
+      bandeau(ctx, "Vous " + s.pour + " · Automate " + s.contre + " · " + n + "/10", duree - s.t, duree);
+      if (!clos && s.t - s.msgT < 1) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(60, 196, 240, 40, 14); ctx.fill(); texte(ctx, s.msg, 180, 217, 17, s.msg.endsWith("!") ? Y : P); }
+      if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 180, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 220, 40, Y); texte(ctx, s.pour + " gagnés sur " + (s.pour + s.contre) + " joués", 180, 262, 16, C); }
+    }
+    const arret = boucle(dt => {
+      if (!clos) {
+        if (gauche !== droite) s.cible = borne(s.x + (gauche ? -1 : 1) * RT.clavier * dt, T_G + RT.demi, T_D - RT.demi);
+        pasTennis(s, dt, duree);
+        if (s.fini) {
+          clos = true; lache();
+          const n = noteTennis(s), joues = s.pour + s.contre, pl = (k, un, des) => k + " " + (k > 1 ? des : un);
+          const bilan = pl(s.pour, "point gagné", "points gagnés") + " sur " + pl(joues, "joué", "joués") + " contre l'automate : " + n + " sur 10 (la note est la part des points gagnés).";
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan); }, 1300);
+        }
+      }
+      dessiner();
+    });
+    cv.focus({ preventScroll: true });
+    return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
+  }
+
   /* ----- La hotte en folie ----- */
   function tir(el, opt) {
     const duree = opt.duree || 45, { cv, ctx, xDe, liberer } = monter(el, H);
@@ -433,6 +581,6 @@
     return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
   }
 
-  const api = { bowling, tir, flipper, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, F_PIVOTS, boutBatteur } };
+  const api = { bowling, tir, flipper, tennis, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, F_PIVOTS, boutBatteur, REGL_TENNIS: RT, creerTennis, pasTennis, noteTennis, viseTennis, T_YJ } };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PharmacoJeux = api;
 })(typeof window !== "undefined" ? window : globalThis);
