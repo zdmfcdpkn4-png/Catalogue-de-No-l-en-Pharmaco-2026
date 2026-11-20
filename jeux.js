@@ -996,7 +996,234 @@
   /* ----- Fin [penalty] ----- */
 
   /* ----- Repère [volley] : le volley ----- */
-  // (session « Jeu » correspondante : écrire ici, entre ce repère et le suivant)
+  /* Le volley des poches. Vue de côté : une poche de perfusion retombe sous son poids, il faut la renvoyer par-dessus le pied
+     à perfusion sans qu'elle touche le sol, face à un automate sur roulettes. Le cœur d'abord (simulable hors navigateur). */
+  // Réglages étalonnés par simulation (node outils/etalon-volley.js) : ils fixent la difficulté.
+  const RVO = { g: 880, frappe: 470, gain: 1.03, vmax: 640, elan: 0.35, main: 320, clavier: 280, saut: 480, poids: 1350, robot: 190, reflexe: 0.25, erreur: 8, malice: 0.5, pause: 0.7, touches: 3 };
+  const VO_PAS = 1 / 240, VO_RB = 12, VO_RJ = 18, VO_G = 14, VO_D = 346, VO_SOL = 404, VO_HAUT = 39, VO_FX = 180, VO_FE = 4, VO_FH = 92, VO_TETE = 34, VO_H = 460;
+  // Le vol libre de la poche pendant dt : pesanteur, murs, plafond et pied à perfusion (un trait vertical au bout arrondi).
+  function volPoche(b, dt) {
+    b.vy += RVO.g * dt; b.x += b.vx * dt; b.y += b.vy * dt;
+    if (b.x < VO_G + VO_RB) { b.x = 2 * (VO_G + VO_RB) - b.x; b.vx = Math.abs(b.vx) * 0.9; }
+    else if (b.x > VO_D - VO_RB) { b.x = 2 * (VO_D - VO_RB) - b.x; b.vx = -Math.abs(b.vx) * 0.9; }
+    if (b.y < VO_HAUT + VO_RB) { b.y = 2 * (VO_HAUT + VO_RB) - b.y; b.vy = Math.abs(b.vy) * 0.9; }
+    const py = Math.max(VO_SOL - VO_FH, b.y), dx = b.x - VO_FX, dy = b.y - py, d = Math.hypot(dx, dy), r = VO_RB + VO_FE;
+    if (d < r) {
+      const nx = d ? dx / d : (b.vx > 0 ? -1 : 1), ny = d ? dy / d : 0, vn = b.vx * nx + b.vy * ny;
+      b.x = VO_FX + nx * r; b.y = py + ny * r;
+      if (vn < 0) { b.vx -= 1.7 * vn * nx; b.vy -= 1.7 * vn * ny; }
+    }
+  }
+  // Où et quand la poche redescendra-t-elle à la hauteur y ? (vx, vy : pour essayer une autre vitesse de départ)
+  function prevoirPoche(b, y, vx, vy) {
+    const c = { x: b.x, y: b.y, vx: vx === undefined ? b.vx : vx, vy: vy === undefined ? b.vy : vy };
+    let t = 0;
+    while (t < 5 && !(c.vy > 0 && c.y >= y)) { volPoche(c, 1 / 120); t += 1 / 120; }
+    return { x: c.x, t };
+  }
+  const elanPoche = s => Math.min(RVO.vmax, RVO.frappe * Math.pow(RVO.gain, s.echange));
+  // Un match : cible est l'endroit où le joueur veut être, saut une demande de saut (en secondes de validité).
+  // x, y : le joueur (y = hauteur des pieds au-dessus du sol) ; ax : l'automate. Le hasard vient de la graine.
+  function creerVolley(graine) {
+    let a = graine || 20261219;
+    const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    return { t: 0, acc: 0, x: 40, y: 0, vy: 0, cible: 40, saut: 0, ax: 268, avise: 268, avu: -1, aquand: 1e9, balle: null, attente: 1.4, vers: -1, pour: 0, contre: 0, echange: 0, record: 0, dernier: -1, touches: 0, tape: [-9, -9], msg: "", msgT: -9, impact: null, h, fini: false };
+  }
+  // L'automate lit la trajectoire à chaque nouvelle frappe : si la poche retombe chez lui, il choisit où la renvoyer (plutôt loin
+  // du joueur, selon sa malice), cherche l'angle de frappe qui y mène et se place en conséquence, après un
+  // temps de réflexion et à une erreur près, qui grandit quand l'échange s'accélère.
+  function automateVolley(s) {
+    const b = s.balle;
+    if (!b) { s.avise = 268; s.avu = -1; return; }
+    if (b.n !== s.avu) { s.avu = b.n; s.aquand = s.t + RVO.reflexe; }
+    if (s.t < s.aquand) return;
+    s.aquand = 1e9;
+    const yc = VO_SOL - VO_TETE - 26, p = prevoirPoche(b, yc);
+    if (p.x < VO_FX + VO_FE) { s.avise = 268; return; }
+    const b1 = 40 + s.h() * 110, b2 = 40 + s.h() * 110, but = s.h() < RVO.malice && Math.abs(b2 - s.x) > Math.abs(b1 - s.x) ? b2 : b1, v = elanPoche(s);
+    let mieux = 0.3, ecart = 1e9;
+    for (let a = 0.06; a < 1.15; a += 0.07) {
+      const q = prevoirPoche({ x: p.x, y: yc }, VO_SOL - VO_RB, -Math.sin(a) * v, -Math.cos(a) * v);
+      if (q.x < VO_FX && Math.abs(q.x - but) < ecart) { ecart = Math.abs(q.x - but); mieux = a; }
+    }
+    const g = (s.h() + s.h() + s.h() + s.h() - 2) * 1.7;
+    s.avise = p.x + (VO_RB + VO_RJ) * Math.sin(mieux) + g * RVO.erreur * v / RVO.frappe;
+  }
+  // Une tête ronde (centre cx, cy, vitesse vx, vy) touche-t-elle la poche ? Si oui, la poche repart dans l'axe tête-poche,
+  // avec une part de l'élan de la tête. qui : 0 le joueur, 1 l'automate. Rend vrai si la frappe est de trop (4e touche).
+  function touchePoche(s, b, cx, cy, vx, vy, qui) {
+    const dx = b.x - cx, dy = b.y - cy, d = Math.hypot(dx, dy), r = VO_RB + VO_RJ;
+    if (d >= r || s.t - s.tape[qui] < 0.12) return false;
+    const nx = d ? dx / d : 0, ny = d ? dy / d : -1;
+    if ((b.vx - vx) * nx + (b.vy - vy) * ny >= 0) return false;
+    if (s.dernier === qui) s.touches++; else { if (s.dernier >= 0) { s.echange++; s.record = Math.max(s.record, s.echange); } s.dernier = qui; s.touches = 1; }
+    const v = elanPoche(s);
+    b.vx = nx * v + vx * RVO.elan; b.vy = ny * v + vy * RVO.elan;
+    const w = Math.hypot(b.vx, b.vy); if (w > RVO.vmax) { b.vx *= RVO.vmax / w; b.vy *= RVO.vmax / w; }
+    b.x = cx + nx * r; b.y = cy + ny * r; b.n++; s.tape[qui] = s.t;
+    return s.touches > RVO.touches;
+  }
+  function pointVolley(s, pourJoueur, msg) {
+    if (pourJoueur) { s.pour++; s.vers = 1; } else { s.contre++; s.vers = -1; }
+    s.msg = msg; s.msgT = s.t; s.impact = { x: s.balle.x, y: s.balle.y, t: s.t }; s.balle = null; s.attente = RVO.pause;
+  }
+  function unPasVolley(s, duree) {
+    const dt = VO_PAS;
+    s.t += dt;
+    if (s.t >= duree) { s.fini = true; return; }
+    const x0 = s.x, a0 = s.ax;
+    s.x += borne(borne(s.cible, VO_G + VO_RJ, VO_FX - VO_FE - VO_RJ) - s.x, -RVO.main * dt, RVO.main * dt);
+    if (s.saut > 0) { s.saut -= dt; if (s.y === 0) { s.vy = RVO.saut; s.saut = 0; } }
+    if (s.y > 0 || s.vy > 0) { s.y += s.vy * dt; s.vy -= RVO.poids * dt; if (s.y <= 0) { s.y = 0; s.vy = 0; } }
+    automateVolley(s);
+    s.ax += borne(borne(s.avise, VO_FX + VO_FE + VO_RJ, VO_D - VO_RJ) - s.ax, -RVO.robot * dt, RVO.robot * dt);
+    const b = s.balle;
+    if (!b) {
+      s.attente -= dt;
+      // Mise en jeu : la poche est lâchée du plafond, du côté de celui qui vient de perdre le point,
+      // jamais au-dessus de la place de départ du joueur (un joueur qui ne fait rien ne renvoie rien).
+      if (s.attente <= 0) { s.balle = { x: 180 + s.vers * (48 + s.h() * 57), y: VO_HAUT + 40, vx: -s.vers * s.h() * 30, vy: 0, tour: 0, n: 0 }; s.echange = 0; s.dernier = -1; s.touches = 0; }
+      return;
+    }
+    volPoche(b, dt); b.tour += dt * b.vx / 90;
+    if (touchePoche(s, b, s.x, VO_SOL - VO_TETE - s.y, (s.x - x0) / dt, -s.vy, 0)) pointVolley(s, false, "Quatre touches : faute…");
+    else if (touchePoche(s, b, s.ax, VO_SOL - VO_TETE, (s.ax - a0) / dt, 0, 1)) pointVolley(s, true, "Faute de l'automate !");
+    else if (b.y + VO_RB >= VO_SOL) { if (b.x < VO_FX) pointVolley(s, false, "Poche à terre…"); else pointVolley(s, true, "Poche livrée !"); }
+  }
+  // Pas fixe, comme le tennis : la physique avance par tranches de 1/240 s quel que soit le rythme d'affichage.
+  function pasVolley(s, dt, duree) { s.acc += dt; while (s.acc >= VO_PAS && !s.fini) { s.acc -= VO_PAS; unPasVolley(s, duree); } }
+  // La note : la part des points gagnés, ramenée sur 10.
+  const noteVolley = s => s.pour + s.contre ? Math.round(10 * s.pour / (s.pour + s.contre)) : 0;
+
+  /* ----- Le volley des poches : dessin et commandes (navigateur seulement) ----- */
+  function volley(el, opt) {
+    const duree = opt.duree || 60, { cv, ctx, xDe, liberer } = monter(el, VO_H);
+    cv.style.touchAction = "none";
+    cv.setAttribute("aria-label", "Le volley des poches. Glissez le doigt, bougez la souris ou utilisez les flèches gauche et droite pour vous déplacer ; touchez l'écran, cliquez ou appuyez sur Espace pour sauter. Renvoyez la poche par-dessus le pied à perfusion sans qu'elle touche le sol, en trois touches au plus.");
+    const s = creerVolley(), media = q => typeof matchMedia === "function" && matchMedia(q).matches;
+    const tactile = media("(pointer: coarse)"), calme = media("(prefers-reduced-motion: reduce)");
+    const XMIN = VO_G + VO_RJ, XMAX = VO_FX - VO_FE - VO_RJ, PALE = "rgba(38,7,109,.5)";
+    let clos = false, minuterie = 0, gauche = false, droite = false, pilote = null;
+    const viser = e => { s.cible = borne(xDe(e), XMIN, XMAX); };
+    // Tout appui fait sauter. Au doigt, le premier doigt posé dirige ; un autre doigt (l'autre pouce) ne fait que sauter.
+    const appui = e => {
+      e.preventDefault(); cv.focus({ preventScroll: true });
+      if (e.pointerType === "mouse") viser(e);
+      else if (pilote === null) { pilote = e.pointerId; try { cv.setPointerCapture(e.pointerId); } catch (_) { } viser(e); }
+      s.saut = 0.12;
+    };
+    const glisse = e => { if (e.pointerType === "mouse" || e.pointerId === pilote) { e.preventDefault(); viser(e); } };
+    const releve = e => { if (e.pointerId === pilote) pilote = null; };
+    const touche = (e, v) => {
+      const g = e.key === "ArrowLeft", d = e.key === "ArrowRight", h = e.key === "ArrowUp" || e.key === " " || e.key === "Spacebar";
+      if (!g && !d && !h) return;
+      if (v && (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(e.target && e.target.tagName || ""))) return;
+      if (v) e.preventDefault();
+      if (g) gauche = v; else if (d) droite = v; else if (v && !e.repeat) s.saut = 0.12;
+    };
+    const enfonce = e => touche(e, true), leve = e => touche(e, false), lache = () => { gauche = droite = false; pilote = null; }, menu = e => e.preventDefault();
+    cv.addEventListener("pointerdown", appui); cv.addEventListener("pointermove", glisse); cv.addEventListener("pointerup", releve); cv.addEventListener("pointercancel", releve); cv.addEventListener("contextmenu", menu);
+    window.addEventListener("keydown", enfonce); window.addEventListener("keyup", leve); window.addEventListener("blur", lache);
+    const retirer = () => {
+      cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointermove", glisse); cv.removeEventListener("pointerup", releve); cv.removeEventListener("pointercancel", releve); cv.removeEventListener("contextmenu", menu);
+      window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
+    };
+    // Le regard : les pupilles suivent la poche.
+    const regard = (x, y, k) => { const b = s.balle; if (!b) return [0, 0]; const d = Math.hypot(b.x - x, b.y - y) || 1; return [(b.x - x) / d * k, (b.y - y) / d * k]; };
+    // Le préparateur : charlotte, masque et blouse. Sa tête (le cercle de rayon VO_RJ) est ce qui frappe la poche.
+    function preparateur(x, sol, vif) {
+      const cy = sol - VO_TETE, [ex, ey] = regard(x, cy, 2.2);
+      trait(ctx, 2.4);
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(x - 9, sol - 5, 7, 5, 2); ctx.roundRect(x + 2, sol - 5, 7, 5, 2); ctx.fill();
+      ctx.fillStyle = O; ctx.beginPath(); ctx.roundRect(x - 11, sol - 20, 22, 17, [7, 7, 3, 3]); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = vif ? Y : C; ctx.beginPath(); ctx.arc(x, cy, VO_RJ, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = B; ctx.beginPath(); ctx.arc(x, cy, VO_RJ, Math.PI * 1.08, Math.PI * 1.92); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(x - 10, cy + 5, 20, 9, 4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(x - 6 + ex, cy - 1 + ey, 2.3, 0, 6.3); ctx.arc(x + 6 + ex, cy - 1 + ey, 2.3, 0, 6.3); ctx.fill();
+    }
+    // L'automate : un chariot à roulettes coiffé d'une cloche, avec un seul œil (son objectif).
+    function automate(x, vif) {
+      const cy = VO_SOL - VO_TETE, [ex, ey] = regard(x, cy, 3.5);
+      trait(ctx, 2.4);
+      ctx.beginPath(); ctx.moveTo(x, cy - VO_RJ); ctx.lineTo(x, cy - VO_RJ - 7); ctx.stroke();
+      ctx.fillStyle = s.t < s.aquand && s.balle ? G : O; ctx.beginPath(); ctx.arc(x, cy - VO_RJ - 8, 3, 0, 6.3); ctx.fill();
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(x - 14, VO_SOL - 19, 28, 13, 4); ctx.fill();
+      ctx.fillStyle = C; ctx.beginPath(); ctx.arc(x - 8, VO_SOL - 4.5, 3.5, 0, 6.3); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.arc(x + 8, VO_SOL - 4.5, 3.5, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = vif ? Y : V; ctx.beginPath(); ctx.arc(x, cy, VO_RJ, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = C; ctx.beginPath(); ctx.arc(x - 3, cy - 1, 8.5, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(x - 3 + ex, cy - 1 + ey, 4, 0, 6.3); ctx.fill();
+    }
+    // La poche de perfusion : œillet de suspension en haut, soluté dans le bas, embout en dessous.
+    function poche(b) {
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(calme ? 0 : b.tour);
+      trait(ctx, 2.2);
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(-2.5, 10, 5, 5, 1.5); ctx.fill();
+      ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-9.5, -13, 19, 25, 6); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = B; ctx.beginPath(); ctx.roundRect(-9.5, -2, 19, 14, [0, 0, 6, 6]); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(0, -8.5, 1.8, 0, 6.3); ctx.fill();
+      ctx.restore();
+    }
+    function dessiner() {
+      ctx.fillStyle = N; ctx.fillRect(0, 0, W, VO_H);
+      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(VO_G, VO_HAUT, VO_D - VO_G, VO_SOL - VO_HAUT);                    // le mur de la salle
+      ctx.fillStyle = "rgba(143,199,232,.3)"; ctx.fillRect(VO_FX, VO_HAUT, VO_D - VO_FX, VO_SOL - VO_HAUT);     // le camp de l'automate
+      ctx.strokeStyle = "rgba(38,7,109,.07)"; ctx.lineWidth = 2;
+      for (let y = VO_HAUT + 73; y < VO_SOL; y += 73) { ctx.beginPath(); ctx.moveTo(VO_G, y); ctx.lineTo(VO_D, y); ctx.stroke(); }
+      texte(ctx, "VOUS", 97, 66, 10, PALE); texte(ctx, String(s.pour), 97, 96, 40, "rgba(38,7,109,.2)");
+      texte(ctx, "AUTOMATE", 263, 66, 10, PALE); texte(ctx, String(s.contre), 263, 96, 40, "rgba(38,7,109,.2)");
+      // Le sol : c'est aussi là que se pose le doigt.
+      ctx.fillStyle = V; ctx.fillRect(VO_G, VO_SOL, VO_D - VO_G, VO_H - VO_SOL);
+      trait(ctx, 3); ctx.beginPath(); ctx.moveTo(VO_G, VO_SOL); ctx.lineTo(VO_D, VO_SOL); ctx.stroke();
+      texte(ctx, "LE SOL N'EST PAS UNE ÉTAGÈRE", 180, VO_SOL + 30, 11, PALE);
+      // L'ombre de la poche aide à juger où elle retombe.
+      const b = s.balle;
+      if (b) { const k = 1 - (VO_SOL - b.y) / (VO_SOL - VO_HAUT) * 0.6; ctx.fillStyle = "rgba(38,7,109,.22)"; ctx.beginPath(); ctx.ellipse(b.x, VO_SOL + 5, 13 * k, 3.5 * k, 0, 0, 6.3); ctx.fill(); }
+      // Le filet : un pied à perfusion.
+      trait(ctx, 2.4); ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(VO_FX - 17, VO_SOL - 5, 34, 6, 3); ctx.fill();
+      ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(VO_FX - VO_FE, VO_SOL - VO_FH - VO_FE, VO_FE * 2, VO_FH + VO_FE, VO_FE); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(VO_FX - 9, VO_SOL - VO_FH + 5, 5, 0.2, Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(VO_FX + 9, VO_SOL - VO_FH + 5, 5, 0, Math.PI - 0.2); ctx.stroke();
+      const vifJ = s.t - s.tape[0] < 0.12, vifA = s.t - s.tape[1] < 0.12;
+      automate(s.ax, vifA);
+      preparateur(s.x, VO_SOL - s.y, vifJ);
+      // Les touches du joueur : trois pastilles au-dessus de sa tête, qui s'allument à chaque frappe.
+      if (b && s.dernier === 0) for (let i = 0; i < RVO.touches; i++) { trait(ctx, 1.6); ctx.fillStyle = i < s.touches ? (s.touches >= RVO.touches ? R : O) : C; ctx.beginPath(); ctx.arc(s.x - 9 + i * 9, VO_SOL - s.y - VO_TETE - VO_RJ - 9, 3.2, 0, 6.3); ctx.fill(); ctx.stroke(); }
+      if (b) poche(b);
+      else if (s.impact && s.t - s.impact.t < 0.7) {
+        // La poche à terre, et l'onde de sa chute.
+        const u = (s.t - s.impact.t) / 0.7;
+        poche({ x: s.impact.x, y: VO_SOL - 9, tour: 1.57 });
+        if (!calme) { ctx.strokeStyle = "rgba(38,7,109," + (0.5 * (1 - u)).toFixed(2) + ")"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(s.impact.x, VO_SOL + 4, 14 + 26 * u, 4 + 5 * u, 0, 0, 6.3); ctx.stroke(); }
+      } else if (!clos && s.t - s.msgT >= 1) texte(ctx, "Nouvelle poche…", 180, 150, 14, "rgba(38,7,109,.6)");
+      if (s.t < 5 && !clos) {
+        ctx.globalAlpha = Math.min(1, 5 - s.t) * 0.92;
+        ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(42, 196, 276, 48, 14); ctx.fill();
+        texte(ctx, tactile ? "Glissez le doigt pour vous déplacer" : "Souris ou flèches ◀ ▶ pour vous déplacer", 180, 211, 13, Y);
+        texte(ctx, tactile ? "Touchez l'écran pour sauter" : "Clic ou Espace pour sauter", 180, 229, 13, Y);
+        ctx.globalAlpha = 1;
+      }
+      const n = noteVolley(s);
+      bandeau(ctx, "Vous " + s.pour + " · Automate " + s.contre + " · " + n + "/10", duree - s.t, duree);
+      if (!clos && s.t - s.msgT < 1) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(50, 130, 260, 40, 14); ctx.fill(); texte(ctx, s.msg, 180, 151, 17, s.msg.endsWith("!") ? Y : P); }
+      if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 170, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 210, 40, Y); texte(ctx, s.pour + " gagnés sur " + (s.pour + s.contre) + " joués", 180, 252, 16, C); }
+    }
+    const arret = boucle(dt => {
+      if (!clos) {
+        if (gauche !== droite) s.cible = borne(s.x + (gauche ? -1 : 1) * RVO.clavier * dt, XMIN, XMAX);
+        pasVolley(s, dt, duree);
+        if (s.fini) {
+          clos = true; lache();
+          const n = noteVolley(s), joues = s.pour + s.contre, pl = (k, un, des) => k + " " + (k > 1 ? des : un);
+          const bilan = pl(s.pour, "point gagné", "points gagnés") + " sur " + pl(joues, "joué", "joués") + " contre l'automate : " + n + " sur 10 (la note est la part des points gagnés).";
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, joues ? Math.round(100 * s.pour / joues) * 100 + Math.min(99, s.pour) : 0); }, 1300);
+        }
+      }
+      dessiner();
+    });
+    cv.focus({ preventScroll: true });
+    return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
+  }
+  api.volley = volley;
+  Object.assign(api._coeur, { REGL_VOLLEY: RVO, creerVolley, pasVolley, noteVolley, prevoirPoche, VO: { RB: VO_RB, RJ: VO_RJ, G: VO_G, D: VO_D, SOL: VO_SOL, HAUT: VO_HAUT, FX: VO_FX, FE: VO_FE, FH: VO_FH, TETE: VO_TETE, H: VO_H } });
   /* ----- Fin [volley] ----- */
 
   /* ----- Repère [haies] : le saut de haies ----- */
