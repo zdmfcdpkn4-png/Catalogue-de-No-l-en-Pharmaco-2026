@@ -2,6 +2,7 @@
    Propre au site Vercel, même fabrication que les jetons du menu (menu.js) : une face au trait de la charte, avec le
    nom de l'indication incurvé autour du dessin, une tranche et un dos en verre. Le jeton fait un tour sur lui-même
    au survol de la souris et au clic ; au clic, le filtre attend que le jeton montre son dos.
+   Sur téléphone : quatre badges par ligne, plus petits, avec le nom seul (la précision du bas est masquée).
    Le bouton d'origine reste en place (classe, data-p, aria-pressed) : la page continue de le piloter.
    Sans ce fichier, les pastilles d'origine restent telles quelles. */
 (() => {
@@ -20,7 +21,7 @@
     solo: ["Garde de nuit", "en solo ou en monoposte", "#B9A6F0", '<path d="M19 3A13 13 0 1 0 29 21A10.5 10.5 0 0 1 19 3Z" fill="' + Y + '"/>' + pion(24.5, 5.5, O)],
     prix: ["Petit budget", "15 € max", "#F2E39A", '<circle cx="16" cy="16" r="12.5" fill="' + Y + '"/><circle cx="16" cy="16" r="9" stroke-width="1.2" stroke-dasharray="1.5 2.4"/><path d="M20.5 11.8a5.6 5.6 0 1 0 0 8.4M9.5 14.6h7M9.5 17.6h7" stroke-width="2.2"/>'],
     prime: ["Médaillés", "de l'année", "#EFC7E4", '<path d="M9 2h6l3 9h-6Z" fill="' + O + '"/><path d="M23 2h-6l-3 9h6Z" fill="' + P + '"/><circle cx="16" cy="20" r="9" fill="' + Y + '"/><path d="M16 14.6l1.6 3.4 3.7.4-2.8 2.5.8 3.7L16 22.7l-3.3 1.9.8-3.7-2.8-2.5 3.7-.4Z" fill="' + N + '" stroke="none"/>'],
-    cerveau: ["Forte", "concentration", "#F59A62", '<path d="M13 3v8L5.3 25.6A2.3 2.3 0 0 0 7.3 29h17.4a2.3 2.3 0 0 0 2-3.4L19 11V3" fill="' + C + '"/><path d="M9.2 18.2h13.6l3.9 7.4a2.3 2.3 0 0 1-2 3.4H7.3a2.3 2.3 0 0 1-2-3.4Z" fill="' + O + '"/><path d="M11 3h10"/>' + pt(12, 24.6, 1.25) + pt(16, 21.6, 1.25) + pt(20, 24.6, 1.25)],
+    cerveau: ["Concentration", "forte", "#F59A62", '<path d="M13 3v8L5.3 25.6A2.3 2.3 0 0 0 7.3 29h17.4a2.3 2.3 0 0 0 2-3.4L19 11V3" fill="' + C + '"/><path d="M9.2 18.2h13.6l3.9 7.4a2.3 2.3 0 0 1-2 3.4H7.3a2.3 2.3 0 0 1-2-3.4Z" fill="' + O + '"/><path d="M11 3h10"/>' + pt(12, 24.6, 1.25) + pt(16, 21.6, 1.25) + pt(20, 24.6, 1.25)],
   };
   const dessin = (k, x, t) => '<svg x="' + x + '" y="' + x + '" width="' + t + '" height="' + t + '" viewBox="0 0 32 32" fill="none" stroke="' + N + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">' + BADGES[k][3] + "</svg>";
   const TRANCHE = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5].map(z => '<span class="bd-t" style="--z:' + z + 'px"></span>').join("");
@@ -55,7 +56,7 @@
 .chip.bd.tourne .bd-o{animation:bdOmbre 1.6s linear both}
 @keyframes bdTour{0%{transform:rotateX(0) rotateY(0)}12%{transform:rotateX(14deg) rotateY(-24deg)}30%{transform:translateY(-5px) rotateX(10deg) rotateY(60deg)}40%{transform:translateY(-7px) rotateX(8deg) rotateY(90deg)}55%{transform:translateY(-7px) rotateX(8deg) rotateY(180deg)}68%{transform:translateY(-5px) rotateX(6deg) rotateY(270deg)}80%{transform:rotateX(2deg) rotateY(345deg)}90%{transform:rotateX(0) rotateY(367deg)}100%{transform:rotateX(0) rotateY(360deg)}}
 @keyframes bdOmbre{0%{transform:translate(4px,4px) scaleX(1)}12%{transform:translate(4px,5px) scaleX(.91)}30%{transform:translate(6px,8px) scaleX(.5)}40%{transform:translate(7px,9px) scaleX(.12)}55%{transform:translate(7px,9px) scaleX(1)}68%{transform:translate(6px,8px) scaleX(.12)}80%{transform:translate(4px,5px) scaleX(.97)}90%,100%{transform:translate(4px,4px) scaleX(1)}}
-@media(max-width:560px){#presets{gap:12px 10px}#presets .chip.bd{width:calc((100% - 24px)/3);max-width:116px;height:auto;aspect-ratio:1}}
+@media(max-width:560px){#presets{gap:10px 8px}#presets .chip.bd{width:calc((100% - 24px)/4);max-width:96px;height:auto;aspect-ratio:1}.bd-f .bd-p{display:none}.bd-f .bd-n{font-size:12.6px}}
 @media(prefers-reduced-motion:reduce){#presets .chip.bd,.bd-o{transition:none}.chip.bd.tourne .bd-j,.chip.bd.tourne .bd-o{animation:none}}`;
   document.head.appendChild(st);
 
