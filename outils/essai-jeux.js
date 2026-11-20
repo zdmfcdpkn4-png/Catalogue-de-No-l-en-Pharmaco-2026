@@ -9,17 +9,18 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
 (async () => {
   fs.writeFileSync(dir + '/jeux.html', html);
   const b = await chromium.launch();
-  const p = await b.newPage({ viewport: { width: 390, height: 560 }, deviceScaleFactor: 2 });
+  const p = await b.newPage({ viewport: { width: 390, height: 660 }, deviceScaleFactor: 2 });
   const errs = []; p.on('pageerror', e => errs.push(String(e)));
   await p.goto('file://' + dir + '/jeux.html');
   await p.evaluate(() => document.fonts.ready);
-  // Bowling : deux lancers
+  // Bowling : cinq séries de deux tirs, joués à l'aveugle jusqu'à la fin de la partie
   await p.evaluate(() => { window.fin = null; PharmacoJeux.bowling(document.querySelector('#z'), { duree: 30, onFin: (n, t) => { window.fin = [n, t]; } }); });
   await p.waitForTimeout(700); await p.screenshot({ path: dir + '/bowling-1-position.png' });
   await p.click('.pj-cv'); await p.waitForTimeout(450); await p.screenshot({ path: dir + '/bowling-2-angle.png' });
   await p.click('.pj-cv'); await p.waitForTimeout(600); await p.screenshot({ path: dir + '/bowling-3-roule.png' });
-  await p.waitForTimeout(2600); await p.click('.pj-cv'); await p.waitForTimeout(300); await p.keyboard.press('Space');
+  for (let i = 0; i < 30 && !(await p.evaluate(() => window.fin)); i++) { await p.waitForTimeout(2600); await p.click('.pj-cv'); await p.waitForTimeout(700); await p.keyboard.press('Space'); }
   await p.waitForFunction(() => window.fin, null, { timeout: 15000 });
+  await p.screenshot({ path: dir + '/bowling-4-fin.png' });
   const fb = await p.evaluate(() => window.fin);
   // La hotte : on suit la particule la plus basse à la souris pendant 12 s, puis on laisse filer
   await p.evaluate(() => { window.fin = null; PharmacoJeux.tir(document.querySelector('#z'), { duree: 45, onFin: (n, t) => { window.fin = [n, t]; } }); });
