@@ -1,7 +1,7 @@
 {
   "name": "catalogue-noel-pharmaco-2026",
   "private": true,
-  "description": "Catalogue Pharmacotechnie ludique de Noël 2026 et vote du jeu favori de l'équipe",
+  "description": "Catalogue Pharmacotechnie ludique de Noël 2026, vote du jeu favori de l'équipe et grande énigme de Noël",
   "dependencies": {
     "@vercel/blob": "2.8.2"
   }
