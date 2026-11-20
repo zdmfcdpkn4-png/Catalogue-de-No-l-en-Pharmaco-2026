@@ -303,6 +303,6 @@
     return () => { arret(); liberer(); };
   }
 
-  const api = { bowling, tir, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, xSeringue, SERIES, noteBowling, creerTir, pasTir, noteTir, TOTAL } };
+  const api = { bowling, tir, _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, DEPART, xSeringue, SERIES, noteBowling, creerTir, pasTir, noteTir, TOTAL } };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PharmacoJeux = api;
 })(typeof window !== "undefined" ? window : globalThis);
