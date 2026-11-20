@@ -1215,7 +1215,268 @@
   /* ----- Fin [haies] ----- */
 
   /* ----- Repère [etageres] : le jeu de plateformes ----- */
-  // (session « Jeu » correspondante : écrire ici, entre ce repère et le suivant)
+  /* --- Les étagères de la réserve : le cœur --- */
+  // Un rayonnage de cinq niveaux à plat, percés de vides, reliés par des escabeaux. Le préparateur part du sol et va chercher
+  // le lot urgent tout en haut ; il le livre, repart d'en bas, et recommence. L'étiqueteuse du dernier rayon lâche des bobines
+  // d'étiquettes et des rouleaux de film qui roulent, tombent par les vides et rebondissent sur les montants.
+  // Réglages étalonnés par simulation (node outils/etalon-etageres.js) : ils fixent la difficulté.
+  const RE = { marche: 104, grimpe: 88, saut: 250, pesanteur: 900, bobine: 96, film: 132, partFilm: 0.3, cadence: 2.3, presse: 1.5, etourdi: 0.8, abri: 1.3, amende: 5, etage: 10, lot: 20, palier: 46 };
+  const E_PAS = 1 / 120, E_XG = 16, E_XD = 344, E_RB = 9, E_PRISE = 12, E_TAMPON = 0.12;
+  const E_NIV = [418, 346, 274, 202, 130];                                  // hauteur du plancher de chaque niveau, du sol au dernier rayon
+  const E_VIDES = [[], [[16, 52], [308, 344]], [[165, 195]], [[56, 86], [290, 320]], [[196, 226]]];   // les vides de chaque niveau
+  const E_ESC = [[130, 230], [84, 276], [110, 250], [150]];                 // les escabeaux qui partent de chaque niveau
+  const E_LOT = 306, E_SOURCE = 72, E_MUR = 62, E_DEPART = 180;
+  const eVide = (niv, x, marge) => E_VIDES[niv].some(v => x > v[0] + marge && x < v[1] - marge);
+  function creerEtageres(graine) {
+    let a = graine || 20261222;
+    const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    return { t: 0, acc: 0, h, j: { x: E_DEPART, y: E_NIV[0], vy: 0, niv: 0, bas: 0, etat: "sol", vu: 1, pas: 0 }, cmd: { gx: 0, gy: 0 }, saute: 0, bobines: [], prochaine: 1,
+      points: 0, haut: 0, lots: 0, etages: 0, chocs: 0, perdu: 0, etourdi: 0, abri: 0, msg: "", msgT: -9, gainT: -9, gain: 0, chocT: -9, livreT: -9, fini: false };
+  }
+  // Un niveau gagné ne compte qu'une fois par montée : retomber puis remonter ne rapporte rien.
+  function eGagner(s) {
+    const j = s.j;
+    if (j.niv > s.haut) { const k = j.niv - s.haut; s.haut = j.niv; s.etages += k; s.points += k * RE.etage; s.gain = k * RE.etage; s.gainT = s.t; }
+  }
+  function eBobines(s, dt, duree) {
+    s.prochaine -= dt;
+    if (s.prochaine <= 0) {
+      const film = s.h() < RE.partFilm;
+      s.bobines.push({ x: E_SOURCE, y: E_NIV[4] - E_RB, niv: 4, d: 1, v: film ? RE.film : RE.bobine, film, chute: false, vy: 0, tour: 0 });
+      s.prochaine = (RE.cadence + (RE.presse - RE.cadence) * s.t / duree) * (0.8 + 0.4 * s.h());   // la cadence monte au fil de la partie
+    }
+    let partie = false;
+    for (const b of s.bobines) {
+      if (b.chute) {
+        b.vy += RE.pesanteur * dt; b.y += b.vy * dt;
+        const sol = E_NIV[b.niv - 1] - E_RB;
+        if (b.y >= sol) { b.y = sol; b.niv--; b.chute = false; b.vy = 0; if (s.h() < 0.5) b.d = -b.d; }   // en touchant le rayon, elle repart d'un côté ou de l'autre
+        continue;
+      }
+      b.x += b.d * b.v * dt; b.tour += b.d * b.v * dt / E_RB;
+      if (b.x < E_XG + E_RB || b.x > E_XD - E_RB) {
+        if (b.niv === 0) { b.partie = partie = true; }                    // au sol, elle finit dans le bac de récupération
+        else { b.d = b.x < 180 ? 1 : -1; b.x = b.x < 180 ? E_XG + E_RB : E_XD - E_RB; }
+      } else if (eVide(b.niv, b.x, 3)) b.chute = true;
+    }
+    if (partie) s.bobines = s.bobines.filter(b => !b.partie);
+  }
+  function unPasEtageres(s, duree) {
+    const dt = E_PAS, j = s.j;
+    s.t += dt;
+    if (s.t >= duree) { s.fini = true; return; }
+    if (s.saute > 0) s.saute -= dt;
+    if (s.abri > 0) s.abri -= dt;
+    if (s.etourdi > 0) s.etourdi -= dt;
+    eBobines(s, dt, duree);
+    const libre = s.etourdi <= 0, gx = libre ? s.cmd.gx : 0, gy = libre ? s.cmd.gy : 0;
+    const marcher = () => { j.x = borne(j.x + gx * RE.marche * dt, (j.y <= E_NIV[4] + 30 ? E_MUR : E_XG) + 8, E_XD - 8); if (gx) { j.vu = gx; j.pas += dt; } };
+    if (j.etat === "sol") {
+      // L'escabeau se prend en poussant vers le haut (ou vers le bas, du rayon du dessus) quand on est à son pied.
+      const liste = gy < 0 ? E_ESC[j.niv] : gy > 0 ? E_ESC[j.niv - 1] : null, ex = liste && liste.find(x => Math.abs(x - j.x) <= E_PRISE);
+      if (ex !== undefined && ex !== null) { j.etat = "esc"; j.x = ex; j.bas = gy < 0 ? j.niv : j.niv - 1; }
+      else {
+        marcher();
+        if (libre && s.saute > 0) { s.saute = 0; j.etat = "air"; j.vy = -RE.saut; }
+        else if (eVide(j.niv, j.x, 4)) { j.etat = "air"; j.vy = 0; }
+        else if (j.niv === 4 && Math.abs(j.x - E_LOT) < 12) {
+          // Lot livré : il part par le passe-plat, le préparateur repart d'en bas pour le suivant.
+          s.lots++; s.points += RE.lot; s.haut = 0; s.livreT = s.t; s.msg = "Lot urgent livré ! +" + RE.lot; s.msgT = s.t;
+          j.x = E_DEPART; j.y = E_NIV[0]; j.niv = 0; j.vu = 1; s.abri = Math.max(s.abri, 1);
+        }
+      }
+    }
+    if (j.etat === "esc") {
+      j.y += gy * RE.grimpe * dt; if (gy) j.pas += dt;
+      if (j.y <= E_NIV[j.bas + 1]) { j.y = E_NIV[j.bas + 1]; j.niv = j.bas + 1; j.etat = "sol"; eGagner(s); }
+      else if (j.y >= E_NIV[j.bas]) { j.y = E_NIV[j.bas]; j.niv = j.bas; j.etat = "sol"; }
+    } else if (j.etat === "air") {
+      marcher();
+      const y0 = j.y;
+      j.vy += RE.pesanteur * dt; j.y += j.vy * dt;
+      if (j.vy > 0) for (let k = 4; k >= 0; k--) if (y0 < E_NIV[k] && j.y >= E_NIV[k] && !eVide(k, j.x, 4)) { j.y = E_NIV[k]; j.niv = k; j.vy = 0; j.etat = "sol"; eGagner(s); break; }
+    }
+    // Une bobine reçue : étourdi un instant, une amende au compteur, et la partie continue.
+    if (s.abri <= 0) for (const b of s.bobines) {
+      if (Math.abs(b.x - j.x) >= 13 || Math.abs(b.y - (j.y - 13)) >= 20) continue;
+      const perte = Math.min(RE.amende, s.points);
+      s.chocs++; s.points -= perte; s.perdu += perte; s.etourdi = RE.etourdi; s.abri = RE.etourdi + RE.abri; s.chocT = s.t;
+      s.msg = (b.film ? "Rouleau de film !" : "Bobine d'étiquettes !") + (perte ? " −" + perte : ""); s.msgT = s.t;
+      break;
+    }
+  }
+  function pasEtageres(s, dt, duree) { s.acc += dt; while (s.acc >= E_PAS && !s.fini) { s.acc -= E_PAS; unPasEtageres(s, duree); } }
+  const noteEtageres = s => Math.min(10, Math.floor(s.points / RE.palier));
+
+  /* --- Les étagères de la réserve : dessin et commandes --- */
+  function etageres(el, opt) {
+    const duree = opt.duree || 60, HE = 540, { cv, ctx, liberer } = monter(el, HE);
+    cv.style.touchAction = "none";
+    cv.setAttribute("aria-label", "Les étagères de la réserve. Flèches ou Z, Q, S, D pour marcher et prendre les escabeaux, Espace pour sauter. Au doigt : la croix à gauche pour se déplacer, le bouton Saut à droite. Montez chercher le lot urgent tout en haut en évitant les bobines.");
+    const s = creerEtageres(), media = q => typeof matchMedia === "function" && matchMedia(q).matches, tactile = media("(pointer: coarse)"), calme = media("(prefers-reduced-motion: reduce)");
+    const PX = 80, PY = 486, SX = 284, SY = 486, BANDE = 430;
+    const touches = new Set(), doigts = new Map();
+    let clos = false, minuterie = 0, pad = null, sautT = -9;
+    const maj = () => { const k = n => touches.has(n) ? 1 : 0; s.cmd.gx = pad ? pad.gx : k("d") - k("g"); s.cmd.gy = pad ? pad.gy : k("b") - k("h"); };
+    const sauter = () => { s.saute = E_TAMPON; sautT = s.t; };
+    const TOUCHES = { ArrowUp: "h", ArrowRight: "d", ArrowDown: "b", ArrowLeft: "g", z: "h", w: "h", d: "d", s: "b", q: "g", a: "g", " ": "saut", Spacebar: "saut" };
+    const code = e => TOUCHES[e.key && e.key.length === 1 ? e.key.toLowerCase() : e.key];
+    const enfonce = e => {
+      const k = code(e);
+      if (!k || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(e.target && e.target.tagName || "")) return;
+      e.preventDefault();
+      if (k === "saut") { if (!e.repeat) sauter(); } else { touches.add(k); maj(); }
+    };
+    const relache = e => { const k = code(e); if (k && k !== "saut") { touches.delete(k); maj(); } };
+    const oubli = () => { touches.clear(); doigts.clear(); pad = null; maj(); };
+    // Au doigt : la croix suit le pouce sans qu'il se lève (huit directions) ; tout le reste de l'écran fait sauter.
+    const point = e => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * W, (e.clientY - b.top) / b.width * W]; };
+    const viser = p => { const dx = p[0] - PX, dy = p[1] - PY, d = Math.hypot(dx, dy); pad = d < 9 ? { gx: 0, gy: 0 } : { gx: Math.abs(dx) > d * 0.5 ? Math.sign(dx) : 0, gy: Math.abs(dy) > d * 0.5 ? Math.sign(dy) : 0 }; maj(); };
+    const appui = e => {
+      e.preventDefault(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { }
+      const p = point(e);
+      if (p[1] >= BANDE - 6 && p[0] < 180) { doigts.set(e.pointerId, "pad"); viser(p); } else { doigts.set(e.pointerId, "saut"); sauter(); }
+    };
+    const bouge = e => { if (doigts.get(e.pointerId) === "pad") viser(point(e)); };
+    const leve = e => { if (doigts.get(e.pointerId) === "pad") { pad = null; maj(); } doigts.delete(e.pointerId); };
+    const menu = e => e.preventDefault();
+    cv.addEventListener("pointerdown", appui); cv.addEventListener("pointermove", bouge); cv.addEventListener("pointerup", leve); cv.addEventListener("pointercancel", leve); cv.addEventListener("contextmenu", menu);
+    window.addEventListener("keydown", enfonce); window.addEventListener("keyup", relache); window.addEventListener("blur", oubli);
+    const retirer = () => {
+      cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointermove", bouge); cv.removeEventListener("pointerup", leve); cv.removeEventListener("pointercancel", leve); cv.removeEventListener("contextmenu", menu);
+      window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", relache); window.removeEventListener("blur", oubli);
+    };
+    // Le stock au fond des rayons : des silhouettes pâles, tirées une fois pour toutes, hors des vides et des escabeaux.
+    const stock = [];
+    { let a = 7; const h = () => (a = (a * 16807) % 2147483647) / 2147483647;
+      for (let n = 0; n < 4; n++) for (let x = 26; x < 326; x += 15 + h() * 16) {
+        const l = 10 + h() * 14, ht = 12 + h() * 26, genre = h();
+        if (genre < 0.25 || eVide(n, x + l / 2, -l) || E_ESC[n].concat(E_ESC[n - 1] || []).some(e => Math.abs(e - x - l / 2) < l / 2 + 13)) continue;
+        stock.push([x, E_NIV[n], l, Math.min(ht, 44), genre > 0.7]);
+        x += l;
+      } }
+    function decor() {
+      ctx.fillStyle = "#EDEAF6"; ctx.fillRect(0, 39, W, BANDE - 39);
+      ctx.fillStyle = "rgba(38,7,109,.10)";
+      for (const [x, y, l, ht, flaconne] of stock) {
+        ctx.beginPath();
+        if (flaconne) { ctx.roundRect(x, y - ht * 0.7, l, ht * 0.7, 3); ctx.rect(x + l * 0.3, y - ht * 0.7 - 5, l * 0.4, 5); } else ctx.roundRect(x, y - ht, l, ht, 2);
+        ctx.fill();
+      }
+      // Les montants du rayonnage et le sol.
+      ctx.fillStyle = N; ctx.fillRect(E_XG - 8, 96, 8, E_NIV[0] - 96); ctx.fillRect(E_XD, 96, 8, E_NIV[0] - 96); ctx.fillRect(0, E_NIV[0], W, BANDE - E_NIV[0]);
+      // Les escabeaux, derrière les rayons.
+      for (let n = 0; n < 4; n++) for (const ex of E_ESC[n]) {
+        const y0 = E_NIV[n], y1 = E_NIV[n + 1] - 5;
+        for (const [coul, ep] of [[N, 5.5], [Y, 2.5]]) {
+          ctx.strokeStyle = coul; ctx.lineWidth = ep; ctx.lineCap = "round"; ctx.beginPath();
+          ctx.moveTo(ex - 8, y0); ctx.lineTo(ex - 6, y1); ctx.moveTo(ex + 8, y0); ctx.lineTo(ex + 6, y1);
+          for (let y = y0 - 9; y > y1 + 4; y -= 11) { ctx.moveTo(ex - 6.5, y); ctx.lineTo(ex + 6.5, y); }
+          ctx.stroke();
+        }
+      }
+      // Les rayons : des tablettes à plat, interrompues par les vides.
+      trait(ctx, 2.2);
+      for (let n = 1; n <= 4; n++) {
+        let x = E_XG;
+        for (const v of E_VIDES[n].concat([[E_XD, E_XD]])) { ctx.fillStyle = V; ctx.beginPath(); ctx.roundRect(x, E_NIV[n], v[0] - x, 7, 2); ctx.fill(); ctx.stroke(); x = v[1]; }
+      }
+      // L'étiqueteuse emballée, en haut à gauche, et sa bouche d'où sortent les bobines.
+      const yh = E_NIV[4];
+      trait(ctx, 2.4); ctx.fillStyle = O; ctx.beginPath(); ctx.roundRect(E_XG + 2, yh - 40, E_MUR - E_XG - 2, 40, 5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(E_MUR - 12, yh - 21, 12, 21, [5, 0, 0, 0]); ctx.fill();
+      ctx.save(); ctx.translate(E_XG + 18, yh - 26); ctx.rotate(calme ? 0 : s.t * 4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, 8, 0, 6.3); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.moveTo(0, -8); ctx.lineTo(0, 8); ctx.stroke(); ctx.restore();
+      const voyant = s.prochaine < 0.45 && !clos; ctx.fillStyle = voyant ? R : Y; ctx.beginPath(); ctx.arc(E_MUR - 7, yh - 32, 3.2, 0, 6.3); ctx.fill(); ctx.stroke();
+      // Le lot urgent, dans son bac.
+      const k = calme || clos ? 1 : 1 + Math.sin(s.t * 7) * 0.06;
+      ctx.save(); ctx.translate(E_LOT, yh); ctx.scale(k, k);
+      trait(ctx, 2.2); ctx.fillStyle = R; ctx.beginPath(); ctx.roundRect(-12, -20, 24, 20, 4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-8, -15, 16, 10, 2); ctx.fill();
+      texte(ctx, "!", 0, -9.5, 11, R);
+      ctx.restore();
+      texte(ctx, "LOT URGENT", E_LOT, yh - 30, 9, N);
+    }
+    function bobine(b) {
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.tour);
+      trait(ctx, 2); ctx.fillStyle = b.film ? B : C; ctx.beginPath(); ctx.arc(0, 0, E_RB, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = b.film ? C : Y; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 6.3); ctx.fill(); ctx.lineWidth = 1.4; ctx.stroke();
+      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(0, 0, 1.8, 0, 6.3); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(5, 0); ctx.lineTo(E_RB, 0); ctx.moveTo(-5, 0); ctx.lineTo(-E_RB, 0); ctx.stroke();
+      ctx.restore();
+    }
+    function preparateur() {
+      const j = s.j, sonne = s.etourdi > 0 && !clos, esc = j.etat === "esc", air = j.etat === "air";
+      const balance = clos || sonne ? 0 : Math.sin(j.pas * 16) * (s.cmd.gx || (esc && s.cmd.gy) ? 1 : 0);
+      ctx.save(); ctx.translate(j.x, j.y);
+      if (s.abri > 0 && !clos && !sonne) ctx.globalAlpha = calme ? 0.55 : Math.floor(s.t * 10) % 2 ? 0.35 : 0.9;
+      if (sonne) ctx.rotate(0.22 * j.vu);
+      if (!esc) ctx.scale(j.vu, 1);
+      trait(ctx, 2.6);                                                     // les jambes
+      const ecart = esc ? 3.5 : air ? 4.5 : balance * 4.5;
+      ctx.beginPath(); ctx.moveTo(-2.5, -9); ctx.lineTo(-2.5 - ecart, esc ? -balance * 2.5 : 0); ctx.moveTo(2.5, -9); ctx.lineTo(2.5 + ecart, esc ? balance * 2.5 : 0); ctx.stroke();
+      trait(ctx, 1.8);                                                     // la blouse
+      ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-6, -20, 12, 13, 3.5); ctx.fill(); ctx.stroke();
+      trait(ctx, 2.2);                                                     // les bras
+      if (esc) { ctx.beginPath(); ctx.moveTo(-6, -17); ctx.lineTo(-8, -23 + balance * 2.5); ctx.moveTo(6, -17); ctx.lineTo(8, -23 - balance * 2.5); ctx.stroke(); }
+      else { ctx.beginPath(); ctx.moveTo(1, -17); ctx.lineTo(air ? 8 : 4 - balance * 3, air ? -22 : -11); ctx.stroke(); }
+      trait(ctx, 1.6);                                                     // la tête et la charlotte
+      ctx.fillStyle = "#F6D2B8"; ctx.beginPath(); ctx.arc(0, -24, 4.6, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = B; ctx.beginPath(); ctx.arc(0, -25, 5.4, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+      if (!esc) { ctx.fillStyle = N; ctx.beginPath(); ctx.arc(2.2, -22.6, 0.9, 0, 6.3); ctx.fill(); }
+      ctx.restore();
+      if (sonne) for (let i = 0; i < 3; i++) { const a = (calme ? 0 : s.t * 6) + i * 2.1; texte(ctx, "✦", j.x + Math.cos(a) * 11, j.y - 33 + Math.sin(a) * 3, 9, O); }
+    }
+    function commandes() {
+      ctx.fillStyle = N; ctx.fillRect(0, BANDE, W, HE - BANDE);
+      const c = s.cmd, fl = [[1, 0, c.gx > 0], [-1, 0, c.gx < 0], [0, -1, c.gy < 0], [0, 1, c.gy > 0]];
+      ctx.fillStyle = "rgba(255,251,242,.08)"; ctx.strokeStyle = "rgba(185,166,240,.6)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(PX, PY, 47, 0, 6.3); ctx.fill(); ctx.stroke();
+      for (const [dx, dy, actif] of fl) {
+        ctx.save(); ctx.translate(PX + dx * 29, PY + dy * 29); ctx.rotate(Math.atan2(dy, dx));
+        ctx.fillStyle = actif && !clos ? Y : V; ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-6, -10); ctx.lineTo(-6, 10); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+      const presse = s.t - sautT < 0.15 && !clos;
+      ctx.fillStyle = presse ? Y : O; ctx.strokeStyle = C; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(SX, SY, 38, 0, 6.3); ctx.fill(); ctx.stroke();
+      texte(ctx, "SAUT", SX, SY + 1, 16, N);
+      if (!tactile) { texte(ctx, "Flèches", 184, PY - 9, 12, V); texte(ctx, "+ Espace", 184, PY + 9, 12, V); }
+    }
+    function dessiner() {
+      ctx.fillStyle = N; ctx.fillRect(0, 0, W, HE);
+      ctx.save();
+      const f = s.t - s.chocT;
+      if (!calme && !clos && f < 0.25) ctx.translate(Math.sin(f * 90) * 3 * (1 - f / 0.25), 0);   // la secousse du choc
+      decor();
+      for (const b of s.bobines) bobine(b);
+      preparateur();
+      // Les gains : « +10 » au-dessus du préparateur à chaque rayon gagné, des étoiles autour du bac à chaque lot livré.
+      const g = s.t - s.gainT;
+      if (g < 0.7 && !clos) { ctx.globalAlpha = 1 - g / 0.7; texte(ctx, "+" + s.gain, s.j.x, s.j.y - 40 - (calme ? 0 : g * 22), 13, G); ctx.globalAlpha = 1; }
+      const l = s.t - s.livreT;
+      if (l < 0.8 && !clos && !calme) for (let i = 0; i < 6; i++) { const a = i * 1.05 - 2.6; ctx.globalAlpha = 1 - l / 0.8; texte(ctx, "✦", E_LOT + Math.cos(a) * (10 + l * 46), E_NIV[4] - 14 + Math.sin(a) * (10 + l * 46), 12, i % 2 ? O : G); ctx.globalAlpha = 1; }
+      ctx.restore();
+      if (!clos && s.t - s.msgT < 1.4) { ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(74, 48, 212, 26, 10); ctx.fill(); texte(ctx, s.msg, 180, 62, 13, Y); }
+      commandes();
+      const n = noteEtageres(s);
+      bandeau(ctx, s.points + " pts · " + s.lots + (s.lots > 1 ? " lots · " : " lot · ") + n + "/10", duree - s.t, duree);
+      if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 180, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 220, 40, Y); texte(ctx, s.points + " points, " + s.lots + (s.lots > 1 ? " lots livrés" : " lot livré"), 180, 262, 16, C); }
+    }
+    const arret = boucle(dt => {
+      if (!clos) {
+        pasEtageres(s, dt, duree);
+        if (s.fini) {
+          clos = true; oubli();
+          const n = noteEtageres(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
+          const bilan = pl(s.lots, "lot urgent livré", "lots urgents livrés") + ", " + pl(s.etages, "rayon gravi", "rayons gravis") + ", " + pl(s.chocs, "bobine reçue", "bobines reçues") + (s.perdu ? " (−" + s.perdu + ")" : "") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (1 point de note par tranche de " + RE.palier + " points).";
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, s.points)); }, 1300);
+        }
+      }
+      dessiner();
+    });
+    cv.focus({ preventScroll: true });
+    return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
+  }
+  api.etageres = etageres;
+  Object.assign(api._coeur, { REGL_ETAGERES: RE, creerEtageres, pasEtageres, noteEtageres, eVide, E_NIV, E_VIDES, E_ESC, E_LOT, E_XG, E_XD, E_RB });
   /* ----- Fin [etageres] ----- */
 
   /* ----- Repère [pastilles] : le jeu du poseur ----- */
