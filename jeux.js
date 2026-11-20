@@ -988,7 +988,198 @@
      Inscription : api.<nom> = <fonction> ; Object.assign(api._coeur, { … }) pour ce que les outils doivent voir. ===== */
 
   /* ----- Repère [basket] : le basket ----- */
-  // (session « Jeu » correspondante : écrire ici, entre ce repère et le suivant)
+  // Le basket du pilulier : on lance des comprimés, d'un geste glissé-lâché, dans un pilulier qui va et vient sur ses étagères.
+  // Tout le jeu vit dans ce bloc (cœur, dessin, inscription) : aucun nom ne déborde sur les jeux voisins.
+  {
+    /* --- Le cœur : règles et trajectoires, sans navigateur --- */
+    // Réglages étalonnés par simulation (node outils/etalon-basket.js) : ils fixent la difficulté.
+    const RBK = { g: 900, x0: 180, y0: 432, r: 9, demi: 40, dmin: 24, dd: 1.2, haut: 34, ep: 3, v0: 70, dv: 6, vmax: 130, xmin: 62, xmax: 298, rebond: 0.5, pause: 0.3, k: 5.5, vmin: 380, vlim: 960, vxlim: 460, seuils: [2, 5, 8, 11, 14, 18, 23, 29, 38, 48], tops: [184, 156, 206], etage: 4, monte: 70, vie: 4 };
+    const BK_PAS = 1 / 240;
+    const vitesseBasket = s => Math.min(RBK.vmax, RBK.v0 + RBK.dv * s.paniers);                      // le pilulier accélère à chaque panier
+    const demiBasket = s => Math.max(RBK.dmin, RBK.demi - RBK.dd * s.paniers);                       // et rétrécit
+    const etageBasket = s => Math.floor(s.paniers / RBK.etage) % RBK.tops.length;                   // et change d'étagère tous les RBK.etage paniers
+    const creerBasket = () => ({ t: 0, acc: 0, px: 180, dir: 1, pvx: 0, pvy: 0, top: RBK.tops[0], balle: null, attente: 0.4, perdus: [], points: 0, paniers: 0, directs: 0, lances: 0, ev: null, evT: -9, choc: -9, fini: false });
+    // Un lancer : vitesse en px/s, vy négatif = vers le haut. Refusé tant que le comprimé précédent vole, ou une fois le temps écoulé.
+    const lancerBasket = (s, vx, vy, duree) => {
+      if (s.balle || s.attente > 0 || s.fini || s.t >= duree) return false;
+      vy = borne(vy, -RBK.vlim, -RBK.vmin); vx = borne(vx, -RBK.vxlim, RBK.vxlim);
+      const v = Math.hypot(vx, vy), f = v > RBK.vlim ? RBK.vlim / v : 1;
+      s.balle = { x: RBK.x0, y: RBK.y0, vx: vx * f, vy: vy * f, tour: 0, touche: false, age: 0 }; s.lances++;
+      return true;
+    };
+    // Pour une vitesse verticale donnée, la vitesse horizontale qui amène le comprimé là où sera le pilulier à sa descente.
+    const viseBasket = (s, vy) => {
+      const q = vy * vy - 2 * RBK.g * (RBK.y0 - s.top - 2);
+      if (q <= 0) return null;
+      const T = (-vy + Math.sqrt(q)) / RBK.g, L = RBK.xmax - RBK.xmin, p = s.px - RBK.xmin;
+      const u = ((s.dir > 0 ? p : 2 * L - p) + vitesseBasket(s) * T) % (2 * L), x = RBK.xmin + (u > L ? 2 * L - u : u);
+      return { vx: (x - RBK.x0) / T, T, x };
+    };
+    const unPasBasket = (s, duree) => {
+      const dt = BK_PAS, D = demiBasket(s) + RBK.ep;
+      s.t += dt;
+      s.pvx = s.dir * vitesseBasket(s); s.px += s.pvx * dt;
+      if (s.px > RBK.xmax) { s.px = 2 * RBK.xmax - s.px; s.dir = -1; } else if (s.px < RBK.xmin) { s.px = 2 * RBK.xmin - s.px; s.dir = 1; }
+      const dy = borne(RBK.tops[etageBasket(s)] - s.top, -RBK.monte * dt, RBK.monte * dt); s.top += dy; s.pvy = dy / dt;
+      if (s.attente > 0) s.attente -= dt;
+      for (const q of s.perdus) { q.vy += RBK.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.tour += dt * q.vx / 40; }
+      if (s.perdus.length && s.perdus[0].y > H + 30) s.perdus.shift();
+      const b = s.balle;
+      if (b) {
+        b.age += dt; b.vy += RBK.g * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.tour += dt * b.vx / 40;
+        const bas = s.top + RBK.haut;
+        // Les parois du pilulier (deux côtés et le fond) : des traits épais, plus épais que le plus grand pas du comprimé.
+        for (const [x1, y1, x2, y2] of [[s.px - D, s.top, s.px - D, bas], [s.px + D, s.top, s.px + D, bas], [s.px - D, bas, s.px + D, bas]]) {
+          const ux = x2 - x1, uy = y2 - y1, k = borne(((b.x - x1) * ux + (b.y - y1) * uy) / (ux * ux + uy * uy), 0, 1);
+          const cx = x1 + ux * k, cy = y1 + uy * k, d = Math.hypot(b.x - cx, b.y - cy);
+          if (d >= RBK.r + RBK.ep || d === 0) continue;
+          const nx = (b.x - cx) / d, ny = (b.y - cy) / d, vn = (b.vx - s.pvx) * nx + (b.vy - s.pvy) * ny;
+          b.x = cx + nx * (RBK.r + RBK.ep); b.y = cy + ny * (RBK.r + RBK.ep);
+          if (vn < 0) { b.vx -= (1 + RBK.rebond) * vn * nx; b.vy -= (1 + RBK.rebond) * vn * ny; b.touche = true; s.choc = s.t; }
+        }
+        if (Math.abs(b.x - s.px) < D - RBK.ep && b.y > s.top + 9 && b.y < bas) {
+          // Dans le pilulier : 3 points sans avoir touché le bord, 2 sinon.
+          const pts = b.touche ? 2 : 3;
+          s.paniers++; s.points += pts; if (!b.touche) s.directs++;
+          s.ev = { pts, x: s.px, y: s.top }; s.evT = s.t; s.balle = null; s.attente = RBK.pause;
+        } else if ((b.vy > 0 && b.y > bas + 30) || b.x < -20 || b.x > W + 20 || b.age > RBK.vie) {
+          // Plus aucune chance : le comprimé finit sa chute pour le décor, et le suivant arrive.
+          s.perdus.push(b); s.ev = { pts: 0, x: b.x, y: b.y }; s.evT = s.t; s.balle = null; s.attente = RBK.pause;
+        }
+      }
+      // Fin : le temps est écoulé et le dernier comprimé lancé a fini sa course.
+      if (s.t >= duree && !s.balle) s.fini = true;
+    };
+    // Pas fixe, comme le flipper : la physique avance par tranches de 1/240 s quel que soit le rythme d'affichage.
+    const pasBasket = (s, dt, duree) => { s.acc += dt; while (s.acc >= BK_PAS && !s.fini) { s.acc -= BK_PAS; unPasBasket(s, duree); } };
+    // La note : le nombre de paliers atteints. Le barème est progressif : les premiers points de note viennent vite, les derniers se méritent.
+    const noteBasket = s => RBK.seuils.filter(p => s.points >= p).length;
+
+    /* --- Dessin et commandes (navigateur seulement) --- */
+    const basket = (el, opt) => {
+      const duree = opt.duree || 50, { cv, ctx, liberer } = monter(el, H);
+      cv.style.touchAction = "none";
+      cv.setAttribute("aria-label", "Le basket du pilulier. Glissez vers le haut puis lâchez pour lancer un comprimé dans le pilulier qui se déplace. Au clavier : flèches gauche et droite pour l'angle, haut et bas pour la force, Espace pour lancer.");
+      const s = creerBasket(), mm = q => typeof matchMedia === "function" && matchMedia(q).matches;
+      const tactile = mm("(pointer: coarse)"), calme = mm("(prefers-reduced-motion: reduce)");
+      if (typeof opt.espion === "function") opt.espion(s);                                         // pour le banc d'essai seulement
+      let clos = false, minuterie = 0, depart = null, vise = null, clavier = false, angle = 0, force = 780;
+      const touches = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false };
+      const posDe = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.width * W]; };
+      // Le geste : un glissé vers le pilulier. Sa direction donne l'angle, sa longueur la force.
+      const mesurer = e => {
+        const [x, y] = posDe(e), dx = x - depart[0], dy = y - depart[1], l = Math.hypot(dx, dy);
+        if (l < 25 || dy * RBK.k > -RBK.vmin) { vise = null; return; }
+        const f = Math.min(1, RBK.vlim / (l * RBK.k));
+        vise = { vx: borne(dx * RBK.k * f, -RBK.vxlim, RBK.vxlim), vy: dy * RBK.k * f };
+      };
+      const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } clavier = false; depart = posDe(e); vise = null; };
+      const glisse = e => { if (depart) { e.preventDefault(); mesurer(e); } };
+      const lacher = e => { if (!depart) return; mesurer(e); if (vise && !clos) lancerBasket(s, vise.vx, vise.vy, duree); depart = vise = null; };
+      const annule = () => { depart = vise = null; };
+      const viseClavier = () => { const a = angle * Math.PI / 180; vise = { vx: Math.sin(a) * force, vy: -Math.cos(a) * force }; };
+      const touche = (e, v) => {
+        const tir = e.key === " " || e.key === "Spacebar" || e.key === "Enter";
+        if (!(e.key in touches) && !tir) return;
+        if (v && (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(e.target && e.target.tagName || ""))) return;
+        if (v) e.preventDefault();
+        if (tir) { if (v && !e.repeat && !clos) { clavier = true; depart = null; viseClavier(); lancerBasket(s, vise.vx, vise.vy, duree); } return; }
+        touches[e.key] = v; if (v) { clavier = true; depart = null; viseClavier(); }
+      };
+      const enfonce = e => touche(e, true), leve = e => touche(e, false), lache = () => { for (const k in touches) touches[k] = false; }, menu = e => e.preventDefault();
+      cv.addEventListener("pointerdown", appui); cv.addEventListener("pointermove", glisse); cv.addEventListener("pointerup", lacher); cv.addEventListener("pointercancel", annule); cv.addEventListener("contextmenu", menu);
+      window.addEventListener("keydown", enfonce); window.addEventListener("keyup", leve); window.addEventListener("blur", lache);
+      const retirer = () => {
+        cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointermove", glisse); cv.removeEventListener("pointerup", lacher); cv.removeEventListener("pointercancel", annule); cv.removeEventListener("contextmenu", menu);
+        window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
+      };
+      // Un comprimé sécable.
+      const comprime = (x, y, tour, alpha) => {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(tour); ctx.globalAlpha = alpha;
+        trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, RBK.r, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-RBK.r + 3, 0); ctx.lineTo(RBK.r - 3, 0); ctx.stroke();
+        ctx.restore();
+      };
+      const MOMENTS = ["MATIN", "MIDI", "SOIR"], TEINTES = [Y, B, P];
+      function dessiner() {
+        const D = demiBasket(s) + RBK.ep, e = etageBasket(s);
+        ctx.fillStyle = "#EDEAF6"; ctx.fillRect(0, 0, W, H);                                         // le mur du préparatoire
+        ctx.fillStyle = "#F7E7B8"; ctx.fillRect(0, 452, W, H - 452);                                 // la paillasse
+        trait(ctx, 3); ctx.beginPath(); ctx.moveTo(0, 452); ctx.lineTo(W, 452); ctx.stroke();
+        // Les trois étagères, au mur : celle où roule le pilulier est plus marquée.
+        RBK.tops.forEach((t, i) => {
+          const y = t + RBK.haut + RBK.ep + 2;
+          ctx.fillStyle = i === e ? "rgba(38,7,109,.3)" : "rgba(38,7,109,.1)"; ctx.fillRect(20, y, W - 40, 4);
+          texte(ctx, MOMENTS[i], 24, y + 12, 9, i === e ? "rgba(38,7,109,.55)" : "rgba(38,7,109,.25)", "left");
+        });
+        // Le fond du pilulier, puis le comprimé, puis la façade : le comprimé qui entre passe derrière l'étiquette.
+        ctx.fillStyle = "#fff"; ctx.fillRect(s.px - D, s.top, 2 * D, RBK.haut);
+        for (const q of s.perdus) comprime(q.x, q.y, q.tour, 0.45);
+        if (s.balle) comprime(s.balle.x, s.balle.y, s.balle.tour, 1);
+        ctx.save(); ctx.translate(s.px, s.top);
+        const vif = !clos && s.t - s.evT < 0.25 && s.ev && s.ev.pts;
+        ctx.fillStyle = vif ? C : TEINTES[e]; ctx.fillRect(-D, 7, 2 * D, RBK.haut - 7);
+        trait(ctx, 2); ctx.beginPath(); ctx.moveTo(-D, 7); ctx.lineTo(D, 7); ctx.stroke();
+        trait(ctx, RBK.ep * 2); ctx.strokeStyle = s.t - s.choc < 0.1 ? O : N;
+        ctx.beginPath(); ctx.moveTo(-D, 0); ctx.lineTo(-D, RBK.haut); ctx.lineTo(D, RBK.haut); ctx.lineTo(D, 0); ctx.stroke();
+        texte(ctx, MOMENTS[e], 0, 21, 12, N);
+        ctx.restore();
+        // Le lanceur : un godet posé sur la paillasse, avec le comprimé prêt à partir.
+        trait(ctx, 3); ctx.fillStyle = V; ctx.beginPath(); ctx.moveTo(RBK.x0 - 17, RBK.y0 + 4); ctx.lineTo(RBK.x0 + 17, RBK.y0 + 4); ctx.lineTo(RBK.x0 + 11, 452); ctx.lineTo(RBK.x0 - 11, 452); ctx.closePath(); ctx.fill(); ctx.stroke();
+        const pret = !s.balle && s.attente <= 0 && s.t < duree;
+        if (pret) comprime(RBK.x0, RBK.y0 - 6, 0, 1);
+        // La visée : le début de la trajectoire seulement, le reste se juge à l'œil.
+        if (vise && !clos) {
+          ctx.fillStyle = pret ? N : "rgba(38,7,109,.3)";
+          for (let i = 1; i <= 7; i++) { const t = i * 0.065; ctx.beginPath(); ctx.arc(RBK.x0 + vise.vx * t, RBK.y0 - 6 + vise.vy * t + RBK.g * t * t / 2, 3.4 - i * 0.25, 0, 6.3); ctx.fill(); }
+          const f = Math.hypot(vise.vx, vise.vy) / RBK.vlim;                                         // la jauge de force
+          trait(ctx, 2); ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(RBK.x0 + 30, 400, 10, 48, 5); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = f > 0.97 ? O : G; ctx.beginPath(); ctx.roundRect(RBK.x0 + 32, 446 - 44 * f, 6, 44 * f, 3); ctx.fill();
+        }
+        if (depart && !clos) { ctx.strokeStyle = "rgba(38,7,109,.25)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(depart[0], depart[1], 12, 0, 6.3); ctx.stroke(); }
+        // Le résultat du dernier lancer.
+        const dtE = s.t - s.evT;
+        if (s.ev && dtE < 1 && !clos) {
+          if (s.ev.pts) {
+            if (!calme) { ctx.globalAlpha = 1 - dtE; ctx.strokeStyle = s.ev.pts === 3 ? O : G; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.ev.x, s.ev.y + 10, 20 + dtE * 46, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
+            const y = Math.max(62, s.ev.y - 30 - (calme ? 0 : dtE * 16));
+            ctx.fillStyle = "rgba(38,7,109,.88)"; ctx.beginPath(); ctx.roundRect(borne(s.ev.x, 96, W - 96) - 92, y - 15, 184, 30, 15); ctx.fill();
+            texte(ctx, s.ev.pts === 3 ? "+3 · Dose parfaite !" : "+2 · Dans le pilulier !", borne(s.ev.x, 96, W - 96), y + 1, 14, s.ev.pts === 3 ? Y : C);
+          } else if (dtE < 0.7) texte(ctx, "Hors pilulier…", 180, 386, 13, "rgba(38,7,109,.55)");
+        }
+        if (s.t < 5 && !clos && !s.lances) {
+          ctx.globalAlpha = Math.min(1, 5 - s.t) * 0.92;
+          ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(28, 322, 304, 28, 14); ctx.fill();
+          texte(ctx, tactile ? "Glissez vers le pilulier, puis lâchez" : "Glissez-lâchez, ou flèches puis Espace", 180, 337, 13, Y);
+          ctx.globalAlpha = 1;
+        }
+        const n = noteBasket(s);
+        bandeau(ctx, s.points + " pts · " + n + "/10" + (n < 10 ? " · palier à " + RBK.seuils[n] : ""), duree - s.t, duree);
+        if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 180, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 220, 40, Y); texte(ctx, s.points + " points · " + s.paniers + (s.paniers > 1 ? " paniers" : " panier"), 180, 262, 16, C); }
+      }
+      const arret = boucle(dt => {
+        if (!clos) {
+          if (clavier) {
+            angle = borne(angle + ((touches.ArrowRight ? 1 : 0) - (touches.ArrowLeft ? 1 : 0)) * 26 * dt, -32, 32);
+            force = borne(force + ((touches.ArrowUp ? 1 : 0) - (touches.ArrowDown ? 1 : 0)) * 170 * dt, 620, RBK.vlim);
+            viseClavier();
+          }
+          pasBasket(s, dt, duree);
+          if (s.fini) {
+            clos = true; lache(); annule();
+            const n = noteBasket(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
+            const bilan = pl(s.paniers, "panier", "paniers") + " sur " + pl(s.lances, "lancer", "lancers") + ", dont " + pl(s.directs, "direct", "directs") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (2 points le panier, 3 sans toucher le bord ; barème progressif, 10 sur 10 à partir de " + RBK.seuils[9] + " points).";
+            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.points); }, 1300);
+          }
+        }
+        dessiner();
+      });
+      cv.focus({ preventScroll: true });
+      return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
+    };
+    api.basket = basket;
+    Object.assign(api._coeur, { REGL_BASKET: RBK, creerBasket, pasBasket, noteBasket, lancerBasket, viseBasket, vitesseBasket, etageBasket, demiBasket });
+  }
   /* ----- Fin [basket] ----- */
 
   /* ----- Repère [penalty] : le penalty ----- */
