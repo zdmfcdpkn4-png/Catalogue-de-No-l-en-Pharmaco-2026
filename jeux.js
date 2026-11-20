@@ -1063,7 +1063,7 @@
   // Le dessin et les commandes. Le coureur reste à HA_XJ et le couloir défile ; en mouvement réduit, le décor ne défile pas
   // (mur et sol unis), le coureur ne s'agite pas et seuls les obstacles avancent.
   const HA_H = 330, HA_SOL = 262, HA_XJ = 78, HA_HAUT = 66;
-  const HA_PORTES = ["SAS", "ZAC", "STOCK", "LABO", "VESTIAIRE"];
+  const HA_PORTES = ["ONCO", "HÉMATO", "GASTRO", "PNEUMO"];   // les services à livrer, sur les pancartes des portes
   const HA_MOTS = { carton: "Carton renversé !", bidon: "Aïe, le bidon !", chariot: "Chariot percuté !", flaque: "Ça glisse !", portique: "Carton renversé !" };
   function haies(el, opt) {
     const duree = opt.duree || 50, { cv, ctx, liberer } = monter(el, HA_H);
@@ -1073,6 +1073,7 @@
     const s = creerHaies(0, duree);
     if (opt.essai) opt.essai(s);                                                                       // pour le banc d'essai : l'état du jeu
     let clos = false, minuterie = 0;
+    const logo = new Image(); logo.src = opt.logo || "img/logo-pharmacotechnie.webp";               // le logo de l'unité, sur le colis
     const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } appuiHaies(s, true); };
     const lache = () => appuiHaies(s, false);
     const clavier = (e, v) => {
@@ -1105,7 +1106,7 @@
           const x = i * 560 + 300 - cam;
           trait(ctx, 2.6); boite(x, HA_SOL - 120, 64, 120, [6, 6, 0, 0], i % 2 ? P : B);
           boite(x + 20, HA_SOL - 98, 24, 24, 12, C); ctx.fillStyle = N; ctx.fillRect(x + 52, HA_SOL - 62, 5, 14);
-          pastille(HA_PORTES[i % HA_PORTES.length], x + 32, HA_SOL - 132, C);
+          trait(ctx, 2.4); boite(x - 6, HA_SOL - 146, 76, 20, 5, C); texte(ctx, HA_PORTES[i % HA_PORTES.length], x + 32, HA_SOL - 135.5, 12, N);   // la pancarte du service
         }
         for (let i = Math.max(1, Math.floor(cam / (50 * HA_M))); i * 50 * HA_M < cam + W + 40; i++) {   // un repère tous les 50 m
           const x = i * 50 * HA_M - cam;
@@ -1154,7 +1155,7 @@
       }
       ctx.restore();
     }
-    // Le préparateur en tenue (charlotte, masque), sa caisse de transport à bout de bras.
+    // Le préparateur en blouse (charlotte, masque), son colis au logo de l'unité à bout de bras.
     function coureur() {
       const tombe = s.arret > 0, k = tombe ? (calme ? 1 : Math.min(1, (s.t - s.tChute) / 0.16)) : 0, ph = s.x / 13, vif = s.sol && !tombe && !calme;
       ctx.fillStyle = "rgba(38,7,109,.16)"; ctx.beginPath(); ctx.ellipse(HA_XJ + (tombe ? 20 * k : 0), HA_SOL + 3, 13 - Math.min(6, s.y / 14), 3.5, 0, 0, 6.3); ctx.fill();
@@ -1166,9 +1167,12 @@
       }
       ctx.translate(0, vif ? -Math.abs(Math.sin(ph)) * 2 : 0);
       trait(ctx, 2.4);
-      boite(-8, -33, 16, 19, 5, C);                                                                    // la tenue
-      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-1, -28); ctx.lineTo(9, -23); ctx.stroke();
-      trait(ctx, 2); boite(7, -30, 15, 12, 3, O); ctx.fillStyle = C; ctx.fillRect(12.5, -27, 4, 6); ctx.fillRect(11.5, -26, 6, 4);   // la caisse
+      ctx.fillStyle = C; ctx.beginPath(); ctx.moveTo(-8, -28); ctx.quadraticCurveTo(-8, -33, -3, -33); ctx.lineTo(3, -33); ctx.quadraticCurveTo(8, -33, 8, -28); ctx.lineTo(9, -10); ctx.lineTo(-10, -10); ctx.closePath(); ctx.fill(); ctx.stroke();   // la blouse, pans ouverts
+      ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(4, -32); ctx.lineTo(1, -26); ctx.lineTo(2, -10); ctx.moveTo(-6, -18); ctx.lineTo(-2, -18); ctx.stroke();   // le revers, la fermeture, la poche
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-1, -28); ctx.lineTo(9, -22); ctx.stroke();
+      trait(ctx, 2); boite(6, -33, 19, 17, 3, C);                                                      // le colis
+      if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, 7.5, -32.5, 16, 16);
+      else { ctx.fillStyle = O; ctx.fillRect(13.5, -29, 4, 9); ctx.fillRect(11, -26.5, 9, 4); }
       trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(1, -38.5, 6, 0, 6.3); ctx.fill(); ctx.stroke();                  // la tête
       ctx.fillStyle = V; ctx.beginPath(); ctx.arc(0.5, -40, 7.2, Math.PI * 0.95, Math.PI * 2.05); ctx.closePath(); ctx.fill(); ctx.stroke();  // la charlotte
       trait(ctx, 1.6); boite(3, -38.5, 5, 5, 1.5, B);                                                  // le masque

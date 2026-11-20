@@ -32,7 +32,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
     });
     return p;
   };
-  const lancer = (p, duree) => p.evaluate(d => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.haies(document.querySelector('#z'), { duree: d, essai: s => { window.etat = s; }, onFin: (n, t, brut) => { window.fois++; window.fin = [n, t, brut]; } }); }, duree);
+  const lancer = (p, duree) => p.evaluate(([d, R]) => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.haies(document.querySelector('#z'), { duree: d, logo: 'file://' + R + '/img/logo-pharmacotechnie.webp', essai: s => { window.etat = s; }, onFin: (n, t, brut) => { window.fois++; window.fin = [n, t, brut]; } }); }, [duree, repo]);
   const fin = async p => { await p.waitForFunction(() => window.fin, null, { timeout: 90000 }); return p.evaluate(() => window.fin); };
   const etat = p => p.evaluate(() => ({ sauts: window.etat.sauts, grand: window.etat.grand, chutes: window.etat.chutes, francs: window.etat.francs, y: Math.round(window.etat.y) }));
   // 1. Téléphone large, à la souris, partie entière jouée par le joueur automatique.
