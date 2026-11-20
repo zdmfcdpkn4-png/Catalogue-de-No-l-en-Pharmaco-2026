@@ -29,7 +29,7 @@ Le stockage des votes et des parties est un magasin Vercel Blob privé. Les modu
 ## Règles du concours (à ne pas casser)
 - Question : l'énoncé ne sort du serveur qu'au lancement du chrono (30 ou 40 s), une seule tentative, réponse scellée.
 - QCM : 10 points. Dosage de 0 à 100 : 10 points pile sur la cible, 1 de moins par tranche de 2 d'écart.
-- Jeu d'adresse : note de 0 à 10 rendue par `onFin(note, bilan)`, deux tentatives, la meilleure compte.
+- Jeu d'adresse : `onFin(note, bilan, brut)` rend une note de 0 à 10 (affichée au joueur) et un score brut (classé par le serveur), deux tentatives, la meilleure compte. À la clôture, les points viennent du rang parmi ceux qui ont marqué : 10 au premier, 1 au dernier, répartition régulière, ex aequo à égalité ; sans rien marquer, 0.
 - Solution, points et classement ne sortent qu'à la clôture de la porte.
 
 ## Secrets
@@ -61,4 +61,4 @@ pour une demande qui en sort, elle indique la session concernée.
 - La branche de publication est `claude/vibrant-edison-rs93fn`. Seule la session d'orchestration y fusionne et publie.
 - Une session de jeu ou de design livre en poussant sa branche, puis prévient l'utilisateur : « à intégrer par l'orchestration ».
 - Un nouveau jeu d'adresse : une nouvelle session sur le même modèle, avec sa branche.
-- Interface des jeux à respecter : `PharmacoJeux.<nom>(element, { duree, onFin })` rend une fonction d'arrêt.
+- Interface des jeux à respecter : `PharmacoJeux.<nom>(element, { duree, onFin })` rend une fonction d'arrêt ; `onFin(note, bilan, brut)`, avec `brut` entier positif sous le plafond du jeu (`PLAFOND` dans `api/enigme.js`).

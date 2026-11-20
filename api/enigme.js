@@ -1,7 +1,8 @@
 // Pharmacogames de Noël (ex-grande énigme) : 25 portes, une par jour du 1er au 25 décembre 2026 (heure de Paris).
 // Chaque porte reste ouverte son jour, le lendemain et le surlendemain.
 // Questions : l'énoncé ne sort du serveur qu'au lancement du chrono, et la réponse doit arriver avant sa fin.
-// Une seule tentative. Jeux d'adresse : le navigateur renvoie une note de 0 à 10, deux tentatives, la meilleure compte.
+// Une seule tentative. Jeux d'adresse : le navigateur renvoie une note de 0 à 10 et un score brut, deux tentatives,
+// la meilleure compte. À la clôture, les points d'un jeu d'adresse viennent du rang : 10 au premier, 1 au dernier.
 // La bonne réponse et les points ne sortent du serveur qu'à la clôture de la porte ; le classement suit.
 // Tout passe par le code d'équipe (VOTE_CODE). Le code d'administration (ADMIN_CODE) déchiffre la banque
 // de questions, ouvre la relecture des 25 portes et permet de retirer un joueur.
@@ -14,6 +15,8 @@ const MAX_JOUEURS = 300;
 const DELAI = 2; // jours d'ouverture après le jour de la porte
 const GRACE = 4; // secondes tolérées après la fin du chrono d'une question, pour le trajet réseau
 const JEU_MIN = 3, JEU_MARGE = 45; // une note de jeu n'est acceptée ni trop tôt ni trop longtemps après le départ
+// Score brut le plus haut qu'un jeu puisse rendre : au-delà, la note est refusée.
+const PLAFOND = { bowling: 50, tir: 40, flipper: 20000, tennis: 10099, labyrinthe: 1000 };
 const JOUR1 = Date.UTC(2026, 11, 1);
 const PRENOM = /^\p{L}+(?:[-']\p{L}+)*$/u;
 
@@ -50,12 +53,24 @@ const etatDe = (n, jour) => (jour < n ? 'avenir' : jour <= n + DELAI ? 'ouverte'
 
 // Ce que le serveur garde par joueur et par porte.
 //   question : { d: départ du chrono, v: réponse, t: heure de la réponse }   (v absent : chrono lancé, pas de réponse)
-//   jeu      : { e: [ { d: départ, k: jeton de la tentative, s: note de 0 à 10, t: heure de la note } ] }
+//   jeu      : { e: [ { d: départ, k: jeton de la tentative, s: note de 0 à 10, b: score brut, t: heure de la note } ] }
 // Barème : 10 points pour le bon flacon ; au dosage, 10 points pile sur la cible, 1 point de moins par tranche de 2 d'écart ;
-// au jeu d'adresse, la meilleure note des tentatives.
+// au jeu d'adresse, le rang à la clôture (voir rangs). Avant la clôture, le joueur ne voit que sa meilleure note.
+const meilleure = r => Math.max(0, ...r.e.map(a => (a.s === undefined ? 0 : a.s)));
+// Performance classée : le meilleur score brut des tentatives (à défaut, la note).
+const perf = r => (r ? Math.max(0, ...r.e.map(a => (a.s === undefined ? 0 : a.b !== undefined ? a.b : a.s))) : 0);
+// Rangs d'un jeu d'adresse : seuls ceux qui ont marqué sont classés (N joueurs). Le premier a 10 points, le dernier 1,
+// les autres sont répartis régulièrement ; les ex aequo partagent rang et points ; un joueur seul a 10. Sans rien marquer : 0.
+function rangs(q, joueurs) {
+  const L = Object.keys(joueurs).map(cle => [cle, perf(joueurs[cle].r[q.n])]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
+  const N = L.length, M = {};
+  let rang = 0;
+  L.forEach((x, i) => { if (!i || x[1] !== L[i - 1][1]) rang = i + 1; M[x[0]] = { rang, sur: N, pts: N === 1 ? 10 : 1 + Math.round(9 * (N - rang) / (N - 1)) }; });
+  return M;
+}
 function points(q, r) {
   if (!r) return 0;
-  if (q.type === 'jeu') return Math.max(0, ...r.e.map(a => (a.s === undefined ? 0 : a.s)));
+  if (q.type === 'jeu') return meilleure(r);
   if (r.v === undefined) return 0;
   return q.type === 'qcm' ? (r.v === q.bonne ? 10 : 0) : Math.max(0, 10 - Math.ceil(Math.abs(r.v - q.bonne) / 2));
 }
@@ -89,10 +104,11 @@ async function modifier(fn) {
 }
 
 function classement(B, joueurs, jour) {
-  const closes = B.portes.filter(q => etatDe(q.n, jour) === 'close');
-  const L = Object.values(joueurs).map(j => {
+  const closes = B.portes.filter(q => etatDe(q.n, jour) === 'close').map(q => [q, q.type === 'jeu' ? rangs(q, joueurs) : null]);
+  const L = Object.keys(joueurs).map(cle => {
+    const j = joueurs[cle];
     let pts = 0;
-    for (const q of closes) pts += points(q, j.r[q.n]);
+    for (const [q, M] of closes) pts += M ? (M[cle] ? M[cle].pts : 0) : points(q, j.r[q.n]);
     return { p: j.p, pts, rep: Object.keys(j.r).length };
   }).sort((a, b) => b.pts - a.pts || a.p.localeCompare(b.p, 'fr'));
   let rang = 0;
@@ -102,7 +118,7 @@ function classement(B, joueurs, jour) {
 
 // Ce que le joueur a le droit de voir d'une porte : rien avant son jour ; l'énoncé d'une question seulement une fois
 // son chrono lancé ; la solution seulement après la clôture. La règle d'un jeu d'adresse se lit avant de jouer.
-function vue(q, etat, r, tout, maintenant) {
+function vue(q, etat, r, tout, maintenant, rg) {
   const o = { n: q.n, etat, ouvre: dateDe(q.n), ferme: dateDe(q.n + DELAI) };
   if (etat === 'avenir' && !tout) return o;
   const clos = etat === 'close' || tout;
@@ -110,7 +126,7 @@ function vue(q, etat, r, tout, maintenant) {
   if (q.type === 'jeu') {
     Object.assign(o, { jeu: q.jeu, question: q.question, ill: q.ill });
     if (r) { o.scores = r.e.map(a => (a.s === undefined ? null : a.s)); o.meilleur = points(q, r); }
-    if (clos) { Object.assign(o, { explication: q.explication, source: q.source }); if (r && etat === 'close') o.pts = points(q, r); }
+    if (clos) { Object.assign(o, { explication: q.explication, source: q.source }); if (r && etat === 'close') { o.pts = rg ? rg.pts : 0; if (rg) { o.rang = rg.rang; o.sur = rg.sur; } } }
     return o;
   }
   if (r || clos) {
@@ -134,7 +150,10 @@ function vue(q, etat, r, tout, maintenant) {
 
 function etat(B, joueurs, cle, jour, maintenant) {
   const j = cle ? joueurs[cle] : null;
-  const portes = B.portes.map(q => vue(q, etatDe(q.n, jour), j && j.r[q.n], false, maintenant));
+  const portes = B.portes.map(q => {
+    const e = etatDe(q.n, jour);
+    return vue(q, e, j && j.r[q.n], false, maintenant, j && q.type === 'jeu' && e === 'close' ? rangs(q, joueurs)[cle] : undefined);
+  });
   return {
     jour,
     prenom: j ? j.p : undefined,
@@ -218,6 +237,7 @@ async function handler(req, res) {
     } else if (q.type === 'jeu') {
       // Note d'une tentative de jeu, calculée par le navigateur.
       if (!Number.isInteger(b.score) || b.score < 0 || b.score > 10 || typeof b.jeton !== 'string') return res.status(400).json({ error: 'reponse' });
+      if (b.brut !== undefined && (!Number.isInteger(b.brut) || b.brut < 0 || b.brut > (PLAFOND[q.jeu] || 0))) return res.status(400).json({ error: 'reponse' });
       sortie = await modifier(joueurs => {
         const r = joueurs[cle] && joueurs[cle].r[q.n];
         const a = r && r.e.find(x => x.k === b.jeton);
@@ -226,6 +246,7 @@ async function handler(req, res) {
         const dt = (maintenant - a.d) / 1000;
         if (dt < JEU_MIN || dt > q.duree + JEU_MARGE) return refus(403, 'delai');
         a.s = b.score; a.t = maintenant;
+        if (b.brut !== undefined) a.b = b.brut;
         return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
       });
     } else {

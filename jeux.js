@@ -1,6 +1,7 @@
 /* Mini-jeux des Pharmacogames de Noël : cinq jeux d'adresse originaux, dans l'esprit des bornes d'arcade
    et des micro-ordinateurs des années 80. Chargé à la demande par enigme.js, propre au site Vercel.
-   Chaque jeu se dessine dans un canevas, dure un temps limité et rend une note de 0 à 10.
+   Chaque jeu se dessine dans un canevas, dure un temps limité et rend une note de 0 à 10, un bilan et un score brut
+   (onFin(note, bilan, brut)) : le score brut sert au classement de la porte.
    Le cœur de chaque jeu (règles, trajectoires) est séparé du dessin pour pouvoir être vérifié hors navigateur. */
 (root => {
   const N = "#26076D", C = "#FFFBF2", Y = "#ECD567", O = "#EC7739", P = "#E5B4D9", V = "#B9A6F0", G = "#3E9B76", R = "#D8402B", B = "#8FC7E8";
@@ -461,7 +462,7 @@
     function finir() {
       if (clos) return;
       clos = true; phase = "fin";
-      setTimeout(() => { arret(); liberer(); opt.onFin(noteBowling(total), total === 10 * SERIES ? "Lot parfait : les " + total + " flacons sont tombés." : total + (total > 1 ? " flacons renversés" : " flacon renversé") + " sur " + 10 * SERIES + "."); }, 1100);
+      setTimeout(() => { arret(); liberer(); opt.onFin(noteBowling(total), total === 10 * SERIES ? "Lot parfait : les " + total + " flacons sont tombés." : total + (total > 1 ? " flacons renversés" : " flacon renversé") + " sur " + 10 * SERIES + ".", total); }, 1100);
     }
     function dessiner() {
       ctx.fillStyle = "#F4F2F8"; ctx.fillRect(0, 0, W, HB);
@@ -612,7 +613,7 @@
           clos = true; lache();
           const n = noteTennis(s), joues = s.pour + s.contre, pl = (k, un, des) => k + " " + (k > 1 ? des : un);
           const bilan = pl(s.pour, "point gagné", "points gagnés") + " sur " + pl(joues, "joué", "joués") + " contre l'automate : " + n + " sur 10 (la note est la part des points gagnés).";
-          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan); }, 1300);
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, joues ? Math.round(100 * s.pour / joues) * 100 + Math.min(99, s.pour) : 0); }, 1300);
         }
       }
       dessiner();
@@ -664,7 +665,7 @@
       if (!clos) {
         if (gauche) s.cible = Math.max(24, s.x - 60); if (droite) s.cible = Math.min(W - 24, s.x + 60);
         pasTir(s, dt, duree);
-        if (s.fini) { clos = true; setTimeout(() => { arret(); liberer(); opt.onFin(noteTir(s), s.touches + " particules neutralisées sur " + TOTAL + "."); }, 1300); }
+        if (s.fini) { clos = true; setTimeout(() => { arret(); liberer(); opt.onFin(noteTir(s), s.touches + " particules neutralisées sur " + TOTAL + ".", s.touches); }, 1300); }
       }
       dessiner();
     });
@@ -850,7 +851,7 @@
           clos = true; lache();
           const n = noteFlipper(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
           const bilan = pl(s.score, "point", "points") + " : " + n + " sur 10 (1 point de note par tranche de " + RF.palier + " points). " + pl(s.lots, "lot libéré", "lots libérés") + ", " + pl(s.pertes, "bille perdue", "billes perdues") + ".";
-          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan); }, 2200);
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, Math.round(s.score))); }, 2200);
         }
       } else tFin += dt;
       effets(dt);
@@ -967,7 +968,7 @@
           clos = true; ancre = null;
           const n = noteLaby(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
           const bilan = pl(s.etiq, "étiquette ramassée", "étiquettes ramassées") + ", " + pl(s.prises, "contamination", "contaminations") + (s.prises ? " (−" + (s.etiq - s.compte) + ")" : "") + " : " + s.compte + " au compteur, soit " + n + " sur 10 (1 point de note par tranche de " + RL.palier + " étiquettes).";
-          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan); }, 1300);
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, s.compte)); }, 1300);
         }
       }
       dessiner();

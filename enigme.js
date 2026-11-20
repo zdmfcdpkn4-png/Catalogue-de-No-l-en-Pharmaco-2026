@@ -41,7 +41,7 @@
 <li><b>Composition.</b> 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre : des questions illustrées sur le jeu de société, et cinq vrais jeux d'adresse, aux portes 1, 7, 13, 19 et 25.</li>
 <li><b>Chrono.</b> L'énoncé ne s'affiche qu'au lancement du chrono : 30 ou 40 secondes selon la porte, annoncées avant le départ. Une seule tentative, et pas le temps d'aller chercher la réponse ailleurs.</li>
 <li><b>Barème des questions.</b> Le bon flacon : 10 points. Au dosage, entre 0 et 100 : 10 points pile sur la cible, puis 1 de moins par tranche de 2 d'écart. Le plus proche marque le plus.</li>
-<li><b>Jeux d'adresse.</b> Deux tentatives chronométrées, la meilleure compte. La note va de 0 à 10, comme pour une question.</li>
+<li><b>Jeux d'adresse.</b> Deux tentatives chronométrées, la meilleure compte. La note sur 10 affichée après la partie vous situe ; les points, eux, viennent du classement de la porte à sa clôture : 10 points pour le premier, 1 pour le dernier, les autres répartis entre les deux. Sans rien marquer : 0 point.</li>
 <li><b>Délai de péremption.</b> Une porte reste ouverte trois jours : le sien, le lendemain et le surlendemain jusqu'à minuit. Les week-ends se rattrapent.</li>
 <li><b>Libération des résultats.</b> Bonne réponse, points et classement sortent à la clôture de la porte. D'ici là, tout reste sous scellé, et on ne souffle rien au voisin.</li>
 </ol>
@@ -427,11 +427,11 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
           + '<p class="eg-ex">' + fr(p.explication) + "</p>" + origine(p);
         else if (ouverte) {
           html += essaisFaits(p);
-          if (nb < p.essais) html += '<p class="eg-hint">Chrono de ' + p.duree + " s par tentative. " + pl(p.essais, "tentative", "tentatives") + ", la meilleure compte ; une tentative lancée est décomptée, même interrompue. Clôture le " + jour(dt(p.ferme)) + ' à minuit.</p>'
+          if (nb < p.essais) html += '<p class="eg-hint">Chrono de ' + p.duree + " s par tentative. " + pl(p.essais, "tentative", "tentatives") + ", la meilleure compte ; une tentative lancée est décomptée, même interrompue. Clôture le " + jour(dt(p.ferme)) + ' à minuit : les points viennent alors du classement de la porte, de 10 pour le premier à 1 pour le dernier.</p>'
             + '<button class="go main" type="button" id="egPlay">Lancer la tentative ' + (nb + 1) + " sur " + p.essais + "</button>";
           else html += '<div class="eg-seal">' + SCEAU + "<span><small>Note scellée</small><b>" + p.meilleur + " / 10</b></span></div>"
             + '<p class="eg-d">Vos points seront libérés à la clôture de la porte : rendez-vous le ' + jour(dt(p.ferme, 1)) + ".</p>";
-        } else html += essaisFaits(p) + '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (p.pts !== undefined ? "+" + pl(p.pts, "point", "points") : "Porte manquée : 0 point") + '</p><p class="eg-ex">' + fr(p.explication) + "</p>" + origine(p);
+        } else html += essaisFaits(p) + '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (p.pts !== undefined ? (p.rang ? "Rang " + p.rang + " sur " + p.sur + " : " : "") + "+" + pl(p.pts, "point", "points") : "Porte manquée : 0 point") + '</p><p class="eg-ex">' + fr(p.explication) + "</p>" + origine(p);
       } else if (ouverte && p.rep === undefined && !p.hors && p.reste === undefined) {
         // Énoncé encore sous scellé : il n'arrive qu'avec le chrono.
         html += '<div class="eg-chrono"><b>' + p.duree + ' s</b><span>Une seule tentative. Le chrono part dès que l\'énoncé s\'affiche et ne s\'arrête plus, même si vous quittez la page.</span></div>'
@@ -549,13 +549,13 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (bouton) bouton.hidden = true;
     zone.classList.add("jeu");
     dire("#egMsg", "");
-    enJeu = window.PharmacoJeux[p.jeu](zone, { duree: p.duree, onFin: async (note, bilan) => {
+    enJeu = window.PharmacoJeux[p.jeu](zone, { duree: p.duree, onFin: async (note, bilan, brut) => {
       enJeu = null;
       if (!reel) return panneau("Essai libre : " + note + " sur 10. " + bilan + " Rien n'a été enregistré.");
       let r = { status: 0, j: {} };
       for (let i = 0; i < 4 && !(r.j && r.j.portes); i++) {
         if (i) await patience(1500);
-        try { r = await call({ code: mem.code, prenom: mem.prenom, n: p.n, jeton, score: note }); } catch (e) { r = { status: 0, j: {} }; }
+        try { r = await call({ code: mem.code, prenom: mem.prenom, n: p.n, jeton, score: note, brut: Number.isInteger(brut) ? brut : undefined }); } catch (e) { r = { status: 0, j: {} }; }
       }
       if (r.status === 200) return recevoir(r.j, bilan + " Note enregistrée : " + note + " sur 10.");
       if (r.j && r.j.portes) return recevoir(r.j, "La note de cette tentative n'a pas été acceptée par le serveur.", "err");
