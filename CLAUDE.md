@@ -16,9 +16,10 @@ et le **palmarès** (vote de chacun pour son jeu préféré, avec hall of fame).
 ## Carte du dépôt
 | Fichier | Rôle |
 |---|---|
-| `index.html` | Le catalogue et le sapin. C'est la copie de l'artefact claude.ai, qui reste la source de vérité : ne pas le modifier ici, sauf les lignes « propres au site » : l'icône de favori dans l'en-tête, et en fin de fichier les scripts `menu.js`, `vote.js`, `enigme.js`. |
+| `index.html` | Le catalogue et le sapin. C'est la copie de l'artefact claude.ai, qui reste la source de vérité : ne pas le modifier ici, sauf les lignes « propres au site » : l'icône de favori dans l'en-tête, et en fin de fichier les scripts `menu.js`, `badges.js`, `vote.js`, `enigme.js`. |
 | `menu.js`, `img/menu-*.webp` | Menu à quatre boutons ronds : le logo de l'unité décliné par page. |
 | `img/favicon*`, `img/apple-touch-icon.png`, `img/icone-*.png` | Icône de favori : le meeple sur son jeton. |
+| `badges.js` | Habille les huit pastilles d'indication du catalogue (`#presets .chip`) en badges ronds, sans toucher à `index.html`. Sans ce fichier, les pastilles d'origine restent. |
 | `vote.js`, `api/votes.js` | Palmarès : un vote par prénom, hall of fame des jeux. |
 | `enigme.js`, `api/enigme.js` | Pharmacogames : 25 portes, une par jour du 1er au 25 décembre, ouvertes jusqu'à J+2. Le serveur décide de tout : dates (heure de Paris), chrono, tentatives, points, classement. |
 | `api/_banque.js` | Les 25 portes (énoncés, réponses, illustrations), **chiffrées**. Ne jamais écrire de question ni de réponse en clair dans le dépôt. |
@@ -56,7 +57,7 @@ pour une demande qui en sort, elle indique la session concernée.
 | Jeu : Le flipper du préparatoire | La partie flipper de `jeux.js` et ses réglages | `claude/jeu-flipper` |
 | Jeu : Le tennis de paillasse | La partie tennis de `jeux.js`, `outils/essai-tennis.js`, `outils/etalon-tennis.js` | `claude/jeu-tennis` |
 | Jeu : Le labyrinthe de la ZAC | La partie labyrinthe de `jeux.js`, `outils/essai-labyrinthe.js`, `outils/etalon-labyrinthe.js` | `claude/jeu-labyrinthe` |
-| Design | Apparence : `menu.js`, logos, blocs de styles de `enigme.js` et `vote.js`, habillage des jeux | `claude/design` |
+| Design | Apparence : `menu.js`, `badges.js`, logos, blocs de styles de `enigme.js` et `vote.js`, habillage des jeux | `claude/design` |
 | Organisation et orchestration | Serveur, banque, intégration des branches, bancs d'essai complets, publication, suivi | `claude/vibrant-edison-rs93fn` |
 
 - La branche de publication est `claude/vibrant-edison-rs93fn`. Seule la session d'orchestration y fusionne et publie.
