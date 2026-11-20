@@ -25,6 +25,7 @@
 
   const CSS = `
 .vt [hidden]{display:none!important}
+.vt .adv-intro a{color:inherit;font-weight:800;text-underline-offset:3px}
 .vt-body{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:24px 28px;align-items:start;margin-top:18px}
 .vt-panel{min-width:0;padding:16px 18px 18px;background:var(--surface);color:var(--on-surface);border:3px solid var(--line);border-radius:18px;box-shadow:6px 6px 0 var(--shadow)}
 .vt-panel h3{margin:0;font-weight:800;font-size:1.3rem;line-height:1.1}
@@ -79,8 +80,8 @@
     sec.hidden = true;
     sec.setAttribute("aria-labelledby", "vote-t");
     sec.innerHTML = '<p class="adv-back"><a class="go" href="#">Retour au catalogue</a></p>'
-      + '<div class="adv-head"><h2 id="vote-t">Le jeu favori <span>de l\'équipe</span></h2>'
-      + '<p class="adv-intro">Un vote par prénom. Choisissez votre préparation préférée du catalogue : le hall of fame se met à jour à chaque vote.</p></div>'
+      + '<div class="adv-head"><h2 id="vote-t">Le palmarès <span>des jeux</span></h2>'
+      + '<p class="adv-intro">Un vote par personne : un prénom, une voix, pour votre préparation préférée du catalogue. Le hall of fame classe les jeux, pas les joueurs, et se met à jour à chaque vote. Pour marquer des points, direction les <a href="#pharmacogames">Pharmacogames</a>.</p></div>'
       + '<div class="vt-body"><div>'
       + '<form class="vt-panel" id="vtGate" novalidate><h3>Réservé à l\'équipe</h3>'
       + '<label for="vtCode">Code d\'équipe</label><input id="vtCode" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" required>'
@@ -103,7 +104,7 @@
     const a = document.createElement("a");
     a.className = "go avgo";
     a.href = "#vote";
-    a.innerHTML = '<svg viewBox="0 0 18 22" aria-hidden="true"><path d="M1 21v-8h5v8zM6.5 21V6h5v15zM12 21v-5h5v5z" fill="currentColor"/></svg>Voter pour le jeu de l\'équipe';
+    a.innerHTML = '<svg viewBox="0 0 18 22" aria-hidden="true"><path d="M1 21v-8h5v8zM6.5 21V6h5v15zM12 21v-5h5v5z" fill="currentColor"/></svg>Voter pour mon jeu préféré';
     const ancre = q(".avgo") || q(".lead");
     if (ancre) ancre.insertAdjacentElement("afterend", a);
 

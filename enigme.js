@@ -1,4 +1,5 @@
-/* La grande énigme de Noël.
+/* Pharmacogames de Noël : le concours individuel à points (d'abord appelé « la grande énigme de Noël »).
+   À ne pas confondre avec le vote du jeu préféré, qui vit dans vote.js.
    Propre au site Vercel : ce module parle à /api/enigme (prénom et code d'équipe exigés).
    Une porte par jour du 1er au 25 décembre, ouverte trois jours ; les questions, les solutions et les points
    viennent du serveur, rien n'est écrit ici. Sans serveur, par exemple dans l'artefact claude.ai, rien ne s'affiche. */
@@ -32,9 +33,9 @@
   const jour = (d, court) => (court ? "" : JOURS[d.getDay()] + " ") + d.getDate() + (d.getDate() === 1 ? "er" : "") + " " + (court ? MOIS[d.getMonth()].slice(0, 3) + "." : MOIS[d.getMonth()]);
   const val = (p, v) => (p.type === "qcm" ? p.options[v].t : p.prefixe ? p.prefixe + String(v).padStart(2, "0") : v + (p.unite ? " " + p.unite : ""));
 
-  const NOTICE = `<details class="eg-panel eg-notice" id="egNotice" open><summary>Notice de la grande énigme : à lire avant la première prise</summary>
+  const NOTICE = `<details class="eg-panel eg-notice" id="egNotice" open><summary>Notice des Pharmacogames : à lire avant la première prise</summary>
 <ol class="eg-rules">
-<li><b>Composition.</b> 25 portes, une par jour du 1<sup>er</sup> au 25 décembre. Derrière chacune, une question illustrée sur le jeu de société.</li>
+<li><b>Composition.</b> 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, une question illustrée sur le jeu de société.</li>
 <li><b>Formes disponibles.</b> Quatre flacons, un seul bon : 10 points. Ou un dosage : une valeur à estimer entre 0 et 100.</li>
 <li><b>Posologie du dosage.</b> Pile sur la valeur cible : 10 points. Chaque tranche de 2 d'écart en retire 1. Le plus proche marque le plus.</li>
 <li><b>Délai de péremption.</b> Une porte reste ouverte trois jours : le sien, le lendemain et le surlendemain jusqu'à minuit. Les week-ends se rattrapent.</li>
@@ -47,6 +48,7 @@
 
   const CSS = `
 .eg [hidden]{display:none!important}
+.eg .adv-intro a{color:inherit;font-weight:800;text-underline-offset:3px}
 .eg-body{display:grid;grid-template-columns:minmax(0,470px) minmax(0,1fr);gap:24px 28px;align-items:start;margin-top:18px}
 .eg-panel{min-width:0;padding:16px 18px 18px;background:var(--surface);color:var(--on-surface);border:3px solid var(--line);border-radius:18px;box-shadow:6px 6px 0 var(--shadow)}
 .eg-gate{max-width:420px;margin-top:18px}
@@ -171,12 +173,12 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 
     sec = document.createElement("section");
     sec.className = "wrap adv eg";
-    sec.id = "enigme";
+    sec.id = "pharmacogames";
     sec.hidden = true;
-    sec.setAttribute("aria-labelledby", "enigme-t");
+    sec.setAttribute("aria-labelledby", "pharmacogames-t");
     sec.innerHTML = '<p class="adv-back"><a class="go" href="#">Retour au catalogue</a></p>'
-      + '<div class="adv-head"><h2 id="enigme-t">La grande énigme <span>de Noël</span></h2>'
-      + '<p class="adv-intro">Vingt-cinq portes, une par jour du 1<sup>er</sup> au 25 décembre. Derrière chacune, une question sur le jeu de société : quatre flacons au choix, ou une dose à estimer entre 0 et 100. Le plus précis marque le plus de points.</p></div>'
+      + '<div class="adv-head"><h2 id="pharmacogames-t">Pharmacogames <span>de Noël</span></h2>'
+      + '<p class="adv-intro">Le concours de l\'équipe, chacun pour soi : 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, une question sur le jeu de société : quatre flacons au choix, ou une dose à estimer entre 0 et 100. Le plus précis marque le plus de points. Pour élire votre jeu préféré, c\'est au <a href="#vote">Palmarès</a>.</p></div>'
       + NOTICE
       + '<form class="eg-panel eg-gate" id="egGate" novalidate><h3>Entrer dans le calendrier</h3>'
       + '<label for="egPrenom">Votre prénom</label><input id="egPrenom" type="text" autocomplete="given-name" maxlength="24" required>'
@@ -192,14 +194,14 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<p class="eg-tools"><button class="go" type="button" id="egReload">Actualiser</button><button class="linkbtn" type="button" id="egChange">Changer de prénom</button></p></div>'
       + '<aside class="eg-panel" id="egPanel" aria-live="polite"></aside>'
       + "</div>"
-      + '<div class="eg-panel eg-rank" id="egRank" hidden><div class="eg-rhead"><h3>Classement de l\'équipe</h3><p class="eg-sum" id="egSum"></p></div>'
+      + '<div class="eg-panel eg-rank" id="egRank" hidden><div class="eg-rhead"><h3>Classement des Pharmacogames</h3><p class="eg-sum" id="egSum"></p></div>'
       + '<p class="eg-d" id="egRankMsg"></p><ol class="eg-list" id="egList"></ol></div>';
     (q("#vote") || q("#avent") || q("header.hero")).insertAdjacentElement("afterend", sec);
 
     const a = document.createElement("a");
     a.className = "go avgo";
-    a.href = "#enigme";
-    a.innerHTML = '<svg viewBox="0 0 18 22" aria-hidden="true"><path d="M2 21V9a7 7 0 0 1 14 0v12z" fill="currentColor"/><circle cx="12.4" cy="14" r="1.6" fill="#ECD567"/></svg>Jouer à la grande énigme de Noël';
+    a.href = "#pharmacogames";
+    a.innerHTML = '<svg viewBox="0 0 18 22" aria-hidden="true"><path d="M2 21V9a7 7 0 0 1 14 0v12z" fill="currentColor"/><circle cx="12.4" cy="14" r="1.6" fill="#ECD567"/></svg>Jouer aux Pharmacogames de Noël';
     const boutons = document.querySelectorAll(".avgo");
     const ancre = boutons.length ? boutons[boutons.length - 1] : q(".lead");
     if (ancre) ancre.insertAdjacentElement("afterend", a);
@@ -234,7 +236,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   }
 
   function view() {
-    const on = location.hash === "#enigme";
+    if (location.hash === "#enigme") history.replaceState(null, "", "#pharmacogames"); // ancienne adresse de la page
+    const on = location.hash === "#pharmacogames";
     sec.hidden = !on;
     if (!on) return;
     document.querySelectorAll("#avent,.ind,.bar,main").forEach(e => { e.hidden = true; });
