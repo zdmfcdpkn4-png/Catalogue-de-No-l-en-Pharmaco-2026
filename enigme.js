@@ -38,7 +38,7 @@
 
   const NOTICE = `<details class="eg-panel eg-notice" id="egNotice" open><summary>Notice des Pharmacogames : à lire avant la première prise</summary>
 <ol class="eg-rules">
-<li><b>Composition.</b> 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre : des questions illustrées sur le jeu de société, et trois vrais jeux d'adresse, aux portes 1, 7 et 25.</li>
+<li><b>Composition.</b> 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre : des questions illustrées sur le jeu de société, et cinq vrais jeux d'adresse, aux portes 1, 7, 13, 19 et 25.</li>
 <li><b>Chrono.</b> L'énoncé ne s'affiche qu'au lancement du chrono : 30 ou 40 secondes selon la porte, annoncées avant le départ. Une seule tentative, et pas le temps d'aller chercher la réponse ailleurs.</li>
 <li><b>Barème des questions.</b> Le bon flacon : 10 points. Au dosage, entre 0 et 100 : 10 points pile sur la cible, puis 1 de moins par tranche de 2 d'écart. Le plus proche marque le plus.</li>
 <li><b>Jeux d'adresse.</b> Deux tentatives chronométrées, la meilleure compte. La note va de 0 à 10, comme pour une question.</li>
