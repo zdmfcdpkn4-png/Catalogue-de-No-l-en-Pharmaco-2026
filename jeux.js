@@ -1008,7 +1008,309 @@
   /* ----- Fin [etageres] ----- */
 
   /* ----- Repère [pastilles] : le jeu du poseur ----- */
-  // (session « Jeu » correspondante : écrire ici, entre ce repère et le suivant)
+  {
+    /* ================= Les pastilles effervescentes : le cœur =================
+       Le sas de décartonnage : 11 x 10 cases, des étagères fixes, des cartons livrés au hasard. Le préparateur pose une
+       pastille ; après un délai, la mousse part en croix (portée en cases), s'arrête aux étagères et au premier carton,
+       qu'elle dissout. Un carton cachait un flacon (à ramasser), un germe (il éclot puis rôde) ou rien. La mousse
+       neutralise les germes et fait glisser le préparateur : rien n'arrête la partie, on perd des points et du temps.
+       Tout ce qui est emporté par une même pastille vaut de plus en plus (lot). Sas presque vide : nouvelle livraison. */
+    const RE = { allure: 4.6, delai: 1.5, chaine: 0.12, portee: 2, mousse: 0.55, tube: 2, germe: 1.5, flair: 4, zele: 0.5, eclosion: 1.4, contact: 0.6,
+      carton: 5, flacon: 15, neutralise: 30, lot: 5, livraison: 40, savon: 15, amende: 20, glisse: 1.1, repit: 0.7, abri: 1.6, reste: 3, densite: 0.5, pFlacon: 0.3, pGerme: 0.12, palier: 75 };
+    const PLAN = [
+      "...........",
+      ".##.....##.",
+      "....#.#....",
+      ".#.......#.",
+      ".#..#.#..#.",
+      "....#.#....",
+      ".##.....##.",
+      "....###....",
+      ".#.......#.",
+      "..........."];
+    const NC = 11, NR = 10, PAS = 1 / 120, DEPART = [5, 9], RODEURS = [[1, 0], [9, 0]];
+    const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];                       // haut, droite, bas, gauche
+    const dans = (c, r) => c >= 0 && c < NC && r >= 0 && r < NR;
+    const libre = (s, c, r) => dans(c, r) && s.sol[c + r * NC] === 0;      // sol : 0 libre, 1 étagère, 2 carton
+    const caseDe = e => e.d >= 0 && e.p >= 0.5 ? [e.c + DIRS[e.d][0], e.r + DIRS[e.d][1]] : [e.c, e.r];
+    const posDe = e => e.d < 0 ? [e.c, e.r] : [e.c + DIRS[e.d][0] * e.p, e.r + DIRS[e.d][1] * e.p];
+    // La croix d'une pastille : sa case, puis « portee » cases par direction ; une étagère arrête la mousse, un carton l'absorbe.
+    const croix = (s, c, r) => {
+      const cases = [c + r * NC];
+      for (const [dx, dy] of DIRS) for (let i = 1; i <= RE.portee; i++) {
+        const x = c + dx * i, y = r + dy * i;
+        if (!dans(x, y) || s.sol[x + y * NC] === 1) break;
+        cases.push(x + y * NC);
+        if (s.sol[x + y * NC] === 2) break;
+      }
+      return cases;
+    };
+    // Une livraison : des cartons sur les cases libres, jamais sur le préparateur ni autour, ni sur un germe, un flacon, une pastille.
+    const livrer = s => {
+      const j = s.j, pris = new Uint8Array(NC * NR);
+      const marque = (c, r, rayon) => { for (let y = r - rayon; y <= r + rayon; y++) for (let x = c - rayon; x <= c + rayon; x++) if (dans(x, y)) pris[x + y * NC] = 1; };
+      marque(j.c, j.r, 1); if (j.d >= 0) marque(j.c + DIRS[j.d][0], j.r + DIRS[j.d][1], 1);
+      for (const g of s.germes) { marque(g.c, g.r, 0); if (g.d >= 0) marque(g.c + DIRS[g.d][0], g.r + DIRS[g.d][1], 0); }
+      for (const q of s.pastilles) pris[q.k] = 1;
+      for (const m of s.mousses) for (const k of m.cases) pris[k] = 1;
+      for (let k = 0; k < NC * NR; k++) {
+        if (s.sol[k] !== 0 || pris[k] || s.flacons[k] || s.hasard() >= RE.densite) continue;
+        const h = s.hasard();
+        s.sol[k] = 2; s.cache[k] = h < RE.pFlacon ? 1 : h < RE.pFlacon + RE.pGerme ? 2 : 0; s.cartons++;
+      }
+      s.livreT = s.t;
+    };
+    const creer = graine => {
+      let a = graine || 20261224;
+      const hasard = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+      const s = { t: 0, acc: 0, hasard, j: { c: DEPART[0], r: DEPART[1], d: -1, p: 0, veut: -1, coup: -1, vu: 0, pose: false },
+        sol: new Uint8Array(NC * NR), cache: new Uint8Array(NC * NR), flacons: new Uint8Array(NC * NR), pastilles: [], mousses: [],
+        germes: RODEURS.map(([c, r], i) => ({ c, r, d: -1, p: 0, attente: 2 + i, neuf: false })), cartons: 0, score: 0, dissous: 0, ramasses: 0, neutralises: 0,
+        savons: 0, prises: 0, livraisons: 0, poses: 0, arret: 0, abri: 0, msg: "", msgT: -9, livreT: -9, evts: [], fini: false };
+      for (let r = 0; r < NR; r++) for (let c = 0; c < NC; c++) if (PLAN[r][c] === "#") s.sol[c + r * NC] = 1;
+      livrer(s); s.livreT = -9;
+      return s;
+    };
+    const noter = (s, k, pts) => { s.score = Math.max(0, s.score + pts); s.evts.push({ k, pts, t: s.t }); if (s.evts.length > 14) s.evts.shift(); };
+    const butin = (s, m, k, base) => noter(s, k, base + RE.lot * m.n++);   // chaque prise de plus d'une même pastille vaut « lot » de plus
+    const annoncer = (s, msg) => { s.msg = msg; s.msgT = s.t; };
+    const poser = s => {
+      const j = s.j, q = caseDe(j), k = q[0] + q[1] * NC;
+      j.pose = false;
+      if (s.pastilles.length >= RE.tube || s.pastilles.some(o => o.k === k)) return;
+      s.pastilles.push({ k, c: q[0], r: q[1], t: RE.delai }); s.poses++;
+    };
+    const mousser = (s, q) => {
+      const m = { c: q.c, r: q.r, cases: croix(s, q.c, q.r), t: RE.mousse, n: 0 };
+      s.mousses.push(m);
+      for (const k of m.cases) {
+        if (s.sol[k] === 2) {
+          const quoi = s.cache[k];
+          s.sol[k] = 0; s.cache[k] = 0; s.cartons--; s.dissous++; butin(s, m, k, RE.carton);
+          if (quoi === 1) s.flacons[k] = 1;
+          else if (quoi === 2) s.germes.push({ c: k % NC, r: (k - k % NC) / NC, d: -1, p: 0, attente: RE.eclosion, neuf: true });
+        }
+        for (const o of s.pastilles) if (o !== q && o.k === k && o.t > RE.chaine) o.t = RE.chaine;   // la mousse réveille la pastille voisine
+      }
+    };
+    // Le préparateur avance case par case tant qu'une direction est tenue (veut) ; un appui bref (coup) vaut une case.
+    const joueur = (s, dist) => {
+      const j = s.j, va = d => libre(s, j.c + DIRS[d][0], j.r + DIRS[d][1]), envie = () => j.veut >= 0 ? j.veut : j.coup;
+      if (j.d >= 0 && j.p > 0 && envie() === (j.d + 2) % 4) { j.c += DIRS[j.d][0]; j.r += DIRS[j.d][1]; j.p = 1 - j.p; j.d = j.vu = envie(); j.coup = -1; }   // demi-tour immédiat
+      if (j.d < 0) { const e = envie(); if (e >= 0) { j.vu = e; j.coup = -1; if (va(e)) j.d = e; } }
+      if (j.d < 0) return;
+      j.p += dist;
+      if (j.p < 1) return;
+      const reste = j.p - 1, k = (j.c += DIRS[j.d][0]) + (j.r += DIRS[j.d][1]) * NC, e = envie();
+      j.p = 0; j.coup = -1;
+      if (s.flacons[k]) { s.flacons[k] = 0; s.ramasses++; noter(s, k, RE.flacon); }
+      if (e >= 0) j.vu = e;
+      j.d = e >= 0 && va(e) ? e : -1;
+      if (j.d >= 0) j.p = reste;
+    };
+    // Un germe rôde au hasard, sans demi-tour ; de près (flair), une fois sur deux, il se rapproche du préparateur.
+    const choisir = (s, g) => {
+      const dos = g.d < 0 ? -1 : (g.d + 2) % 4, opts = [];
+      for (let d = 0; d < 4; d++) if (d !== dos && libre(s, g.c + DIRS[d][0], g.r + DIRS[d][1])) opts.push(d);
+      if (!opts.length) { g.d = dos >= 0 && libre(s, g.c + DIRS[dos][0], g.r + DIRS[dos][1]) ? dos : -1; return; }
+      let d = opts[Math.floor(s.hasard() * opts.length)];
+      const q = caseDe(s.j), loin = (x, y) => Math.abs(x - q[0]) + Math.abs(y - q[1]);
+      if (s.abri <= 0 && loin(g.c, g.r) <= RE.flair && s.hasard() < RE.zele) { let m = 1e9; for (const o of opts) { const v = loin(g.c + DIRS[o][0], g.r + DIRS[o][1]); if (v < m) { m = v; d = o; } } }
+      g.d = d;
+    };
+    const unPas = (s, duree) => {
+      const dt = PAS, j = s.j;
+      s.t += dt;
+      if (s.t >= duree) { s.fini = true; return; }
+      if (s.abri > 0) s.abri -= dt;
+      if (s.arret > 0) { s.arret -= dt; j.pose = false; j.coup = -1; } else { if (j.pose) poser(s); joueur(s, RE.allure * dt); }
+      for (let i = s.pastilles.length - 1; i >= 0; i--) { const q = s.pastilles[i]; if ((q.t -= dt) <= 0) { s.pastilles.splice(i, 1); mousser(s, q); } }
+      const qj = caseDe(j), jk = qj[0] + qj[1] * NC, pj = posDe(j);
+      for (let i = s.mousses.length - 1; i >= 0; i--) {
+        const m = s.mousses[i];
+        if ((m.t -= dt) <= 0) { s.mousses.splice(i, 1); continue; }
+        if (s.abri <= 0 && m.cases.includes(jk)) { s.savons++; noter(s, jk, -RE.savon); s.arret = RE.glisse; s.abri = RE.glisse + RE.repit; annoncer(s, "Glissade dans la mousse ! −" + RE.savon); }
+        for (let n = s.germes.length - 1; n >= 0; n--) {
+          const g = s.germes[n], qg = caseDe(g), gk = qg[0] + qg[1] * NC;
+          if (g.neuf && g.attente > 0 || !m.cases.includes(gk)) continue;   // un germe qui éclot est encore à l'abri dans son carton
+          s.germes.splice(n, 1); s.neutralises++; butin(s, m, gk, RE.neutralise);
+        }
+      }
+      if (s.cartons <= RE.reste && !s.mousses.length) { s.livraisons++; noter(s, jk, RE.livraison); livrer(s); annoncer(s, "Sas dégagé ! +" + RE.livraison + " · livraison"); }
+      for (const g of s.germes) {
+        if (g.attente > 0) { g.attente -= dt; continue; }
+        if (g.d < 0) choisir(s, g);
+        if (g.d >= 0) { g.p += RE.germe * dt; if (g.p >= 1) { g.c += DIRS[g.d][0]; g.r += DIRS[g.d][1]; g.p -= 1; choisir(s, g); if (g.d < 0) g.p = 0; } }
+        const pg = posDe(g);
+        if (s.abri > 0 || Math.abs(pg[0] - pj[0]) + Math.abs(pg[1] - pj[1]) >= RE.contact) continue;
+        s.prises++; noter(s, jk, -RE.amende); s.abri = RE.abri; annoncer(s, "Contamination ! −" + RE.amende);
+      }
+    };
+    const pasPastilles = (s, dt, duree) => { s.acc += dt; while (s.acc >= PAS && !s.fini) { s.acc -= PAS; unPas(s, duree); } };
+    const notePastilles = s => Math.min(10, Math.floor(s.score / RE.palier));
+
+    /* ----- Les pastilles effervescentes : dessin et commandes ----- */
+    const HP = 540, T = 32, X0 = 4, Y0 = 46, BAS = Y0 + NR * T + 6, KRAFT = "#CC9A5E", RUBAN = "#EBCB97", SOL = "#F3EFE3";
+    const PAD = { x: 92, y: 472, pas: 43, t: 40 }, BTN = { x: 272, y: 474, r: 46 };
+    const pastilles = (el, opt) => {
+      const duree = opt.duree || 60, { cv, ctx, liberer } = monter(el, HP);
+      cv.style.touchAction = "none";
+      cv.setAttribute("aria-label", "Les pastilles effervescentes. Déplacez le préparateur avec les flèches ou les touches Z, Q, S, D, ou avec la croix en bas à gauche. Posez une pastille avec la barre d'espace ou le bouton en bas à droite, puis écartez-vous : la mousse part en croix, dissout les cartons et neutralise les germes.");
+      const mq = q => typeof matchMedia === "function" && matchMedia(q).matches;
+      const s = creer(), tactile = mq("(pointer: coarse)"), calme = mq("(prefers-reduced-motion: reduce)");
+      const cx = c => X0 + c * T + T / 2, cy = r => Y0 + r * T + T / 2, kx = k => cx(k % NC), ky = k => cy((k - k % NC) / NC);
+      let clos = false, minuterie = 0, pad = null, eclat = -9;
+      const tenues = [], TOUCHES = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3, z: 0, w: 0, d: 1, s: 2, q: 3, a: 3 };
+      const maj = () => { s.j.veut = tenues.length ? tenues[tenues.length - 1] : pad ? pad.d : -1; };
+      const nom = e => e.key && e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      const enfonce = e => {
+        const k = nom(e), d = TOUCHES[k], pose = k === " " || k === "Enter";
+        if (d === undefined && !pose || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target && e.target.tagName || "")) return;
+        e.preventDefault();
+        if (pose) { if (!e.repeat) { s.j.pose = true; eclat = s.t; } return; }
+        if (!tenues.includes(d)) { tenues.push(d); s.j.coup = d; }
+        maj();
+      };
+      const leve = e => { const i = tenues.indexOf(TOUCHES[nom(e)]); if (i >= 0) { tenues.splice(i, 1); maj(); } };
+      const perdu = () => { tenues.length = 0; pad = null; maj(); };
+      // Au doigt ou à la souris : la croix à gauche se tient (on glisse d'une flèche à l'autre sans lever le doigt), tout le côté droit pose.
+      const point = e => { const b = cv.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * W, (e.clientY - b.top) / b.width * W]; };
+      const dirPad = (x, y) => { const dx = x - PAD.x, dy = y - PAD.y; return Math.max(Math.abs(dx), Math.abs(dy)) < 10 ? -1 : Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0); };
+      const appui = e => {
+        e.preventDefault(); cv.focus({ preventScroll: true });
+        const p = point(e);
+        if (p[1] < BAS) return;
+        try { cv.setPointerCapture(e.pointerId); } catch (_) { }
+        if (p[0] < 190) { pad = { id: e.pointerId, d: dirPad(p[0], p[1]) }; if (pad.d >= 0) s.j.coup = pad.d; maj(); }
+        else { s.j.pose = true; eclat = s.t; }
+      };
+      const bouge = e => { if (!pad || e.pointerId !== pad.id) return; const p = point(e), d = dirPad(p[0], p[1]); if (d >= 0 && d !== pad.d) { pad.d = d; maj(); } };
+      const relache = e => { if (pad && e.pointerId === pad.id) { pad = null; maj(); } };
+      const menu = e => e.preventDefault();
+      cv.addEventListener("pointerdown", appui); cv.addEventListener("pointermove", bouge); cv.addEventListener("pointerup", relache); cv.addEventListener("pointercancel", relache); cv.addEventListener("contextmenu", menu);
+      window.addEventListener("keydown", enfonce); window.addEventListener("keyup", leve); window.addEventListener("blur", perdu);
+      const retirer = () => {
+        cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointermove", bouge); cv.removeEventListener("pointerup", relache); cv.removeEventListener("pointercancel", relache); cv.removeEventListener("contextmenu", menu);
+        window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", perdu);
+      };
+      const rond = (x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 6.3); };
+      const bulles = (x, y, k, t) => {                                     // un paquet de mousse : quelques bulles autour d'un point
+        for (let i = 0; i < 6; i++) {
+          const a = i * 1.05 + k, d = i ? 8.5 : 0, r = (i ? 5.5 + (i * 7 + k) % 3 : 8) * t;
+          ctx.fillStyle = i % 2 ? "#fff" : "#E4F3FB"; ctx.strokeStyle = B; ctx.lineWidth = 1.4;
+          rond(x + Math.cos(a) * d, y + Math.sin(a) * d, r); ctx.fill(); ctx.stroke();
+        }
+      };
+      const etagere = (x, y) => {
+        trait(ctx, 2); ctx.fillStyle = V; ctx.beginPath(); ctx.roundRect(x - 14, y - 14, 28, 28, 4); ctx.fill(); ctx.stroke();
+        ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 14, y - 4); ctx.lineTo(x + 14, y - 4); ctx.moveTo(x - 14, y + 6); ctx.lineTo(x + 14, y + 6); ctx.stroke();
+        ctx.fillStyle = N; ctx.fillRect(x - 9, y - 10, 4, 6); ctx.fillRect(x + 2, y, 4, 6); ctx.fillStyle = C; ctx.fillRect(x - 2, y - 10, 4, 6); ctx.fillRect(x - 8, y, 4, 6);
+      };
+      const carton = (x, y, k) => {
+        ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+        trait(ctx, 2); ctx.fillStyle = KRAFT; ctx.beginPath(); ctx.roundRect(-13, -12, 26, 25, 3); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = RUBAN; ctx.fillRect(-3.5, -11, 7, 23);
+        ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-13, -4); ctx.lineTo(13, -4); ctx.stroke();
+        ctx.restore();
+      };
+      const pastille = q => {
+        const x = cx(q.c), y = cy(q.r), f = 1 - q.t / RE.delai, k = calme ? 1 : 1 + Math.sin(s.t * (8 + 22 * f)) * 0.1;
+        if (!calme) for (let i = 0; i < 4; i++) { const u = (s.t * 1.6 + i * 0.25 + q.k * 0.13) % 1; ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.strokeStyle = B; ctx.lineWidth = 1; rond(x + Math.sin(i * 2.4 + q.k) * 9, y - 4 - u * 14, 1.5 + f * 2 * (1 - u)); ctx.fill(); ctx.stroke(); }
+        ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+        trait(ctx, 2); ctx.fillStyle = "#fff"; rond(0, 0, 9); ctx.fill(); ctx.stroke();
+        ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(6, 0); ctx.stroke();
+        ctx.strokeStyle = O; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 12.5, -Math.PI / 2, -Math.PI / 2 + 6.283 * f); ctx.stroke();   // le délai qui s'écoule
+        ctx.restore();
+      };
+      const germe = g => {
+        const q = posDe(g), eclot = g.attente > 0, r = eclot ? 5.5 : 8.5;
+        ctx.save(); ctx.translate(cx(q[0]), cy(q[1]));
+        if (eclot) ctx.globalAlpha = 0.55;
+        trait(ctx, 2); ctx.fillStyle = g.neuf ? P : G; ctx.beginPath();
+        for (let i = 0; i <= 24; i++) { const a = i * Math.PI / 12, rr = r + Math.sin(a * 3 + (calme ? 0 : s.t * 5) + g.c) * 1.7; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        if (!eclot) { ctx.fillStyle = "#fff"; rond(-3, -1.5, 2.6); ctx.fill(); rond(3, -1.5, 2.6); ctx.fill(); ctx.fillStyle = N; rond(-3, -1.5, 1.2); ctx.fill(); rond(3, -1.5, 1.2); ctx.fill(); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(0, 2, 3, 0.3, 2.84); ctx.stroke(); }
+        ctx.restore();
+      };
+      const preparateur = () => {
+        const j = s.j, q = posDe(j), x = cx(q[0]), y = cy(q[1]), glisse = s.arret > 0 && !clos;
+        if (s.abri > 0 && !glisse && !clos && Math.floor(s.t * 8) % 2) return;   // il clignote tant qu'il est à l'abri
+        ctx.save(); ctx.translate(x, y);
+        ctx.fillStyle = "rgba(38,7,109,.16)"; ctx.beginPath(); ctx.ellipse(0, 12, 10, 3.5, 0, 0, 6.3); ctx.fill();
+        if (glisse) ctx.rotate(calme ? 0.5 : Math.sin(s.t * 14) * 0.6);
+        trait(ctx, 2);
+        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.roundRect(-8, -1, 16, 14, [5, 5, 3, 3]); ctx.fill(); ctx.stroke();        // la blouse
+        ctx.fillStyle = "#F2D3B8"; rond(0, -5, 7.5); ctx.fill(); ctx.stroke();                                              // la tête
+        ctx.fillStyle = B; ctx.beginPath(); ctx.arc(0, -6.5, 8.5, Math.PI * 0.95, Math.PI * 2.05); ctx.closePath(); ctx.fill(); ctx.stroke();   // la charlotte
+        const ox = j.vu === 1 ? 1.8 : j.vu === 3 ? -1.8 : 0;
+        if (j.vu !== 0) { ctx.fillStyle = N; rond(ox - 2.6, -4.5, 1.2); ctx.fill(); rond(ox + 2.6, -4.5, 1.2); ctx.fill(); ctx.fillStyle = "#fff"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.roundRect(ox - 4, -2.5, 8, 4.5, 1.5); ctx.fill(); ctx.stroke(); }   // les yeux et le masque (de dos : rien)
+        ctx.restore();
+        if (glisse) bulles(x, y + 6, 1, 0.5);
+      };
+      const fleche = (d, actif) => {
+        const x = PAD.x + DIRS[d][0] * PAD.pas, y = PAD.y + DIRS[d][1] * PAD.pas, h = PAD.t / 2;
+        ctx.fillStyle = actif ? Y : V; ctx.beginPath(); ctx.roundRect(x - h, y - h, PAD.t, PAD.t, 10); ctx.fill();
+        ctx.save(); ctx.translate(x, y); ctx.rotate(d * Math.PI / 2); ctx.fillStyle = N; ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(9, 7); ctx.lineTo(-9, 7); ctx.closePath(); ctx.fill(); ctx.restore();
+      };
+      const dessiner = () => {
+        ctx.fillStyle = N; ctx.fillRect(0, 0, W, HP);
+        ctx.fillStyle = SOL; ctx.fillRect(X0, Y0, NC * T, NR * T);
+        ctx.strokeStyle = "rgba(38,7,109,.08)"; ctx.lineWidth = 1; ctx.beginPath();
+        for (let c = 1; c < NC; c++) { ctx.moveTo(X0 + c * T, Y0); ctx.lineTo(X0 + c * T, Y0 + NR * T); }
+        for (let r = 1; r < NR; r++) { ctx.moveTo(X0, Y0 + r * T); ctx.lineTo(X0 + NC * T, Y0 + r * T); }
+        ctx.stroke();
+        ctx.strokeStyle = O; ctx.lineWidth = 2; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.roundRect(cx(DEPART[0]) - 13, cy(DEPART[1]) - 13, 26, 26, 6); ctx.stroke(); ctx.setLineDash([]);   // la porte du sas
+        // La zone que chaque pastille va mouiller : de plus en plus marquée à mesure que le délai s'écoule.
+        for (const q of s.pastilles) { ctx.fillStyle = "rgba(143,199,232," + (0.22 + 0.4 * (1 - q.t / RE.delai)).toFixed(2) + ")"; for (const k of croix(s, q.c, q.r)) { ctx.beginPath(); ctx.roundRect(kx(k) - 14, ky(k) - 14, 28, 28, 6); ctx.fill(); } }
+        const arrive = calme ? 1 : Math.min(1, (s.t - s.livreT) / 0.3);
+        for (let k = 0; k < NC * NR; k++) {
+          const x = kx(k), y = ky(k);
+          if (s.sol[k] === 1) etagere(x, y);
+          else if (s.sol[k] === 2) carton(x, y, arrive);
+          else if (s.flacons[k]) { ctx.save(); ctx.translate(x, y + 2 + (calme ? 0 : Math.sin(s.t * 5 + k) * 1.2)); ctx.scale(0.8, 0.8); flacon(ctx, 0, 0, 0, G); ctx.restore(); }
+        }
+        for (const q of s.pastilles) pastille(q);
+        for (const g of s.germes) germe(g);
+        preparateur();
+        for (const m of s.mousses) { const f = m.t / RE.mousse, t = calme ? 1 : Math.min(1, Math.sin(Math.PI * Math.min(1, 1.15 - f)) * 1.25); for (const k of m.cases) bulles(kx(k), ky(k), k, t); }
+        for (const e of s.evts) {                                          // les points gagnés ou perdus s'envolent de leur case
+          const u = (s.t - e.t) / 0.9; if (u >= 1 || clos) continue;
+          const x = Math.max(22, Math.min(W - 22, kx(e.k))), y = ky(e.k) - 8 - (calme ? 8 : u * 16), t = (e.pts > 0 ? "+" : "−") + Math.abs(e.pts);
+          ctx.globalAlpha = 1 - u * u; ctx.lineWidth = 3.5; ctx.strokeStyle = "#fff"; ctx.lineJoin = "round"; ctx.font = "800 14px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.strokeText(t, x, y);
+          texte(ctx, t, x, y, 14, e.pts > 0 ? N : R); ctx.globalAlpha = 1;
+        }
+        // Le bas : annonces et rappel des commandes, la croix de direction, le bouton de pose avec le tube de pastilles.
+        const annonce = !clos && s.t - s.msgT < 1.4;
+        texte(ctx, annonce ? s.msg : tactile ? "Croix : avancer · bouton : pastille" : "Flèches ou Z Q S D · Espace : pastille", 180, BAS + 14, 13, annonce ? Y : V);
+        for (let d = 0; d < 4; d++) fleche(d, !clos && s.j.veut === d);
+        ctx.fillStyle = "rgba(185,166,240,.35)"; rond(PAD.x, PAD.y, 7); ctx.fill();
+        const dispo = RE.tube - s.pastilles.length, vif = s.t - eclat < 0.12;
+        ctx.fillStyle = vif ? Y : dispo ? O : "#8E7FB5"; rond(BTN.x, BTN.y, BTN.r); ctx.fill(); ctx.strokeStyle = C; ctx.lineWidth = 3; ctx.stroke();
+        trait(ctx, 2.2); ctx.fillStyle = "#fff"; rond(BTN.x, BTN.y - 8, 13); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(BTN.x - 9, BTN.y - 8); ctx.lineTo(BTN.x + 9, BTN.y - 8); ctx.stroke();
+        texte(ctx, "Pastille", BTN.x, BTN.y + 20, 13, N);
+        for (let i = 0; i < RE.tube; i++) { ctx.fillStyle = i < dispo ? "#fff" : "rgba(255,251,242,.2)"; rond(BTN.x + 62, BTN.y - 10 + i * 20, 6); ctx.fill(); }
+        const n = notePastilles(s);
+        bandeau(ctx, s.score + " points · " + n + "/10", duree - s.t, duree);
+        if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 150, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 190, 40, Y); texte(ctx, s.score + " points au compteur", 180, 232, 16, C); }
+      };
+      const arret = boucle(dt => {
+        if (!clos) {
+          pasPastilles(s, dt, duree);
+          if (s.fini) {
+            clos = true; perdu();
+            const n = notePastilles(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
+            const bilan = pl(s.dissous, "carton dissous", "cartons dissous") + ", " + pl(s.ramasses, "flacon récupéré", "flacons récupérés") + ", " + pl(s.neutralises, "germe neutralisé", "germes neutralisés") + ", " + pl(s.savons, "glissade", "glissades") + " dans la mousse, " + pl(s.prises, "contamination", "contaminations") + " : " + pl(s.score, "point", "points") + ", soit " + n + " sur 10 (1 point de note par tranche de " + RE.palier + " points).";
+            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, Math.round(s.score))); }, 1300);
+          }
+        }
+        dessiner();
+      });
+      cv.focus({ preventScroll: true });
+      return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
+    };
+    api.pastilles = pastilles;
+    Object.assign(api._coeur, { REGL_PASTILLES: RE, creerPastilles: creer, pasPastilles, notePastilles, croixPastilles: croix, casePastilles: caseDe, E_PLAN: PLAN, E_DIRS: DIRS, E_DEPART: DEPART, E_RODEURS: RODEURS });
+  }
   /* ----- Fin [pastilles] ----- */
 
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PharmacoJeux = api;
