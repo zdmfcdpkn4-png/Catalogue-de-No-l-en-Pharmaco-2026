@@ -30,11 +30,12 @@
   // La tranche du jeton : onze disques empilés entre la face et le dos.
   const TRANCHE = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5].map(z => '<span class="pm-t" style="--z:' + z + 'px"></span>').join("");
   const n = typeof G !== "undefined" && Array.isArray(G) ? G.length : 0;
+  // bientot : la page n'est pas encore ouverte ; une étiquette de travers le dit sous le bouton, avec son motif.
   // sel : la section qui doit exister pour que le bouton s'affiche ; img : la déclinaison du logo ; fond : la teinte du disque.
   const PAGES = [
     { id: "catalogue", href: "#", t: "Catalogue", s: n ? n + " jeux à prescrire" : "Les jeux à prescrire", img: "menu-catalogue.webp", fond: "#F59A62" },
-    { id: "sapin", href: "#sapin", t: "Sapin de l'Avent", s: "Une dose par jour", sel: "#avent", img: "menu-sapin.webp", fond: "#BFE3C9" },
-    { id: "pharmacogames", href: "#pharmacogames", t: "Pharmacogames", s: "Le concours à points", sel: "#pharmacogames", img: "menu-pharmacogames.webp", fond: "#B9A6F0" },
+    { id: "sapin", href: "#sapin", t: "Sapin de l'Avent", s: "Une dose par jour", sel: "#avent", img: "menu-sapin.webp", fond: "#BFE3C9", bientot: "lot en quarantaine" },
+    { id: "pharmacogames", href: "#pharmacogames", t: "Pharmacogames", s: "Le concours à points", sel: "#pharmacogames", img: "menu-pharmacogames.webp", fond: "#B9A6F0", bientot: "libération en cours" },
     { id: "vote", href: "#vote", t: "Palmarès", s: "Votez pour votre jeu", sel: "#vote", img: "menu-palmares.webp", fond: "#F2E39A" },
   ];
 
@@ -64,6 +65,10 @@
 .pm a:active .pm-o{transform:translate(-1px,-1px)}
 .pm a:focus-visible{outline:0}
 .pm a:focus-visible .pm-d{outline:3px solid var(--focus);outline-offset:4px}
+.pm-s{display:block;margin-top:3px;padding:3px 8px 4px;background:var(--li);color:#26076D;border:2px solid var(--line);border-radius:8px;box-shadow:2px 2px 0 var(--shadow);font:600 .64rem/1.2 var(--mono);font-style:normal;letter-spacing:.03em;text-transform:uppercase;transform:rotate(-4deg);transform-origin:50% 0;animation:pmPend 2.6s ease-in-out infinite}
+.pm a:nth-child(odd) .pm-s{transform:rotate(3deg);animation-delay:-1.3s}
+.pm-s i{display:block;font-style:normal;font-weight:500;font-size:.9em;text-transform:none;letter-spacing:0}
+@keyframes pmPend{0%,100%{rotate:-2deg}50%{rotate:2deg}}
 .pm a[aria-current="page"] .pm-f,.pm a[aria-current="page"] .pm-v{box-shadow:0 0 0 4px var(--mu),0 0 0 7px var(--line)}
 .pm a[aria-current="page"] .pm-o{opacity:0}
 .pm a[aria-current="page"] b{background:var(--pressed);color:var(--pressed-on)}
@@ -71,7 +76,7 @@
 .pm a[hidden]{display:none}
 @media(max-width:720px){.pm{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 10px;max-width:420px}}
 @media(max-width:360px){.pm b{font-size:.86rem;padding:2px 6px}}
-@media(prefers-reduced-motion:reduce){.pm-d,.pm-o{transition:none}.pm a.tourne .pm-j,.pm a.tourne .pm-o{animation:none}}`;
+@media(prefers-reduced-motion:reduce){.pm-d,.pm-o{transition:none}.pm a.tourne .pm-j,.pm a.tourne .pm-o,.pm-s{animation:none}}`;
   document.head.appendChild(st);
 
   const nav = document.createElement("nav");
@@ -79,7 +84,7 @@
   nav.setAttribute("aria-label", "Les quatre pages du site");
   nav.innerHTML = PAGES.map(p => '<a href="' + p.href + '" data-page="' + p.id + '"' + (p.sel && !q(p.sel) ? ' class="att"' : "") + '><span class="pm-d" style="--fond:' + p.fond + '">'
     + '<span class="pm-o"></span><span class="pm-j"><span class="pm-f"><img src="img/' + p.img + '" alt="" width="224" height="224" decoding="async">' + PLUS[p.id] + "</span>" + TRANCHE
-    + '<span class="pm-v" style="--fond:' + p.fond + '">' + DOS[p.id] + "</span></span></span><b>" + p.t + "</b><small>" + p.s + "</small></a>").join("");
+    + '<span class="pm-v" style="--fond:' + p.fond + '">' + DOS[p.id] + "</span></span></span><b>" + p.t + "</b><small>" + p.s + "</small>" + (p.bientot ? '<em class="pm-s">Bientôt disponible<i>' + p.bientot + "</i></em>" : "") + "</a>").join("");
   ancre.insertAdjacentElement("afterend", nav);
 
   const page = () => (location.hash === "#sapin" ? "sapin" : location.hash === "#vote" ? "vote" : location.hash === "#pharmacogames" || location.hash === "#enigme" ? "pharmacogames" : "catalogue");
