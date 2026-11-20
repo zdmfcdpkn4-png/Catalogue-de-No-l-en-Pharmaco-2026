@@ -366,7 +366,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (!p) {
       const d1 = dt(E.portes[0].ouvre), n = 1 - E.jour;
       html = '<p class="ap-m">Calendrier sous scellé</p><h3>Première porte le ' + jour(d1) + "</h3>"
-        + '<p class="eg-d">Encore ' + pl(n, "jour", "jours") + " de quarantaine. Vous êtes inscrit au contrôle : revenez le jour dit, une porte s'ouvrira chaque matin jusqu'au 25.</p>";
+        + '<p class="eg-d">Encore ' + pl(n, "jour", "jours") + " de quarantaine. Revenez le jour dit : une porte s'ouvrira chaque matin jusqu'au 25.</p>";
     } else if (p.etat === "avenir" && !relecture) {
       html = '<p class="ap-m">Porte ' + p.n + ' · sous scellé</p><h3>Patience</h3><p class="eg-d">Cette porte s\'ouvrira le ' + jour(dt(p.ouvre)) + ". D'ici là, elle reste en quarantaine.</p>";
     } else {
