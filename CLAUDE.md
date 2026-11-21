@@ -67,4 +67,5 @@ pour une demande qui en sort, elle indique la session concernée.
 - La branche de publication est `claude/vibrant-edison-rs93fn`. Seule la session d'orchestration y fusionne et publie.
 - Une session de jeu ou de design livre en poussant sa branche, puis prévient l'utilisateur : « à intégrer par l'orchestration ».
 - Un nouveau jeu d'adresse : une nouvelle session sur le même modèle, avec sa branche.
+- Tableau final commun (fin de `jeux.js`, hors des blocs de jeux, géré par l'orchestration) : après chaque partie, la note s'affiche au cœur du logo de l'unité avec les chiffres de la partie, puis `onFin` est transmis. Un jeu peut fournir ses chiffres en quatrième argument : `onFin(note, bilan, brut, [[valeur, libellé], …])`, quatre au plus. Un jeu qui dessine lui-même ce tableau est inscrit dans `SANS_TABLEAU` (le twirling).
 - Interface des jeux à respecter : `PharmacoJeux.<nom>(element, { duree, onFin })` rend une fonction d'arrêt ; `onFin(note, bilan, brut)`, avec `brut` entier positif sous le plafond du jeu (`PLAFOND` dans `api/enigme.js`).

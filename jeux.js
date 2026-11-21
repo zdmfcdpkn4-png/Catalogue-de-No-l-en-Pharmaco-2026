@@ -4086,5 +4086,77 @@
   }
   /* ----- Fin [minigolf] ----- */
 
+  /* ----- Tableau final commun ----- */
+  // À la fin de chaque jeu, avant de rendre la main : la note en grand au cœur du logo de l'unité, et les chiffres de la partie.
+  // Le jeu appelle onFin(note, bilan, brut, chiffres) comme avant ; le tableau s'affiche par-dessus, puis onFin est transmis.
+  // `chiffres` (facultatif) : [[valeur, libellé], …], quatre au plus. Sans lui, ils sont tirés du score brut.
+  // Un jeu qui dessine déjà ce tableau lui-même se déclare dans SANS_TABLEAU. Un toucher ou une touche abrège l'attente.
+  {
+    const SANS_TABLEAU = { twirling: 1 }, DUREE_TABLEAU = 3200;
+    const pts = b => [[b, b > 1 ? "points" : "point"]];
+    const echanges = b => [[b % 100, b % 100 > 1 ? "points gagnés" : "point gagné"], [Math.floor(b / 100) + " %", "des échanges"]];
+    const CHIFFRES = {
+      bowling: b => [[b, b > 1 ? "flacons renversés" : "flacon renversé"]],
+      tir: b => [[b, b > 1 ? "particules neutralisées" : "particule neutralisée"]],
+      tennis: echanges, volley: echanges,
+      haies: b => [[String(Math.round(b) / 10).replace(".", ",") + " m", "parcourus"]],
+      penalty: (b, n) => [[n, n > 1 ? "buts" : "but"]],
+    };
+    const STYLE = ".pj-fin{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px 12px;box-sizing:border-box;background:rgba(38,7,109,.86);border-radius:inherit;color:#FFFBF2;text-align:center;overflow:hidden;cursor:pointer;container-type:size;animation:pj-fin-in .35s ease-out both}"
+      + ".pj-fin-logo{position:relative;width:min(62%,250px);width:min(62cqw,52cqh,250px);aspect-ratio:1;border-radius:50%;background:#FFFBF2;flex:none;animation:pj-fin-pop .5s cubic-bezier(.3,1.5,.5,1) both}"
+      + ".pj-fin-logo img{position:absolute;inset:1.5%;width:97%;height:97%;object-fit:contain;animation:pj-fin-tourne 6s ease-in-out infinite alternate}"
+      + ".pj-fin-note{position:absolute;left:50%;top:50%;width:48%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:#26076D;border:4px solid #EBD56B;box-sizing:border-box;display:flex;align-items:center;justify-content:center;color:#EBD56B;font-weight:800;line-height:1}"
+      + ".pj-fin-note b{font-size:clamp(2.2rem,15vw,3.9rem);font-size:clamp(1.5rem,min(15cqw,13cqh),3.9rem)}.pj-fin-note small{font-size:clamp(.8rem,4.6vw,1.2rem);font-size:clamp(.7rem,min(4.6cqw,4cqh),1.2rem);color:#FFFBF2;align-self:flex-end;margin:0 0 20% 3px}"
+      + ".pj-fin-ch{display:flex;width:100%;max-width:340px;background:#FFFBF2;color:#26076D;border:3px solid #26076D;border-radius:16px;box-sizing:border-box;flex:none}"
+      + ".pj-fin-ch span{flex:1;min-width:0;padding:8px 4px;display:flex;flex-direction:column;gap:2px}.pj-fin-ch span+span{border-left:1.5px solid rgba(38,7,109,.18)}"
+      + ".pj-fin-ch b{font-size:1.25rem;font-weight:800;line-height:1.1}.pj-fin-ch small{font-size:.7rem;line-height:1.15;opacity:.75}"
+      + ".pj-fin-bilan{margin:0;max-width:340px;font-size:.82rem;line-height:1.3;color:#EBD56B;font-weight:700;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}"
+      + "@keyframes pj-fin-in{from{opacity:0}}@keyframes pj-fin-pop{from{transform:scale(.6)}}@keyframes pj-fin-tourne{from{transform:rotate(-4deg)}to{transform:rotate(4deg)}}"
+      + "@container (max-height:300px){.pj-fin{gap:6px;padding:8px}.pj-fin-ch span{padding:4px}.pj-fin-bilan{-webkit-line-clamp:2;font-size:.74rem}}@media (prefers-reduced-motion:reduce){.pj-fin,.pj-fin-logo,.pj-fin-logo img{animation:none}}";
+    const tableauFinal = (el, nom, note, bilan, brut, chiffres, suite) => {
+      const doc = el.ownerDocument;
+      if (!doc.getElementById("pj-fin-style")) { const st = doc.createElement("style"); st.id = "pj-fin-style"; st.textContent = STYLE; doc.head.appendChild(st); }
+      let L = Array.isArray(chiffres) && chiffres.length ? chiffres : Number.isFinite(brut) ? (CHIFFRES[nom] || pts)(brut, note) : [];
+      L = L.filter(c => Array.isArray(c) && c.length === 2).slice(0, 4);
+      const avant = el.style.position, pose = getComputedStyle(el).position === "static";
+      if (pose) el.style.position = "relative";
+      const d = doc.createElement("div"), mk = (t, c, txt) => { const x = doc.createElement(t); if (c) x.className = c; if (txt !== undefined) x.textContent = txt; return x; };
+      d.className = "pj-fin"; d.setAttribute("role", "status"); d.tabIndex = 0;
+      const logo = mk("div", "pj-fin-logo"), img = doc.createElement("img"), rond = mk("div", "pj-fin-note");
+      img.alt = ""; img.src = api._logo; img.onerror = () => img.remove();
+      rond.append(mk("b", "", String(note)), mk("small", "", "/10")); logo.append(img, rond); d.append(logo);
+      if (L.length) { const r = mk("div", "pj-fin-ch"); L.forEach(c => { const x = mk("span"); x.append(mk("b", "", String(c[0])), mk("small", "", String(c[1]))); r.append(x); }); d.append(r); }
+      if (bilan) d.append(mk("p", "pj-fin-bilan", String(bilan)));
+      el.appendChild(d);
+      let fait = false;
+      const fermer = appeler => {
+        if (fait) return; fait = true;
+        clearTimeout(minuterie); doc.removeEventListener("keydown", touche, true);
+        d.remove(); if (pose) el.style.position = avant;
+        if (appeler) suite();
+      };
+      const touche = e => { if (e.key === " " || e.key === "Enter" || e.key === "Escape") { e.preventDefault(); fermer(true); } };
+      const minuterie = setTimeout(() => fermer(true), DUREE_TABLEAU);
+      const pret = performance.now();
+      d.addEventListener("click", () => { if (performance.now() - pret > 500) fermer(true); });   // pas d'abandon par un geste de jeu encore en cours
+      setTimeout(() => { if (!fait) doc.addEventListener("keydown", touche, true); }, 500);
+      return () => fermer(false);
+    };
+    for (const nom of Object.keys(api)) {
+      const jeu = api[nom];
+      if (nom[0] === "_" || typeof jeu !== "function" || SANS_TABLEAU[nom]) continue;
+      api[nom] = (el, opt) => {
+        let fermerTableau = null, arrete = false;
+        const stop = jeu(el, Object.assign({}, opt, { onFin: (note, bilan, brut, chiffres) => {
+          if (arrete || !opt || !opt.onFin) return;
+          fermerTableau = tableauFinal(el, nom, note, bilan, brut, chiffres, () => { fermerTableau = null; if (!arrete) opt.onFin(note, bilan, brut); });
+        } }));
+        return () => { arrete = true; if (fermerTableau) fermerTableau(); if (typeof stop === "function") stop(); };
+      };
+    }
+    api._tableauFinal = tableauFinal;
+  }
+  /* ----- Fin du tableau final commun ----- */
+
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PharmacoJeux = api;
 })(typeof window !== "undefined" ? window : globalThis);
