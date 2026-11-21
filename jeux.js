@@ -2694,7 +2694,7 @@
       const n = RSG.niv[s.serie];
       s.cx = RSG.cx + n.ax * Math.sin(s.phx); s.cy = RSG.cy + n.ay * Math.sin(s.phy); s.r = n.r; s.vent = n.vent + n.raf * Math.sin(s.phv);
     };
-    const creerSeringue = () => { const s = { t: 0, acc: 0, serie: 0, phx: 0, phy: 0, phv: 0, cx: 0, cy: 0, r: 0, vent: 0, vol: null, attente: 0.5, releve: 0, ancien: null, lances: 0, poses: 0, points: 0, septums: 0, centres: 0, capsules: 0, impacts: [], ev: null, evT: -9, fini: false }; placerSeringue(s); return s; };
+    const creerSeringue = () => { const s = { t: 0, acc: 0, serie: 0, phx: 0, phy: 0, phv: 0, cx: 0, cy: 0, r: 0, vent: 0, vol: null, attente: 0.5, releve: 0, ancien: null, lances: 0, poses: 0, points: 0, septums: 0, centres: 0, capsules: 0, suite: 0, suiteMax: 0, impacts: [], ev: null, evT: -9, fini: false }; placerSeringue(s); return s; };
     // Les points d'un impact à la distance d du centre d'un flacon de rayon r : 100 en plein centre, de 90 à 40 dans le septum, un lot de consolation sur la capsule.
     const pointsSeringue = (d, r) => { const c = r * RSG.coeur, sp = r * RSG.septum; return d <= c ? 100 : d <= sp ? Math.round(90 - 50 * (d - c) / (sp - c)) : d <= r ? RSG.capsule : 0; };
     const zoneSeringue = (d, r) => d <= r * RSG.coeur ? 3 : d <= r * RSG.septum ? 2 : d <= r ? 1 : 0;
@@ -2716,6 +2716,7 @@
         if (v.t >= RSG.vol) {
           const x = v.ax + v.dx, y = v.ay, d = Math.hypot(x - s.cx, y - s.cy), pts = pointsSeringue(d, s.r), zone = zoneSeringue(d, s.r);
           s.points += pts; s.poses++; if (zone >= 2) s.septums++; if (zone === 3) s.centres++; if (zone === 1) s.capsules++;
+          if (zone >= 2) { s.suite++; s.suiteMax = Math.max(s.suiteMax, s.suite); } else s.suite = 0;         // le combo : septums piqués d'affilée (pour le spectacle, sans effet sur les points)
           s.impacts.push({ dx: x - s.cx, dy: y - s.cy, zone, serie: s.serie });
           s.ev = { pts, zone, x, y, ax: v.ax, ay: v.ay, cx: s.cx, cy: s.cy }; s.evT = s.t; s.vol = null;
           const reste = totalSeringue() - s.lances;
@@ -2751,7 +2752,45 @@
       if (typeof opt.espion === "function") opt.espion(s);                                         // pour le banc d'essai seulement
       const logo = new Image(); logo.src = opt.logo || api._logo;
       let clos = false, minuterie = 0, tenu = false, clavier = false, tenue = 0, vus = 0, souffle = 0;
-      const mire = { x: 180, y: 310 }, chutes = [];
+      const mire = { x: 180, y: 310 }, chutes = [], eclats = [];
+      // Le décor : la zone de production, isolateur à gauche, hotte à flux laminaire à droite. Dessiné une fois, en teintes pâles pour laisser la vedette au flacon.
+      const decor = document.createElement("canvas"); decor.width = W * 2; decor.height = H * 2;
+      (g => {
+        const L = "rgba(38,7,109,.3)", PALE = "#F6F3FB", TOLE = "#DDD6F0", VITRE = "rgba(143,199,232,.34)";
+        const rr = (x, y, w, h, r, f) => { g.beginPath(); g.roundRect(x, y, w, h, r); if (f) { g.fillStyle = f; g.fill(); } g.stroke(); };
+        const rond = (x, y, r, f) => { g.beginPath(); g.arc(x, y, r, 0, 6.3); if (f) { g.fillStyle = f; g.fill(); } g.stroke(); };
+        const ligne = (x1, y1, x2, y2) => { g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); };
+        const mot = (t, x, y, px) => { g.font = "800 " + px + "px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; g.fillStyle = "rgba(38,7,109,.42)"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(t, x, y); };
+        g.scale(2, 2); g.lineJoin = g.lineCap = "round";
+        g.fillStyle = "#EDEAF6"; g.fillRect(0, 0, W, H);                                              // les panneaux lisses de la salle
+        g.fillStyle = "#E2DDF0"; g.fillRect(0, 356, W, 36);                                           // le sol, plinthe à gorge
+        g.strokeStyle = "rgba(38,7,109,.07)"; g.lineWidth = 2; for (const x of [90, 180, 270]) ligne(x, 49, x, 356);
+        g.strokeStyle = "rgba(38,7,109,.16)"; ligne(0, 356, W, 356);
+        g.strokeStyle = L; g.lineWidth = 2;
+        for (const x of [34, 256]) { rr(x, 51, 70, 12, 3, PALE); g.lineWidth = 1; for (let i = 1; i < 7; i++) ligne(x + i * 10, 54, x + i * 10, 60); g.lineWidth = 2; }   // les bouches de soufflage au plafond
+        rr(146, 92, 68, 20, 6, PALE); mot("ZAC · ISO 7", 180, 103, 9);                             // l'affichage de la salle
+        rond(180, 132, 11, PALE); ligne(180, 132, 186, 126); g.lineWidth = 1; for (let i = 0; i < 5; i++) { const a = Math.PI * (1 + i / 4); ligne(180 + Math.cos(a) * 7, 132 + Math.sin(a) * 7, 180 + Math.cos(a) * 9, 132 + Math.sin(a) * 9); } g.lineWidth = 2;   // le manomètre de surpression
+        // L'isolateur : caisson sur pieds, vitre, deux ronds de gants, sas de transfert sur le côté.
+        rr(24, 322, 9, 36, 2, TOLE); rr(121, 322, 9, 36, 2, TOLE);
+        rr(132, 214, 26, 60, 6, TOLE); rond(145, 244, 8, VITRE);
+        rr(10, 150, 132, 174, 12, TOLE);
+        rr(20, 160, 112, 74, 8, VITRE);
+        g.strokeStyle = "rgba(255,255,255,.75)"; g.lineWidth = 3; ligne(32, 222, 70, 170); ligne(48, 224, 78, 184); g.strokeStyle = L; g.lineWidth = 2;
+        for (const x of [48, 104]) { rond(x, 276, 20, "#F1DCEB"); rond(x, 276, 12, "#E6C6DD"); g.lineWidth = 1.5; ligne(x - 6, 272, x + 6, 280); g.lineWidth = 2; }
+        rr(20, 302, 112, 14, 5, PALE); mot("ISOLATEUR", 84, 310, 8);
+        g.fillStyle = G; g.globalAlpha = 0.7; g.beginPath(); g.arc(30, 309, 3, 0, 6.3); g.fill(); g.fillStyle = Y; g.beginPath(); g.arc(39, 309, 3, 0, 6.3); g.fill(); g.globalAlpha = 1;
+        // La hotte à flux laminaire : plénum et sa grille, volume de travail vitré, vitre guillotine, piètement.
+        rr(214, 300, 132, 58, 6, TOLE); ligne(280, 306, 280, 352); rond(273, 330, 2); rond(287, 330, 2);
+        rr(206, 118, 148, 42, 8, TOLE); g.lineWidth = 1.2; for (let i = 0; i < 9; i++) ligne(218 + i * 9, 128, 218 + i * 9, 150); g.lineWidth = 2;
+        rr(304, 126, 42, 14, 4, PALE); mot("HOTTE", 325, 134, 8);
+        g.fillStyle = G; g.globalAlpha = 0.7; g.beginPath(); g.arc(312, 149, 3, 0, 6.3); g.fill(); g.globalAlpha = 1;
+        rr(212, 160, 136, 140, 4, VITRE);
+        g.lineWidth = 1; g.setLineDash([2, 5]); for (const x of [236, 258, 280, 302, 324]) ligne(x, 166, x, 228); g.setLineDash([]); g.lineWidth = 2;        // le flux qui descend
+        ligne(320, 168, 320, 246); ligne(308, 168, 332, 168); rr(309, 246, 22, 32, 7, PALE); ligne(320, 278, 320, 292);                                        // une poche à sa potence
+        rr(232, 276, 14, 22, 3, PALE); rr(235, 270, 8, 6, 2, "rgba(38,7,109,.3)"); rr(254, 282, 12, 16, 3, PALE); rr(256, 277, 8, 5, 2, "rgba(38,7,109,.3)");   // deux flacons en attente
+        g.lineWidth = 4; ligne(212, 238, 348, 238); g.lineWidth = 2;
+        g.strokeStyle = "rgba(255,255,255,.75)"; g.lineWidth = 3; ligne(224, 226, 252, 176);
+      })(decor.getContext("2d"));
       const touches = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false };
       const posDe = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.width * W]; };
       // À la souris, la mire est sous le pointeur ; au doigt ou au stylet, elle se tient au-dessus pour ne pas être cachée.
@@ -2815,11 +2854,9 @@
         texte(ctx, t, cx, y + 1, px || 14, coul);
       };
       function dessiner() {
+        const combo = s.suite >= 2 && !clos, TEINTE = s.suite >= 6 ? P : s.suite >= 4 ? O : Y;
         const total = totalSeringue(), reste = total - s.lances, pret = !s.vol && s.attente <= 0 && s.releve <= 0 && reste > 0 && s.t < duree;
-        ctx.fillStyle = "#EDEAF6"; ctx.fillRect(0, 0, W, H);                                         // le fond de la hotte
-        ctx.strokeStyle = "rgba(38,7,109,.06)"; ctx.lineWidth = 2;                                    // la grille du filtre
-        for (let x = 30; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x, 39); ctx.lineTo(x, 392); ctx.stroke(); }
-        for (let y = 80; y < 392; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+        ctx.drawImage(decor, 0, 0, W, H);                                                            // la zone de production
         ctx.fillStyle = "#F7E7B8"; ctx.fillRect(0, 392, W, H - 392);                                 // le plan de travail
         trait(ctx, 3); ctx.beginPath(); ctx.moveTo(0, 392); ctx.lineTo(W, 392); ctx.stroke();
         // Les filets d'air : ils filent dans le sens du flux, d'autant plus vite qu'il est fort.
@@ -2837,7 +2874,15 @@
             flaconCible(s.ancien.x, s.ancien.y - k, s.ancien.r, s.ancien.serie, 1); flaconCible(s.cx, s.cy - (1 - u) * (1 - u) * 330, s.r, s.serie, 1);
             ctx.restore();
           }
-        } else flaconCible(s.cx, s.cy, s.r, s.serie, 1);
+        } else {
+          if (combo) {                                                                               // le flacon s'auréole tant que la série tient
+            const b = calme ? 0 : Math.sin(s.t * 9) * 2.5;
+            ctx.globalAlpha = 0.85; ctx.strokeStyle = TEINTE; ctx.lineWidth = 4; ctx.beginPath(); ctx.roundRect(s.cx - s.r - 15 - b, s.cy - s.r - 15 - b, 2 * (s.r + 15 + b), 2 * (s.r + 15 + b), 17); ctx.stroke();
+            if (s.suite >= 4) { ctx.globalAlpha = 0.45; ctx.beginPath(); ctx.roundRect(s.cx - s.r - 22 - 2 * b, s.cy - s.r - 22 - 2 * b, 2 * (s.r + 22 + 2 * b), 2 * (s.r + 22 + 2 * b), 22); ctx.stroke(); }
+            ctx.globalAlpha = 1;
+          }
+          flaconCible(s.cx, s.cy, s.r, s.serie, 1);
+        }
         // La manche à air : le sens et la force du flux, en chevrons.
         const fv = Math.abs(s.vent), sens = s.vent < 0 ? -1 : 1;
         ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(110, 54, 140, 24, 12); ctx.fill();
@@ -2857,7 +2902,17 @@
           ctx.beginPath(); ctx.roundRect(x, 455, 6, 15, 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = N; ctx.fillRect(x - 1, 470, 8, 2.5);
         }
         ctx.globalAlpha = 1;
-        texte(ctx, "Flacon " + (s.serie + 1) + "/" + RSG.series, W - 12, 463, 12, "rgba(38,7,109,.6)", "right");
+        texte(ctx, "Flacon " + (s.serie + 1) + "/" + RSG.series, W - 12, 467, 11, "rgba(38,7,109,.6)", "right");
+        if (combo) {                                                                                 // la médaille du combo : une étoile qui grossit à chaque septum de plus
+          const k = calme ? 1 : 1 + Math.max(0, 0.35 - (s.t - s.evT)) * 1.2, br = 9 + Math.min(s.suite, 8);
+          ctx.save(); ctx.translate(292, 417); ctx.scale(k, k); if (!calme) ctx.rotate(s.t * 0.8);
+          trait(ctx, 2.4); ctx.fillStyle = TEINTE; ctx.beginPath();
+          for (let i = 0; i < 2 * br; i++) { const a = i * Math.PI / br, r = i % 2 ? 19 : 26; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+          ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+          texte(ctx, "×" + s.suite, 292, 418, 17, N); texte(ctx, "COMBO", 292, 449, 9, N);
+        }
+        for (const q of eclats) { ctx.globalAlpha = Math.max(0, 1 - q.t / 0.8); ctx.fillStyle = q.c; trait(ctx, 1.2); ctx.beginPath(); ctx.ellipse(q.x, q.y, q.r, q.r * 1.5, Math.atan2(q.vy, q.vx) + 1.57, 0, 6.3); ctx.fill(); ctx.stroke(); }
+        ctx.globalAlpha = 1;
         if (pret) profil(RSG.x0, RSG.y0, -Math.PI / 2, 1, 1);
         // Les seringues qui n'ont pas tenu : elles retombent sur le plan de travail.
         for (const c of chutes) profil(c.x, c.y, c.a, 0.45, Math.max(0, 1 - c.t / 0.9));
@@ -2871,11 +2926,16 @@
             if (e.zone < 2) { ctx.fillStyle = e.zone ? O : "rgba(38,7,109,.5)"; ctx.beginPath(); ctx.arc(e.x, e.y, 4, 0, 6.3); ctx.fill(); }
           }
           if (!calme && e.zone >= 2 && dtE < 0.6 && s.releve <= 0) { ctx.globalAlpha = 1 - dtE / 0.6; ctx.strokeStyle = e.zone === 3 ? O : G; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x + dxF, e.y + dyF, 12 + dtE * 50, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
-          pilule(e.zone === 3 ? "+100 · Plein centre !" : e.zone === 2 ? "+" + e.pts + " · Dans le septum" : e.zone ? "+" + e.pts + " · Sur la capsule" : "À côté…", 180, 368, e.zone === 3 ? Y : C);                // sous la course du flacon, pour ne rien masquer
+          pilule((e.zone === 3 ? "+100 · Plein centre !" : e.zone === 2 ? "+" + e.pts + " · Dans le septum" : e.zone ? "+" + e.pts + " · Sur la capsule" : "À côté…") + (e.zone >= 2 && s.suite >= 2 ? " · combo ×" + s.suite : ""), 180, 368, e.zone === 3 ? Y : C);                // sous la course du flacon, pour ne rien masquer
         }
         // La seringue en vol : elle s'éloigne (donc rapetisse) et dérive avec le flux.
         if (s.vol) {
           const v = s.vol, u = v.t / RSG.vol;
+          if (combo && !calme) for (let i = 4; i >= 1; i--) {                                        // en combo, la seringue laisse un sillage
+            const w = u - i * 0.07; if (w <= 0) continue;
+            ctx.globalAlpha = 0.6 - i * 0.12; ctx.fillStyle = TEINTE; ctx.beginPath(); ctx.arc(RSG.x0 + (v.ax - RSG.x0) * w + v.dx * w / u, RSG.y0 + (v.ay - RSG.y0) * w - Math.sin(w * Math.PI) * 16, (7 - i) * (1 - 0.55 * w), 0, 6.3); ctx.fill();
+          }
+          ctx.globalAlpha = 1;
           profil(RSG.x0 + (v.ax - RSG.x0) * u + v.dx, RSG.y0 + (v.ay - RSG.y0) * u - (calme ? 0 : Math.sin(u * Math.PI) * 16), Math.atan2(v.ay - RSG.y0, v.ax - RSG.x0), 1 - 0.55 * u, 1);
         }
         // La mire.
@@ -2907,6 +2967,12 @@
           } else tenue = 0;
           pasSeringue(s, dt, duree);
           souffle += s.vent * 55 * dt;
+          if (s.poses > vus && !calme && s.suite >= 2) for (let i = 0, n = Math.min(22, 6 + 3 * s.suite); i < n; i++) {   // un combo : gerbe de gouttes aux couleurs de l'unité
+            const a = i / n * 6.283 + s.suite, v = 110 + (i * 53 % 90);
+            eclats.push({ x: s.ev.x, y: s.ev.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, r: 2.5 + i % 3, c: [Y, O, P, V, B][i % 5], t: 0 });
+          }
+          for (const q of eclats) { q.t += dt; q.vy += 420 * dt; q.x += q.vx * dt; q.y += q.vy * dt; }
+          while (eclats.length && eclats[0].t > 0.8) eclats.shift();
           if (s.poses > vus) { vus = s.poses; if (!calme && s.ev.zone < 2) chutes.push({ x: s.ev.x, y: s.ev.y, a: -Math.PI / 2, vx: (s.ev.x < 180 ? -1 : 1) * 30, vy: -60, w: (s.ev.x < 180 ? -1 : 1) * 5, t: 0 }); }
           for (const c of chutes) { c.t += dt; c.vy += 900 * dt; c.x += c.vx * dt; c.y = Math.min(400, c.y + c.vy * dt); c.a += c.w * dt; }
           while (chutes.length && chutes[0].t > 0.9) chutes.shift();
