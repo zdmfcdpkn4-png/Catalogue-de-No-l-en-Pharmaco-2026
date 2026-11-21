@@ -973,7 +973,7 @@
           clos = true; ancre = null;
           const n = noteLaby(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
           const bilan = pl(s.etiq, "étiquette ramassée", "étiquettes ramassées") + ", " + pl(s.prises, "contamination", "contaminations") + (s.prises ? " (−" + (s.etiq - s.compte) + ")" : "") + " : " + s.compte + " au compteur, soit " + n + " sur 10 (1 point de note par tranche de " + RL.palier + " étiquettes).";
-          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, s.compte)); }, 1300);
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, s.compte), [[s.etiq, s.etiq > 1 ? "étiquettes" : "étiquette"], [s.prises, "fois contaminé"], [s.sprays, s.sprays > 1 ? "sprays vidés" : "spray vidé"], [s.compte, "au compteur"]]); }, 1300);
         }
       }
       dessiner();
