@@ -36,7 +36,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   }, [type, cadence]);
   // 1. Téléphone large, à la souris.
   const p = await ouvrir({ viewport: { width: 390, height: 560 }, deviceScaleFactor: 2 });
-  await lancer(p, 40);
+  await lancer(p, 50);
   await p.waitForTimeout(700); await p.screenshot({ path: dir + '/seringue-1-depart.png' });
   // Un vrai clic de souris à côté du flacon, pour les captures de la visée, du vol et d'un raté.
   const bx = await p.locator('.pj-cv').boundingBox(), k = bx.width / 360;
@@ -45,11 +45,11 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await p.waitForTimeout(200); await p.screenshot({ path: dir + '/seringue-2-vol.png' });
   await p.waitForTimeout(450); await p.screenshot({ path: dir + '/seringue-2-rate.png' });
   const apresClic = await p.evaluate(() => ({ lances: window.etat.lances, points: window.etat.points }));
-  await joueur(p, 'mouse', 1.9);
+  await joueur(p, 'mouse', 1.7);
   await p.waitForTimeout(1500); await p.screenshot({ path: dir + '/seringue-3-jeu-a.png' });
   await p.waitForTimeout(4600); await p.screenshot({ path: dir + '/seringue-3-releve.png' });
   await p.waitForTimeout(6500); await p.screenshot({ path: dir + '/seringue-3-jeu-b.png' });
-  await p.waitForTimeout(7000); await p.screenshot({ path: dir + '/seringue-3-jeu-c.png' });
+  await p.waitForTimeout(13000); await p.screenshot({ path: dir + '/seringue-3-jeu-c.png' });
   const souris = await fin(p); await p.screenshot({ path: dir + '/seringue-4-fin.png' });
   const etatSouris = await p.evaluate(() => { clearInterval(window.auto); const s = window.etat; return { points: s.points, septums: s.septums, centres: s.centres, lances: s.lances, gestes: window.gestes, t: +s.t.toFixed(1) }; });
   // 2. Au clavier : monter la mire sur le flacon, lancer ; puis Espace seul en fin de partie. La seringue doit partir (un lancer compté).
@@ -68,7 +68,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   const apresArretFin = await p.evaluate(() => window.fois);
   // 4. Téléphone de 320 px, au doigt, effets réduits.
   const tel = await ouvrir({ viewport: { width: 320, height: 568 }, deviceScaleFactor: 2, hasTouch: true, reducedMotion: 'reduce' }, 296);
-  await lancer(tel, 40); await joueur(tel, 'touch', 1.6);
+  await lancer(tel, 40); await joueur(tel, 'touch', 1.5);
   await tel.waitForTimeout(2600); await tel.screenshot({ path: dir + '/seringue-7-telephone-320.png' });
   await tel.waitForTimeout(9000); await tel.screenshot({ path: dir + '/seringue-7-telephone-320-b.png' });
   const telephone = [await fin(tel), await tel.evaluate(() => document.documentElement.scrollWidth), await tel.evaluate(() => ({ septums: window.etat.septums, centres: window.etat.centres, lances: window.etat.lances }))];

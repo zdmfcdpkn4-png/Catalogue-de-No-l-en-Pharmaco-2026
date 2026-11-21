@@ -2676,20 +2676,26 @@
 
   /* ----- Repère [seringue] : le lancer de seringue ----- */
   // Droit au septum : un jeu de précision. L'automate promène un flacon, bouchon tourné vers le joueur ; on vise le septum, on lance
-  // la seringue (embout Luer bouché, sans aiguille), et le flux d'air la fait dériver pendant son vol. Douze seringues, par séries de trois.
+  // la seringue (embout Luer bouché, sans aiguille), et le flux d'air la fait dériver pendant son vol. Dix-huit seringues, par séries de trois, en trois séquences : 1 mL, 10 mL, 50 mL.
   // Tout le jeu vit dans ce bloc (cœur, dessin, inscription) : aucun nom ne déborde sur les jeux voisins.
   {
     /* --- Le cœur : règles et trajectoires, sans navigateur --- */
     // Réglages étalonnés par simulation (node outils/etalon-seringue.js) : ils fixent la difficulté.
-    // series, par : nombre de flacons et de seringues par flacon ; vol : durée du vol (s) ; recharge, releve : pause entre deux seringues, et pour changer de flacon ;
-    // cran : dérive latérale d'un cran de flux (px/s) ; coeur, septum : rayons du plein centre et du septum, en part du rayon du flacon ; capsule : points d'un impact sur la capsule ;
+    // series, par : nombre de flacons et de seringues par flacon ; recharge, releve : pause entre deux seringues, et pour changer de flacon ;
+    // coeur, septum : rayons du plein centre et du septum, en part du rayon du flacon ; capsule : points d'un impact sur la capsule ;
     // decal : au doigt, la mire se tient decal px au-dessus du doigt pour rester visible.
-    // niv : pour chaque flacon, r = rayon, ax, ay, wx, wy = va-et-vient du bras (amplitude en px, cadence en rad/s), vent = flux en crans (+ vers la droite), raf, wraf = rafales.
-    const RSG = { series: 4, par: 3, vol: 0.4, recharge: 0.45, releve: 0.9, fin: 0.7, cran: 36, cx: 180, cy: 185, coeur: 0.2, septum: 0.62, capsule: 15, x0: 180, y0: 436, xmin: 16, xmax: 344, ymin: 48, ymax: 340, decal: 64,
-      niv: [{ r: 34, ax: 60, ay: 0, wx: 0.75, wy: 0, vent: 1, raf: 0, wraf: 0 }, { r: 30, ax: 85, ay: 0, wx: 0.9, wy: 0, vent: -2, raf: 0, wraf: 0 }, { r: 27, ax: 80, ay: 38, wx: 1, wy: 1.7, vent: 3, raf: 0, wraf: 0 }, { r: 24, ax: 90, ay: 45, wx: 1.2, wy: 2, vent: -2, raf: 1.5, wraf: 1.6 }],
-      seuils: [80, 200, 330, 460, 580, 700, 820, 930, 1030, 1120] };
+    // niv : pour chaque flacon, ser = taille de seringue (rang dans tailles), r = rayon, ax, ay, wx, wy = va-et-vient du bras (amplitude en px, cadence en rad/s), vent = flux en crans (+ vers la droite), raf, wraf = rafales.
+    const RSG = { series: 6, par: 3, recharge: 0.45, releve: 0.9, fin: 0.7, cx: 180, cy: 185, coeur: 0.2, septum: 0.62, capsule: 15, x0: 180, y0: 436, xmin: 16, xmax: 344, ymin: 48, ymax: 340, decal: 64,
+      // Trois séquences, des seringues de plus en plus grosses : la petite file vite mais le flux l'emporte, la grosse tient tête au flux mais prend son temps (il faut viser plus en avance).
+      // vol : durée du vol (s) ; cran : dérive latérale d'un cran de flux (px/s) ; k : échelle du dessin.
+      tailles: [{ nom: "1 mL", vol: 0.34, cran: 48, k: 0.78 }, { nom: "10 mL", vol: 0.42, cran: 34, k: 1 }, { nom: "50 mL", vol: 0.55, cran: 18, k: 1.3 }],
+      niv: [{ ser: 0, r: 34, ax: 60, ay: 0, wx: 0.75, wy: 0, vent: 1, raf: 0, wraf: 0 }, { ser: 0, r: 31, ax: 80, ay: 0, wx: 0.9, wy: 0, vent: -2, raf: 0, wraf: 0 },
+        { ser: 1, r: 30, ax: 85, ay: 25, wx: 0.9, wy: 1.4, vent: 2.5, raf: 0, wraf: 0 }, { ser: 1, r: 27, ax: 80, ay: 38, wx: 1, wy: 1.7, vent: -3, raf: 0, wraf: 0 },
+        { ser: 2, r: 27, ax: 85, ay: 40, wx: 1, wy: 1.7, vent: 3, raf: 0, wraf: 0 }, { ser: 2, r: 24, ax: 90, ay: 45, wx: 1.1, wy: 1.9, vent: -2, raf: 1.5, wraf: 1.6 }],
+      seuils: [100, 280, 450, 620, 790, 960, 1130, 1300, 1480, 1650] };
     const SG_PAS = 1 / 240;
     const totalSeringue = () => RSG.series * RSG.par;
+    const tailleSeringue = s => RSG.tailles[RSG.niv[s.serie].ser];
     const placerSeringue = s => {
       const n = RSG.niv[s.serie];
       s.cx = RSG.cx + n.ax * Math.sin(s.phx); s.cy = RSG.cy + n.ay * Math.sin(s.phy); s.r = n.r; s.vent = n.vent + n.raf * Math.sin(s.phv);
@@ -2705,20 +2711,20 @@
       return true;
     };
     const unPasSeringue = (s, duree) => {
-      const dt = SG_PAS, n = RSG.niv[s.serie];
+      const dt = SG_PAS, n = RSG.niv[s.serie], tl = RSG.tailles[n.ser];
       s.t += dt;
       if (s.attente > 0) s.attente -= dt;
       if (s.releve > 0) s.releve -= dt; else { s.phx += n.wx * dt; s.phy += n.wy * dt; s.phv += n.wraf * dt; }
       placerSeringue(s);
       const v = s.vol;
       if (v) {
-        v.t += dt; v.dx += s.vent * RSG.cran * dt;                                                   // le flux pousse la seringue tout le long du vol
-        if (v.t >= RSG.vol) {
+        v.t += dt; v.dx += s.vent * tl.cran * dt;                                                   // le flux pousse la seringue tout le long du vol
+        if (v.t >= tl.vol) {
           const x = v.ax + v.dx, y = v.ay, d = Math.hypot(x - s.cx, y - s.cy), pts = pointsSeringue(d, s.r), zone = zoneSeringue(d, s.r);
           s.points += pts; s.poses++; if (zone >= 2) s.septums++; if (zone === 3) s.centres++; if (zone === 1) s.capsules++;
           if (zone >= 2) { s.suite++; s.suiteMax = Math.max(s.suiteMax, s.suite); } else s.suite = 0;         // le combo : septums piqués d'affilée (pour le spectacle, sans effet sur les points)
-          s.impacts.push({ dx: x - s.cx, dy: y - s.cy, zone, serie: s.serie });
-          s.ev = { pts, zone, x, y, ax: v.ax, ay: v.ay, cx: s.cx, cy: s.cy }; s.evT = s.t; s.vol = null;
+          s.impacts.push({ dx: x - s.cx, dy: y - s.cy, zone, serie: s.serie, ser: n.ser });
+          s.ev = { pts, zone, x, y, ax: v.ax, ay: v.ay, cx: s.cx, cy: s.cy, ser: n.ser }; s.evT = s.t; s.vol = null;
           const reste = totalSeringue() - s.lances;
           s.attente = reste ? RSG.recharge : RSG.fin;
           if (reste && s.lances % RSG.par === 0) {                                                   // flacon suivant : le bras revient au centre, le flux change
@@ -2744,9 +2750,9 @@
 
     /* --- Dessin et commandes (navigateur seulement) --- */
     const seringue = (el, opt) => {
-      const duree = opt.duree || 50, { cv, ctx, liberer } = monter(el, H);
+      const duree = opt.duree || 70, { cv, ctx, liberer } = monter(el, H);
       cv.style.touchAction = "none";
-      cv.setAttribute("aria-label", "Droit au septum. Douze seringues à lancer sur le septum d'un flacon qui se déplace, par séries de trois ; le flux d'air les fait dériver. Au doigt : posez, glissez pour viser (la mire se tient au-dessus du doigt), lâchez pour lancer. À la souris : visez et cliquez. Au clavier : flèches pour viser, Espace pour lancer.");
+      cv.setAttribute("aria-label", "Droit au septum. Dix-huit seringues à lancer sur le septum d'un flacon qui se déplace, par séries de trois, en trois séquences de seringues de plus en plus grosses (1, 10 puis 50 millilitres) : la petite est rapide mais sensible au flux, la grosse plus lente ; le flux d'air les fait dériver. Au doigt : posez, glissez pour viser (la mire se tient au-dessus du doigt), lâchez pour lancer. À la souris : visez et cliquez. Au clavier : flèches pour viser, Espace pour lancer.");
       const s = creerSeringue(), mm = q => typeof matchMedia === "function" && matchMedia(q).matches;
       const tactile = mm("(pointer: coarse)"), calme = mm("(prefers-reduced-motion: reduce)");
       if (typeof opt.espion === "function") opt.espion(s);                                         // pour le banc d'essai seulement
@@ -2829,11 +2835,13 @@
         ctx.restore();
       };
       // La seringue plantée dans le septum, vue de l'arrière : les ailettes et le poussoir.
-      const plantee = (x, y) => {
+      const plantee = (x, y, k) => {
+        ctx.save(); ctx.translate(x, y); ctx.scale(k, k); x = y = 0;
         ctx.fillStyle = "rgba(38,7,109,.22)"; ctx.beginPath(); ctx.ellipse(x + 2, y + 5, 8, 4, 0, 0, 6.3); ctx.fill();
         ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(x - 10, y - 2.5, 20, 5, 2.5); ctx.fill();
         trait(ctx, 2); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(x, y, 6, 0, 6.3); ctx.fill(); ctx.stroke();
         ctx.fillStyle = V; ctx.beginPath(); ctx.arc(x, y, 3, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.restore();
       };
       // Le flacon au bout du bras de l'automate, bouchon vers le joueur : capsule, septum, plein centre, et les seringues déjà plantées.
       const flaconCible = (x, y, r, serie, alpha) => {
@@ -2844,7 +2852,7 @@
         trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(x, y, r * RSG.septum, 0, 6.3); ctx.fill(); ctx.stroke();
         ctx.strokeStyle = "rgba(38,7,109,.22)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r * (RSG.septum + RSG.coeur) / 2, 0, 6.3); ctx.stroke();
         trait(ctx, 2); ctx.fillStyle = Y; ctx.beginPath(); ctx.arc(x, y, r * RSG.coeur, 0, 6.3); ctx.fill(); ctx.stroke();
-        for (const p of s.impacts) if (p.serie === serie && p.zone >= 2) plantee(x + p.dx, y + p.dy);
+        for (const p of s.impacts) if (p.serie === serie && p.zone >= 2) plantee(x + p.dx, y + p.dy, 0.6 + 0.4 * RSG.tailles[p.ser].k);
         ctx.globalAlpha = 1;
       };
       const pilule = (t, x, y, coul, px) => {
@@ -2855,6 +2863,7 @@
       };
       function dessiner() {
         const combo = s.suite >= 2 && !clos, TEINTE = s.suite >= 6 ? P : s.suite >= 4 ? O : Y;
+        const tl = tailleSeringue(s), seq = RSG.niv[s.serie].ser;
         const total = totalSeringue(), reste = total - s.lances, pret = !s.vol && s.attente <= 0 && s.releve <= 0 && reste > 0 && s.t < duree;
         ctx.drawImage(decor, 0, 0, W, H);                                                            // la zone de production
         ctx.fillStyle = "#F7E7B8"; ctx.fillRect(0, 392, W, H - 392);                                 // le plan de travail
@@ -2896,13 +2905,13 @@
         // Le poste de lancer : la pastille de l'unité, la seringue prête, et le plateau des seringues restantes.
         trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(RSG.x0, RSG.y0, 25, 0, 6.3); ctx.fill(); ctx.stroke();
         if (logo.complete && logo.naturalWidth) { ctx.globalAlpha = 0.5; ctx.drawImage(logo, RSG.x0 - 17, RSG.y0 - 17, 34, 34); ctx.globalAlpha = 1; }
-        for (let i = 0; i < total; i++) {
-          const x = 12 + i * 9 + Math.floor(i / RSG.par) * 7, la = i >= s.lances;
-          ctx.globalAlpha = la ? 1 : 0.22; trait(ctx, 1.6); ctx.fillStyle = la ? C : "rgba(38,7,109,.2)";
-          ctx.beginPath(); ctx.roundRect(x, 455, 6, 15, 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = N; ctx.fillRect(x - 1, 470, 8, 2.5);
+        for (let i = 0; i < total; i++) {                                                            // le plateau : des seringues de plus en plus hautes, séquence après séquence
+          const x = 10 + i * 6.3 + Math.floor(i / RSG.par) * 4.5, la = i >= s.lances, h = 9 + 3.5 * RSG.niv[Math.floor(i / RSG.par)].ser;
+          ctx.globalAlpha = la ? 1 : 0.22; trait(ctx, 1.4); ctx.fillStyle = la ? C : "rgba(38,7,109,.2)";
+          ctx.beginPath(); ctx.roundRect(x, 470 - h, 4.4, h, 1.5); ctx.fill(); ctx.stroke(); ctx.fillStyle = N; ctx.fillRect(x - 0.8, 470, 6, 2.2);
         }
         ctx.globalAlpha = 1;
-        texte(ctx, "Flacon " + (s.serie + 1) + "/" + RSG.series, W - 12, 467, 11, "rgba(38,7,109,.6)", "right");
+        texte(ctx, "Séquence " + (seq + 1) + "/" + RSG.tailles.length + " · " + tl.nom, W - 10, 467, 11, "rgba(38,7,109,.65)", "right");
         if (combo) {                                                                                 // la médaille du combo : une étoile qui grossit à chaque septum de plus
           const k = calme ? 1 : 1 + Math.max(0, 0.35 - (s.t - s.evT)) * 1.2, br = 9 + Math.min(s.suite, 8);
           ctx.save(); ctx.translate(292, 417); ctx.scale(k, k); if (!calme) ctx.rotate(s.t * 0.8);
@@ -2913,9 +2922,9 @@
         }
         for (const q of eclats) { ctx.globalAlpha = Math.max(0, 1 - q.t / 0.8); ctx.fillStyle = q.c; trait(ctx, 1.2); ctx.beginPath(); ctx.ellipse(q.x, q.y, q.r, q.r * 1.5, Math.atan2(q.vy, q.vx) + 1.57, 0, 6.3); ctx.fill(); ctx.stroke(); }
         ctx.globalAlpha = 1;
-        if (pret) profil(RSG.x0, RSG.y0, -Math.PI / 2, 1, 1);
+        if (pret) profil(RSG.x0, RSG.y0 - (tl.k - 1) * 22, -Math.PI / 2, tl.k, 1);
         // Les seringues qui n'ont pas tenu : elles retombent sur le plan de travail.
-        for (const c of chutes) profil(c.x, c.y, c.a, 0.45, Math.max(0, 1 - c.t / 0.9));
+        for (const c of chutes) profil(c.x, c.y, c.a, 0.45 * c.k, Math.max(0, 1 - c.t / 0.9));
         // Le dernier impact : d'où l'on visait, où la seringue est arrivée.
         const dtE = s.t - s.evT, e = s.ev;
         if (e && dtE < 1.3 && !clos) {
@@ -2930,13 +2939,13 @@
         }
         // La seringue en vol : elle s'éloigne (donc rapetisse) et dérive avec le flux.
         if (s.vol) {
-          const v = s.vol, u = v.t / RSG.vol;
+          const v = s.vol, u = v.t / tl.vol;
           if (combo && !calme) for (let i = 4; i >= 1; i--) {                                        // en combo, la seringue laisse un sillage
             const w = u - i * 0.07; if (w <= 0) continue;
-            ctx.globalAlpha = 0.6 - i * 0.12; ctx.fillStyle = TEINTE; ctx.beginPath(); ctx.arc(RSG.x0 + (v.ax - RSG.x0) * w + v.dx * w / u, RSG.y0 + (v.ay - RSG.y0) * w - Math.sin(w * Math.PI) * 16, (7 - i) * (1 - 0.55 * w), 0, 6.3); ctx.fill();
+            ctx.globalAlpha = 0.6 - i * 0.12; ctx.fillStyle = TEINTE; ctx.beginPath(); ctx.arc(RSG.x0 + (v.ax - RSG.x0) * w + v.dx * w / u, RSG.y0 + (v.ay - RSG.y0) * w - Math.sin(w * Math.PI) * 16, (7 - i) * tl.k * (1 - 0.55 * w), 0, 6.3); ctx.fill();
           }
           ctx.globalAlpha = 1;
-          profil(RSG.x0 + (v.ax - RSG.x0) * u + v.dx, RSG.y0 + (v.ay - RSG.y0) * u - (calme ? 0 : Math.sin(u * Math.PI) * 16), Math.atan2(v.ay - RSG.y0, v.ax - RSG.x0), 1 - 0.55 * u, 1);
+          profil(RSG.x0 + (v.ax - RSG.x0) * u + v.dx, RSG.y0 + (v.ay - RSG.y0) * u - (calme ? 0 : Math.sin(u * Math.PI) * 16), Math.atan2(v.ay - RSG.y0, v.ax - RSG.x0), tl.k * (1 - 0.55 * u), 1);
         }
         // La mire.
         if (!clos) {
@@ -2948,7 +2957,7 @@
           ctx.fillStyle = O; ctx.beginPath(); ctx.arc(mire.x, mire.y, 1.8, 0, 6.3); ctx.fill();
           ctx.globalAlpha = 1;
         }
-        if (s.releve > 0 || (s.serie > 0 && s.lances % RSG.par === 0 && !s.vol && s.t - s.evT < 2.2 && s.t - s.evT >= 1.3 && !clos)) pilule(RSG.niv[s.serie].raf ? "Flacon suivant · flux en rafales !" : "Flacon suivant · le flux a changé", 180, 330, Y, 13);
+        if (s.releve > 0 || (s.serie > 0 && s.lances % RSG.par === 0 && !s.vol && s.t - s.evT < 2.2 && s.t - s.evT >= 1.3 && !clos)) pilule(seq !== RSG.niv[s.serie - 1].ser ? "Séquence " + (seq + 1) + " · seringues de " + tl.nom + (seq === 1 ? " : plus lentes" : " : lentes, mais le flux les pousse peu") : RSG.niv[s.serie].raf ? "Flacon suivant · flux en rafales !" : "Flacon suivant · le flux a changé", 180, 330, Y, 13);
         else if (s.t < 6 && !clos && !s.lances) {
           ctx.globalAlpha = Math.min(1, 6 - s.t);
           pilule(tactile ? "Glissez pour viser, lâchez pour lancer" : "Visez et cliquez, ou flèches puis Espace", 180, 368, Y, 13);
@@ -2973,7 +2982,7 @@
           }
           for (const q of eclats) { q.t += dt; q.vy += 420 * dt; q.x += q.vx * dt; q.y += q.vy * dt; }
           while (eclats.length && eclats[0].t > 0.8) eclats.shift();
-          if (s.poses > vus) { vus = s.poses; if (!calme && s.ev.zone < 2) chutes.push({ x: s.ev.x, y: s.ev.y, a: -Math.PI / 2, vx: (s.ev.x < 180 ? -1 : 1) * 30, vy: -60, w: (s.ev.x < 180 ? -1 : 1) * 5, t: 0 }); }
+          if (s.poses > vus) { vus = s.poses; if (!calme && s.ev.zone < 2) chutes.push({ x: s.ev.x, y: s.ev.y, a: -Math.PI / 2, vx: (s.ev.x < 180 ? -1 : 1) * 30, vy: -60, w: (s.ev.x < 180 ? -1 : 1) * 5, t: 0, k: RSG.tailles[s.ev.ser].k }); }
           for (const c of chutes) { c.t += dt; c.vy += 900 * dt; c.x += c.vx * dt; c.y = Math.min(400, c.y + c.vy * dt); c.a += c.w * dt; }
           while (chutes.length && chutes[0].t > 0.9) chutes.shift();
           if (s.fini) {
@@ -2989,7 +2998,7 @@
       return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
     };
     api.seringue = seringue;
-    Object.assign(api._coeur, { REGL_SERINGUE: RSG, creerSeringue, pasSeringue, noteSeringue, lancerSeringue, viserSeringue, pointsSeringue, zoneSeringue, totalSeringue });
+    Object.assign(api._coeur, { REGL_SERINGUE: RSG, tailleSeringue, creerSeringue, pasSeringue, noteSeringue, lancerSeringue, viserSeringue, pointsSeringue, zoneSeringue, totalSeringue });
   }
   /* ----- Fin [seringue] ----- */
 
