@@ -342,7 +342,31 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .ap-next .avi{width:18px;height:18px;flex:0 0 auto}
 @media(max-width:860px){.adv-body{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:560px){.adv h2{-webkit-text-stroke:2px var(--line);text-shadow:4px 4px 0 var(--shadow)}.adv-tree .avz{transform:scale(1.45)}}
-@media (prefers-reduced-motion:reduce){.adv-tree .lift{transition:none}}
+/* Animations du sapin : cascade dorée à l'arrivée (.casc), remplissage de la goutte à l'ouverture (.fill), scintillement d'ambiance */
+.adv-tree .lq,.adv-tree .cz{display:none}
+.adv-tree.casc .lq,.adv-tree .dp.fill .lq,.adv-tree.casc .cz{display:inline}
+.adv-tree .gl{fill:#FFFBF2}.adv-tree .cz{--bd:2.7s}
+.adv-tree .lv{animation:avRise .95s var(--d,0s) cubic-bezier(.3,.7,.3,1) both,avGold 1.7s var(--d,0s) linear both}
+.adv-tree .bb{fill:#FFFBF2;opacity:0;animation:avBub .9s calc(var(--d,0s) + .25s) ease-out both}
+.adv-tree .bb+.bb{animation-delay:calc(var(--d,0s) + .45s)}
+.adv-tree .bb+.bb+.bb{animation-delay:calc(var(--d,0s) + .6s)}
+@keyframes avRise{from{transform:translateY(-88px)}to{transform:translateY(6px)}}
+@keyframes avGold{0%,50%{fill:#ECD567}}
+@keyframes avBub{0%{opacity:0;transform:translateY(0)}25%{opacity:.95}100%{opacity:0;transform:translateY(46px)}}
+.adv-tree .gs{fill:none;stroke:#ECD567;stroke-width:5;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;opacity:0}
+.adv-tree.casc .gs{animation:avRun 1s var(--d,0s) ease-in-out both}
+@keyframes avRun{0%{stroke-dashoffset:1;opacity:1}55%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}
+.adv-tree.casc .dp[data-d="25"] .lift{animation:dpop .6s .1s cubic-bezier(.3,1.6,.5,1)}
+.adv-tree .tf{animation:avFlow 1.1s linear infinite}
+@keyframes avFlow{from{stroke-dashoffset:16}to{stroke-dashoffset:0}}
+.adv-tree .sp{transform-box:fill-box;transform-origin:50% 50%;opacity:0;animation:avSp .75s var(--bd,.45s) cubic-bezier(.2,.8,.3,1) both}
+@keyframes avSp{0%{opacity:0;transform:translateY(16px) scale(.3)}35%{opacity:1}100%{opacity:0;transform:translateY(-16px) scale(1)}}
+.adv-tree .tw{transform-box:fill-box;transform-origin:50% 50%;animation:avTw var(--t,2.6s) var(--d,0s) ease-in-out infinite}
+@keyframes avTw{0%,100%{transform:scale(.35) rotate(0deg);opacity:.35}50%{transform:scale(1) rotate(45deg);opacity:1}}
+.adv-panel>*{animation:apIn .5s cubic-bezier(.16,1,.3,1) both}
+.adv-panel>:nth-child(2){animation-delay:.08s}.adv-panel>:nth-child(3){animation-delay:.16s}.adv-panel>:nth-child(n+4){animation-delay:.24s}
+@keyframes apIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.adv-tree .lift{transition:none}.adv-tree *,.adv-panel>*{animation:none!important}.adv-tree .lq,.adv-tree .cz{display:none!important}}
 .avgo{display:inline-flex;align-items:center;gap:8px;margin-top:16px;text-decoration:none}
 .avgo svg{width:18px;height:22px;flex:0 0 auto}
 .adv-back{margin:0 0 16px}
@@ -658,11 +682,14 @@ function avLab(x,y,d,s){
 function dropD(L,w){const f=v=>v.toFixed(1);return "M0 0C"+f(-w*.15)+" "+f(-L*.3)+" "+f(-w)+" "+f(-L*.52)+" "+f(-w)+" "+f(-L*.76)+"A"+f(w)+" "+f(w)+" 0 0 1 "+f(w)+" "+f(-L*.76)+"C"+f(w)+" "+f(-L*.52)+" "+f(w*.15)+" "+f(-L*.3)+" 0 0Z"}
 function avDrop(x,y,d){
   const s=avSt(d),L=74,ty=y-18,D=dropD(L,22);
-  return '<g class="dp '+s+'" data-d="'+d+'" tabindex="0" role="button" aria-label="'+avAria(d,s)+'"><g class="lift">'
+  const T='transform="translate('+x+' '+ty+') rotate(180)"';
+  return '<g class="dp '+s+'" data-d="'+d+'" style="--d:'+(.6+(y-186)/82*.42+Math.abs(x-320)/56*.07).toFixed(2)+'s" tabindex="0" role="button" aria-label="'+avAria(d,s)+'"><g class="lift">'
     +'<rect x="'+(x-28)+'" y="'+(ty-6)+'" width="56" height="'+(L+12)+'" fill="transparent"/>'
     +'<rect class="fr" x="'+(x-28)+'" y="'+(ty-6)+'" width="56" height="'+(L+12)+'" rx="14" fill="none" stroke="#26076D" stroke-width="3" stroke-dasharray="5 4"/>'
     +'<path transform="translate('+(x+4)+' '+(ty+5)+') rotate(180)" d="'+D+'" fill="#26076D"/>'
     +'<path transform="translate('+x+' '+ty+') rotate(180)" d="'+D+'" fill="'+AV_C[s]+'" stroke="#26076D" stroke-width="'+(s==="today"?4:3)+'" stroke-linejoin="round"/>'
+    +'<g '+T+' clip-path="url(#avdc)"><g class="lq"><rect class="gl" x="-24" y="-82" width="48" height="84"/><path class="lv" d="M-24 -84H24V0Q18 5 12 0T0 0T-12 0T-24 0Z" fill="'+AV_C[s]+'"/><circle class="bb" cx="-8" cy="-66" r="3.2"/><circle class="bb" cx="7" cy="-60" r="2.4"/><circle class="bb" cx="0" cy="-70" r="2"/></g></g>'
+    +'<path class="lq" '+T+' d="'+D+'" fill="none" stroke="#26076D" stroke-width="'+(s==="today"?4:3)+'" stroke-linejoin="round"/>'
     +'<path d="M'+(x-8.8).toFixed(1)+' '+(ty+37)+'q-3 8 2 14" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".75"/>'
     +avLab(x,ty+L*.7,d,s)+'</g></g>';
 }
@@ -679,19 +706,25 @@ function avBag(){
     +avLab(320,25,25,s)+'</g></g>';
 }
 function avFlower(x,y,R,seed){return '<g transform="translate('+x+' '+y+')">'+petals(14,R*.34,R*.72,seed,PETALS)+'<circle r="'+(R*.47).toFixed(1)+'" fill="#FFFBF2" stroke="#26076D" stroke-width="2.5"/></g>'}
-function avTube(d){return '<path d="'+d+'" fill="none" stroke="#26076D" stroke-width="8" stroke-linecap="round"/><path d="'+d+'" fill="none" stroke="#FFFBF2" stroke-width="4" stroke-linecap="round"/><path d="'+d+'" fill="none" stroke="#EC7739" stroke-width="2" stroke-dasharray="5 11" stroke-linecap="round"/>'}
+function avTube(d){return '<path d="'+d+'" fill="none" stroke="#26076D" stroke-width="8" stroke-linecap="round"/><path d="'+d+'" fill="none" stroke="#FFFBF2" stroke-width="4" stroke-linecap="round"/><path d="'+d+'" fill="none" stroke="#EC7739" stroke-width="2" stroke-dasharray="5 11" stroke-linecap="round" class="tf"/>'}
+function avBurst(x,y,r,cls){let h='<g class="bz'+(cls||"")+'" transform="translate('+x.toFixed(1)+' '+y.toFixed(1)+')" pointer-events="none">';
+  for(let i=0;i<10;i++)h+='<g transform="rotate('+(i*36+10)+') translate(0 '+(-r-(i%2?10:0))+')"><path class="sp" d="'+(i%2?"M0 -11Q1.5 -1.5 11 0Q1.5 1.5 0 11Q-1.5 1.5 -11 0Q-1.5 -1.5 0 -11Z":"M0 -8V8")+'" fill="#ECD567" stroke="'+(i%2?"#26076D":"#FFFBF2")+'" stroke-width="'+(i%2?2:4.5)+'" stroke-linecap="round" stroke-linejoin="round"/></g>';
+  return h+'</g>'}
+const AV_TW=[[196,118,10],[448,104,8],[146,214,8],[498,198,11],[92,292,10],[550,302,8],[40,384,9],[603,372,11],[252,58,8],[404,40,10],[30,476,8],[614,486,9]];
 function avTree(){
-  let h='<svg viewBox="0 0 640 560" role="group" aria-label="Sapin de l\'Avent : 25 gouttes, une par jour du 1er au 25 décembre">'+avTube("M320 100V150")
+  let h='<svg viewBox="0 0 640 560" role="group" aria-label="Sapin de l\'Avent : 25 gouttes, une par jour du 1er au 25 décembre">'+'<clipPath id="avdc"><path d="'+dropD(74,22)+'"/></clipPath>'+AV_TW.map((p,i)=>'<g transform="translate('+p[0]+' '+p[1]+')"><path class="tw" style="--t:'+(2.2+i%4*.5)+'s;--d:-'+(i*.37).toFixed(2)+'s" d="M0 -'+p[2]+'Q1.5 -1.5 '+p[2]+' 0Q1.5 1.5 0 '+p[2]+'Q-1.5 1.5 -'+p[2]+' 0Q-1.5 -1.5 0 -'+p[2]+'Z" fill="'+(i%3?"#ECD567":"#FFFBF2")+'" stroke="#26076D" stroke-width="1.5" stroke-linejoin="round"/></g>').join("")
+    +'<path class="gs" pathLength="1" style="--d:.25s" d="M320 172V486"/>'+avTube("M320 100V150")
     +'<clipPath id="avlc"><circle cx="320" cy="142" r="26"/></clipPath><circle cx="320" cy="142" r="29" fill="#fff" stroke="#26076D" stroke-width="3"/>'
     +'<image href="img/logo-p.png" x="294" y="116" width="52" height="52" clip-path="url(#avlc)"/>';
   AV_ROWS.forEach((row,k)=>{
     const y=AV_Y[k],half=28*(row.length-1);
     h+='<path d="M'+(320-half-26)+' '+(y-22)+'Q320 '+(y-6)+' '+(320+half+26)+' '+(y-22)+'" fill="none" stroke="#26076D" stroke-width="3" stroke-dasharray="1 6" stroke-linecap="round"/>'
+      +[-1,1].map(q=>'<path class="gs" pathLength="1" style="--d:'+(.45+k*.42).toFixed(2)+'s" d="M320 '+(y-14)+'Q'+(320+q*(half+26)/2)+' '+(y-14)+' '+(320+q*(half+26))+' '+(y-22)+'"/>').join("")
       +avFlower(320-half-40,y-20,13,k*5+2)+avFlower(320+half+40,y-20,13,k*5+4);
     row.forEach((d,j)=>{h+=avDrop(320-half+j*56,y,d)});
   });
   h+='<g transform="translate(320 500) scale(.85)"><rect x="-11" y="0" width="22" height="34" rx="8" fill="#FFFBF2" stroke="#26076D" stroke-width="3.5"/><path d="M0 8q-4 6 0 9q4-3 0-9z" fill="#EC7739"/><rect x="-11" y="22" width="22" height="9" rx="3" fill="#E5B4D9" opacity=".8"/><path d="M0 34v14" stroke="#26076D" stroke-width="5"/><rect x="-10" y="46" width="20" height="18" rx="4" fill="#ECD567" stroke="#26076D" stroke-width="3"/><circle cx="0" cy="55" r="5" fill="#FFFBF2" stroke="#26076D" stroke-width="2.5"/></g>';
-  return h+avBag()+'</svg>';
+  return h+avBag()+avBurst(320,500,30," cz")+'</svg>';
 }
 function avSvg(k){return '<svg class="avi" viewBox="0 0 24 24" aria-hidden="true">'+AV_IC[k]+'</svg>'}
 function avHead(k,title,meta){return '<div class="ap-h"><span class="ap-ic">'+avSvg(k)+'</span><div><h3>'+title+'</h3><p class="ap-m">'+meta+'</p></div></div>'}
@@ -755,7 +788,7 @@ function avLocked(d){
 function avView(){
   const on=location.hash==="#sapin";
   $("#avent").hidden=!on;document.querySelectorAll(".ind,.bar,main").forEach(e=>e.hidden=on);
-  if(on){$("#avent").scrollIntoView({block:"start"});AVENT.forEach(c=>{if(avSt(c.jour)==="lock")return;if(c.pochette)new Image().src=c.pochette;if(c.type==="origami")new Image().src=AV_LOGO})}else avHush();
+  if(on){const t=$("#avTree");t.classList.remove("casc");void t.offsetWidth;t.classList.add("casc");clearTimeout(avView.t);avView.t=setTimeout(()=>t.classList.remove("casc"),4500);$("#avent").scrollIntoView({block:"start"});AVENT.forEach(c=>{if(avSt(c.jour)==="lock")return;if(c.pochette)new Image().src=c.pochette;if(c.type==="origami")new Image().src=AV_LOGO})}else avHush();
 }
 function avHush(){document.querySelectorAll("#avPanel audio").forEach(a=>a.pause())}
 function avOpen(d,viaBtn){
@@ -766,9 +799,9 @@ function avOpen(d,viaBtn){
     return;
   }
   const first=!AVO.has(d);AVO.add(d);avSave();
-  $("#avTree").innerHTML=avTree();
+  $("#avTree").classList.remove("casc");$("#avTree").innerHTML=avTree();
   const g=$('#avTree [data-d="'+d+'"]');
-  if(g){if(!viaBtn)g.focus({preventScroll:true});if(first)g.classList.add("pop")}
+  if(g){if(!viaBtn)g.focus({preventScroll:true});if(first){g.classList.add("pop","fill");g.style.setProperty("--d",".05s");const b=g.getBBox();$("#avTree svg").insertAdjacentHTML("beforeend",avBurst(b.x+b.width/2,b.y+b.height/2,d===25?56:46))}}
   $("#avPanel").innerHTML=avContent(d);
   const au=$("#avPanel audio");if(au)au.play().catch(()=>{});
   if(matchMedia("(max-width:860px)").matches)$("#avPanel").scrollIntoView({block:"nearest",behavior:"smooth"});
