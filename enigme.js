@@ -322,11 +322,11 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (relecture || (mem.prenom && mem.code)) charger();
   }
   // Pastille « Pharmacomeeple » : une fois le joueur entré, sa fiche d'identification s'ouvre (création ou retouche).
-  // Avant le 1er décembre, rien ne s'ouvre : la mention « sous scellé » en tête du calendrier suffit.
+  // Avant l'ouverture de l'identification (le 26 novembre), rien ne s'ouvre : la mention « sous scellé » en tête du calendrier suffit.
   function allerFiche() {
     if (!versFiche || !E || relecture) return;
     versFiche = false;
-    if (E.choix && E.choix.etat !== "avenir" && !enJeu && !enFiche && brouillon === null && !q("#egTime")) identifier();
+    if (E.fiche && E.fiche.etat !== "avenir" && !enJeu && !enFiche && brouillon === null && !q("#egTime")) identifier();
   }
 
   const dire = (id, t, cls) => { const el = q(id); if (el) { el.textContent = t || ""; el.className = "eg-msg " + (cls || "ok"); } };
@@ -417,13 +417,15 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   // En tête du calendrier : l'avatar devant le nom, la brigade dessous. Le texte de #egWho reste le nom seul.
   function identite() {
     const P = !relecture && E && E.profil, bouton = q("#egAvatar");
-    bouton.hidden = !(P && P.a);
+    // Sans avatar, le même bouton sert à créer sa fiche, sans attendre la première porte.
+    bouton.hidden = Boolean(relecture) || !E;
+    bouton.textContent = P && P.a ? "Retoucher ma fiche" : "Créer ma fiche";
     q("#egBrigade").hidden = !(P && P.a && P.b !== undefined);
     // Avant l'ouverture du calendrier : la rubrique est annoncée, sous scellé comme les portes, sans rien d'actif.
-    const scelle = !relecture && E && E.choix && E.choix.etat === "avenir";
+    const scelle = !relecture && E && E.fiche && E.fiche.etat === "avenir";
     q("#egBrig").className = scelle ? "eg-hint" : "pp-brig";
     q("#egBrig").style.margin = scelle ? "6px 0 10px" : "";
-    if (scelle) { q("#egBrig").innerHTML = CADENAS + " Fiche d'identification, avatar et brigades : sous scellé jusqu'au " + jour(dt(E.portes[0].ouvre)) + "."; q("#egBrig").hidden = false; return; }
+    if (scelle) { q("#egBrig").innerHTML = CADENAS + " Fiche d'identification, avatar et brigades : sous scellé jusqu'au " + jour(dt(E.fiche.ouvre)) + "."; q("#egBrig").hidden = false; bouton.hidden = true; q("#egBrigade").hidden = true; return; }
     if (!P) { q("#egBrig").hidden = true; return; }
     chargerParticipants().then(() => {
       if (!E || E.profil !== P) return;
@@ -484,7 +486,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       enregistrer: async a => {
         let r;
         try { r = await call({ code: mem.code, prenom: mem.prenom, action: "profil", avatar: a }); } catch (e) { r = { status: 0, j: {} }; }
-        if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "La fiche d'identification reste sous scellé jusqu'à l'ouverture du calendrier, le 1er décembre." };
+        if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "La fiche d'identification est encore sous scellé." };
         if (r.status === 403 && r.j.error === "complet") return { ok: false, message: "Le calendrier affiche complet : plus de place pour un nouveau joueur." };
         if (r.status !== 200 || !r.j.profil) return { ok: false };
         E = r.j;
