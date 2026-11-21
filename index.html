@@ -629,12 +629,15 @@ function card(g){
   +'<div><dt>Officines</dt><dd class="shops">'+links(g)+'</dd></div>'
   +'</dl></details></div></article>';
 }
+/* Une recherche porte toujours sur le catalogue complet : elle ignore l'onglet, l'indication et la vue « Mon ordonnance »,
+   que l'on retrouve en effaçant le texte. Les listes (budget, effectif, profil, disponibilité) restent appliquées. */
+function match(g,q){return norm(g.n+" "+g.e+" "+g.m+" "+g.t+" "+g.nt+" "+(g.aw||"")).includes(q)}
 function pass(g){
-  if(S.rx)return RX.has(g.n);
-  if(S.preset){const P=PRESETS.find(p=>p[0]===S.preset);if(P&&!P[2](g))return false}
-  else if(!S.q.trim()&&S.cat!=="T"&&g.c!==S.cat)return false;
   const q=norm(S.q.trim());
-  if(q&&!norm(g.n+" "+g.e+" "+g.m+" "+g.t+" "+g.nt+" "+(g.aw||"")).includes(q))return false;
+  if(q){if(!match(g,q))return false}
+  else if(S.rx)return RX.has(g.n);
+  else if(S.preset){const P=PRESETS.find(p=>p[0]===S.preset);if(P&&!P[2](g))return false}
+  else if(S.cat!=="T"&&g.c!==S.cat)return false;
   const bud=+S.budget,pl=+S.players;
   if(bud){if(g.p==null)return false;if(bud===51?g.p<=50:g.p>bud)return false}
   if(pl===1&&g.j[0]>1)return false;
@@ -667,12 +670,14 @@ function render(){
   }else h='<div class="grid" style="margin-top:20px">'+L.map(card).join("")+'</div>';
   $("#list").innerHTML=h;
   /* Une recherche porte sur tout le catalogue, quel que soit l'onglet : le compteur le dit et « Toute la pharmaco » s'allume le temps de la recherche. */
-  const tout=!!S.q.trim()&&!S.rx&&!S.preset&&S.cat!=="T";
-  $("#count").textContent=(S.rx?"Mon ordonnance : ":"")+L.length+(tout?(L.length>1?" préparations trouvées":" préparation trouvée")+" dans tout le catalogue":L.length>1?" préparations affichées":" préparation affichée");
-  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-pressed",!S.preset&&!S.rx&&t.dataset.c===(tout?"T":S.cat)));
-  document.querySelectorAll("#presets .chip").forEach(t=>t.setAttribute("aria-pressed",!S.rx&&t.dataset.p===S.preset));
+  const qn=norm(S.q.trim()),tout=!!qn,nq=tout?G.filter(g=>match(g,qn)).length:0,pl=n=>n>1?" préparations":" préparation";
+  if(!tout)$("#count").textContent=(S.rx?"Mon ordonnance : ":"")+L.length+pl(L.length)+(L.length>1?" affichées":" affichée");
+  else if(nq>L.length)$("#count").innerHTML=L.length+pl(L.length)+" avec ces filtres · "+nq+" dans tout le catalogue : "+'<button class="linkbtn" type="button" data-lever>lever les filtres</button>';
+  else $("#count").textContent=L.length+pl(L.length)+(L.length>1?" trouvées":" trouvée")+" dans tout le catalogue";
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-pressed",tout?t.dataset.c==="T":!S.preset&&!S.rx&&t.dataset.c===S.cat));
+  document.querySelectorAll("#presets .chip").forEach(t=>t.setAttribute("aria-pressed",!tout&&!S.rx&&t.dataset.p===S.preset));
   ["q","budget","players","profil","dispo","sort"].forEach(id=>{if($("#"+id).value!==S[id])$("#"+id).value=S[id]});
-  $("#rxSee").textContent=S.rx?"Revenir au catalogue":"Voir mon ordonnance";
+  $("#rxSee").textContent=S.rx&&!tout?"Revenir au catalogue":"Voir mon ordonnance";
 }
 function rxBar(){
   const it=G.filter(g=>RX.has(g.n)),tot=it.reduce((a,g)=>a+(g.p||0),0),np=it.filter(g=>g.p==null).length;
@@ -922,7 +927,8 @@ function start(saved){
   ["play","pause","ended"].forEach(ev=>$("#avPanel").addEventListener(ev,()=>{const s=$("#avPanel .ap-song");if(s)s.classList.toggle("playing",ev==="play")},true));
   $("#bagout").addEventListener("click",e=>{if(e.target.closest("[data-again]")){openBag();return}const b=e.target.closest("[data-go]");if(b)goTo(+b.dataset.go)});
   $("#list").addEventListener("click",e=>{const b=e.target.closest(".rxbtn");if(!b)return;const n=b.dataset.n,on=!RX.has(n);on?RX.add(n):RX.delete(n);saveRx();b.setAttribute("aria-pressed",on);b.setAttribute("aria-label",(on?"Retirer de mon ordonnance":"Prescrire")+" : "+n);b.lastElementChild.textContent=on?"Prescrit":"Prescrire";b.classList.remove("pop");void b.offsetWidth;b.classList.add("pop");rxBar();if(S.rx&&!on)render()});
-  $("#rxSee").addEventListener("click",()=>{S.rx=!S.rx;render();rxBar();$(".bar").scrollIntoView({block:"start"})});
+  $("#count").addEventListener("click",e=>{if(!e.target.closest("[data-lever]"))return;Object.assign(S,{budget:DEF.budget,players:DEF.players,profil:DEF.profil,dispo:DEF.dispo});render()});
+  $("#rxSee").addEventListener("click",()=>{S.rx=S.q.trim()?true:!S.rx;S.q="";render();rxBar();$(".bar").scrollIntoView({block:"start"})});
   $("#rxClear").addEventListener("click",()=>{RX.clear();saveRx();S.rx=false;render();rxBar()});
   $("#rxCopy").addEventListener("click",async()=>{const b=$("#rxCopy");try{await navigator.clipboard.writeText(rxText());b.textContent="Ordonnance copiée"}catch(e){b.textContent="Copie impossible"}setTimeout(()=>b.textContent="Copier l'ordonnance",1800)});
   window.addEventListener("hashchange",()=>{avView();if(fromHash()){render();rxBar()}});
