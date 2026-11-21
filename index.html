@@ -342,34 +342,29 @@ footer{padding:26px 0 34px;font-size:.86rem}
 @keyframes oTwist{from{transform:rotate(-40deg)}to{transform:none}}
 @keyframes oBloom{from{transform:scale(0) rotate(-25deg)}to{transform:none}}
 @keyframes oPop{from{transform:scale(0)}to{transform:none}}
-/* Bande dessinée : un cygne en origami tourne en volume, se déplie à plat, puis les quatre rabats se soulèvent en 3D
-   et découvrent la planche (agrandie au toucher). Chaque pièce est un petit SVG transformé en 3D par le CSS. */
-.ap-bd{position:relative;aspect-ratio:4/5;margin:14px 0 0;border:3px solid var(--line);border-radius:12px;overflow:hidden;background:#FFFBF2}
-.ap-bd a{display:block;width:100%;height:100%}
+/* Bande dessinée : un cygne en origami, plié dans la planche elle-même, fait un tour complet en volume,
+   se déplie à plat, puis la planche se redresse et remplit le cadre (agrandie au toucher).
+   Chaque pièce du cygne est un petit SVG transformé en 3D par le CSS. */
+.ap-bd{position:relative;aspect-ratio:4/5;margin:14px 0 0;border:3px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(circle at 50% 46%,#FFFBF2 0 30%,#E9E0FA 78%);perspective:620px;perspective-origin:50% 42%}
+.ap-bd a{display:block;width:100%;height:100%;background:#FFFBF2;transform-origin:50% 60%;animation:bdPage .75s 2.85s cubic-bezier(.2,.9,.3,1.1) both}
+@keyframes bdPage{from{opacity:0;transform:translateZ(-120px) rotateX(72deg) rotate(-8deg) scale(.4)}to{opacity:1;transform:none}}
 .adv-panel .ap-bd img{display:block;width:100%;height:100%;max-height:none;object-fit:contain;border:0;border-radius:0;background:none}
-.bd3{position:absolute;inset:0;pointer-events:none;perspective:620px;perspective-origin:50% 42%}
+.bd3{position:absolute;inset:0;pointer-events:none;transform-style:preserve-3d}
 .bd3 svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.bd3 .bf{backface-visibility:hidden;animation:bdT .8s var(--d) cubic-bezier(.45,0,.3,1) both}
-.bd3 .bf-t{transform-origin:50% 0}.bd3 .bf-b{transform-origin:50% 100%;animation-name:bdB}
-.bd3 .bf-l{transform-origin:0 50%;animation-name:bdL}.bd3 .bf-r{transform-origin:100% 50%;animation-name:bdR}
-@keyframes bdT{55%{filter:brightness(.78)}to{transform:rotateX(128deg);filter:brightness(.6)}}
-@keyframes bdB{55%{filter:brightness(.78)}to{transform:rotateX(-128deg);filter:brightness(.6)}}
-@keyframes bdL{55%{filter:brightness(.78)}to{transform:rotateY(128deg);filter:brightness(.6)}}
-@keyframes bdR{55%{filter:brightness(.78)}to{transform:rotateY(-128deg);filter:brightness(.6)}}
-.bd3 .sh{position:absolute;left:24%;top:63%;width:52%;height:7%;border-radius:50%;background:#26076D;opacity:0;filter:blur(5px);animation:s3Sh 2.7s .1s linear both}
-@keyframes s3Sh{0%{opacity:0;transform:scale(.3)}18%,78%{opacity:.28;transform:none}100%{opacity:0;transform:scale(1.5)}}
+.bd3 .sh{position:absolute;left:24%;top:63%;width:52%;height:7%;border-radius:50%;background:#26076D;opacity:0;filter:blur(5px);animation:s3Sh 3.3s .1s linear both}
+@keyframes s3Sh{0%{opacity:0;transform:scale(.3)}14%,80%{opacity:.28;transform:none}100%{opacity:0;transform:scale(1.6)}}
 .bd3 .s3w{position:absolute;left:10%;top:27%;width:80%;aspect-ratio:180/110;transform-style:preserve-3d}
-.bd3 .s3{position:absolute;inset:0;transform-style:preserve-3d;animation:s3In 2.7s .1s cubic-bezier(.4,0,.3,1) both}
-@keyframes s3In{0%{opacity:0;transform:translateZ(-260px) rotateY(-130deg) scale(.4)}16%{opacity:1;transform:translateZ(46px) rotateY(-62deg)}40%{transform:translateZ(46px) rotateY(54deg)}60%,80%{opacity:1;transform:translateZ(26px) rotateY(0deg) rotateX(0deg)}100%{opacity:0;transform:translateZ(0) rotateX(84deg) scale(1.35)}}
-.bd3 .s3 svg{transform-origin:50% 64%;animation:2.7s .1s ease-in-out both}
+.bd3 .s3{position:absolute;inset:0;transform-style:preserve-3d;animation:s3In 3.3s .1s both}
+@keyframes s3In{0%{opacity:0;transform:translateZ(-260px) rotateY(-150deg) scale(.4);animation-timing-function:cubic-bezier(.2,.8,.3,1)}14%{opacity:1;transform:translateZ(46px) rotateY(-30deg);animation-timing-function:cubic-bezier(.45,0,.4,1)}60%{transform:translateZ(46px) rotateY(330deg)}66%,82%{opacity:1;transform:translateZ(26px) rotateY(360deg) rotateX(0deg);animation-timing-function:ease-in}100%{opacity:0;transform:translateZ(0) rotateY(360deg) rotateX(80deg) scale(1.5)}}
+.bd3 .s3 svg{transform-origin:50% 64%;animation:3.3s .1s ease-in-out both}
 .bd3 .s3 .s3-w1{animation-name:s3W1}.bd3 .s3 .s3-w2{animation-name:s3W2}
-@keyframes s3W1{0%,18%{transform:translateZ(9px) rotateX(-52deg)}30%{transform:translateZ(9px) rotateX(-80deg)}42%{transform:translateZ(9px) rotateX(-40deg)}54%{transform:translateZ(9px) rotateX(-78deg)}62%{transform:translateZ(9px) rotateX(-52deg)}78%,100%{transform:translateZ(2px) rotateX(0deg)}}
-@keyframes s3W2{0%,18%{transform:translateZ(-9px) rotateX(52deg)}30%{transform:translateZ(-9px) rotateX(80deg)}42%{transform:translateZ(-9px) rotateX(40deg)}54%{transform:translateZ(-9px) rotateX(78deg)}62%{transform:translateZ(-9px) rotateX(52deg)}78%,100%{transform:translateZ(-2px) rotateX(0deg)}}
+@keyframes s3W1{0%,14%{transform:translateZ(9px) rotateX(-52deg)}24%{transform:translateZ(9px) rotateX(-80deg)}34%{transform:translateZ(9px) rotateX(-40deg)}44%{transform:translateZ(9px) rotateX(-78deg)}54%{transform:translateZ(9px) rotateX(-42deg)}66%{transform:translateZ(9px) rotateX(-52deg)}80%,100%{transform:translateZ(2px) rotateX(0deg)}}
+@keyframes s3W2{0%,14%{transform:translateZ(-9px) rotateX(52deg)}24%{transform:translateZ(-9px) rotateX(80deg)}34%{transform:translateZ(-9px) rotateX(40deg)}44%{transform:translateZ(-9px) rotateX(78deg)}54%{transform:translateZ(-9px) rotateX(42deg)}66%{transform:translateZ(-9px) rotateX(52deg)}80%,100%{transform:translateZ(-2px) rotateX(0deg)}}
 .bd3 .s3 .s3-n{transform-origin:26% 82%;animation-name:s3N}
 .bd3 .s3 .s3-q{transform-origin:78% 58%;animation-name:s3Q}
-@keyframes s3N{0%,22%{transform:none}32%{transform:rotate(-12deg)}44%,62%{transform:none}78%,100%{transform:rotate(74deg)}}
-@keyframes s3Q{0%,62%{transform:none}78%,100%{transform:rotate(-46deg)}}
-@media (prefers-reduced-motion:reduce){.bd3{display:none}}
+@keyframes s3N{0%,66%{transform:none}80%,100%{transform:rotate(74deg)}}
+@keyframes s3Q{0%,66%{transform:none}80%,100%{transform:rotate(-46deg)}}
+@media (prefers-reduced-motion:reduce){.bd3{display:none}.ap-bd a{animation:none}}
 .ap-next{display:flex;gap:8px;align-items:center;margin:14px 0 0;padding:9px 11px;border:2.5px dashed var(--line);border-radius:12px;font-size:.86rem}
 .ap-next .avi{width:18px;height:18px;flex:0 0 auto}
 @media(max-width:860px){.adv-body{grid-template-columns:minmax(0,1fr)}}
@@ -783,7 +778,7 @@ function avContent(d){
     +(c.source?'<p class="ap-src">'+esc(c.source)+'</p>':'')
     +(c.audio?'<audio class="ap-audio" controls preload="auto" src="'+esc(c.audio)+'" aria-label="'+esc(c.titre)+'"></audio>':'')
     +(c.lien?'<a class="go main" href="'+esc(c.lien)+'" target="_blank" rel="noopener">Écouter</a>':'');
-  else if(t==="bd")h+='<div class="ap-bd"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="Agrandir : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+avSwan()+'</div>'
+  else if(t==="bd")h+='<div class="ap-bd"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="Agrandir : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+avSwan(c.image)+'</div>'
     +'<p class="ap-t">'+esc(c.titre)+'</p>'+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+'<p class="ap-src">Touchez la planche pour l\'agrandir.</p>';
   else if(t==="image")h+='<figure><img src="'+esc(c.image)+'" alt="'+esc(c.titre)+'" loading="lazy"><figcaption>'+esc(c.titre)+'</figcaption></figure>';
   else if(t==="origami")h+=avOri(d)+(c.texte?'<p class="ap-p">'+esc(c.texte)+'</p>':'')+'<button class="go" type="button" data-replay>Replier et rejouer</button>';
@@ -816,19 +811,16 @@ function avOri(d){
     +'<g class="o-bl"><circle r="126" fill="none"/>'+pe+'</g>'
     +'<g class="o-c"><circle r="31" fill="#FFFBF2" stroke="'+V+'" stroke-width="3"/><image href="'+AV_LOGO+'" x="-25" y="-25" width="50" height="50"/></g></svg></div>';
 }
-/* Cygne en origami en volume devant quatre rabats (4:5) : il tourne, bat des ailes, se déplie à plat, puis les rabats se soulèvent. */
-function avSwan(){
-  const V="#26076D",P=(p,f)=>'<polygon points="'+p+'" fill="'+f+'" stroke="'+V+'" stroke-width="2.5" stroke-linejoin="round"/>';
+/* Cygne en origami plié dans la planche (chaque facette montre un morceau de l'image) : tour complet, battement d'ailes, dépliage à plat. */
+function avSwan(img){
+  const V="#26076D",P=(p,f,o)=>'<polygon points="'+p+'" fill="url(#bdp)"/><polygon points="'+p+'" fill="'+f+'" fill-opacity="'+o+'" stroke="'+V+'" stroke-width="2.5" stroke-linejoin="round"/>';
   const pc=(k,h)=>'<svg class="'+k+'" viewBox="-90 -70 180 110">'+h+'</svg>';
-  const F=[["t","0,0 200,0 100,125","#D9CEF5","#C9BCEE",0],["r","200,0 200,250 100,125","#F8C9AA","#F3B48C",.13],["b","200,250 0,250 100,125","#F6EAB2","#EFDD8E",.26],["l","0,250 0,0 100,125","#F2D9EC","#E9C5DF",.39]];
-  return '<div class="bd3" aria-hidden="true">'+F.map(f=>{const q=f[1].split(" "),m=q[0].split(",").map((v,i)=>(+v+ +q[1].split(",")[i])/2).join(",");
-      return '<svg class="bf bf-'+f[0]+'" style="--d:'+(2.45+f[4]).toFixed(2)+'s" viewBox="0 0 200 250" preserveAspectRatio="none"><polygon points="'+q[0]+" "+m+" "+q[2]+'" fill="'+f[2]+'"/><polygon points="'+m+" "+q[1]+" "+q[2]+'" fill="'+f[3]+'"/><polygon points="'+f[1]+'" fill="none" stroke="'+V+'" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>'}).join("")
-    +'<i class="sh"></i><div class="s3w"><div class="s3">'
-    +pc("s3-w2",P("-16,2 40,-6 22,-46","#BFB1E6")+P("-16,2 22,-46 -2,-36","#A99AD9"))
-    +pc("s3-q",P("56,-8 78,-30 42,8","#E5B4D9"))
-    +pc("",P("-46,22 34,22 56,-8 -6,2","#FFFBF2")+P("-46,22 34,22 20,30 -34,30","#F1E3CA"))
-    +pc("s3-n",P("-46,22 -28,8 -40,-48 -53,-42","#FFFBF2")+P("-46,22 -53,-42 -58,-10","#F1E3CA")+P("-40,-48 -53,-42 -56,-56","#FFFBF2")+P("-56,-56 -53,-42 -76,-36","#EC7739")+'<circle cx="-50" cy="-48" r="1.8" fill="'+V+'"/>')
-    +pc("s3-w1",P("-10,4 46,-4 28,-44","#D9CEF5")+P("-10,4 28,-44 4,-34","#BFB1E6"))
+  return '<div class="bd3" aria-hidden="true"><i class="sh"></i><div class="s3w"><div class="s3">'
+    +pc("s3-w2",'<defs><pattern id="bdp" patternUnits="userSpaceOnUse" x="-90" y="-95" width="180" height="225"><rect x="0" y="0" width="180" height="225" fill="#FFFBF2"/><image href="'+esc(img)+'" x="0" y="0" width="180" height="225" preserveAspectRatio="xMidYMid slice"/></pattern></defs>'+P("-16,2 40,-6 22,-46",V,.3)+P("-16,2 22,-46 -2,-36",V,.42))
+    +pc("s3-q",P("56,-8 78,-30 42,8",V,.16))
+    +pc("",P("-46,22 34,22 56,-8 -6,2","#FFFBF2",.18)+P("-46,22 34,22 20,30 -34,30",V,.24))
+    +pc("s3-n",P("-46,22 -28,8 -40,-48 -53,-42","#FFFBF2",.22)+P("-46,22 -53,-42 -58,-10",V,.2)+P("-40,-48 -53,-42 -56,-56","#FFFBF2",.3)+P("-56,-56 -53,-42 -76,-36","#EC7739",.8)+'<circle cx="-50" cy="-48" r="1.8" fill="'+V+'"/>')
+    +pc("s3-w1",P("-10,4 46,-4 28,-44","#FFFBF2",.1)+P("-10,4 28,-44 4,-34",V,.2))
     +'</div></div></div>';
 }
 function avLocked(d){
