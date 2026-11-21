@@ -1,9 +1,9 @@
 // Étalonnage de « Droit au septum » (le lancer de seringue) par simulation, sans navigateur : des joueurs simulés (adroit, moyen,
 // maladroit, immobile) jouent des centaines de parties. Ce sont des profils inventés, pas des mesures sur de vrais joueurs.
-// Usage : node outils/etalon-seringue.js ['{"vol":0.45,"cran":40}'] [durée en s] [parties par profil]   (réglages à essayer, voir RSG dans jeux.js)
+// Usage : node outils/etalon-seringue.js ['{"releve":1.2,"recharge":0.5}'] [durée en s] [parties par profil]   (réglages à essayer, voir RSG dans jeux.js)
 const J = require(require('path').join(__dirname, '..', 'jeux.js'))._coeur, R = J.REGL_SERINGUE;
 for (const [k, v] of Object.entries(JSON.parse(process.argv[2] || '{}'))) R[k] = v;
-const D = +(process.argv[3] || 50), K = +(process.argv[4] || 400);
+const D = +(process.argv[3] || 70), K = +(process.argv[4] || 400);
 let g = 7; const alea = () => { g = (g * 1103515245 + 12345) & 0x7fffffff; return g / 0x7fffffff; };
 const gauss = () => (alea() + alea() + alea() + alea() - 2) * 1.7;
 // Un joueur : une fois la seringue prête, il met « reflexion » secondes à viser, puis lance. Le point parfait se décompose en trois :
@@ -20,7 +20,7 @@ function partie(p, duree, decalage) {
     if (pretA !== null && s.t >= pretA) {
       const v = J.viserSeringue(s), vit = avant ? Math.hypot(s.cx - avant[0], s.cy - avant[1]) * 240 : 0;
       if (v && (!p.patient || vit < p.patient || s.t > pretA + 1.5)) {
-        const k = s.lances % R.par, derive = s.vent * R.cran * R.vol;                 // la dérive attendue, à flux constant
+        const k = s.lances % R.par, tl = J.tailleSeringue(s), derive = s.vent * tl.cran * tl.vol;                 // la dérive attendue, à flux constant
         const ax = v.x + derive - s.cx, ay = v.y - s.cy;                               // l'avance pure (sans le flux)
         const x = s.cx + ax * (1 + gauss() * p.avance) - derive * (1 + gauss() * p.flux * APPRIS[k]) + gauss() * p.main;
         const y = s.cy + ay * (1 + gauss() * p.avance) + gauss() * p.main;

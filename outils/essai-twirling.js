@@ -20,7 +20,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   // espion : le jeu confie son état au banc, qui s'en sert pour frapper comme un joueur appliqué.
   const lancer = (p, duree) => p.evaluate(d => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.twirling(document.querySelector('#z'), { duree: d, espion: s => { window.etat = s; }, onFin: (n, t, brut) => { window.fois++; window.fin = [n, t, brut]; } }); }, duree);
   const fin = async p => { await p.waitForFunction(() => window.fin, null, { timeout: 90000 }); return p.evaluate(() => window.fin); };
-  const bilan = p => p.evaluate(() => { clearInterval(window.auto); const s = window.etat; return { points: s.points, pris: s.pris, parfaits: s.q[3], tombees: s.tombees, vides: s.vides, serie: s.meilleure, retombees: s.choree.length, max: s.max }; });
+  const bilan = p => p.evaluate(() => { clearInterval(window.auto); const s = window.etat; return { points: s.points, pris: s.pris, parfaits: s.q[3], tombees: s.tombees, vides: s.vides, trois: s.trois, serie: s.meilleure, retombees: s.choree.length, max: s.max }; });
   // Un joueur automatique : quand une spatule arrive dans un gant, il frappe le bon côté (type : mouse, touch ou clavier).
   const joueur = (p, type) => p.evaluate(type => {
     const c = () => document.querySelector('.pj-cv'), faits = new Map();
@@ -52,6 +52,8 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await p.waitForTimeout(9000); await p.screenshot({ path: dir + '/twirling-4-jeu.png' });
   await p.waitForFunction(() => window.etat.t > window.etat.batons[1].entree + 0.9); await p.screenshot({ path: dir + '/twirling-5-final-annonce.png' });
   await p.waitForTimeout(6000); await p.screenshot({ path: dir + '/twirling-6-final.png' });
+  await p.waitForFunction(() => window.etat.trois !== null && window.etat.t > window.etat.troisT + 1.2, null, { timeout: 90000 }); await p.screenshot({ path: dir + '/twirling-6b-trois-annonce.png' });
+  await p.waitForTimeout(5000); await p.screenshot({ path: dir + '/twirling-6c-trois.png' });
   const souris = await fin(p); await p.screenshot({ path: dir + '/twirling-7-fin.png' });
   const etatSouris = await bilan(p);
   // 2. Au clavier : de vraies touches (une flèche du bon côté au bon moment, puis F ou J), l'automate ensuite.
@@ -70,16 +72,21 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   const apresArretFin = await p.evaluate(() => window.fois);
   // 4. Téléphone de 320 px, au doigt, mouvements réduits.
   const tel = await ouvrir({ viewport: { width: 320, height: 568 }, deviceScaleFactor: 2, hasTouch: true, reducedMotion: 'reduce' }, 296);
-  await lancer(tel, 45);
+  await lancer(tel, 50);
   await tel.waitForTimeout(600); await tel.screenshot({ path: dir + '/twirling-9-telephone-320-depart.png' });
   const tb = await tel.locator('.pj-cv').boundingBox();
   await tel.waitForFunction(() => { const b = window.etat.batons[0]; return b.etat === 'vol' && window.etat.t >= b.t1 - 0.02; });
   await tel.touchscreen.tap(tb.x + tb.width * ((await tel.evaluate(() => window.etat.batons[0].m1)) ? 0.75 : 0.25), tb.y + tb.height * 0.9);
   const vraiDoigt = await tel.evaluate(() => window.etat.pris);
   await joueur(tel, 'touch');
-  await tel.waitForFunction(() => window.etat.t > window.etat.batons[1].entree + 5); await tel.screenshot({ path: dir + '/twirling-10-telephone-320-final.png' });
+  await tel.waitForFunction(() => window.etat.t > window.etat.batons[2].entree + 5, null, { timeout: 90000 }); await tel.screenshot({ path: dir + '/twirling-10-telephone-320-final.png' });
   const telephone = [await fin(tel), await tel.evaluate(() => document.documentElement.scrollWidth), await bilan(tel)];
   await tel.screenshot({ path: dir + '/twirling-11-telephone-320-fin.png' });
+  // 4 bis. Un joueur qui ne rattrape qu'une spatule sur deux : la troisième ne doit pas entrer.
+  await lancer(p, 30);
+  await p.evaluate(() => { let n = 0; const faits = new Map(); window.auto = setInterval(() => { const s = window.etat; if (!s || s.fini) return; for (const b of s.batons) { if (b.etat !== 'vol' || faits.get(b) === b.t1 || s.t + s.acc < b.t1 - 0.012) continue; faits.set(b, b.t1); if (n++ % 3) continue; window.dispatchEvent(new KeyboardEvent('keydown', { key: b.m1 ? 'ArrowRight' : 'ArrowLeft', bubbles: true, cancelable: true })); } }, 4); });
+  await p.waitForFunction(() => window.etat.trois !== null && window.etat.t > window.etat.troisT + 1); await p.screenshot({ path: dir + '/twirling-8b-sans-troisieme.png' });
+  const sansTroisieme = [await fin(p), await bilan(p)];
   // 5. Largeur PC, sans jouer : note 0 et score brut 0.
   const pc = await ouvrir({ viewport: { width: 1280, height: 800 } }, 640);
   await lancer(pc, 6); await pc.waitForTimeout(2600); await pc.screenshot({ path: dir + '/twirling-12-pc.png' });
@@ -88,6 +95,6 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await lancer(pc, 10);
   await pc.evaluate(() => { let m = 0; window.auto = setInterval(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: (m = 1 - m) ? 'ArrowRight' : 'ArrowLeft', bubbles: true, cancelable: true })); }, 60); });
   const tapoteur = await fin(pc); await pc.evaluate(() => clearInterval(window.auto));
-  console.log(JSON.stringify({ souris, etatSouris, apresVide, vraiClic, clavier, etatClavier, vraiesTouches, telephone, vraiDoigt, immobile, tapoteur, appelsApresArret: apresArret, appelsApresArretPendantLaFin: apresArretFin, erreurs: errs }, null, 1));
+  console.log(JSON.stringify({ souris, etatSouris, apresVide, vraiClic, clavier, etatClavier, vraiesTouches, telephone, vraiDoigt, sansTroisieme, immobile, tapoteur, appelsApresArret: apresArret, appelsApresArretPendantLaFin: apresArretFin, erreurs: errs }, null, 1));
   await b.close();
 })();
