@@ -10,17 +10,17 @@ const gauss = () => (alea() + alea() + alea() + alea() - 2) * 1.7;
 function marquerait(s, vx, vy, duree) {
   const c = JSON.parse(JSON.stringify(s)); c.acc = 0;
   if (!J.lancerBasket(c, vx, vy, 1e9)) return false;
-  const p = c.paniers; while (c.balle) J.pasBasket(c, 1 / 240, 1e9);
-  return c.paniers > p;
+  const b = c.balles[c.balles.length - 1]; while (c.balles.includes(b)) J.pasBasket(c, 1 / 240, 1e9);
+  return b.ok;
 }
-// Un joueur : une fois le comprimé prêt, il met « reflexion » secondes à viser, puis lâche. Il choisit une force (vy) autour
+// Un joueur : dès qu'un comprimé est disponible (trois en vol au plus), il met « reflexion » secondes à viser, puis lâche. Il choisit une force (vy) autour
 // de sa préférée, estime l'avance à donner au pilulier avec une erreur relative (avance), et son geste ajoute une erreur
 // d'angle (degrés) et de force (relative). patient : il attend un moment où le lancer parfait passerait (pilulier pas au-dessus).
 function partie(p, duree, decalage) {
-  const s = J.creerBasket(); let pretA = null, maxPas = 0, traverse = 0;
+  const s = J.creerBasket(); let pretA = null, maxPas = 0, traverse = 0, enVol = 0;
   s.px = 62 + decalage % 236;                    // les joueurs ne démarrent pas tous au même instant du va-et-vient
   while (!s.fini) {
-    if (!p.immobile && !s.balle && s.attente <= 0 && s.t < duree) {
+    if (!p.immobile && s.balles.length < R.vol && s.attente <= 0 && s.t < duree && s.lances < J.lotBasket(duree)) {
       if (pretA === null) pretA = s.t + p.reflexion * (0.8 + 0.4 * alea());
       if (s.t >= pretA) {
         const vy = -(p.force + gauss() * 25), v = J.viseBasket(s, vy);
@@ -31,12 +31,12 @@ function partie(p, duree, decalage) {
         }
       }
     }
-    const b = s.balle, y = b && b.y, x = b && b.x;
+    const avant = s.balles.map(b => [b, b.x, b.y]); enVol = Math.max(enVol, avant.length);
     J.pasBasket(s, 1 / 240, duree);
     // Contrôles de la physique : pas de saut plus grand que l'épaisseur d'une paroi, pas de comprimé entré par le fond.
-    if (b && s.balle === b) { maxPas = Math.max(maxPas, Math.hypot(b.x - x, b.y - y)); if (b.vy < 0 && Math.abs(b.x - s.px) < J.demiBasket(s) && b.y < s.top + R.haut - 2 && y > s.top + R.haut + 2) traverse++; }
+    for (const [b, x, y] of avant) if (s.balles.includes(b)) { maxPas = Math.max(maxPas, Math.hypot(b.x - x, b.y - y)); if (b.vy < 0 && Math.abs(b.x - s.px) < J.demiBasket(s) && b.y < s.top + R.haut - 2 && y > s.top + R.haut + 2) traverse++; }
   }
-  s.maxPas = maxPas; s.traverse = traverse;
+  s.maxPas = maxPas; s.traverse = traverse; s.enVol = enVol;
   return s;
 }
 function profil(nom, p) {
@@ -53,5 +53,7 @@ profil('adroit', { reflexion: 0.9, force: 780, avance: 0.1, angle: 0.9, dose: 0.
 profil('moyen', { reflexion: 1.3, force: 780, avance: 0.22, angle: 1.8, dose: 0.025, patient: false });
 profil('maladroit', { reflexion: 1.8, force: 780, avance: 0.4, angle: 3.2, dose: 0.045, patient: false });
 profil('immobile', { immobile: true });
+// Le mitrailleur : il lance aussi vite que le jeu le permet, en visant à peine. Il ne doit pas battre un joueur appliqué.
+profil('mitrailleur', { reflexion: 0.05, force: 780, avance: 0.5, angle: 5, dose: 0.06, patient: false });
 // Le plafond du score brut : un automate sans défaut ni temps de réflexion, qui tire dès que le lancer parfait passe.
 profil('automate', { reflexion: 0, force: 700, avance: 0, angle: 0, dose: 0, patient: true });

@@ -54,14 +54,17 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   // Une capture de chaque trou du parcours : à son arrivée (panneau du trou), puis en cours de jeu.
   const vues = new Set();
   for (let i = 0; i < 1500; i++) {
-    const n = await p.evaluate(() => window.fin ? -1 : window.etat.n);
+    const n = await p.evaluate(() => window.fin || window.etat.fini ? -1 : window.etat.n);
     if (n < 0) break;
     if (n > 0 && !vues.has(n) && await p.evaluate(() => window.etat.pause <= 0)) { vues.add(n); await p.screenshot({ path: dir + '/minigolf-3-trou-' + (n + 1) + '.png' }); }
     await p.waitForTimeout(40);
   }
+  // La carte de score du jeu, puis le tableau final commun et ses quatre chiffres (s'il est en place dans jeux.js).
+  await p.waitForFunction(() => window.etat.fini, null, { timeout: 160000 }); await p.waitForTimeout(600); await p.screenshot({ path: dir + '/minigolf-4-carte.png' });
+  const chiffres = await p.waitForSelector('.pj-fin-ch', { timeout: 6000 }).then(async h => { await p.waitForTimeout(500); await p.screenshot({ path: dir + '/minigolf-4-tableau.png' }); return h.evaluate(d => [...d.children].map(c => c.innerText.replace(/\s+/g, ' '))); }).catch(() => null);
   const souris = await fin(p); await p.screenshot({ path: dir + '/minigolf-4-fin.png' });
   const etatSouris = await etat(p); await p.evaluate(() => clearInterval(window.auto));
-  // 2. Au clavier : la visée part vers l'alvéole ; forcer, jouer : le comprimé doit partir (un coup compté) et, sur le premier trou, rentrer en un coup.
+  // 2. Au clavier : la visée part vers l'alvéole ; forcer, jouer : le comprimé doit partir (un coup compté).
   await lancer(p, 9); await p.mouse.move(2, 2);
   await p.keyboard.down('ArrowRight'); await p.waitForTimeout(300); await p.keyboard.up('ArrowRight');
   await p.screenshot({ path: dir + '/minigolf-5-clavier-visee.png' });
@@ -74,7 +77,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await lancer(p, 6); await p.waitForTimeout(500); await p.evaluate(() => window.stop()); await p.waitForTimeout(8500);
   const apresArret = await p.evaluate(() => window.fois);
   // 3 bis. Arrêt pendant le panneau de fin (minuterie en cours).
-  await lancer(p, 5); await p.waitForTimeout(5600); await p.evaluate(() => window.stop()); await p.waitForTimeout(3800);
+  await lancer(p, 5); await p.waitForTimeout(5600); await p.evaluate(() => window.stop()); await p.waitForTimeout(7500);
   const apresArretFin = await p.evaluate(() => window.fois);
   // 4. Téléphone de 320 px, au doigt, mouvements réduits.
   const tel = await ouvrir({ viewport: { width: 320, height: 568 }, deviceScaleFactor: 2, hasTouch: true, reducedMotion: 'reduce' }, 296);
@@ -86,6 +89,6 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   // 5. Largeur PC, sans jouer : la note et le score brut doivent être 0.
   const pc = await ouvrir({ viewport: { width: 1280, height: 800 } }, 640);
   await lancer(pc, 5); await pc.waitForTimeout(2500); await pc.screenshot({ path: dir + '/minigolf-9-pc.png' });
-  console.log(JSON.stringify({ souris, etatSouris, coupsApresUnGesteSouris: apresGeste, clavier, coupsClavier, telephone, pc: await fin(pc), appelsApresArret: apresArret, appelsApresArretPendantLaFin: apresArretFin, erreurs: errs }, null, 1));
+  console.log(JSON.stringify({ souris, chiffres, etatSouris, coupsApresUnGesteSouris: apresGeste, clavier, coupsClavier, telephone, pc: await fin(pc), appelsApresArret: apresArret, appelsApresArretPendantLaFin: apresArretFin, erreurs: errs }, null, 1));
   await b.close();
 })();
