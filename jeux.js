@@ -2813,28 +2813,63 @@
         hautVu += (haut - hautVu) * Math.min(1, 10 * dt);
         cam += (Math.max(0, hautVu - 150) - cam) * Math.min(1, (calme ? 9 : 5) * dt);
         const yE = y => SOL - y + cam;                                                               // hauteur dans la réserve -> écran
-        ctx.fillStyle = "#EDEAF6"; ctx.fillRect(0, 0, W, H);                                         // le mur de la réserve
-        // Les rayonnages du fond défilent moins vite que la tour.
-        for (let k = 0; k < 9; k++) {
-          const y = ((SOL - 60 - k * 84 + cam * 0.5) % 756 + 756) % 756 - 150;
-          ctx.fillStyle = "rgba(38,7,109,.08)"; ctx.fillRect(0, y, W, 5);
-          for (let i = 0; i < 4; i++) { const lx = 222 + i * 34 + (k * 13) % 9, lh = 14 + (k * 7 + i * 11) % 15; ctx.fillRect(lx, y - lh, 26, lh); if ((k + i) % 3 === 0) ctx.fillRect(20 + i * 30, y - 12, 22, 12); }
+        // Le mur de la réserve, plus sombre vers le plafond.
+        const mur = ctx.createLinearGradient(0, 0, 0, H); mur.addColorStop(0, "#DDD6EF"); mur.addColorStop(1, "#F3F0FA");
+        ctx.fillStyle = mur; ctx.fillRect(0, 0, W, H);
+        const face = (c, ...p) => { ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]); ctx.closePath(); ctx.fill(); };
+        // Les rayonnages : deux travées vues en perspective, de part et d'autre de l'allée (leurs lignes fuient vers le milieu).
+        // Ils défilent un peu moins vite que la tour, comme un plan plus lointain. Tout reste pâle pour ne pas gêner la lecture de la pile.
+        const pied = SOL - 30 + cam * 0.7, LR = 88;
+        for (const c of [1, -1]) {                                                                   // 1 : travée de gauche, -1 : travée de droite
+          const x0 = c > 0 ? 40 : W - 40 - LR, fx = c * 13, fy = -9;
+          ctx.fillStyle = "rgba(38,7,109,.05)"; ctx.fillRect(x0 + fx, 0, LR, pied + fy);              // le fond de la travée, dans l'ombre
+          ctx.fillStyle = "#CBC2E4"; for (const x of [x0, x0 + LR - 4]) ctx.fillRect(x + fx, 0, 4, pied + fy);   // montants arrière
+          for (let m = Math.max(1, Math.floor((pied - H - 40) / 84)); pied - m * 84 > 20; m++) {
+            const y = pied - m * 84;
+            ctx.fillStyle = "rgba(38,7,109,.07)"; ctx.fillRect(x0 + fx, y + 5, LR, 9);               // l'ombre sous la tablette
+            face("#E4DFF2", x0, y, x0 + LR, y, x0 + LR + fx, y + fy, x0 + fx, y + fy);               // le dessus de la tablette
+            for (let k = 0; k < 3; k++) {                                                            // les cartons : face, dessus et flanc côté allée
+              const i = c > 0 ? k : 2 - k, h = (m * 7 + i * 5 + (c > 0 ? 0 : 3)) % 11;
+              if (h === 0 || h === 5) continue;                                                      // une place vide de temps en temps
+              const bw = 16 + h % 4 * 2, bh = 15 + h * 5 % 19, bx = x0 + 6 + i * 28, p = 6 * c, q = -5, kraft = h % 3 === 0;
+              const xf = c > 0 ? bx + bw : bx;
+              face(kraft ? "#F1E6CC" : "#EFEBF8", bx, y - bh, bx + bw, y - bh, bx + bw + p, y - bh + q, bx + p, y - bh + q);
+              face(kraft ? "#D6C7A2" : "#C4BADF", xf, y - bh, xf + p, y - bh + q, xf + p, y + q, xf, y);
+              ctx.fillStyle = kraft ? "#E6D8B6" : "#DAD3EC"; ctx.fillRect(bx, y - bh, bw, bh);
+              ctx.fillStyle = "rgba(38,7,109,.13)"; ctx.fillRect(bx + 3, y - bh + 5, bw - 6, 2.5); if (h % 2) ctx.fillRect(bx + 3, y - bh + 10, (bw - 6) / 2, 2);
+            }
+            ctx.fillStyle = "#B9AEDA"; ctx.fillRect(x0, y, LR, 5);                                   // le chant de la tablette
+          }
+          ctx.fillStyle = "#AA9ED2"; for (const x of [x0 - 1, x0 + LR - 4]) ctx.fillRect(x, 0, 5, pied);   // montants avant
         }
-        // La toise : un trait tous les 20 cm, un chiffre tous les mètres.
-        ctx.fillStyle = "rgba(38,7,109,.4)";
+        // La toise, fixée au mur : un trait tous les 20 cm, un chiffre tous les mètres.
+        ctx.fillStyle = "rgba(255,251,242,.7)"; ctx.fillRect(0, 0, 37, H);
+        ctx.fillStyle = "rgba(38,7,109,.4)"; ctx.fillRect(36, 0, 1, H);
         for (let m = Math.max(0, Math.floor((cam - 60) / 28)); m * 28 < cam + SOL; m++) {
-          const y = yE(m * 28), long = m % 5 ? 6 : 12; ctx.fillRect(4, y - 0.75, long, 1.5);
-          if (m && m % 5 === 0) texte(ctx, m / 5 + " m", 19, y, 10, "rgba(38,7,109,.5)", "left");
+          const y = yE(m * 28), long = m % 5 ? 6 : 12; ctx.fillRect(3, y - 0.75, long, 1.5);
+          if (m && m % 5 === 0) texte(ctx, m / 5 + " m", 17, y, 10, "rgba(38,7,109,.55)", "left");
         }
-        // Le sol et la palette.
-        const ys = yE(0);
-        if (ys < H) {
-          ctx.fillStyle = "#F7E7B8"; ctx.fillRect(0, ys + 17, W, H - ys); trait(ctx, 3); ctx.beginPath(); ctx.moveTo(0, ys + 17); ctx.lineTo(W, ys + 17); ctx.stroke();
-          const g = 180 - RTR.palette / 2;
-          trait(ctx, 2.4); ctx.fillStyle = "#D9A866";
-          for (const x of [g + 4, 180 - 9, g + RTR.palette - 22]) { ctx.beginPath(); ctx.rect(x, ys + 6, 18, 11); ctx.fill(); ctx.stroke(); }
-          ctx.beginPath(); ctx.roundRect(g, ys, RTR.palette, 7, 2); ctx.fill(); ctx.stroke();
-          if (!n) { ctx.strokeStyle = "rgba(38,7,109,.35)"; ctx.lineWidth = 2; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.moveTo(180, ys - 4); ctx.lineTo(180, ys - 40); ctx.stroke(); ctx.setLineDash([]); }
+        // Le sol de l'allée, en fuite vers le mur du fond, et la palette posée au premier plan.
+        const ys = yE(0), yh = ys - 30;
+        if (yh < H) {
+          const sol = ctx.createLinearGradient(0, yh, 0, yh + 84); sol.addColorStop(0, "#E3CD92"); sol.addColorStop(1, "#F7E7B8");
+          ctx.fillStyle = sol; ctx.fillRect(0, yh, W, H - yh);
+          ctx.save(); ctx.beginPath(); ctx.rect(0, yh, W, H - yh); ctx.clip();
+          ctx.strokeStyle = "rgba(38,7,109,.14)"; ctx.lineWidth = 1.2; ctx.beginPath();
+          for (let i = -9; i <= 9; i++) { ctx.moveTo(180 + i * 16, yh); ctx.lineTo(180 + i * 64, yh + 84); }     // les joints des dalles fuient vers le fond
+          for (const d of [8, 22, 46]) { ctx.moveTo(0, yh + d); ctx.lineTo(W, yh + d); }                         // et se resserrent en s'éloignant
+          ctx.stroke(); ctx.restore();
+          ctx.fillStyle = "#AA9ED2"; ctx.fillRect(0, yh - 4, W, 4);                                  // la plinthe
+          trait(ctx, 2); ctx.beginPath(); ctx.moveTo(0, yh); ctx.lineTo(W, yh); ctx.stroke();
+          const g = 180 - RTR.palette / 2, d = g + RTR.palette;
+          ctx.fillStyle = "rgba(38,7,109,.17)"; ctx.beginPath(); ctx.ellipse(180, ys + 18, RTR.palette / 2 + 12, 7, 0, 0, 6.3); ctx.fill();   // l'ombre de la palette
+          trait(ctx, 2.4);
+          face("#EBCB98", g, ys, d, ys, d - 9, ys - 8, g + 9, ys - 8); ctx.stroke();                 // le dessus de la palette, en fuite
+          ctx.lineWidth = 1.2; ctx.beginPath(); for (const u of [0.25, 0.5, 0.75]) { ctx.moveTo(g + u * RTR.palette, ys); ctx.lineTo(g + 9 + u * (RTR.palette - 18), ys - 8); } ctx.stroke();
+          trait(ctx, 2.4); ctx.fillStyle = "#C99A5B";
+          for (const x of [g + 4, 180 - 9, d - 22]) { ctx.beginPath(); ctx.rect(x, ys + 6, 18, 11); ctx.fill(); ctx.stroke(); }
+          ctx.fillStyle = "#D9A866"; ctx.beginPath(); ctx.roundRect(g, ys, RTR.palette, 7, 2); ctx.fill(); ctx.stroke();
+          if (!n) { ctx.strokeStyle = "rgba(38,7,109,.35)"; ctx.lineWidth = 2; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.moveTo(180, ys - 10); ctx.lineTo(180, ys - 46); ctx.stroke(); ctx.setLineDash([]); }
         }
         // Les boîtes par terre ou en train de tomber.
         for (const q of s.debris) { ctx.save(); ctx.translate(q.x, yE(q.y) - q.h / 2); ctx.rotate(q.rot); boite(0, q.h / 2, q, Math.max(0, Math.min(1, 1.6 - q.age) * 0.75)); ctx.restore(); }
