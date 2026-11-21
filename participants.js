@@ -112,6 +112,7 @@
 .pp-dev em{flex:0 0 auto;font:600 .68rem var(--mono,monospace);font-style:normal;white-space:nowrap}
 .pp-dev input:checked+span{background:var(--mu,#ECD567);box-shadow:3px 3px 0 var(--shadow,#26076D)}
 .pp-dev input:focus-visible+span{outline:3px solid var(--line,#26076D);outline-offset:3px}
+.pp label[for]{display:block;margin:14px 0 5px}
 .pp-jeu{display:block;width:100%;min-height:46px;font:700 1rem var(--display,sans-serif);color:var(--on-surface,#26076D);background:#fff;border:2.5px solid var(--line,#26076D);border-radius:12px;padding:8px 10px}
 @media(max-width:380px){.pp-apercu{width:96px}.pp-top{gap:10px}.pp-opts{gap:5px}.pp-opt span{padding:6px 0 5px;font-size:.6rem;letter-spacing:-.01em}.pp-opt span svg,.pp-opt span i{width:34px;height:34px}.pp-carte .pp-apercu{width:84px}}
 @media(prefers-reduced-motion:reduce){.pp-pop{animation:none}.pp-opt input:checked+span{transform:none}}`;
@@ -122,6 +123,7 @@
   /* Fiche d'identification, dessinée dans `el`.
      o.pseudo : nom affiché ; o.avatar : avatar actuel, s'il existe ; o.brigade : brigade déjà tirée, s'il y en a une.
      o.enregistrer(avatar) : promesse de { ok: true, brigade, effectif } ou { ok: false, message } ; c'est le serveur qui tire.
+     o.renommer(pseudo) : en retouche seulement, promesse de { ok: true } ou { ok: false, message } pour changer de pseudo.
      o.onFin() : la fiche est refermée (validée ou abandonnée). */
   function fiche(el, o) {
     const retouche = Array.isArray(o.avatar) && o.brigade !== undefined;
@@ -130,15 +132,18 @@
     const groupe = (k, titre, liste) => '<fieldset class="pp-set"><legend>' + titre + '</legend><div class="pp-opts">'
       + liste.map((x, i) => '<label class="pp-opt"><input class="pp-vh" type="radio" name="pp' + k + '" value="' + i + '"' + (a[k] === i ? " checked" : "") + '><span data-k="' + k + '" data-i="' + i + '"></span></label>').join("") + "</div></fieldset>";
     el.innerHTML = '<div class="pp"><p class="ap-m">Fiche d\'identification · ' + (retouche ? "retouche" : "avant la première prise") + "</p>"
-      + '<h3 tabindex="-1" id="ppTitre">' + (retouche ? "Retoucher mon avatar" : "Composez votre avatar, " + h(o.pseudo)) + "</h3>"
+      + '<h3 tabindex="-1" id="ppTitre">' + (retouche ? "Retoucher ma fiche" : "Composez votre avatar, " + h(o.pseudo)) + "</h3>"
       + (retouche ? "" : '<p class="eg-d">Pas de lot sans étiquette : avant d\'ouvrir votre première porte, composez votre meeple. Le serveur vous affectera ensuite à l\'une des cinq brigades.</p>')
       + '<div class="pp-top"><div class="pp-apercu" id="ppApercu"></div><div><p class="pp-desc" id="ppDesc" role="status"></p>'
       + '<button class="go" type="button" id="ppHasard">Au hasard</button></div></div>'
-      + '<form id="ppForm" novalidate>' + groupe(0, "Couleur", COULEURS) + groupe(1, "Coiffe", COIFFES) + groupe(2, "Accessoire", ACCESSOIRES)
-      + '<p class="eg-hint">' + (retouche ? "Votre brigade ne change pas : seul l'avatar est retouché."
+      + '<form id="ppForm" novalidate>'
+      + (retouche && o.renommer ? '<label for="ppPseudo">Pseudo ou prénom</label><input class="pp-jeu" id="ppPseudo" type="text" autocomplete="off" maxlength="24" value="' + h(o.pseudo) + '">'
+        + '<p class="eg-hint">Un seul mot, de 2 à 24 lettres. Vos réponses, votre avatar et votre brigade vous suivent sous le nouveau nom.</p>' : "")
+      + groupe(0, "Couleur", COULEURS) + groupe(1, "Coiffe", COIFFES) + groupe(2, "Accessoire", ACCESSOIRES)
+      + '<p class="eg-hint">' + (retouche ? "Votre brigade ne change pas : seuls le pseudo et l'avatar se retouchent."
         : "La brigade est tirée au sort par le serveur, pour des effectifs équilibrés : elle est définitive. L'avatar, lui, se retouche quand vous voulez.") + "</p>"
       + '<p class="eg-msg err" id="ppMsg" role="status"></p>'
-      + '<p class="pp-fin"><button class="go main" type="submit" id="ppOk">' + (retouche ? "Enregistrer mon avatar" : "Valider ma fiche et tirer ma brigade") + "</button>"
+      + '<p class="pp-fin"><button class="go main" type="submit" id="ppOk">' + (retouche ? "Enregistrer ma fiche" : "Valider ma fiche et tirer ma brigade") + "</button>"
       + '<button class="linkbtn" type="button" id="ppNon">' + (retouche ? "Annuler" : "Plus tard") + "</button></p></form></div>";
 
     const peindre = () => {
@@ -172,13 +177,23 @@
       occupe = true; q("#ppOk").disabled = true;
       q("#ppMsg").textContent = "";
       let r;
+      const champ = q("#ppPseudo"), neuf = champ ? champ.value.trim().replace(/’/g, "'") : "";
+      if (champ && neuf !== o.pseudo) {
+        if (!(neuf.length >= 2 && neuf.length <= 24 && /^\p{L}+(?:[-']\p{L}+)*$/u.test(neuf))) r = { ok: false, message: "Un pseudo ou un prénom en un seul mot, de 2 à 24 lettres, sans espace ni chiffre." };
+        else { try { r = await o.renommer(neuf); } catch (x) { r = null; } if (r && r.ok) o.pseudo = neuf; }
+        if (!r || !r.ok) {
+          occupe = false; q("#ppOk").disabled = false;
+          q("#ppMsg").textContent = (r && r.message) || "Le pseudo n'a pas pu être changé : le serveur ne répond pas. Réessayez dans un instant.";
+          return;
+        }
+      }
       try { r = await o.enregistrer(a.slice()); } catch (x) { r = null; }
       if (!r || !r.ok) {
         occupe = false; q("#ppOk").disabled = false;
         q("#ppMsg").textContent = (r && r.message) || "La fiche n'est pas partie : le serveur ne répond pas. Réessayez dans un instant.";
         return;
       }
-      if (retouche) return o.onFin("Avatar retouché et enregistré.");
+      if (retouche) return o.onFin("Fiche retouchée et enregistrée.");
       const B = BRIGADES[r.brigade];
       if (!B) return o.onFin();
       el.innerHTML = '<div class="pp"><p class="ap-m">Affectation · tirage équilibré par le serveur</p><h3 tabindex="-1" id="ppTitre">' + h(B.nom) + "</h3>"
