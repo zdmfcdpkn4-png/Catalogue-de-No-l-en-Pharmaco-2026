@@ -29,6 +29,12 @@ function controler(b) {
     } else e.push(ou + 'type de question inconnu');
     chrono(p, ou);
   };
+  const jeu = (p, ou) => {
+    for (const k of ['question', 'explication']) if (typeof p[k] !== 'string' || !p[k]) e.push(ou + k + ' manquant');
+    if (!JEUX.includes(p.jeu)) e.push(ou + 'jeu inconnu');
+    if (!Number.isInteger(p.essais) || p.essais < 1 || p.essais > 3) e.push(ou + 'nombre de tentatives entre 1 et 3');
+    chrono(p, ou);
+  };
   b.portes.forEach((p, i) => {
     const ou = 'porte ' + (i + 1) + ' : ';
     if (p.n !== i + 1) e.push(ou + 'numéro attendu ' + (i + 1));
@@ -36,11 +42,11 @@ function controler(b) {
     if (p.type === 'quiz') {
       if (!Array.isArray(p.questions) || p.questions.length !== 5) e.push(ou + 'il faut exactement 5 questions');
       else p.questions.forEach((c, k) => question(c, ou + 'question ' + (k + 1) + ' : '));
-    } else if (p.type === 'jeu') {
-      for (const k of ['question', 'explication']) if (typeof p[k] !== 'string' || !p[k]) e.push(ou + k + ' manquant');
-      if (!JEUX.includes(p.jeu)) e.push(ou + 'jeu inconnu');
-      if (!Number.isInteger(p.essais) || p.essais < 1 || p.essais > 3) e.push(ou + 'nombre de tentatives entre 1 et 3');
-      chrono(p, ou);
+    } else if (p.type === 'jeu') jeu(p, ou);
+    else if (p.type === 'duo') {
+      // Porte à plusieurs jeux (la finale) : deux jeux différents, chacun avec son titre et son illustration.
+      if (!Array.isArray(p.jeux) || p.jeux.length !== 2 || p.jeux[0].jeu === p.jeux[1].jeu) e.push(ou + 'il faut exactement 2 jeux différents');
+      else p.jeux.forEach((c, k) => { for (const x of ['titre', 'ill']) if (typeof c[x] !== 'string' || !c[x]) e.push(ou + 'jeu ' + (k + 1) + ' : ' + x + ' manquant'); jeu(c, ou + 'jeu ' + (k + 1) + ' : '); });
     } else question(p, ou);
     if (/—/.test(JSON.stringify(p))) e.push(ou + 'tiret cadratin');
   });

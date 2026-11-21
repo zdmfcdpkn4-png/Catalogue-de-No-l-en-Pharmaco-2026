@@ -1,7 +1,7 @@
 // Pharmacogames de Noël (ex-grande énigme) : 25 portes, une par jour du 1er au 25 décembre 2026 (heure de Paris).
 // Chaque porte reste ouverte son jour, le lendemain et le surlendemain.
 // Trois sortes de portes : une question seule (qcm, dose), une case de cinq questions sur un thème (quiz),
-// un jeu d'adresse (jeu). Dans une case de cinq questions, elles s'enchaînent, chacune avec son chrono.
+// un jeu d'adresse (jeu), ou plusieurs jeux d'adresse dans la même porte (duo, la finale). Dans une case de cinq questions, elles s'enchaînent, chacune avec son chrono.
 // Questions : l'énoncé ne sort du serveur qu'au lancement du chrono, et la réponse doit arriver avant sa fin.
 // Une seule tentative. Jeux d'adresse : le navigateur renvoie une note de 0 à 10 et un score brut, deux tentatives,
 // la meilleure compte. À la clôture, les points d'un jeu d'adresse viennent du rang : 10 au premier, 1 au dernier.
@@ -86,11 +86,29 @@ const meilleure = r => Math.max(0, ...r.e.map(a => (a.s === undefined ? 0 : a.s)
 const perf = r => (r ? Math.max(0, ...r.e.map(a => (a.s === undefined ? 0 : a.b !== undefined ? a.b : a.s))) : 0);
 // Rangs d'un jeu d'adresse : seuls ceux qui ont marqué sont classés (N joueurs). Le premier a 10 points, le dernier 1,
 // les autres sont répartis régulièrement ; les ex aequo partagent rang et points ; un joueur seul a 10. Sans rien marquer : 0.
-function rangs(q, joueurs) {
-  const L = Object.keys(joueurs).map(cle => [cle, perf(joueurs[cle].r[q.n])]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
+// `i` désigne un des jeux d'une porte à plusieurs jeux (duo) : chacun a son propre classement.
+function rangs(q, joueurs, i) {
+  const de = r => (i === undefined ? r : r && r.g && r.g[i]);
+  const L = Object.keys(joueurs).map(cle => [cle, perf(de(joueurs[cle].r[q.n]))]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
   const N = L.length, M = {};
   let rang = 0;
   L.forEach((x, i) => { if (!i || x[1] !== L[i - 1][1]) rang = i + 1; M[x[0]] = { rang, sur: N, pts: N === 1 ? 10 : 1 + Math.round(9 * (N - rang) / (N - 1)) }; });
+  return M;
+}
+// Porte à plusieurs jeux (duo, la finale) : { g: [ { e: [tentatives] }, … ] }, un par jeu, joués dans l'ordre.
+// Chaque jeu est classé à part et rapporte ses points au rang ; la porte vaut leur somme (20 points pour deux jeux).
+// Jeu en cours : le premier dont les tentatives ne sont pas toutes lancées. Vaut le nombre de jeux quand tout est lancé.
+function rangDuo(q, r) {
+  const g = (r && r.g) || [];
+  for (let i = 0; i < q.jeux.length; i++) if (!g[i] || g[i].e.length < q.jeux[i].essais) return i;
+  return q.jeux.length;
+}
+// Rangs d'une porte, jeu ou duo : par joueur { pts, rang, sur } ; pour un duo, pts est la somme et `d` le détail par jeu.
+function rangsPorte(q, joueurs) {
+  if (q.type === 'jeu') return rangs(q, joueurs);
+  if (q.type !== 'duo') return null;
+  const D = q.jeux.map((c, i) => rangs(q, joueurs, i)), M = {};
+  D.forEach((m, i) => { for (const cle of Object.keys(m)) { const x = M[cle] || (M[cle] = { pts: 0, d: [] }); x.pts += m[cle].pts; x.d[i] = m[cle]; } });
   return M;
 }
 // Case de cinq questions : 2 points par question, soit 10 au plus. Bon flacon : 2. Dosage : 2 à 2 près, 1 à 10 près.
@@ -147,7 +165,7 @@ async function modifier(fn) {
 }
 
 function classement(B, joueurs, jour) {
-  const closes = B.portes.filter(q => etatDe(q.n, jour) === 'close').map(q => [q, q.type === 'jeu' ? rangs(q, joueurs) : null]);
+  const closes = B.portes.filter(q => etatDe(q.n, jour) === 'close').map(q => [q, rangsPorte(q, joueurs)]);
   const L = Object.keys(joueurs).map(cle => {
     const j = joueurs[cle];
     let pts = 0;
@@ -210,6 +228,7 @@ function vue(q, etat, r, tout, maintenant, rg) {
   if (etat === 'avenir' && !tout) return o;
   const clos = etat === 'close' || tout;
   if (q.type === 'quiz') return vueQuiz(o, q, etat, r, clos, maintenant);
+  if (q.type === 'duo') return vueDuo(o, q, etat, r, clos, rg);
   Object.assign(o, { type: q.type, titre: q.titre, duree: q.duree, essais: q.type === 'jeu' ? q.essais : 1 });
   if (q.type === 'jeu') {
     Object.assign(o, { jeu: q.jeu, question: q.question, ill: q.ill });
@@ -265,11 +284,35 @@ function vueQuiz(o, q, etat, r, clos, maintenant) {
   return o;
 }
 
+// Porte à plusieurs jeux. Ouverte : la page reçoit le jeu en cours comme une porte de jeu ordinaire, avec `duo` pour dire
+// où l'on en est et les notes des jeux déjà faits. Tout lancé : type duo, `fini`. Close ou en relecture : type duo et
+// chaque jeu avec sa règle, son mot de la fin et, à la clôture, son rang et ses points.
+function vueDuo(o, q, etat, r, clos, rg) {
+  const nb = q.jeux.length, g = (r && r.g) || [];
+  const notes = i => (g[i] ? { scores: g[i].e.map(a => (a.s === undefined ? null : a.s)), meilleur: meilleure(g[i]) } : {});
+  if (clos) {
+    Object.assign(o, { type: 'duo', titre: q.titre, ill: q.ill, nb });
+    o.jeux = q.jeux.map((c, i) => {
+      const x = Object.assign({ jeu: c.jeu, titre: c.titre, duree: c.duree, essais: c.essais, question: c.question, ill: c.ill, explication: c.explication, source: c.source }, notes(i));
+      const d = rg && rg.d[i];
+      if (r && etat === 'close') { x.pts = d ? d.pts : 0; if (d) { x.rang = d.rang; x.sur = d.sur; } }
+      return x;
+    });
+    if (r && etat === 'close') o.pts = rg ? rg.pts : 0;
+    return o;
+  }
+  const k = rangDuo(q, r);
+  if (k >= nb) return Object.assign(o, { type: 'duo', titre: q.titre, ill: q.ill, nb, fini: true, jeux: q.jeux.map((c, i) => Object.assign({ titre: c.titre }, notes(i))) });
+  const c = q.jeux[k];
+  return Object.assign(o, { type: 'jeu', titre: q.titre, duree: c.duree, essais: c.essais, jeu: c.jeu, question: c.question, ill: c.ill },
+    notes(k), { duo: { i: k + 1, nb, titre: c.titre, avant: q.jeux.slice(0, k).map((x, i) => Object.assign({ titre: x.titre }, notes(i))) } });
+}
+
 function etat(B, joueurs, cle, jour, maintenant) {
   const j = cle ? joueurs[cle] : null;
   const portes = B.portes.map(q => {
     const e = etatDe(q.n, jour);
-    return vue(q, e, j && j.r[q.n], false, maintenant, j && q.type === 'jeu' && e === 'close' ? rangs(q, joueurs)[cle] : undefined);
+    return vue(q, e, j && j.r[q.n], false, maintenant, j && (q.type === 'jeu' || q.type === 'duo') && e === 'close' ? rangsPorte(q, joueurs)[cle] : undefined);
   });
   const L = classementSuivi(B, joueurs, jour);
   return {
@@ -402,6 +445,12 @@ async function handler(req, res) {
           if (r.e.length >= q.essais) return refus(409, 'essais');
           jeton = crypto.randomBytes(8).toString('hex');
           r.e.push({ d: maintenant, k: jeton });
+        } else if (q.type === 'duo') {
+          const r = j.r[q.n] || (j.r[q.n] = { g: [] });
+          const k = rangDuo(q, r);
+          if (k >= q.jeux.length) return refus(409, 'essais');
+          jeton = crypto.randomBytes(8).toString('hex');
+          (r.g[k] || (r.g[k] = { e: [] })).e.push({ d: maintenant, k: jeton });
         } else if (q.type === 'quiz') {
           const r = j.r[q.n] || (j.r[q.n] = { q: [] });
           const k = rangQuiz(q, r, maintenant);
@@ -414,17 +463,20 @@ async function handler(req, res) {
         }
         return { ok: J => ({ code: 200, corps: { ok: true, jeton, ...vu(J) } }) };
       });
-    } else if (q.type === 'jeu') {
-      // Note d'une tentative de jeu, calculée par le navigateur.
+    } else if (q.type === 'jeu' || q.type === 'duo') {
+      // Note d'une tentative de jeu, calculée par le navigateur. Dans une porte à plusieurs jeux, le jeton dit de quel jeu il s'agit.
       if (!Number.isInteger(b.score) || b.score < 0 || b.score > 10 || typeof b.jeton !== 'string') return res.status(400).json({ error: 'reponse' });
-      if (b.brut !== undefined && (!Number.isInteger(b.brut) || b.brut < 0 || b.brut > (PLAFOND[q.jeu] || 0))) return res.status(400).json({ error: 'reponse' });
+      if (b.brut !== undefined && (!Number.isInteger(b.brut) || b.brut < 0)) return res.status(400).json({ error: 'reponse' });
       sortie = await modifier(joueurs => {
         const r = joueurs[cle] && joueurs[cle].r[q.n];
-        const a = r && r.e.find(x => x.k === b.jeton);
+        const G = !r ? [] : q.type === 'duo' ? r.g : [r];
+        const i = G.findIndex(g => g && g.e.some(x => x.k === b.jeton));
+        const c = q.type === 'duo' ? q.jeux[i] : q, a = i < 0 ? null : G[i].e.find(x => x.k === b.jeton);
         if (!a) return refus(403, 'nondemarre');
+        if (b.brut !== undefined && b.brut > (PLAFOND[c.jeu] || 0)) return { fin: () => ({ code: 400, corps: { error: 'reponse' } }) };
         if (a.s !== undefined) return refus(409, 'deja');
         const dt = (maintenant - a.d) / 1000;
-        if (dt < JEU_MIN || dt > q.duree + JEU_MARGE) return refus(403, 'delai');
+        if (dt < JEU_MIN || dt > c.duree + JEU_MARGE) return refus(403, 'delai');
         a.s = b.score; a.t = maintenant;
         if (b.brut !== undefined) a.b = b.brut;
         return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
