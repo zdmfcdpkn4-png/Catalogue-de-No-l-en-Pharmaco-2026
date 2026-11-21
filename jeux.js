@@ -2674,5 +2674,334 @@
   }
   /* ----- Fin [pastilles] ----- */
 
+  /* ----- Repère [minigolf] : le minigolf ----- */
+  // Le minigolf de la paillasse : d'un coup de piston, on fait rouler un comprimé jusqu'à son alvéole de blister,
+  // entre portoirs, flacons, flux laminaire, tapis collant et agitateur magnétique. Vu de dessus, paillasse après paillasse.
+  // Tout le jeu vit dans ce bloc (cœur, dessin, inscription) : aucun nom ne déborde sur les jeux voisins.
+  {
+    /* --- Le cœur : règles et trajectoires, sans navigateur --- */
+    // Réglages étalonnés par simulation (node outils/etalon-minigolf.js) : ils fixent la difficulté.
+    // r : comprimé, rt : alvéole, ep : demi-épaisseur d'un portoir, fa et fb : frottement (constant et proportionnel), colle : frein du tapis,
+    // vcap : au-delà, le comprimé saute l'alvéole, k : px/s par px de piston tiré, gains : points selon le nombre de coups (1, 2, 3, 4 et plus).
+    const RM = { r: 7, rt: 13, ep: 4, x0: 12, x1: 348, y0: 50, y1: 470, vmax: 620, vmin: 70, fa: 120, fb: 1, colle: 4, rebond: 0.72, vcap: 300, arret: 10, pause: 0.85, k: 5.6, gains: [150, 110, 80, 60], approche: 40, sursis: 3, plafond: 3000, seuils: [60, 150, 250, 350, 440, 530, 640, 760, 900, 1050] };
+    const MG_PAS = 1 / 120;
+    // Les paillasses. d : départ, t : alvéole, murs : portoirs [x1, y1, x2, y2], flacons : [x, y, rayon],
+    // flux : zones de flux laminaire [x, y, largeur, hauteur, ax, ay] (poussée en px/s²), tapis : tapis collants [x, y, largeur, hauteur],
+    // barre : agitateur magnétique [x, y, demi-longueur, vitesse en rad/s].
+    const PLANS = [
+      { nom: "Mise en route", d: [180, 430], t: [180, 105], murs: [], flacons: [[80, 262, 12], [280, 262, 12]], flux: [], tapis: [] },
+      { nom: "Le portoir", d: [80, 425], t: [275, 110], murs: [[12, 270, 225, 270]], flacons: [[120, 150, 12], [312, 300, 12]], flux: [], tapis: [] },
+      { nom: "Le flux laminaire", d: [180, 430], t: [180, 100], murs: [], flacons: [[105, 150, 12], [255, 150, 12]], flux: [[12, 215, 336, 90, 280, 0]], tapis: [] },
+      { nom: "La chicane", d: [290, 425], t: [290, 105], murs: [[120, 340, 348, 340], [12, 200, 240, 200]], flacons: [], flux: [], tapis: [] },
+      { nom: "L'agitateur", d: [180, 430], t: [180, 95], murs: [], flacons: [[62, 265, 12], [298, 265, 12]], flux: [], tapis: [], barre: [180, 265, 68, 1.7] },
+      { nom: "Le tapis collant", d: [70, 430], t: [290, 100], murs: [], flacons: [[130, 345, 12], [250, 150, 12]], flux: [], tapis: [[70, 190, 220, 110]] },
+      { nom: "Le tour de la cloison", d: [90, 430], t: [270, 420], murs: [[180, 140, 180, 470]], flacons: [[60, 250, 12]], flux: [[186, 190, 162, 120, 0, 220]], tapis: [] },
+      { nom: "Le rangement", d: [180, 430], t: [180, 105], murs: [[12, 330, 95, 290], [348, 330, 265, 290]], flacons: [[150, 175, 11], [210, 175, 11], [180, 222, 11], [105, 140, 11], [255, 140, 11]], flux: [], tapis: [] },
+    ];
+    // Au deuxième tour, les paillasses reviennent en miroir (et l'agitateur tourne dans l'autre sens), puis à l'endroit, et ainsi de suite.
+    const MIROIRS = PLANS.map(p => ({
+      nom: p.nom, d: [W - p.d[0], p.d[1]], t: [W - p.t[0], p.t[1]],
+      murs: p.murs.map(m => [W - m[0], m[1], W - m[2], m[3]]), flacons: p.flacons.map(f => [W - f[0], f[1], f[2]]),
+      flux: p.flux.map(f => [W - f[0] - f[2], f[1], f[2], f[3], -f[4], f[5]]), tapis: p.tapis.map(f => [W - f[0] - f[2], f[1], f[2], f[3]]),
+      barre: p.barre && [W - p.barre[0], p.barre[1], p.barre[2], -p.barre[3]],
+    }));
+    const planMinigolf = n => (Math.floor(n / PLANS.length) % 2 ? MIROIRS : PLANS)[n % PLANS.length];
+    const installer = (s, n) => {
+      const p = planMinigolf(n);
+      s.n = n; s.plan = p; s.b = { x: p.d[0], y: p.d[1], vx: 0, vy: 0, tour: 0 }; s.coups = 0; s.dedans = false; s.pause = 0;
+    };
+    const creerMinigolf = () => { const s = { t: 0, acc: 0, points: 0, trous: 0, premiers: 0, coupsT: 0, approche: 0, ev: null, evT: -9, choc: -9, saut: -9, fini: false }; installer(s, 0); return s; };
+    const roule = s => s.b.vx !== 0 || s.b.vy !== 0;
+    const pretMinigolf = (s, duree) => !s.fini && s.pause <= 0 && !roule(s) && s.t < duree;
+    // Un coup : vitesse en px/s. Refusé tant que le comprimé roule, pendant le changement de paillasse, ou une fois le temps écoulé.
+    const tirerMinigolf = (s, vx, vy, duree) => {
+      const v = Math.hypot(vx, vy);
+      if (!pretMinigolf(s, duree) || !(v > 0)) return false;
+      const f = borne(v, RM.vmin, RM.vmax) / v;
+      s.b.vx = vx * f; s.b.vy = vy * f; s.coups++; s.coupsT++;
+      return true;
+    };
+    // Les deux bouts de l'agitateur à l'instant t.
+    const barreMinigolf = (p, t) => { const [x, y, l, w] = p.barre, a = w * t; return [x - Math.cos(a) * l, y - Math.sin(a) * l, x + Math.cos(a) * l, y + Math.sin(a) * l]; };
+    // Le comprimé contre un obstacle dont le point le plus proche est (cx, cy), animé de la vitesse (wx, wy) : repoussé, et renvoyé s'il arrivait dessus.
+    const heurt = (s, cx, cy, wx, wy, dist) => {
+      const b = s.b, d = Math.hypot(b.x - cx, b.y - cy);
+      if (d >= dist || d === 0) return;
+      const nx = (b.x - cx) / d, ny = (b.y - cy) / d, vn = (b.vx - wx) * nx + (b.vy - wy) * ny;
+      b.x = cx + nx * dist; b.y = cy + ny * dist;
+      if (vn < 0) { b.vx -= (1 + RM.rebond) * vn * nx; b.vy -= (1 + RM.rebond) * vn * ny; if (vn < -40) s.choc = s.t; }
+    };
+    const dansZone = (b, z) => b.x >= z[0] && b.x <= z[0] + z[2] && b.y >= z[1] && b.y <= z[1] + z[3];
+    const unPasMinigolf = (s, duree) => {
+      const dt = MG_PAS, b = s.b, p = s.plan;
+      s.t += dt;
+      if (s.pause > 0) { s.pause -= dt; if (s.pause <= 0 && s.t < duree) installer(s, s.n + 1); }
+      else {
+        if (roule(s)) {
+          let frein = 1;
+          for (const z of p.tapis) if (dansZone(b, z)) frein = RM.colle;
+          for (const z of p.flux) if (dansZone(b, z)) { b.vx += z[4] * dt; b.vy += z[5] * dt; }
+          const v = Math.hypot(b.vx, b.vy), f = v > 0 ? Math.max(0, v - (RM.fa + RM.fb * v) * frein * dt) / v : 0;
+          b.vx *= f; b.vy *= f; b.x += b.vx * dt; b.y += b.vy * dt; b.tour += v * f * dt / RM.r;
+        }
+        for (const [x1, y1, x2, y2] of p.murs) {
+          const ux = x2 - x1, uy = y2 - y1, k = borne(((b.x - x1) * ux + (b.y - y1) * uy) / (ux * ux + uy * uy), 0, 1);
+          heurt(s, x1 + ux * k, y1 + uy * k, 0, 0, RM.r + RM.ep);
+        }
+        for (const [x, y, r] of p.flacons) heurt(s, x, y, 0, 0, RM.r + r);
+        if (p.barre) {
+          const [x1, y1, x2, y2] = barreMinigolf(p, s.t), ux = x2 - x1, uy = y2 - y1, k = borne(((b.x - x1) * ux + (b.y - y1) * uy) / (ux * ux + uy * uy), 0, 1);
+          const cx = x1 + ux * k, cy = y1 + uy * k, w = p.barre[3];
+          heurt(s, cx, cy, -w * (cy - p.barre[1]), w * (cx - p.barre[0]), RM.r + RM.ep);
+        }
+        // Le bord de la paillasse, en dernier : rien ne peut en faire sortir le comprimé.
+        if (b.x < RM.x0 + RM.r) { b.x = RM.x0 + RM.r; if (b.vx < 0) { if (b.vx < -40) s.choc = s.t; b.vx *= -RM.rebond; } }
+        if (b.x > RM.x1 - RM.r) { b.x = RM.x1 - RM.r; if (b.vx > 0) { if (b.vx > 40) s.choc = s.t; b.vx *= -RM.rebond; } }
+        if (b.y < RM.y0 + RM.r) { b.y = RM.y0 + RM.r; if (b.vy < 0) { if (b.vy < -40) s.choc = s.t; b.vy *= -RM.rebond; } }
+        if (b.y > RM.y1 - RM.r) { b.y = RM.y1 - RM.r; if (b.vy > 0) { if (b.vy > 40) s.choc = s.t; b.vy *= -RM.rebond; } }
+        if (roule(s)) {
+          const v = Math.hypot(b.vx, b.vy), d = Math.hypot(b.x - p.t[0], b.y - p.t[1]);
+          if (d < RM.rt - 2 && v < RM.vcap) {
+            // Dans l'alvéole : d'autant plus de points que le comprimé y est arrivé en peu de coups.
+            const c = Math.max(1, s.coups), pts = RM.gains[Math.min(c, RM.gains.length) - 1];
+            s.trous++; s.points += pts; if (c === 1) s.premiers++;
+            s.ev = { pts, coups: c, x: p.t[0], y: p.t[1] }; s.evT = s.t;
+            b.x = p.t[0]; b.y = p.t[1]; b.vx = b.vy = 0; s.dedans = true; s.pause = RM.pause;
+          } else {
+            if (d < RM.rt - 2) s.saut = s.t;                                                          // trop vite : il saute l'alvéole
+            if (v < RM.arret) b.vx = b.vy = 0;
+          }
+        }
+      }
+      // Fin : le temps est écoulé et le comprimé s'est arrêté (ou le sursis est passé). Un comprimé joué mais pas rentré rapporte
+      // quelques points d'approche, selon le chemin fait vers l'alvéole : ils départagent, sans valoir une alvéole.
+      if (s.t >= duree && (!roule(s) || s.t >= duree + RM.sursis)) {
+        s.fini = true;
+        if (!s.dedans && s.coups > 0) {
+          const d0 = Math.hypot(p.d[0] - p.t[0], p.d[1] - p.t[1]), d = Math.hypot(b.x - p.t[0], b.y - p.t[1]);
+          s.approche = Math.round(RM.approche * borne(1 - d / d0, 0, 1)); s.points += s.approche;
+        }
+        s.points = Math.min(s.points, RM.plafond);
+      }
+    };
+    // Pas fixe : la physique avance par tranches de 1/120 s quel que soit le rythme d'affichage.
+    const pasMinigolf = (s, dt, duree) => { s.acc += dt; while (s.acc >= MG_PAS && !s.fini) { s.acc -= MG_PAS; unPasMinigolf(s, duree); } };
+    // La note : le nombre de paliers atteints. Barème progressif : les premiers points de note viennent vite, les derniers se méritent.
+    const noteMinigolf = s => RM.seuils.filter(p => s.points >= p).length;
+    // Pour les bancs d'essai : où finirait ce coup ? Rejoué sur une copie de la partie (le cœur n'a pas de hasard).
+    const apresMinigolf = (s, vx, vy) => {
+      const c = Object.assign({}, s, { b: Object.assign({}, s.b), acc: 0, fini: false });
+      if (!tirerMinigolf(c, vx, vy, 1e9)) return null;
+      const t0 = c.t; while (roule(c) && c.t < t0 + 8) unPasMinigolf(c, 1e9);
+      return { x: c.b.x, y: c.b.y, dedans: c.dedans, t: c.t - t0 };
+    };
+    // Pour les bancs d'essai : le chemin qui reste jusqu'à l'alvéole en contournant portoirs et flacons (l'agitateur est ignoré).
+    const distancesMinigolf = p => {
+      const c = 8, nx = Math.ceil(W / c), ny = Math.ceil(H / c), D = new Float32Array(nx * ny).fill(1e9);
+      const libre = (i, j) => {
+        const x = (i + 0.5) * c, y = (j + 0.5) * c;
+        if (x < RM.x0 + RM.r || x > RM.x1 - RM.r || y < RM.y0 + RM.r || y > RM.y1 - RM.r) return false;
+        for (const [fx, fy, r] of p.flacons) if (Math.hypot(x - fx, y - fy) < r + RM.r + 1) return false;
+        for (const [x1, y1, x2, y2] of p.murs) {
+          const ux = x2 - x1, uy = y2 - y1, k = borne(((x - x1) * ux + (y - y1) * uy) / (ux * ux + uy * uy), 0, 1);
+          if (Math.hypot(x - x1 - ux * k, y - y1 - uy * k) < RM.r + RM.ep + 1) return false;
+        }
+        return true;
+      };
+      const file = [[Math.floor(p.t[0] / c), Math.floor(p.t[1] / c)]]; D[file[0][1] * nx + file[0][0]] = 0;
+      // Relaxations successives (huit voisins) : la grille est petite, la simplicité prime.
+      for (let q = 0; q < file.length; q++) {
+        const [i, j] = file[q], d = D[j * nx + i];
+        for (let a = -1; a <= 1; a++) for (let e = -1; e <= 1; e++) {
+          const u = i + a, v = j + e, k = v * nx + u, cout = d + c * (a && e ? 1.414 : 1);
+          if ((a || e) && u >= 0 && v >= 0 && u < nx && v < ny && cout < D[k] - 0.01 && libre(u, v)) { D[k] = cout; file.push([u, v]); }
+        }
+      }
+      return (x, y) => D[borne(Math.floor(y / c), 0, ny - 1) * nx + borne(Math.floor(x / c), 0, nx - 1)];
+    };
+
+    /* --- Dessin et commandes (navigateur seulement) --- */
+    const minigolf = (el, opt) => {
+      const duree = opt.duree || 50, { cv, ctx, liberer } = monter(el, H);
+      cv.style.touchAction = "none";
+      cv.setAttribute("aria-label", "Le minigolf de la paillasse. Faites rouler le comprimé jusqu'à son alvéole de blister en le moins de coups possible. Au doigt ou à la souris : appuyez, tirez en arrière comme un piston de seringue, puis lâchez. Au clavier : flèches gauche et droite pour la direction, haut et bas pour la force, Espace pour jouer.");
+      const s = creerMinigolf(), mm = q => typeof matchMedia === "function" && matchMedia(q).matches;
+      const tactile = mm("(pointer: coarse)"), calme = mm("(prefers-reduced-motion: reduce)");
+      if (typeof opt.espion === "function") opt.espion(s);                                         // pour le banc d'essai seulement
+      // Le comprimé porte le logo de l'unité ; tant que l'image n'est pas là (ou si elle manque), c'est un comprimé sécable.
+      const logo = new Image(); logo.src = opt.logo || api._logo;
+      let clos = false, minuterie = 0, depart = null, vise = null, clavier = false, angle = 0, force = 330, tenue = 0, vuN = -1, etaitPret = false;
+      const touches = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false };
+      const posDe = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.width * W]; };
+      // Le geste : on tire le piston en arrière. Le comprimé part à l'opposé, d'autant plus fort que le piston est tiré loin.
+      const mesurer = e => {
+        const [x, y] = posDe(e), dx = depart[0] - x, dy = depart[1] - y, l = Math.hypot(dx, dy);
+        if (l < 12) { vise = null; return; }
+        const v = Math.min(RM.vmax, l * RM.k);
+        vise = { vx: dx / l * v, vy: dy / l * v };
+      };
+      const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } clavier = false; depart = posDe(e); vise = null; };
+      const glisse = e => { if (depart) { e.preventDefault(); mesurer(e); } };
+      const lacher = e => { if (!depart) return; mesurer(e); if (vise && !clos) tirerMinigolf(s, vise.vx, vise.vy, duree); depart = vise = null; };
+      const annule = () => { depart = vise = null; };
+      const viseClavier = () => { vise = { vx: Math.sin(angle) * force, vy: -Math.cos(angle) * force }; };
+      const versAlveole = () => { angle = Math.atan2(s.plan.t[0] - s.b.x, s.b.y - s.plan.t[1]); };
+      const touche = (e, v) => {
+        const tir = e.key === " " || e.key === "Spacebar" || e.key === "Enter";
+        if (!(e.key in touches) && !tir) return;
+        if (v && (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(e.target && e.target.tagName || ""))) return;
+        if (v) e.preventDefault();
+        if (tir) { if (v && !e.repeat && !clos) { clavier = true; depart = null; viseClavier(); tirerMinigolf(s, vise.vx, vise.vy, duree); } return; }
+        touches[e.key] = v; if (v) { clavier = true; depart = null; viseClavier(); }
+      };
+      const enfonce = e => touche(e, true), leve = e => touche(e, false), lache = () => { for (const k in touches) touches[k] = false; }, menu = e => e.preventDefault();
+      cv.addEventListener("pointerdown", appui); cv.addEventListener("pointermove", glisse); cv.addEventListener("pointerup", lacher); cv.addEventListener("pointercancel", annule); cv.addEventListener("contextmenu", menu);
+      window.addEventListener("keydown", enfonce); window.addEventListener("keyup", leve); window.addEventListener("blur", lache);
+      const retirer = () => {
+        cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointermove", glisse); cv.removeEventListener("pointerup", lacher); cv.removeEventListener("pointercancel", annule); cv.removeEventListener("contextmenu", menu);
+        window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
+      };
+      const COULEURS = [O, G, P, B, Y];
+      const comprime = (x, y, tour, k) => {
+        ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+        ctx.fillStyle = "rgba(38,7,109,.18)"; ctx.beginPath(); ctx.arc(1.5, 2.5, RM.r, 0, 6.3); ctx.fill();   // l'ombre portée
+        ctx.rotate(tour); trait(ctx, 2); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, RM.r, 0, 6.3); ctx.fill();
+        if (logo.complete && logo.naturalWidth) { ctx.save(); ctx.clip(); ctx.drawImage(logo, -RM.r, -RM.r, 2 * RM.r, 2 * RM.r); ctx.restore(); ctx.beginPath(); ctx.arc(0, 0, RM.r, 0, 6.3); ctx.stroke(); }
+        else { ctx.stroke(); ctx.beginPath(); ctx.moveTo(-RM.r + 2.5, 0); ctx.lineTo(RM.r - 2.5, 0); ctx.stroke(); }
+        ctx.restore();
+      };
+      function dessiner() {
+        const p = s.plan, b = s.b, pret = pretMinigolf(s, duree);
+        // La paillasse, vue de dessus : un plan de travail clair, son quadrillage discret, son rebord.
+        ctx.fillStyle = N; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = "#F4EEDC"; ctx.fillRect(RM.x0, RM.y0, RM.x1 - RM.x0, RM.y1 - RM.y0);
+        ctx.strokeStyle = "rgba(38,7,109,.06)"; ctx.lineWidth = 1; ctx.beginPath();
+        for (let x = RM.x0 + 42; x < RM.x1; x += 42) { ctx.moveTo(x, RM.y0); ctx.lineTo(x, RM.y1); }
+        for (let y = RM.y0 + 42; y < RM.y1; y += 42) { ctx.moveTo(RM.x0, y); ctx.lineTo(RM.x1, y); }
+        ctx.stroke();
+        // Le tapis collant : il freine tout ce qui le traverse.
+        for (const [x, y, w, h] of p.tapis) {
+          ctx.fillStyle = "#9FC4EA"; ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill();
+          ctx.strokeStyle = "rgba(38,7,109,.35)"; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.roundRect(x + 4, y + 4, w - 8, h - 8, 4); ctx.stroke(); ctx.setLineDash([]);
+          texte(ctx, "TAPIS COLLANT", x + w / 2, y + h / 2, 11, "rgba(38,7,109,.5)");
+        }
+        // Le flux laminaire : il pousse le comprimé qui le traverse, dans le sens des chevrons.
+        for (const [x, y, w, h, ax, ay] of p.flux) {
+          ctx.fillStyle = "rgba(143,199,232,.38)"; ctx.fillRect(x, y, w, h);
+          ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+          const a = Math.atan2(ay, ax), pas = 44, gl = calme ? 0 : (s.t * 60) % pas;
+          ctx.strokeStyle = "rgba(38,7,109,.3)"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+          for (let i = -1; i * pas < Math.max(w, h) + pas; i++) for (let j = 0; j * 30 < Math.max(w, h) + 30; j++) {
+            const u = i * pas + gl, v = j * 30 + 15, cx = ax ? (ax > 0 ? x + u : x + w - u) : x + v, cy = ax ? y + v : (ay > 0 ? y + u : y + h - u);
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(-5, -6); ctx.lineTo(2, 0); ctx.lineTo(-5, 6); ctx.stroke(); ctx.restore();
+          }
+          ctx.restore();
+          texte(ctx, "FLUX LAMINAIRE", x + w - 6, y + 9, 9, "rgba(38,7,109,.5)", "right");
+        }
+        // L'alvéole du blister : la cible.
+        const [tx, ty] = p.t, bat = calme ? 0 : Math.sin(s.t * 4) * 1.2;
+        ctx.fillStyle = "#D9DCE6"; trait(ctx, 2); ctx.beginPath(); ctx.roundRect(tx - 21, ty - 21, 42, 42, 9); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#3A1C86"; ctx.beginPath(); ctx.arc(tx, ty, RM.rt, 0, 6.3); ctx.fill();
+        ctx.strokeStyle = Y; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(tx, ty, RM.rt + 2.5 + bat, 0, 6.3); ctx.stroke();
+        // Les portoirs : des barres percées de leurs puits.
+        for (const [x1, y1, x2, y2] of p.murs) {
+          const l = Math.hypot(x2 - x1, y2 - y1), a = Math.atan2(y2 - y1, x2 - x1);
+          ctx.save(); ctx.translate(x1, y1); ctx.rotate(a);
+          ctx.fillStyle = "rgba(38,7,109,.18)"; ctx.beginPath(); ctx.roundRect(-RM.ep + 2, -RM.ep + 3, l + 2 * RM.ep, 2 * RM.ep, RM.ep); ctx.fill();
+          ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(-RM.ep, -RM.ep, l + 2 * RM.ep, 2 * RM.ep, RM.ep); ctx.fill();
+          ctx.fillStyle = V; for (let u = 8; u < l - 4; u += 14) { ctx.beginPath(); ctx.arc(u, 0, 1.8, 0, 6.3); ctx.fill(); }
+          ctx.restore();
+        }
+        // Les flacons, vus de dessus : le verre, l'étiquette de couleur, la capsule.
+        p.flacons.forEach(([x, y, r], i) => {
+          const vif = s.t - s.choc < 0.12 && Math.hypot(b.x - x, b.y - y) < r + RM.r + 3;
+          ctx.fillStyle = "rgba(38,7,109,.18)"; ctx.beginPath(); ctx.arc(x + 2, y + 3, r, 0, 6.3); ctx.fill();
+          trait(ctx, 2.2); ctx.fillStyle = vif ? C : COULEURS[i % COULEURS.length]; ctx.beginPath(); ctx.arc(x, y, r - 1, 0, 6.3); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = C; ctx.beginPath(); ctx.arc(x, y, r * 0.55, 0, 6.3); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = N; ctx.beginPath(); ctx.arc(x, y, r * 0.2, 0, 6.3); ctx.fill();
+        });
+        // L'agitateur magnétique : un barreau qui tourne sur sa plaque.
+        if (p.barre) {
+          const [x, y, l] = p.barre, [x1, y1, x2, y2] = barreMinigolf(p, s.t);
+          ctx.strokeStyle = "rgba(38,7,109,.14)"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.arc(x, y, l + RM.ep, 0, 6.3); ctx.stroke(); ctx.setLineDash([]);
+          ctx.lineCap = "round"; ctx.strokeStyle = N; ctx.lineWidth = 2 * RM.ep + 3; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+          ctx.strokeStyle = C; ctx.lineWidth = 2 * RM.ep - 1; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+          ctx.strokeStyle = O; ctx.lineWidth = 2 * RM.ep - 1; ctx.lineCap = "butt"; ctx.beginPath(); ctx.moveTo(x + (x1 - x) * 0.12, y + (y1 - y) * 0.12); ctx.lineTo(x + (x2 - x) * 0.12, y + (y2 - y) * 0.12); ctx.stroke();
+        }
+        // Le rebord de la paillasse : seule la seringue peut le chevaucher.
+        ctx.fillStyle = N; ctx.fillRect(0, 0, W, RM.y0); ctx.fillRect(0, RM.y1, W, H - RM.y1); ctx.fillRect(0, 0, RM.x0, H); ctx.fillRect(RM.x1, 0, W - RM.x1, H);
+        // La visée : la seringue derrière le comprimé, piston tiré selon la force, et le début de la trajectoire.
+        if (vise && !clos && !s.dedans) {
+          const v = Math.hypot(vise.vx, vise.vy), f = v / RM.vmax, ux = vise.vx / v, uy = vise.vy / v;
+          ctx.fillStyle = pret ? N : "rgba(38,7,109,.3)";
+          for (let i = 1; i <= 6; i++) { ctx.beginPath(); ctx.arc(b.x + ux * (10 + i * (8 + 14 * f)), b.y + uy * (10 + i * (8 + 14 * f)), 3.2 - i * 0.3, 0, 6.3); ctx.fill(); }
+          ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(uy, ux) + Math.PI); ctx.globalAlpha = pret ? 1 : 0.4;
+          trait(ctx, 2); ctx.beginPath(); ctx.moveTo(RM.r + 2, 0); ctx.lineTo(RM.r + 8, 0); ctx.stroke();                  // l'embout
+          ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.beginPath(); ctx.roundRect(RM.r + 8, -6, 22, 12, 3); ctx.fill(); ctx.stroke();    // le corps
+          const pz = 2 + 16 * f, bout = RM.r + 32 + pz * 0.55;                                                             // le piston
+          ctx.fillStyle = f > 0.97 ? O : G; ctx.fillRect(RM.r + 10, -4, Math.max(0, 18 - pz), 8);
+          ctx.fillStyle = N; ctx.fillRect(RM.r + 28 - pz, -5, 3, 10);
+          ctx.beginPath(); ctx.moveTo(RM.r + 30 - pz, 0); ctx.lineTo(bout, 0); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(bout, -7); ctx.lineTo(bout, 7); ctx.stroke();
+          ctx.restore();
+        }
+        if (depart && !clos) { ctx.strokeStyle = "rgba(38,7,109,.25)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(depart[0], depart[1], 12, 0, 6.3); ctx.stroke(); }
+        // Le comprimé : il rétrécit en tombant dans l'alvéole.
+        const dtE = s.t - s.evT;
+        if (s.dedans) comprime(b.x, b.y, b.tour, calme ? 0.8 : Math.max(0.72, 1 - dtE * 1.2));
+        else {
+          if (pret && !vise && !calme) { ctx.strokeStyle = "rgba(236,119,57,.7)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(b.x, b.y, RM.r + 5 + Math.sin(s.t * 6) * 1.5, 0, 6.3); ctx.stroke(); }
+          comprime(b.x, b.y, b.tour, 1);
+        }
+        // Le résultat du dernier coup rentré.
+        if (s.ev && s.dedans && !clos) {
+          if (!calme) { ctx.globalAlpha = Math.max(0, 1 - dtE); ctx.strokeStyle = s.ev.coups === 1 ? O : G; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.ev.x, s.ev.y, 18 + dtE * 44, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
+          const x = borne(s.ev.x, 122, W - 122), y = borne(s.ev.y + (s.ev.y < 140 ? 44 : -44), 70, H - 30);
+          ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(x - 104, y - 15, 208, 30, 15); ctx.fill();
+          texte(ctx, "+" + s.ev.pts + " · " + (s.ev.coups === 1 ? "Du premier coup !" : s.ev.coups === 2 ? "Sous blister en 2 !" : "Sous blister en " + s.ev.coups), x, y + 1, 14, s.ev.coups === 1 ? Y : C);
+        } else if (s.t - s.saut < 0.7 && !s.dedans && !clos) texte(ctx, "Trop fort : il saute l'alvéole", borne(tx, 112, W - 112), ty < 140 ? ty + 38 : ty - 38, 12, "rgba(38,7,109,.6)");
+        // Le nom de la paillasse, à son arrivée.
+        if (!clos && !s.dedans && s.coups === 0 && s.n > 0) texte(ctx, p.nom, 180, RM.y1 - 12, 12, "rgba(38,7,109,.45)");
+        if (s.t < 6 && !clos && !s.coupsT) {
+          ctx.globalAlpha = Math.min(1, 6 - s.t) * 0.92;
+          ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(18, 300, 324, 28, 14); ctx.fill();
+          texte(ctx, tactile ? "Tirez en arrière comme un piston, lâchez" : "Tirez en arrière et lâchez, ou flèches + Espace", 180, 315, 13, Y);
+          ctx.globalAlpha = 1;
+        }
+        const n = noteMinigolf(s);
+        bandeau(ctx, s.points + " pts · " + n + "/10 · paillasse " + (s.n + 1), duree - s.t, duree);
+        if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 180, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 220, 40, Y); texte(ctx, s.points + " points · " + s.trous + (s.trous > 1 ? " alvéoles" : " alvéole"), 180, 262, 16, C); }
+      }
+      const arret = boucle(dt => {
+        if (!clos) {
+          const pret = pretMinigolf(s, duree);
+          // À chaque arrêt du comprimé, la visée au clavier repart en direction de l'alvéole.
+          if (pret && (!etaitPret || vuN !== s.n)) { versAlveole(); vuN = s.n; if (clavier) viseClavier(); }
+          etaitPret = pret;
+          if (clavier) {
+            const sens = (touches.ArrowRight ? 1 : 0) - (touches.ArrowLeft ? 1 : 0);
+            tenue = sens ? tenue + dt : 0;                                                            // lent d'abord, pour viser fin, puis plus vite
+            angle += sens * (0.5 + 2.3 * Math.min(1, tenue * 1.6)) * dt;
+            force = borne(force + ((touches.ArrowUp ? 1 : 0) - (touches.ArrowDown ? 1 : 0)) * 260 * dt, 100, RM.vmax);
+            viseClavier();
+          }
+          pasMinigolf(s, dt, duree);
+          if (s.fini) {
+            clos = true; lache(); annule();
+            const n = noteMinigolf(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
+            const bilan = pl(s.trous, "comprimé remis sous blister", "comprimés remis sous blister") + " en " + pl(s.coupsT, "coup", "coups") + ", dont " + s.premiers + " du premier coup" + (s.approche ? ", plus " + pl(s.approche, "point", "points") + " d'approche" : "") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (" + RM.gains[0] + " points du premier coup, " + RM.gains[1] + " en deux, " + RM.gains[2] + " en trois, " + RM.gains[3] + " au-delà ; barème progressif, 10 sur 10 à partir de " + RM.seuils[9] + " points).";
+            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.points); }, 1300);
+          }
+        }
+        dessiner();
+      });
+      cv.focus({ preventScroll: true });
+      return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
+    };
+    api.minigolf = minigolf;
+    Object.assign(api._coeur, { REGL_MINIGOLF: RM, MG_PLANS: PLANS, planMinigolf, creerMinigolf, pasMinigolf, noteMinigolf, tirerMinigolf, pretMinigolf, apresMinigolf, distancesMinigolf, barreMinigolf });
+  }
+  /* ----- Fin [minigolf] ----- */
+
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PharmacoJeux = api;
 })(typeof window !== "undefined" ? window : globalThis);
