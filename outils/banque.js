@@ -15,7 +15,7 @@ const cle = (code, sel) => crypto.scryptSync(norm(code), sel, 32);
 function controler(b) {
   const e = [];
   if (!b || !Array.isArray(b.portes) || b.portes.length !== 25) return ['il faut exactement 25 portes'];
-  const JEUX = ['bowling', 'tir', 'flipper', 'tennis', 'labyrinthe', 'basket', 'penalty', 'volley', 'haies', 'etageres', 'pastilles'];
+  const JEUX = ['bowling', 'tir', 'flipper', 'tennis', 'labyrinthe', 'basket', 'penalty', 'volley', 'haies', 'etageres', 'pastilles', 'twirling'];
   const chrono = (x, ou) => { if (!Number.isInteger(x.duree) || x.duree < 10 || x.duree > 120) e.push(ou + 'durée du chrono entre 10 et 120 secondes'); };
   // Une question, seule dans sa porte ou dans une case de cinq.
   const question = (p, ou) => {
