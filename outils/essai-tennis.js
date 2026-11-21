@@ -35,6 +35,8 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await p.evaluate(() => window.suivre(true));
   await p.waitForTimeout(5000); await p.screenshot({ path: dir + '/tennis-2-jeu-a.png' });
   await p.waitForTimeout(9000); await p.screenshot({ path: dir + '/tennis-2-jeu-b.png' });
+  await p.waitForSelector('.pj-fin', { timeout: 60000 }); await p.waitForTimeout(700); await p.screenshot({ path: dir + '/tennis-3-tableau.png' });
+  const chiffres = await p.evaluate(() => [...document.querySelectorAll('.pj-fin-ch span')].map(x => x.innerText.replace(/\n/g, ' ')));
   const souris = await fin(p); await p.screenshot({ path: dir + '/tennis-3-fin.png' });
   await p.evaluate(() => window.suivre(false));
   // 2. Au clavier : la spatule doit avoir bougé vers la gauche puis vers la droite.
@@ -55,6 +57,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await doigt('pointerdown', 0.5); for (let i = 0; i < 12; i++) { await doigt('pointermove', 0.5 - i * 0.03); await tel.waitForTimeout(60); }
   await tel.waitForTimeout(300); await tel.screenshot({ path: dir + '/tennis-6-telephone-320.png' });
   await doigt('pointerup', 0.2);
+  await tel.waitForSelector('.pj-fin', { timeout: 60000 }); await tel.waitForTimeout(700); await tel.screenshot({ path: dir + '/tennis-7-telephone-320-tableau.png' });
   const telephone = [await fin(tel), await tel.evaluate(() => document.documentElement.scrollWidth)];
   await tel.screenshot({ path: dir + '/tennis-7-telephone-320-fin.png' });
   // 5. Largeur PC.
@@ -62,6 +65,6 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await lancer(pc, 9); const bx = await pc.locator('.pj-cv').boundingBox();
   for (let i = 0; i < 14; i++) { await pc.mouse.move(bx.x + bx.width * (0.5 + 0.25 * Math.sin(i / 3)), bx.y + 400); await pc.waitForTimeout(250); }
   await pc.screenshot({ path: dir + '/tennis-8-pc.png' });
-  console.log(JSON.stringify({ souris, clavier, telephone, pc: await fin(pc), appelsApresArret: apresArret, appelsApresArretPendantLaFin: apresArretFin, erreurs: errs }));
+  console.log(JSON.stringify({ souris, chiffres, clavier, telephone, pc: await fin(pc), appelsApresArret: apresArret, appelsApresArretPendantLaFin: apresArretFin, erreurs: errs }));
   await b.close();
 })();
