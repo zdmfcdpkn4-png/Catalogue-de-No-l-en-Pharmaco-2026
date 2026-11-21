@@ -225,10 +225,51 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 .eg-vous{display:inline-block;white-space:nowrap;margin-left:8px;padding:1px 7px;background:var(--pressed);color:var(--pressed-on);border-radius:999px;font:600 .68rem var(--mono);letter-spacing:.05em;text-transform:uppercase}
 .eg-gap{padding:2px 12px;background:var(--foil-a);text-align:center;font:600 .72rem var(--mono);color:var(--muted)}
 .eg-more{margin:0;text-align:center}
+/* Avatars et symbole de brigade */
+.eg-rank .eg-av{flex:0 0 auto;display:block;width:28px;height:28px;margin:0}
+.eg-av0{border:2px solid var(--line);border-radius:50%;background:var(--foil-a)}
+.eg-rank .eg-emb{flex:0 0 auto;display:block;width:16px;height:16px}
+.eg-nm{display:flex;align-items:center;flex-wrap:wrap;gap:3px 7px}
+.eg-nm>b{min-width:0;font-weight:800;overflow-wrap:anywhere}
+.eg-nm .eg-vous,.eg-nm .eg-up{margin-left:0}
+.eg-list .eg-row{align-items:center}
+.eg-marche .eg-row{display:grid;justify-items:center;gap:2px}
+.eg-marche .eg-row>span{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:2px 5px;max-width:100%}
+.eg-marche .eg-av{width:44px;height:44px}
+.eg-marche .eg-up{margin-left:0}
+/* Classement des brigades */
+.eg-brigs{margin-top:14px}
+.eg-brigs h4{margin:0;font-weight:800;font-size:1.05rem;line-height:1.2}
+.eg-brigs>p{margin:3px 0 0;font:600 .72rem var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.eg-brigs ol{display:grid;gap:8px;margin:10px 0 0;padding:0;list-style:none}
+.eg-brig{padding:0;background:var(--surface);border:2.5px solid var(--line);border-radius:14px;overflow:hidden}
+.eg-brig.me{box-shadow:4px 4px 0 var(--shadow)}
+.eg-brig summary{display:grid;grid-template-columns:22px 22px minmax(0,1fr) 14px;gap:8px;align-items:center;min-height:46px;padding:6px 12px;background:var(--bf);cursor:pointer;list-style:none;font-variant-numeric:tabular-nums}
+.eg-brig summary::-webkit-details-marker{display:none}
+.eg-brig>summary::before,.eg-brig[open]>summary::before{content:none;display:none}
+.eg-brig-t{display:grid;gap:1px;min-width:0}
+.eg-brig-t b{font-size:1rem;line-height:1.2}
+.eg-brig-t .eg-pt{white-space:normal}
+.eg-brig summary:focus-visible{outline:3px solid var(--focus,var(--line));outline-offset:-3px}
+.eg-brig summary .eg-emb{width:22px;height:22px}
+.eg-brig summary b{min-width:0;font-weight:800;overflow-wrap:anywhere}
+.eg-brig summary i{width:9px;height:9px;border:solid var(--line);border-width:0 2.5px 2.5px 0;transform:rotate(45deg);justify-self:center}
+.eg-brig[open] summary i{transform:rotate(-135deg)}
+.eg-brig[open] summary{border-bottom:2.5px solid var(--line)}
+.eg-brig-c{display:grid;gap:8px;padding:10px 12px 12px}
+.eg-brig-c p{margin:0;font-size:.92rem}
+.eg-brig-c small{display:block;font:600 .68rem var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.eg-brig-j{display:flex;align-items:center;gap:10px}
+.eg-brig-j img{flex:0 0 auto;width:44px;height:44px;object-fit:contain}
+.eg-brig-j b{min-width:0;font-weight:800;overflow-wrap:anywhere}
+.eg-brig-m{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.eg-brig-m li{display:flex;align-items:center;gap:5px;max-width:100%;padding:2px 9px 2px 3px;background:var(--chip);border:2px solid var(--line);border-radius:999px;font-size:.84rem;font-weight:800;overflow-wrap:anywhere}
+.eg-brig-m li.me{background:var(--pressed);color:var(--pressed-on)}
+.eg-brig-m .eg-av{width:24px;height:24px}
 @media(min-width:861px){.eg-rules{grid-template-columns:1fr 1fr;gap:11px 30px}.eg-rbody.duo{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}}
 @media(max-width:860px){.eg-body{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:480px){.eg-sheet{padding:10px 8px 12px}.eg-grid{gap:8px 6px}.eg-notice{padding:6px 12px}.eg-notice[open]{padding-bottom:14px}.eg-panel{padding:14px 14px 16px}}
-@media(prefers-reduced-motion:reduce){.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door{animation:none}.eg-door{transition:none}}`;
+@media(prefers-reduced-motion:reduce){.eg-brig summary i{transition:none}.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door{animation:none}.eg-door{transition:none}}`;
 
   function init() {
     const st = document.createElement("style");
@@ -260,7 +301,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<aside class="eg-panel" id="egPanel" aria-live="polite"></aside>'
       + "</div>"
       + '<div class="eg-panel eg-rank" id="egRank" hidden><div class="eg-rhead"><h3>Classement des Pharmacogames</h3><p class="eg-sum" id="egSum"></p></div>'
-      + '<p class="eg-d" id="egRankMsg"></p><div class="eg-rbody" id="egRBody">'
+      + '<p class="eg-d" id="egRankMsg"></p><section class="eg-brigs" id="egBrigs" aria-labelledby="egBrigsT" hidden><h4 id="egBrigsT">Classement des brigades</h4><p id="egBrigsS"></p><ol id="egBrigsL"></ol></section>'
+      + '<div class="eg-rbody" id="egRBody">'
       + '<div class="eg-rcol" id="egCol"><section class="eg-lib" id="egLib" aria-live="polite" hidden></section><section class="eg-moi" id="egMoi" aria-label="Ma fiche" hidden></section>'
       + '<ol class="eg-pod" id="egPod" aria-label="Podium" hidden></ol></div>'
       + '<div class="eg-rcol"><ol class="eg-list" id="egList" aria-label="Suite du classement"></ol>'
@@ -296,6 +338,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egAvatar").addEventListener("click", () => { if (!enJeu && brouillon === null && !q("#egTime")) identifier(); });
     q("#egBrigade").addEventListener("click", () => { if (!enJeu && brouillon === null && !q("#egTime")) carnet(); });
     q("#egTout").addEventListener("click", () => { toutVoir = !toutVoir; rang(); });
+    q("#egBrigsL").addEventListener("toggle", e => { const b = e.target.dataset && e.target.dataset.b; if (b !== undefined) brigOuvertes[e.target.open ? "add" : "delete"](b); }, true);
     q("#egLib").addEventListener("click", e => { if (e.target.id === "egVu") { vuLib(); rang(); } });
     q("#egReload").addEventListener("click", () => charger("Calendrier à jour."));
 
@@ -740,7 +783,9 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   // Classement : bulletin de libération, fiche du joueur, podium, puis la suite en lignes fines.
   // Tout vient de ce que le serveur envoie déjà : rien ne sort avant la clôture d'une porte.
   const ord = n => n + "<sup>" + (n === 1 ? "er" : "e") + "</sup>";
-  let toutVoir = false, vuLib = () => {};
+  let toutVoir = false, vuLib = () => {}, attenteW = false;
+  const brigOuvertes = new Set();
+  const dec = n => String(n).replace(".", ",");
 
   function rang() {
     const L = E.classement || [], moi = relecture ? "" : norm(mem.prenom || "");
@@ -751,6 +796,15 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       : !clos ? "Les premiers points tomberont à la clôture de la porte 1, le " + jour(dt(E.portes[0].ferme, 1)) + "."
       : clos === 25 ? "Classement final : les 25 portes sont closes." : "";
     q("#egRankMsg").hidden = !q("#egRankMsg").textContent;
+
+    // Avatars et brigades : le dessin vient de participants.js, chargé à la demande ; le classement s'affiche sans attendre
+    // et se redessine une fois le module arrivé. Avant l'ouverture des fiches, personne n'a ni avatar ni brigade : rien ne change.
+    const W = window.PharmacoParticipants, fiches = L.some(x => x.a || x.b !== undefined);
+    if (fiches && !W && !attenteW) { attenteW = true; chargerParticipants().then(() => { if (E) rang(); }).catch(() => {}); }
+    const B = x => (W && W.BRIGADES[x.b]) || null;
+    const av = x => (!W || !fiches ? "" : x.a ? W.avatar(x.a, { brigade: x.b, cls: "eg-av" }) : '<span class="eg-av eg-av0" aria-hidden="true"></span>');
+    const emb = x => (B(x) ? W.embleme(x.b, "eg-emb") + '<span class="sr"> ' + h(B(x).nom) + "</span>" : "");
+    brigades(L, clos, moi, W, av);
     // Progression : le serveur peut joindre le rang d'avant la dernière clôture (av). Seules les montées s'affichent.
     const monte = x => (x.av > x.rang ? '<span class="eg-up"><span aria-hidden="true">▲' + (x.av - x.rang) + '</span><span class="sr"> gagne ' + pl(x.av - x.rang, "rang", "rangs") + "</span></span>" : "");
 
@@ -794,7 +848,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egPod").hidden = !podium;
     q("#egPod").innerHTML = !podium ? "" : [1, 2, 3].map(n => {
       const T = tete.filter(x => x.rang === n);
-      return !T.length ? "" : '<li class="eg-marche s' + n + '"><ul>' + T.map(x => '<li class="eg-row r' + n + (norm(x.p) === moi ? " me" : "") + '">' + h(x.p) + monte(x) + "</li>").join("")
+      return !T.length ? "" : '<li class="eg-marche s' + n + '"><ul>' + T.map(x => '<li class="eg-row r' + n + (norm(x.p) === moi ? " me" : "") + '">' + av(x) + "<span><b>" + h(x.p) + "</b>" + emb(x) + monte(x) + '</span><span class="sr"> ' + pl(x.pts, "point", "points") + "</span></li>").join("")
         + '</ul><div class="eg-socle"><span class="sr">Rang </span><b>' + n + "</b><span>" + pl(T[0].pts, "point", "points") + (T.length > 1 ? '<span class="sr"> chacun, ex aequo</span>' : "") + "</span></div></li>";
     }).join("");
 
@@ -806,7 +860,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       trou = cache;
       return (saut ? '<li class="eg-gap" aria-hidden="true">…</li>' : "")
         + '<li class="eg-row' + (x === me ? " me" : "") + '"' + (cache ? " hidden" : "") + '><span class="eg-rk"><span class="sr">Rang </span>' + (clos ? x.rang : "·") + "</span>"
-        + '<span class="eg-nm">' + h(x.p) + (x === me ? '<span class="eg-vous">vous</span>' : "") + monte(x) + "</span>"
+        + '<span class="eg-nm">' + av(x) + "<b>" + h(x.p) + "</b>" + emb(x) + (x === me ? '<span class="eg-vous">vous</span>' : "") + monte(x) + "</span>"
         + '<span class="eg-pt">' + (clos ? pl(x.pts, "point", "points") : pl(x.rep, "réponse scellée", "réponses scellées")) + "</span></li>";
     }).join("");
     q("#egMore").hidden = !long;
@@ -815,5 +869,30 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     const tete2 = !lib.hidden || !fiche.hidden || podium;
     q("#egCol").hidden = !tete2;
     q("#egRBody").classList.toggle("duo", tete2);
+  }
+
+  // Classement des cinq brigades, au-dessus du classement individuel : rang et moyenne par membre actif (portes closes
+  // seulement, calculés par le serveur), puis au toucher la devise, le jeu emblème, l'effectif et les membres.
+  // Avant la première clôture : ni rang ni moyenne. Sans brigade (avant l'ouverture des fiches) : pas de bandeau.
+  function brigades(L, clos, moi, W, av) {
+    const T = (E.brigades || []).filter(t => t.n > 0), zone = q("#egBrigs");
+    zone.hidden = !(W && T.length);
+    if (zone.hidden) return;
+    const note = clos > 0 && T.some(t => t.moy > 0), mienne = !relecture && E.profil ? E.profil.b : undefined;
+    const cat = typeof G !== "undefined" && Array.isArray(G) ? G : [];
+    q("#egBrigsS").textContent = note ? "Moyenne de points par membre actif, portes closes" : "Rang et moyenne à la première clôture";
+    q("#egBrigsL").innerHTML = T.map(t => {
+      const b = W.BRIGADES[t.b];
+      if (!b) return "";
+      const devise = W.DEVISES[t.devise], jeu = (t.jeux || []).map(n => cat.find(g => g.n === n)).find(Boolean), M = L.filter(x => x.b === t.b);
+      return '<li><details class="eg-brig' + (t.b === mienne ? " me" : "") + '" data-b="' + t.b + '" style="--bf:' + b.fond + '"' + (brigOuvertes.has(String(t.b)) ? " open" : "") + ">"
+        + '<summary><span class="eg-rk">' + (note ? '<span class="sr">Rang </span>' + t.rang : '<span aria-hidden="true">·</span>') + "</span>" + W.embleme(t.b, "eg-emb")
+        + '<span class="eg-brig-t"><b>' + h(b.nom) + (t.b === mienne ? ' <span class="eg-vous">la vôtre</span>' : "") + "</b>"
+        + '<span class="eg-pt">' + (note ? "moyenne " + dec(t.moy) + " " + (t.moy >= 2 ? "points" : "point") + " · " : "") + pl(t.n, "membre", "membres") + '</span></span><i aria-hidden="true"></i></summary>'
+        + '<div class="eg-brig-c"><p><small>Devise</small>' + (devise ? "« " + h(devise) + " »" : "Pas encore élue.") + "</p>"
+        + '<div><small>Jeu emblème</small><div class="eg-brig-j">' + (jeu ? '<img src="img/' + h(jeu.img) + '" alt="" loading="lazy"><b>' + h(jeu.n) + "</b>" : "<p>Pas encore élu.</p>") + "</div></div>"
+        + "<p><small>Effectif</small>" + pl(t.n, "membre", "membres") + (clos ? ", dont " + pl(t.actifs, "actif", "actifs") + " sur les portes closes" : "") + ".</p>"
+        + '<div><small>Membres</small><ul class="eg-brig-m">' + M.map(x => "<li" + (moi && norm(x.p) === moi ? ' class="me"' : "") + ">" + av(x) + h(x.p) + "</li>").join("") + "</ul></div></div></details></li>";
+    }).join("");
   }
 })();
