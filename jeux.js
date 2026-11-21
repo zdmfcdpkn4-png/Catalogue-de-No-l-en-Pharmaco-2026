@@ -2688,11 +2688,11 @@
     const RSG = { series: 6, par: 3, recharge: 0.45, releve: 0.9, fin: 0.7, cx: 180, cy: 185, coeur: 0.2, septum: 0.62, capsule: 15, x0: 180, y0: 436, xmin: 16, xmax: 344, ymin: 48, ymax: 340, decal: 64,
       // Trois séquences, des seringues de plus en plus grosses : la petite file vite mais le flux l'emporte, la grosse tient tête au flux mais prend son temps (il faut viser plus en avance).
       // vol : durée du vol (s) ; cran : dérive latérale d'un cran de flux (px/s) ; k : échelle du dessin.
-      tailles: [{ nom: "1 mL", vol: 0.34, cran: 48, k: 0.78 }, { nom: "10 mL", vol: 0.42, cran: 34, k: 1 }, { nom: "50 mL", vol: 0.55, cran: 18, k: 1.3 }],
-      niv: [{ ser: 0, r: 34, ax: 60, ay: 0, wx: 0.75, wy: 0, vent: 1, raf: 0, wraf: 0 }, { ser: 0, r: 31, ax: 80, ay: 0, wx: 0.9, wy: 0, vent: -2, raf: 0, wraf: 0 },
-        { ser: 1, r: 30, ax: 85, ay: 25, wx: 0.9, wy: 1.4, vent: 2.5, raf: 0, wraf: 0 }, { ser: 1, r: 27, ax: 80, ay: 38, wx: 1, wy: 1.7, vent: -3, raf: 0, wraf: 0 },
-        { ser: 2, r: 27, ax: 85, ay: 40, wx: 1, wy: 1.7, vent: 3, raf: 0, wraf: 0 }, { ser: 2, r: 24, ax: 90, ay: 45, wx: 1.1, wy: 1.9, vent: -2, raf: 1.5, wraf: 1.6 }],
-      seuils: [100, 280, 450, 620, 790, 960, 1130, 1300, 1480, 1650] };
+      tailles: [{ nom: "1 mL", vol: 0.34, cran: 30, k: 0.78 }, { nom: "10 mL", vol: 0.42, cran: 22, k: 1 }, { nom: "50 mL", vol: 0.5, cran: 12, k: 1.3 }],
+      niv: [{ ser: 0, r: 34, ax: 60, ay: 0, wx: 0.75, wy: 0, vent: 1, raf: 0, wraf: 0 }, { ser: 0, r: 31, ax: 75, ay: 0, wx: 0.85, wy: 0, vent: -2, raf: 0, wraf: 0 },
+        { ser: 1, r: 30, ax: 80, ay: 22, wx: 0.8, wy: 1.2, vent: 2, raf: 0, wraf: 0 }, { ser: 1, r: 27, ax: 80, ay: 32, wx: 0.85, wy: 1.4, vent: -2.5, raf: 0, wraf: 0 },
+        { ser: 2, r: 27, ax: 75, ay: 34, wx: 0.8, wy: 1.3, vent: 3, raf: 0, wraf: 0 }, { ser: 2, r: 24, ax: 80, ay: 38, wx: 0.9, wy: 1.5, vent: -2, raf: 1, wraf: 1.6 }],
+      seuils: [120, 340, 540, 740, 940, 1140, 1320, 1480, 1630, 1730] };
     const SG_PAS = 1 / 240;
     const totalSeringue = () => RSG.series * RSG.par;
     const tailleSeringue = s => RSG.tailles[RSG.niv[s.serie].ser];
@@ -2821,8 +2821,9 @@
         window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
       };
       // La seringue vue de profil, embout vers la droite : poussoir, corps gradué à moitié plein, embout Luer et son bouchon. Pas d'aiguille.
-      const profil = (x, y, a, k, alpha) => {
-        ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.scale(k, k); ctx.globalAlpha = alpha;
+      // pointe : (x, y) désigne le bout de l'embout, et non le milieu du corps (en vol, c'est la pointe qui arrive au point d'impact).
+      const profil = (x, y, a, k, alpha, pointe) => {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.scale(k, k); if (pointe) ctx.translate(-28, 0); ctx.globalAlpha = alpha;
         trait(ctx, 3.2); ctx.beginPath(); ctx.moveTo(-34, 0); ctx.lineTo(-17, 0); ctx.stroke();
         trait(ctx, 2.2); ctx.fillStyle = V; ctx.beginPath(); ctx.roundRect(-38, -7, 5, 14, 2); ctx.fill(); ctx.stroke();
         ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-17, -7, 33, 14, 3); ctx.fill();
@@ -2847,7 +2848,7 @@
       const flaconCible = (x, y, r, serie, alpha) => {
         ctx.globalAlpha = alpha;
         ctx.strokeStyle = "rgba(38,7,109,.45)"; ctx.lineWidth = 6; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x, 47); ctx.lineTo(x, y - r - 9); ctx.stroke();
-        trait(ctx, 2.4); ctx.fillStyle = V; ctx.beginPath(); ctx.roundRect(x - r - 9, y - r - 9, 2 * r + 18, 2 * r + 18, 12); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = "rgba(38,7,109,.45)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x, y, r + 6, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();   // la pince de l'automate : tout le disque du flacon rapporte
         trait(ctx, 3); ctx.fillStyle = B; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.3); ctx.fill(); ctx.stroke();
         trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(x, y, r * RSG.septum, 0, 6.3); ctx.fill(); ctx.stroke();
         ctx.strokeStyle = "rgba(38,7,109,.22)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r * (RSG.septum + RSG.coeur) / 2, 0, 6.3); ctx.stroke();
@@ -2886,8 +2887,8 @@
         } else {
           if (combo) {                                                                               // le flacon s'auréole tant que la série tient
             const b = calme ? 0 : Math.sin(s.t * 9) * 2.5;
-            ctx.globalAlpha = 0.85; ctx.strokeStyle = TEINTE; ctx.lineWidth = 4; ctx.beginPath(); ctx.roundRect(s.cx - s.r - 15 - b, s.cy - s.r - 15 - b, 2 * (s.r + 15 + b), 2 * (s.r + 15 + b), 17); ctx.stroke();
-            if (s.suite >= 4) { ctx.globalAlpha = 0.45; ctx.beginPath(); ctx.roundRect(s.cx - s.r - 22 - 2 * b, s.cy - s.r - 22 - 2 * b, 2 * (s.r + 22 + 2 * b), 2 * (s.r + 22 + 2 * b), 22); ctx.stroke(); }
+            ctx.globalAlpha = 0.85; ctx.strokeStyle = TEINTE; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.cx, s.cy, s.r + 13 + b, 0, 6.3); ctx.stroke();
+            if (s.suite >= 4) { ctx.globalAlpha = 0.45; ctx.beginPath(); ctx.arc(s.cx, s.cy, s.r + 20 + 2 * b, 0, 6.3); ctx.stroke(); }
             ctx.globalAlpha = 1;
           }
           flaconCible(s.cx, s.cy, s.r, s.serie, 1);
@@ -2945,7 +2946,7 @@
             ctx.globalAlpha = 0.6 - i * 0.12; ctx.fillStyle = TEINTE; ctx.beginPath(); ctx.arc(RSG.x0 + (v.ax - RSG.x0) * w + v.dx * w / u, RSG.y0 + (v.ay - RSG.y0) * w - Math.sin(w * Math.PI) * 16, (7 - i) * tl.k * (1 - 0.55 * w), 0, 6.3); ctx.fill();
           }
           ctx.globalAlpha = 1;
-          profil(RSG.x0 + (v.ax - RSG.x0) * u + v.dx, RSG.y0 + (v.ay - RSG.y0) * u - (calme ? 0 : Math.sin(u * Math.PI) * 16), Math.atan2(v.ay - RSG.y0, v.ax - RSG.x0), tl.k * (1 - 0.55 * u), 1);
+          profil(RSG.x0 + (v.ax - RSG.x0) * u + v.dx, RSG.y0 + (v.ay - RSG.y0) * u - (calme ? 0 : Math.sin(u * Math.PI) * 16), Math.atan2(v.ay - RSG.y0, v.ax - RSG.x0), tl.k * (1 - 0.55 * u), 1, true);
         }
         // La mire.
         if (!clos) {
