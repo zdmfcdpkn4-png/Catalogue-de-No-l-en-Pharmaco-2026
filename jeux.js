@@ -2048,22 +2048,82 @@
       cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointermove", bouge); cv.removeEventListener("pointerup", leve); cv.removeEventListener("pointercancel", leve); cv.removeEventListener("contextmenu", menu);
       window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", relache); window.removeEventListener("blur", oubli);
     };
-    // Le stock au fond des rayons : des silhouettes pâles, tirées une fois pour toutes, hors des vides et des escabeaux.
-    const stock = [];
-    { let a = 7; const h = () => (a = (a * 16807) % 2147483647) / 2147483647;
-      for (let n = 0; n < 4; n++) for (let x = 26; x < 326; x += 15 + h() * 16) {
-        const l = 10 + h() * 14, ht = 12 + h() * 26, genre = h();
-        if (genre < 0.25 || eVide(n, x + l / 2, -l) || E_ESC[n].concat(E_ESC[n - 1] || []).some(e => Math.abs(e - x - l / 2) < l / 2 + 13)) continue;
-        stock.push([x, E_NIV[n], l, Math.min(ht, 44), genre > 0.7]);
-        x += l;
-      } }
+    // Le logo de la pharmacotechnie, sur le flanc de tout ce qui roule.
+    const logo = new Image(); logo.src = api._logo;
+    // Le stock de la réserve, au fond des rayons, en teintes pâles et sans contour pour ne pas se confondre avec le jeu :
+    // [genre, x, niveau, largeur, hauteur]. Placé à la main, hors des vides et des escabeaux.
+    const STOCK = [
+      ["palette", 56, 0, 50, 34], ["bac", 158, 0, 44, 22], ["cartons", 254, 0, 44, 30],
+      ["cartons", 96, 1, 20, 22], ["flacons", 150, 1, 62, 22], ["bac", 244, 1, 20, 16],
+      ["bac", 22, 2, 44, 20], ["boites", 126, 2, 34, 30], ["flacons", 200, 2, 30, 20], ["cartons", 294, 2, 44, 34],
+      ["boites", 20, 3, 30, 34], ["flacons", 168, 3, 30, 22], ["bac", 204, 3, 30, 18], ["boites", 324, 3, 16, 26],
+      ["poches", 126, 2, 36, 0], ["poches", 262, 3, 24, 0]];
+    const LAMPES = [R, Y, G, B, P, O];
+    function objet(genre, x, y, l, ht) {
+      const kraft = "rgba(205,160,110,.5)", ruban = "rgba(160,115,70,.45)", verre = "rgba(38,7,109,.13)", blanc = "rgba(255,255,255,.85)";
+      if (genre === "palette" || genre === "cartons") {
+        if (genre === "palette") { ctx.fillStyle = ruban; ctx.fillRect(x - 3, y - 5, l + 6, 2.5); for (let i = 0; i < 3; i++) ctx.fillRect(x - 3 + i * (l + 1) / 2, y - 2.5, 5, 2.5); y -= 5; ht -= 5; }
+        const n = l > 30 ? 2 : 1, lc = l / n;
+        for (let i = 0; i < n; i++) {
+          const h = ht * (i ? 0.72 : 1), cx = x + i * lc;
+          ctx.fillStyle = kraft; ctx.beginPath(); ctx.roundRect(cx + 0.5, y - h, lc - 1, h, 1.5); ctx.fill();
+          ctx.fillStyle = ruban; ctx.fillRect(cx + lc / 2 - 1.5, y - h, 3, h);
+          ctx.fillStyle = blanc; ctx.fillRect(cx + 3, y - h * 0.62, lc * 0.34, 5);
+        }
+      } else if (genre === "bac") {                                        // le bac gerbable bleu et son porte-étiquette
+        ctx.fillStyle = "rgba(143,199,232,.6)"; ctx.beginPath(); ctx.moveTo(x, y - ht); ctx.lineTo(x + l, y - ht); ctx.lineTo(x + l - 3, y); ctx.lineTo(x + 3, y); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "rgba(90,150,200,.45)"; ctx.fillRect(x - 1, y - ht - 2.5, l + 2, 3);
+        ctx.fillStyle = blanc; ctx.fillRect(x + l / 2 - 6, y - ht * 0.6, 12, 5);
+      } else if (genre === "flacons") {                                    // une rangée de flacons, capsules de couleur
+        const n = Math.max(2, Math.round(l / 11)), lf = l / n, caps = [O, G, P, Y, B];
+        for (let i = 0; i < n; i++) {
+          const fx = x + i * lf, h = ht * (i % 3 === 1 ? 0.8 : 1);
+          ctx.fillStyle = verre; ctx.beginPath(); ctx.roundRect(fx + 1, y - h + 5, lf - 2, h - 5, 2); ctx.rect(fx + lf / 2 - 2, y - h + 2, 4, 3); ctx.fill();
+          ctx.globalAlpha = 0.55; ctx.fillStyle = caps[i % caps.length]; ctx.fillRect(fx + lf / 2 - 3, y - h, 6, 2.5); ctx.globalAlpha = 1;
+          ctx.fillStyle = blanc; ctx.fillRect(fx + 2, y - h * 0.55, lf - 4, 4.5);
+        }
+      } else if (genre === "boites") {                                     // des boîtes de médicaments empilées, à croix verte
+        const etages = Math.max(2, Math.round(ht / 9)), he = ht / etages;
+        for (let i = 0; i < etages; i++) {
+          const d = i % 2 ? 2 : 0;
+          ctx.fillStyle = i % 2 ? "rgba(229,180,217,.5)" : "rgba(255,255,255,.9)"; ctx.beginPath(); ctx.roundRect(x + d, y - (i + 1) * he + 0.6, l - 2 - d, he - 1.2, 1.2); ctx.fill();
+          ctx.fillStyle = "rgba(62,155,118,.55)"; ctx.fillRect(x + d + 3, y - (i + 0.5) * he - 0.8, 5, 1.6); ctx.fillRect(x + d + 4.7, y - (i + 0.5) * he - 2.5, 1.6, 5);
+        }
+      } else {                                                             // des poches de perfusion suspendues sous le rayon du dessus
+        const n = Math.max(1, Math.round(l / 12));
+        for (let i = 0; i < n; i++) {
+          const px = x + 6 + i * 12, py = y + 7;
+          ctx.strokeStyle = "rgba(38,7,109,.2)"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py + 5); ctx.moveTo(px, py + 23); ctx.lineTo(px, py + 29); ctx.stroke();
+          ctx.fillStyle = "rgba(143,199,232,.32)"; ctx.beginPath(); ctx.roundRect(px - 4.5, py + 5, 9, 18, 3); ctx.fill();
+          ctx.fillStyle = i % 2 ? "rgba(236,213,103,.6)" : "rgba(143,199,232,.6)"; ctx.beginPath(); ctx.roundRect(px - 4.5, py + 13, 9, 10, [0, 0, 3, 3]); ctx.fill();
+          ctx.fillStyle = blanc; ctx.fillRect(px - 3, py + 8, 6, 3.5);
+        }
+      }
+    }
     function decor() {
+      // Le mur carrelé de la réserve, sa plaque, son thermomètre de contrôle et, Noël oblige, une guirlande.
       ctx.fillStyle = "#EDEAF6"; ctx.fillRect(0, 39, W, BANDE - 39);
-      ctx.fillStyle = "rgba(38,7,109,.10)";
-      for (const [x, y, l, ht, flaconne] of stock) {
-        ctx.beginPath();
-        if (flaconne) { ctx.roundRect(x, y - ht * 0.7, l, ht * 0.7, 3); ctx.rect(x + l * 0.3, y - ht * 0.7 - 5, l * 0.4, 5); } else ctx.roundRect(x, y - ht, l, ht, 2);
-        ctx.fill();
+      ctx.strokeStyle = "rgba(38,7,109,.045)"; ctx.lineWidth = 1; ctx.beginPath();
+      for (let x = 36; x < W; x += 36) { ctx.moveTo(x, 39); ctx.lineTo(x, E_NIV[0]); }
+      for (let y = 58; y < E_NIV[0]; y += 36) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+      ctx.stroke();
+      ctx.fillStyle = "rgba(38,7,109,.1)"; ctx.beginPath(); ctx.roundRect(88, 80, 100, 15, 4); ctx.fill();
+      texte(ctx, "RÉSERVE · 15-25 °C", 138, 88, 8, "rgba(38,7,109,.5)");
+      ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.beginPath(); ctx.roundRect(232, 76, 9, 26, 4.5); ctx.fill();
+      ctx.fillStyle = "rgba(216,64,43,.55)"; ctx.beginPath(); ctx.roundRect(235, 88, 3, 11, 1.5); ctx.arc(236.5, 98, 3, 0, 6.3); ctx.fill();
+      ctx.strokeStyle = "rgba(38,7,109,.35)"; ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let x = 0; x < W; x += 60) { ctx.moveTo(x, 41); ctx.quadraticCurveTo(x + 30, 55, x + 60, 41); }
+      ctx.stroke();
+      for (let i = 0; i < 18; i++) {
+        const u = (i % 3 + 0.5) / 3, x = Math.floor(i / 3) * 60 + u * 60, y = 41 + 14 * 2 * u * (1 - u), allume = calme || clos || (Math.floor(s.t * 2) + i) % 3 !== 0;
+        ctx.globalAlpha = allume ? 0.9 : 0.3; ctx.fillStyle = LAMPES[i % LAMPES.length]; ctx.beginPath(); ctx.arc(x, y + 3, 2.8, 0, 6.3); ctx.fill(); ctx.globalAlpha = 1;
+      }
+      for (const [genre, x, n, l, ht] of STOCK) objet(genre, x, genre === "poches" ? E_NIV[n + 1] : E_NIV[n], l, ht);
+      // Les bacs de récupération, au pied des montants : c'est là que finit tout ce qui a dévalé.
+      for (const bx of [E_XG, E_XD - 22]) {
+        ctx.fillStyle = "rgba(236,213,103,.85)"; ctx.beginPath(); ctx.roundRect(bx, E_NIV[0] - 24, 22, 24, [2, 2, 4, 4]); ctx.fill();
+        ctx.fillStyle = "rgba(38,7,109,.55)"; ctx.fillRect(bx - 1, E_NIV[0] - 26, 24, 3.5);
+        ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillRect(bx + 5, E_NIV[0] - 16, 12, 7);
       }
       // Les montants du rayonnage et le sol.
       ctx.fillStyle = N; ctx.fillRect(E_XG - 8, 96, 8, E_NIV[0] - 96); ctx.fillRect(E_XD, 96, 8, E_NIV[0] - 96); ctx.fillRect(0, E_NIV[0], W, BANDE - E_NIV[0]);
@@ -2100,10 +2160,12 @@
     }
     function bobine(b) {
       ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.tour);
-      trait(ctx, 2); ctx.fillStyle = b.film ? B : C; ctx.beginPath(); ctx.arc(0, 0, E_RB, 0, 6.3); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = b.film ? C : Y; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 6.3); ctx.fill(); ctx.lineWidth = 1.4; ctx.stroke();
-      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(0, 0, 1.8, 0, 6.3); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(5, 0); ctx.lineTo(E_RB, 0); ctx.moveTo(-5, 0); ctx.lineTo(-E_RB, 0); ctx.stroke();
+      trait(ctx, 2); ctx.fillStyle = b.film ? B : Y; ctx.beginPath(); ctx.arc(0, 0, E_RB, 0, 6.3); ctx.fill(); ctx.stroke();
+      // Le flanc : le logo de l'unité, qui tourne avec la bobine ; sans image, un simple mandrin.
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, 6.6, 0, 6.3); ctx.fill();
+      if (logo.complete && logo.naturalWidth) { ctx.save(); ctx.clip(); ctx.drawImage(logo, -6.6, -6.6, 13.2, 13.2); ctx.restore(); }
+      else { ctx.fillStyle = N; ctx.beginPath(); ctx.arc(0, 0, 1.8, 0, 6.3); ctx.fill(); }
+      ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, 6.6, 0, 6.3); ctx.stroke();
       ctx.restore();
     }
     function preparateur() {
