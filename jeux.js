@@ -3876,6 +3876,8 @@
         g.lineWidth = 4; ligne(212, 238, 348, 238); g.lineWidth = 2;
         g.strokeStyle = "rgba(255,255,255,.75)"; g.lineWidth = 3; ligne(224, 226, 252, 176);
       })(decor.getContext("2d"));
+      // Le décor en image (un couloir d'isolateurs) recouvre le décor dessiné, qui reste en place si l'image ne se charge pas.
+      const fondImg = new Image(); fondImg.onload = () => { const g = decor.getContext("2d"); g.setTransform(2, 0, 0, 2, 0, 0); g.drawImage(fondImg, 0, 39, W, 353); }; fondImg.src = opt.decor || "img/decor-seringue.webp";
       const touches = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false };
       const posDe = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.width * W]; };
       // À la souris, la mire est sous le pointeur ; au doigt ou au stylet, elle se tient au-dessus pour ne pas être cachée.
