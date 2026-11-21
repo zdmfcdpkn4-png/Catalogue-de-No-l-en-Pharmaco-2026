@@ -168,22 +168,63 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 .eg-rank{margin-top:24px}
 .eg-rhead{display:flex;align-items:baseline;justify-content:space-between;gap:6px 12px;flex-wrap:wrap}
 .eg-sum{margin:3px 0 0;font:600 .72rem var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
-.eg-list{display:grid;gap:9px;margin:14px 0 0;padding:0;list-style:none}
-.eg-row{display:grid;grid-template-columns:40px minmax(0,1fr);gap:10px 12px;align-items:center;padding:8px 12px;background:#fff;border:2.5px solid var(--line);border-radius:14px}
-.eg-row.r1{background:var(--tI);box-shadow:4px 4px 0 var(--shadow)}
-.eg-row.me{outline:3px solid #EC7739;outline-offset:1px}
-.eg-rk{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;border:2.5px solid var(--line);background:var(--foil-a);font:800 1.05rem/1 var(--display);font-variant-numeric:tabular-nums}
-.eg-row.r1 .eg-rk{background:var(--mu)}.eg-row.r2 .eg-rk{background:var(--li)}.eg-row.r3 .eg-rk{background:var(--tE)}
-.eg-n{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0;font-weight:800;line-height:1.15}
-.eg-n b{min-width:0;font-weight:800;overflow-wrap:anywhere}
-.eg-n span{flex:0 0 auto;font:600 .78rem var(--mono);white-space:nowrap}
-.eg-bar{height:10px;margin:6px 0 0;border:2px solid var(--line);border-radius:999px;background:var(--foil-a);overflow:hidden}
-.eg-bar i{display:block;height:100%;background:var(--or)}
-.eg-row small{display:block;margin-top:4px;font:600 .68rem var(--mono);color:var(--muted)}
-@media(min-width:861px){.eg-rules{grid-template-columns:1fr 1fr;gap:11px 30px}.eg-list{grid-template-columns:1fr 1fr}}
+.eg-rbody{display:grid;gap:14px 26px;margin-top:14px;align-items:start}
+.eg-rcol{display:grid;gap:14px;min-width:0}
+/* Bulletin de libération */
+.eg-lib{background:#fff;border:2.5px solid var(--line);border-radius:14px;overflow:hidden}
+.eg-lib h4{margin:0;padding:8px 12px;background:var(--pressed);color:var(--pressed-on);font-weight:800;font-size:1rem;line-height:1.2}
+.eg-lib div{display:grid;gap:8px;padding:10px 12px 12px}
+.eg-lib p{margin:0;font-size:.95rem}
+.eg-gain{display:flex;flex-wrap:wrap;gap:8px}
+.eg-gain>span{padding:3px 12px;background:var(--mu);border:2.5px solid var(--line);border-radius:999px;font-weight:800}
+.eg-gain>span+span{background:var(--li)}
+.eg-lib .linkbtn{justify-self:start}
+.eg-lib.neuf{animation:eg-pose .5s cubic-bezier(.2,1.4,.4,1) both}
+.eg-lib.neuf .eg-gain>span{animation:eg-tampon .45s .35s cubic-bezier(.2,1.5,.4,1) both}
+.eg-lib.neuf .eg-gain>span+span{animation-delay:.6s}
+@keyframes eg-pose{from{transform:translateY(-10px) scale(.97)}to{transform:none}}
+@keyframes eg-tampon{from{transform:scale(1.5) rotate(-6deg)}to{transform:none}}
+/* Ma fiche */
+.eg-moi{padding:12px;background:var(--tI);border:2.5px solid var(--line);border-radius:14px;box-shadow:4px 4px 0 var(--shadow)}
+.eg-moi-h{display:flex;align-items:center;gap:12px}
+.eg-moi-rg{flex:0 0 auto;display:grid;place-items:center;width:58px;height:58px;border-radius:50%;border:2.5px solid var(--line);background:#fff;font:800 1.4rem/1 var(--display);font-variant-numeric:tabular-nums}
+.eg-moi sup{font-size:.6em}
+.eg-moi-h b{display:block;font-weight:800;font-size:1.12rem;line-height:1.15;overflow-wrap:anywhere}
+.eg-moi-h small{font:600 .72rem var(--mono);color:var(--muted)}
+.eg-moi ul{display:grid;gap:6px;margin:10px 0 0;padding:0;list-style:none}
+.eg-moi li{padding:5px 10px;background:#fff;border:2px solid var(--line);border-radius:10px;font-size:.9rem}
+.eg-moi li b{font-weight:800}
+/* Podium */
+.eg-pod{display:flex;justify-content:center;align-items:flex-end;gap:8px;max-width:520px;width:100%;margin:0 auto;padding:0;list-style:none}
+.eg-marche{flex:1 1 0;min-width:0;max-width:46%;display:grid;gap:6px;justify-items:center;text-align:center}
+.eg-marche.s1{order:2}.eg-marche.s2{order:1}.eg-marche.s3{order:3}
+.eg-marche ul{display:grid;gap:4px;justify-items:center;width:100%;margin:0;padding:0;list-style:none}
+.eg-marche .eg-row{max-width:100%;padding:1px 8px;border-radius:8px;font-weight:800;line-height:1.2;overflow-wrap:anywhere}
+.eg-marche .eg-row.me{background:var(--pressed);color:var(--pressed-on)}
+.eg-socle{display:grid;place-items:center;align-content:center;gap:1px;width:100%;padding:6px 2px;border:2.5px solid var(--line);border-radius:12px 12px 6px 6px}
+.eg-socle b{font-weight:800;font-size:1.5rem;line-height:1;font-variant-numeric:tabular-nums}
+.eg-socle span{font:600 .7rem var(--mono);white-space:nowrap}
+.s1 .eg-socle{min-height:92px;background:var(--mu);box-shadow:4px 4px 0 var(--shadow)}
+.s2 .eg-socle{min-height:68px;background:var(--li)}
+.s3 .eg-socle{min-height:50px;background:var(--tE)}
+.eg-up{margin-left:6px;font:600 .7rem var(--mono);color:var(--ok);white-space:nowrap}
+.eg-row.me .eg-up{color:inherit}
+/* Suite du classement */
+.eg-list{margin:0;padding:0;list-style:none;background:#fff;border:2.5px solid var(--line);border-radius:14px;overflow:hidden}
+.eg-list:empty{display:none}
+.eg-list .eg-row{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:7px 12px;font-variant-numeric:tabular-nums}
+.eg-list li+li{border-top:2px solid var(--foil-b)}
+.eg-rk{font:600 .78rem var(--mono);color:var(--muted)}
+.eg-nm{min-width:0;font-weight:800;overflow-wrap:anywhere}
+.eg-pt{font:600 .78rem var(--mono);white-space:nowrap}
+.eg-list .eg-row.me{background:var(--tI);box-shadow:inset 5px 0 0 var(--line)}
+.eg-vous{display:inline-block;white-space:nowrap;margin-left:8px;padding:1px 7px;background:var(--pressed);color:var(--pressed-on);border-radius:999px;font:600 .68rem var(--mono);letter-spacing:.05em;text-transform:uppercase}
+.eg-gap{padding:2px 12px;background:var(--foil-a);text-align:center;font:600 .72rem var(--mono);color:var(--muted)}
+.eg-more{margin:0;text-align:center}
+@media(min-width:861px){.eg-rules{grid-template-columns:1fr 1fr;gap:11px 30px}.eg-rbody.duo{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}}
 @media(max-width:860px){.eg-body{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:480px){.eg-sheet{padding:10px 8px 12px}.eg-grid{gap:8px 6px}.eg-notice{padding:6px 12px}.eg-notice[open]{padding-bottom:14px}.eg-panel{padding:14px 14px 16px}}
-@media(prefers-reduced-motion:reduce){.eg-cell.ou .eg-door{animation:none}.eg-door{transition:none}}`;
+@media(prefers-reduced-motion:reduce){.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door{animation:none}.eg-door{transition:none}}`;
 
   function init() {
     const st = document.createElement("style");
@@ -214,7 +255,11 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<aside class="eg-panel" id="egPanel" aria-live="polite"></aside>'
       + "</div>"
       + '<div class="eg-panel eg-rank" id="egRank" hidden><div class="eg-rhead"><h3>Classement des Pharmacogames</h3><p class="eg-sum" id="egSum"></p></div>'
-      + '<p class="eg-d" id="egRankMsg"></p><ol class="eg-list" id="egList"></ol></div>';
+      + '<p class="eg-d" id="egRankMsg"></p><div class="eg-rbody" id="egRBody">'
+      + '<div class="eg-rcol" id="egCol"><section class="eg-lib" id="egLib" aria-live="polite" hidden></section><section class="eg-moi" id="egMoi" aria-label="Ma fiche" hidden></section>'
+      + '<ol class="eg-pod" id="egPod" aria-label="Podium" hidden></ol></div>'
+      + '<div class="eg-rcol"><ol class="eg-list" id="egList" aria-label="Suite du classement"></ol>'
+      + '<p class="eg-more" id="egMore" hidden><button class="linkbtn" type="button" id="egTout"></button></p></div></div></div>';
     (q("#vote") || q("#avent") || q("header.hero")).insertAdjacentElement("afterend", sec);
 
     const a = document.createElement("a");
@@ -243,6 +288,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     });
     q("#egPanel").addEventListener("input", e => { if (e.target.id === "egRange") noter(Number(e.target.value)); });
     q("#egChange").addEventListener("click", sortir);
+    q("#egTout").addEventListener("click", () => { toutVoir = !toutVoir; rang(); });
+    q("#egLib").addEventListener("click", e => { if (e.target.id === "egVu") { vuLib(); rang(); } });
     q("#egReload").addEventListener("click", () => charger("Calendrier à jour."));
 
     // Prénom et code déjà donnés pour le vote sur cet appareil : on les propose, sans les imposer.
@@ -575,17 +622,83 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     zone.scrollIntoView({ block: "nearest" });
   }
 
+  // Classement : bulletin de libération, fiche du joueur, podium, puis la suite en lignes fines.
+  // Tout vient de ce que le serveur envoie déjà : rien ne sort avant la clôture d'une porte.
+  const ord = n => n + "<sup>" + (n === 1 ? "er" : "e") + "</sup>";
+  let toutVoir = false, vuLib = () => {};
+
   function rang() {
-    const L = E.classement || [], moi = relecture ? "" : norm(mem.prenom || ""), max = Math.max(1, ...L.map(x => x.pts));
-    const clos = E.portes.filter(p => p.etat === "close").length;
+    const L = E.classement || [], moi = relecture ? "" : norm(mem.prenom || "");
+    const closes = E.portes.filter(p => p.etat === "close"), clos = closes.length;
+    const me = moi ? L.find(x => norm(x.p) === moi) : null;
     q("#egSum").textContent = L.length ? pl(L.length, "joueur", "joueurs") + " · " + pl(clos, "porte comptée", "portes comptées") : "";
     q("#egRankMsg").textContent = !L.length ? "Personne n'a encore scellé de réponse. La première place est à prendre."
       : !clos ? "Les premiers points tomberont à la clôture de la porte 1, le " + jour(dt(E.portes[0].ferme, 1)) + "."
       : clos === 25 ? "Classement final : les 25 portes sont closes." : "";
     q("#egRankMsg").hidden = !q("#egRankMsg").textContent;
-    q("#egList").innerHTML = L.map(x => '<li class="eg-row' + (clos && x.rang <= 3 ? " r" + x.rang : "") + (norm(x.p) === moi ? " me" : "") + '"><span class="eg-rk"><span class="sr">Rang </span>' + (clos ? x.rang : "·") + "</span>"
-      + '<div><p class="eg-n"><b>' + h(x.p) + "</b><span>" + pl(x.pts, "point", "points") + "</span></p>"
-      + '<div class="eg-bar" aria-hidden="true"><i style="width:' + Math.round(x.pts / max * 100) + '%"></i></div>'
-      + "<small>" + pl(x.rep, "réponse scellée", "réponses scellées") + "</small></div></li>").join("");
+    // Progression : le serveur peut joindre le rang d'avant la dernière clôture (av). Seules les montées s'affichent.
+    const monte = x => (x.av > x.rang ? '<span class="eg-up"><span aria-hidden="true">▲' + (x.av - x.rang) + '</span><span class="sr"> gagne ' + pl(x.av - x.rang, "rang", "rangs") + "</span></span>" : "");
+
+    // Bulletin de libération : à la première visite après une clôture, ce qui vient d'être libéré pour ce joueur.
+    const lib = q("#egLib"), vu = mem.vu && mem.vu.p === moi ? mem.vu : null;
+    const neuves = me && clos ? closes.slice(vu ? Math.min(vu.clos, clos) : Math.max(0, clos - 1)) : [];
+    vuLib = () => { if (me) { mem.vu = { p: moi, clos, rang: clos ? me.rang : 0 }; save(); } };
+    if (!neuves.length) { lib.hidden = true; lib.innerHTML = ""; if (me && !vu) vuLib(); }
+    else {
+      const gain = neuves.reduce((t, p) => t + (p.pts || 0), 0), jouees = neuves.filter(p => p.pts !== undefined).length;
+      const avant = vu && vu.clos ? vu.rang : neuves.length === 1 ? me.av : undefined, etait = lib.dataset.k;
+      lib.dataset.k = moi + "|" + clos;
+      lib.innerHTML = "<h4>" + (neuves.length === 1 ? "Porte " + neuves[0].n + " libérée" : "Portes " + neuves[0].n + " à " + neuves[neuves.length - 1].n + " libérées") + "</h4>"
+        + "<div><p>Contrôle terminé, résultats libérés. Voici ce qui change pour vous, " + h(me.p) + " :</p>"
+        + '<p class="eg-gain"><span>' + (jouees ? "+" + pl(gain, "point", "points") : neuves.length === 1 ? "Porte non jouée" : "Portes non jouées") + "</span>"
+        + "<span>" + (avant && avant !== me.rang ? ord(avant) + ' <span aria-hidden="true">→</span><span class="sr"> puis </span> ' : "") + ord(me.rang) + " rang</span></p>"
+        + '<button class="linkbtn" type="button" id="egVu">Classer le bulletin</button></div>';
+      if (etait !== lib.dataset.k) { lib.classList.remove("neuf"); void lib.offsetWidth; lib.classList.add("neuf"); }
+      lib.hidden = false;
+    }
+
+    // Ma fiche : rang, points, écart avec le rang du dessus, dernière porte libérée.
+    const fiche = q("#egMoi");
+    fiche.hidden = !(me && clos);
+    if (me && clos) {
+      const pairs = L.filter(x => x.rang === me.rang).length - 1, dessus = L.filter(x => x.pts > me.pts).pop(), der = closes[closes.length - 1];
+      const att = E.portes.filter(p => p.etat === "ouverte" && (p.rep !== undefined || tentatives(p) > 0 || p.type === "quiz" || (p.quiz && p.quiz.i > 1))).length;
+      const lignes = [];
+      if (dessus) lignes.push("À <b>" + pl(dessus.pts - me.pts, "point", "points") + "</b> du " + ord(dessus.rang) + " rang.");
+      else if (!me.pts) lignes.push("Aucun point distribué pour l'instant : tout reste à jouer.");
+      else lignes.push(pairs ? "En tête, à égalité avec <b>" + pl(pairs, "joueur", "joueurs") + "</b>." : "<b>En tête</b> du classement.");
+      if (lib.hidden && me.av !== undefined && me.av !== me.rang) lignes.push("Depuis la dernière clôture : du " + ord(me.av) + " au " + ord(me.rang) + " rang.");
+      lignes.push("Dernière porte libérée : <b>porte " + der.n + ", " + (der.pts !== undefined ? "+" + pl(der.pts, "point", "points") : "non jouée") + "</b>.");
+      if (att) lignes.push("<b>" + pl(att, "résultat", "résultats") + "</b> encore sous scellé.");
+      fiche.innerHTML = '<div class="eg-moi-h"><span class="eg-moi-rg"><span><span class="sr">Rang </span>' + (L[0].pts ? ord(me.rang) : "·") + "</span></span><div><b>" + h(me.p) + ", " + pl(me.pts, "point", "points") + "</b>"
+        + "<small>sur " + pl(L.length, "joueur", "joueurs") + (dessus && pairs ? " · ex aequo" : "") + "</small></div></div><ul>" + lignes.map(t => "<li>" + t + "</li>").join("") + "</ul>";
+    }
+
+    // Podium : les trois premiers rangs une fois des points distribués, les ex aequo sur la même marche.
+    const tete = clos ? L.filter(x => x.rang <= 3 && x.pts > 0) : [], podium = tete.length > 0 && tete.length <= 6;
+    q("#egPod").hidden = !podium;
+    q("#egPod").innerHTML = !podium ? "" : [1, 2, 3].map(n => {
+      const T = tete.filter(x => x.rang === n);
+      return !T.length ? "" : '<li class="eg-marche s' + n + '"><ul>' + T.map(x => '<li class="eg-row r' + n + (norm(x.p) === moi ? " me" : "") + '">' + h(x.p) + monte(x) + "</li>").join("")
+        + '</ul><div class="eg-socle"><span class="sr">Rang </span><b>' + n + "</b><span>" + pl(T[0].pts, "point", "points") + (T.length > 1 ? '<span class="sr"> chacun, ex aequo</span>' : "") + "</span></div></li>";
+    }).join("");
+
+    // Suite : lignes fines, sans barre. Liste longue : repliée autour des premiers et du joueur, dépliable.
+    const suite = podium ? L.filter(x => !tete.includes(x)) : L, iMoi = suite.indexOf(me), long = suite.length > 8;
+    let trou = false;
+    q("#egList").innerHTML = suite.map((x, i) => {
+      const cache = long && !toutVoir && i >= 5 && Math.abs(i - iMoi) > 1, saut = cache && !trou;
+      trou = cache;
+      return (saut ? '<li class="eg-gap" aria-hidden="true">…</li>' : "")
+        + '<li class="eg-row' + (x === me ? " me" : "") + '"' + (cache ? " hidden" : "") + '><span class="eg-rk"><span class="sr">Rang </span>' + (clos ? x.rang : "·") + "</span>"
+        + '<span class="eg-nm">' + h(x.p) + (x === me ? '<span class="eg-vous">vous</span>' : "") + monte(x) + "</span>"
+        + '<span class="eg-pt">' + (clos ? pl(x.pts, "point", "points") : pl(x.rep, "réponse scellée", "réponses scellées")) + "</span></li>";
+    }).join("");
+    q("#egMore").hidden = !long;
+    q("#egTout").textContent = toutVoir ? "Replier le classement" : "Afficher les " + L.length + " joueurs";
+    q("#egTout").setAttribute("aria-expanded", toutVoir);
+    const tete2 = !lib.hidden || !fiche.hidden || podium;
+    q("#egCol").hidden = !tete2;
+    q("#egRBody").classList.toggle("duo", tete2);
   }
 })();
