@@ -342,35 +342,25 @@ footer{padding:26px 0 34px;font-size:.86rem}
 @keyframes oTwist{from{transform:rotate(-40deg)}to{transform:none}}
 @keyframes oBloom{from{transform:scale(0) rotate(-25deg)}to{transform:none}}
 @keyframes oPop{from{transform:scale(0)}to{transform:none}}
-/* Bande dessinée : un cygne en origami, plié dans la planche elle-même, fait un tour complet en volume,
-   se déplie à plat, puis la planche se redresse et remplit le cadre (lue en grand au toucher).
-   Chaque pièce du cygne est un petit SVG transformé en 3D par le CSS. */
-.ap-bd{position:relative;aspect-ratio:4/5;margin:14px 0 0;border:3px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(circle at 50% 46%,#FFFBF2 0 30%,#E9E0FA 78%);perspective:620px;perspective-origin:50% 42%}
-.ap-bd a{display:block;width:100%;height:100%;background:#FFFBF2;transform-origin:50% 60%;animation:bdPage .75s 2.85s cubic-bezier(.2,.9,.3,1.1) both}
-@keyframes bdPage{from{opacity:0;transform:translateZ(-120px) rotateX(72deg) rotate(-8deg) scale(.4)}to{opacity:1;transform:none}}
+/* Bande dessinée : une courte vidéo (le cygne en papier se déplie et devient la planche) joue à l'ouverture,
+   puis s'efface devant la planche, qui reste affichée (lue en grand au toucher). Sans vidéo ou en mouvement réduit : planche directe. */
+.ap-bd{position:relative;aspect-ratio:4/5;margin:14px 0 0;border:3px solid var(--line);border-radius:12px;overflow:hidden;background:#DDD0EC}
+.ap-bd a{display:block;width:100%;height:100%;background:#FFFBF2;animation:bdPage .6s 12s cubic-bezier(.2,.9,.3,1) both}
+.ap-bd.fin a{animation:bdPage2 .6s cubic-bezier(.2,.9,.3,1) both}
+@keyframes bdPage{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:none}}
+@keyframes bdPage2{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:none}}
+.adv-panel .ap-bd img{display:block;width:100%;height:100%;max-height:none;object-fit:contain;border:0;border-radius:0;background:none}
+.ap-bd .bdv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;background:#DDD0EC;animation:bdvOut .5s 12s forwards}
+.ap-bd.fin .bdv{animation:bdvOut2 .5s forwards}
+@keyframes bdvOut{to{opacity:0;visibility:hidden}}
+@keyframes bdvOut2{to{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion:reduce){.ap-bd a,.ap-bd.fin a{animation:none}.ap-bd .bdv{display:none}}
 /* Lecture : la planche s'ouvre en grand par-dessus la page et y reste jusqu'à « Fermer » */
 .bdz{position:fixed;inset:0;z-index:1000;overflow:auto;background:rgba(38,7,109,.94);padding:60px 10px 24px;-webkit-overflow-scrolling:touch}
 .bdz img{display:block;width:100%;max-width:900px;height:auto;margin:0 auto;border:3px solid #26076D;border-radius:10px;background:#FFFBF2;cursor:zoom-in}
 .bdz img.zz{width:200%;max-width:1800px;cursor:zoom-out}
 .bdz p{margin:10px 0 0;text-align:center;font-size:.9rem;color:#FFFBF2}
 .bdz button{position:fixed;top:10px;right:10px;padding:9px 16px;font:800 1rem var(--display,inherit);color:#26076D;background:#ECD567;border:3px solid #26076D;border-radius:999px;box-shadow:4px 4px 0 #26076D;cursor:pointer}
-.adv-panel .ap-bd img{display:block;width:100%;height:100%;max-height:none;object-fit:contain;border:0;border-radius:0;background:none}
-.bd3{position:absolute;inset:0;pointer-events:none;transform-style:preserve-3d}
-.bd3 svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.bd3 .sh{position:absolute;left:24%;top:63%;width:52%;height:7%;border-radius:50%;background:#26076D;opacity:0;filter:blur(5px);animation:s3Sh 3.3s .1s linear both}
-@keyframes s3Sh{0%{opacity:0;transform:scale(.3)}14%,80%{opacity:.28;transform:none}100%{opacity:0;transform:scale(1.6)}}
-.bd3 .s3w{position:absolute;left:10%;top:27%;width:80%;aspect-ratio:180/110;transform-style:preserve-3d}
-.bd3 .s3{position:absolute;inset:0;transform-style:preserve-3d;animation:s3In 3.3s .1s both}
-@keyframes s3In{0%{opacity:0;transform:translateZ(-260px) rotateY(-150deg) scale(.4);animation-timing-function:cubic-bezier(.2,.8,.3,1)}14%{opacity:1;transform:translateZ(46px) rotateY(-30deg);animation-timing-function:cubic-bezier(.45,0,.4,1)}60%{transform:translateZ(46px) rotateY(330deg)}66%,82%{opacity:1;transform:translateZ(26px) rotateY(360deg) rotateX(0deg);animation-timing-function:ease-in}100%{opacity:0;transform:translateZ(0) rotateY(360deg) rotateX(80deg) scale(1.5)}}
-.bd3 .s3 svg{transform-origin:50% 64%;animation:3.3s .1s ease-in-out both}
-.bd3 .s3 .s3-w1{animation-name:s3W1}.bd3 .s3 .s3-w2{animation-name:s3W2}
-@keyframes s3W1{0%,14%{transform:translateZ(9px) rotateX(-52deg)}24%{transform:translateZ(9px) rotateX(-80deg)}34%{transform:translateZ(9px) rotateX(-40deg)}44%{transform:translateZ(9px) rotateX(-78deg)}54%{transform:translateZ(9px) rotateX(-42deg)}66%{transform:translateZ(9px) rotateX(-52deg)}80%,100%{transform:translateZ(2px) rotateX(0deg)}}
-@keyframes s3W2{0%,14%{transform:translateZ(-9px) rotateX(52deg)}24%{transform:translateZ(-9px) rotateX(80deg)}34%{transform:translateZ(-9px) rotateX(40deg)}44%{transform:translateZ(-9px) rotateX(78deg)}54%{transform:translateZ(-9px) rotateX(42deg)}66%{transform:translateZ(-9px) rotateX(52deg)}80%,100%{transform:translateZ(-2px) rotateX(0deg)}}
-.bd3 .s3 .s3-n{transform-origin:26% 82%;animation-name:s3N}
-.bd3 .s3 .s3-q{transform-origin:78% 58%;animation-name:s3Q}
-@keyframes s3N{0%,66%{transform:none}80%,100%{transform:rotate(74deg)}}
-@keyframes s3Q{0%,66%{transform:none}80%,100%{transform:rotate(-46deg)}}
-@media (prefers-reduced-motion:reduce){.bd3{display:none}.ap-bd a{animation:none}}
 .ap-next{display:flex;gap:8px;align-items:center;margin:14px 0 0;padding:9px 11px;border:2.5px dashed var(--line);border-radius:12px;font-size:.86rem}
 .ap-next .avi{width:18px;height:18px;flex:0 0 auto}
 @media(max-width:860px){.adv-body{grid-template-columns:minmax(0,1fr)}}
@@ -697,7 +687,7 @@ function pensee(){
 /* ---------- Sapin de l'Avent ----------
    Une goutte par jour du 1er au 25 décembre 2026, déverrouillée selon la date de l'appareil ;
    les gouttes ouvertes sont mémorisées dans le navigateur. Contenu : outils/calendrier_avent.json. */
-const AVENT=[{"jour": 1, "type": "chanson", "titre": "Noël en Pharmaco", "audio": "audio/noel-en-pharmaco.mp3", "pochette": "img/logo-pharmacotechnie.webp"}, {"jour": 2, "type": "origami", "texte": "Pliée en poche, dépliée en fleur."}, {"jour": 3, "type": "bd", "titre": "Clandestin en ZAC", "image": "img/bd-clandestin-en-zac.svg", "alt": "Bande dessinée en six cases. Alerte en ZAC : un flacon surprend une particule clandestine, « Choisis ton supplice : une partie contre… » La Perfusion lente : « Je réfléchis… Mon tour dure 45 minutes. » Le Rappel de lot : « Attends, je rappelle mon coup. Et le précédent. Et celui d'avant. » Le Prescripteur : « Toi, tu joues ça. Toi, ça. Laissez, je joue pour tout le monde. » Le Double Contrôle : « Je recompte les points. Deux fois. Par joueur. Par manche. » Le verdict, la particule saute dans le fût DASRI : « Tout bien pesé… je choisis l'incinération ! »", "credit": "Librement inspiré d'une planche de Martin Vidberg (Philimag, octobre 2026)"}, {"jour": 4}, {"jour": 5}, {"jour": 6}, {"jour": 7}, {"jour": 8}, {"jour": 9}, {"jour": 10}, {"jour": 11}, {"jour": 12}, {"jour": 13}, {"jour": 14}, {"jour": 15}, {"jour": 16}, {"jour": 17}, {"jour": 18}, {"jour": 19}, {"jour": 20}, {"jour": 21}, {"jour": 22}, {"jour": 23}, {"jour": 24}, {"jour": 25}];
+const AVENT=[{"jour": 1, "type": "chanson", "titre": "Noël en Pharmaco", "audio": "audio/noel-en-pharmaco.mp3", "pochette": "img/logo-pharmacotechnie.webp"}, {"jour": 2, "type": "origami", "texte": "Pliée en poche, dépliée en fleur."}, {"jour": 3, "type": "bd", "titre": "Clandestin en ZAC", "image": "img/bd-clandestin-en-zac.svg", "video": "video/cygne-bd.mp4", "alt": "Bande dessinée en six cases. Alerte en ZAC : un flacon surprend une particule clandestine, « Choisis ton supplice : une partie contre… » La Perfusion lente : « Je réfléchis… Mon tour dure 45 minutes. » Le Rappel de lot : « Attends, je rappelle mon coup. Et le précédent. Et celui d'avant. » Le Prescripteur : « Toi, tu joues ça. Toi, ça. Laissez, je joue pour tout le monde. » Le Double Contrôle : « Je recompte les points. Deux fois. Par joueur. Par manche. » Le verdict, la particule saute dans le fût DASRI : « Tout bien pesé… je choisis l'incinération ! »", "credit": "Librement inspiré d'une planche de Martin Vidberg (Philimag, octobre 2026)"}, {"jour": 4}, {"jour": 5}, {"jour": 6}, {"jour": 7}, {"jour": 8}, {"jour": 9}, {"jour": 10}, {"jour": 11}, {"jour": 12}, {"jour": 13}, {"jour": 14}, {"jour": 15}, {"jour": 16}, {"jour": 17}, {"jour": 18}, {"jour": 19}, {"jour": 20}, {"jour": 21}, {"jour": 22}, {"jour": 23}, {"jour": 24}, {"jour": 25}];
 const AV_ROWS=[[12,3,19],[7,22,1,15,10],[17,5,24,8,13,2,20],[11,23,4,16,6,21,9,14,18]],AV_Y=[186,268,350,432],AV_KEY="pharmacotechnie-avent-2026";
 const AV_T={chanson:"Chanson",image:"Image",citation:"Citation",origami:"Origami",bd:"Bande dessinée"};
 const AV_C={lock:"#D9CEF5",ready:"#F59A62",today:"#ECD567",open:"#E5B4D9"};
@@ -787,7 +777,7 @@ function avContent(d){
     +(c.source?'<p class="ap-src">'+esc(c.source)+'</p>':'')
     +(c.audio?'<audio class="ap-audio" controls preload="auto" src="'+esc(c.audio)+'" aria-label="'+esc(c.titre)+'"></audio>':'')
     +(c.lien?'<a class="go main" href="'+esc(c.lien)+'" target="_blank" rel="noopener">Écouter</a>':'');
-  else if(t==="bd")h+='<div class="ap-bd"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="Lire en grand : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+avSwan(c.image)+'</div>'
+  else if(t==="bd")h+='<div class="ap-bd'+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'':' fin')+'"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="Lire en grand : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'<video class="bdv" src="'+esc(c.video)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div>'
     +'<p class="ap-t">'+esc(c.titre)+'</p>'+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+'<p class="ap-src">Touchez la planche pour la lire en grand.</p>';
   else if(t==="image")h+='<figure><img src="'+esc(c.image)+'" alt="'+esc(c.titre)+'" loading="lazy"><figcaption>'+esc(c.titre)+'</figcaption></figure>';
   else if(t==="origami")h+=avOri(d)+(c.texte?'<p class="ap-p">'+esc(c.texte)+'</p>':'')+'<button class="go" type="button" data-replay>Replier et rejouer</button>';
@@ -820,18 +810,8 @@ function avOri(d){
     +'<g class="o-bl"><circle r="126" fill="none"/>'+pe+'</g>'
     +'<g class="o-c"><circle r="31" fill="#FFFBF2" stroke="'+V+'" stroke-width="3"/><image href="'+AV_LOGO+'" x="-25" y="-25" width="50" height="50"/></g></svg></div>';
 }
-/* Cygne en origami plié dans la planche (chaque facette montre un morceau de l'image) : tour complet, battement d'ailes, dépliage à plat. */
-function avSwan(img){
-  const V="#26076D",P=(p,f,o)=>'<polygon points="'+p+'" fill="url(#bdp)"/><polygon points="'+p+'" fill="'+f+'" fill-opacity="'+o+'" stroke="'+V+'" stroke-width="2.5" stroke-linejoin="round"/>';
-  const pc=(k,h)=>'<svg class="'+k+'" viewBox="-90 -70 180 110">'+h+'</svg>';
-  return '<div class="bd3" aria-hidden="true"><i class="sh"></i><div class="s3w"><div class="s3">'
-    +pc("s3-w2",'<defs><pattern id="bdp" patternUnits="userSpaceOnUse" x="-90" y="-95" width="180" height="225"><rect x="0" y="0" width="180" height="225" fill="#FFFBF2"/><image href="'+esc(img)+'" x="0" y="0" width="180" height="225" preserveAspectRatio="xMidYMid slice"/></pattern></defs>'+P("-16,2 40,-6 22,-46",V,.3)+P("-16,2 22,-46 -2,-36",V,.42))
-    +pc("s3-q",P("56,-8 78,-30 42,8",V,.16))
-    +pc("",P("-46,22 34,22 56,-8 -6,2","#FFFBF2",.18)+P("-46,22 34,22 20,30 -34,30",V,.24))
-    +pc("s3-n",P("-46,22 -28,8 -40,-48 -53,-42","#FFFBF2",.22)+P("-46,22 -53,-42 -58,-10",V,.2)+P("-40,-48 -53,-42 -56,-56","#FFFBF2",.3)+P("-56,-56 -53,-42 -76,-36","#EC7739",.8)+'<circle cx="-50" cy="-48" r="1.8" fill="'+V+'"/>')
-    +pc("s3-w1",P("-10,4 46,-4 28,-44","#FFFBF2",.1)+P("-10,4 28,-44 4,-34",V,.2))
-    +'</div></div></div>';
-}
+/* Vidéo d'ouverture d'une bande dessinée : à la fin (ou en cas d'échec), elle laisse la place à la planche. */
+["ended","error"].forEach(ev=>document.addEventListener(ev,e=>{const v=e.target;if(v&&v.classList&&v.classList.contains("bdv"))v.parentNode.classList.add("fin")},true));
 /* Lecture en grand : la planche reste ouverte par-dessus la page jusqu'au bouton Fermer (ou Échap). */
 document.addEventListener("click",e=>{
   const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG")e.target.classList.toggle("zz");else z.remove();return}
