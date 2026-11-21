@@ -28,6 +28,9 @@ const AVATAR = [8, 8, 8];
 // Devise et jeu emblème d'une brigade : chaque membre vote du 1er au 7 décembre, puis le choix est figé.
 // La devise est un numéro de la liste DEVISES de participants.js ; le jeu emblème, le nom d'un jeu du catalogue
 // (même contrôle que le vote du palmarès : la page ne montre que les noms qu'elle connaît).
+// L'identification (fiche, avatar, tirage de la brigade, changement de pseudo) ouvre le 26 novembre, avant le calendrier :
+// c'est le jour -4 (le jour 1 est le 1er décembre). Le vote de la devise et du jeu emblème, lui, attend le 1er décembre.
+const FICHE_JOUR = -4;
 const NB_DEVISES = 20;
 const CHOIX_FIN = 7;
 const avatarOk = a => Array.isArray(a) && a.length === AVATAR.length && a.every((v, i) => Number.isInteger(v) && v >= 0 && v < AVATAR[i]);
@@ -273,6 +276,7 @@ function etat(B, joueurs, cle, jour, maintenant) {
     jour,
     prenom: j ? j.p : undefined,
     profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b, d: j.d, g: j.g } : undefined,
+    fiche: { etat: jour < FICHE_JOUR ? 'avenir' : 'ouvert', ouvre: dateDe(FICHE_JOUR) },
     choix: { etat: jour < 1 ? 'avenir' : jour <= CHOIX_FIN ? 'ouvert' : 'fige', ferme: dateDe(CHOIX_FIN) },
     portes,
     total: portes.reduce((s, p) => s + (p.pts || 0), 0),
@@ -323,8 +327,8 @@ async function handler(req, res) {
     const cle = norm(prenom);
     // Fiche d'identification : l'avatar choisi par le joueur (liste fermée), la brigade tirée par le serveur, une fois pour toutes.
     if (b.action === 'profil') {
-      // Sous scellé jusqu'à l'ouverture du calendrier, le 1er décembre : ni fiche ni tirage avant.
-      if (jour < 1) return res.status(403).json({ error: 'scellee' });
+      // Sous scellé jusqu'au 26 novembre : ni fiche ni tirage avant.
+      if (jour < FICHE_JOUR) return res.status(403).json({ error: 'scellee' });
       if (!avatarOk(b.avatar)) return res.status(400).json({ error: 'avatar' });
       const s = await modifier(joueurs => {
         if (!joueurs[cle]) {
@@ -341,7 +345,7 @@ async function handler(req, res) {
     // Changement de pseudo : la fiche entière (réponses, avatar, brigade, voix) suit le joueur sous son nouveau nom.
     // Refusé si un autre joueur porte déjà ce nom. Le prénom envoyé reste l'ancien : c'est lui qui désigne la fiche.
     if (b.action === 'renommer') {
-      if (jour < 1) return res.status(403).json({ error: 'scellee' });
+      if (jour < FICHE_JOUR) return res.status(403).json({ error: 'scellee' });
       const neuf = typeof b.pseudo === 'string' ? b.pseudo.trim().replace(/’/g, "'") : '';
       if (neuf.length < 2 || neuf.length > 24 || !PRENOM.test(neuf)) return res.status(400).json({ error: 'pseudo' });
       const cle2 = norm(neuf);
