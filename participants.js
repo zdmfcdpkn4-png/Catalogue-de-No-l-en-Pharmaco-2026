@@ -230,7 +230,7 @@
           + cats.map(c => '<optgroup label="' + h((fam[c] || {}).n || c) + '">' + jeux.filter(g => g.c === c).sort((x, y) => x.n.localeCompare(y.n, "fr")).map(g => '<option value="' + h(g.n) + '"' + (moi.g === g.n ? " selected" : "") + ">" + h(g.n) + "</option>").join("") + "</optgroup>").join("") + "</select>"
           + (cites.length ? '<p class="eg-hint">Déjà cités : ' + cites.map(n => h(n) + " (" + voix.g[n] + ")").join(", ") + ".</p>" : "") + "</fieldset>"
           + '<p class="eg-hint">L\'option la plus soutenue par la brigade s\'affiche. Votre voix se modifie jusqu\'au ' + j + (j === 1 ? "er" : "") + " " + ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"][m - 1] + " à minuit ; ensuite, devise et jeu emblème sont scellés.</p>"
-          : '<p class="eg-hint">' + (o.choix && o.choix.etat === "fige" ? "Devise et jeu emblème sont scellés depuis la fin de la première semaine." : "Le vote de la devise et du jeu emblème ouvrira avec le calendrier.") + "</p>")
+          : '<p class="eg-hint">' + (o.choix && o.choix.etat === "fige" ? "Devise et jeu emblème sont scellés depuis la fin de la première semaine." : "Le vote de la devise et du jeu emblème est encore sous scellé.") + "</p>")
         + '<p class="eg-msg ok" id="ppMsg" role="status">' + h(msg || "") + "</p>"
         + '<p class="pp-fin">' + (ouvert ? '<button class="go main" type="submit" id="ppOk">Enregistrer ma voix</button>' : "") + '<button class="' + (ouvert ? "linkbtn" : "go main") + '" type="button" id="ppNon">Retour au calendrier</button></p>'
         + (ouvert ? "</form>" : "") + "</div>";
