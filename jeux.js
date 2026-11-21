@@ -961,10 +961,10 @@
       for (const o of F_BOUCHONS) { const h = g.createRadialGradient(o.x, o.y, o.r, o.x, o.y, o.r + 16); h.addColorStop(0, "rgba(236,213,103,.45)"); h.addColorStop(1, "rgba(236,213,103,0)"); g.fillStyle = h; g.beginPath(); g.arc(o.x, o.y, o.r + 16, 0, 6.3); g.fill(); }
       g.fillStyle = "rgba(18,3,58,.55)"; g.beginPath(); g.roundRect(128, 80, 104, 42, 12); g.fill();
       texte(g, "LOT", 180, 92, 12, "rgba(255,251,242,.75)");
-      // Le bac de rebut, bordé de jaune et de violet.
+      // Le bac des DASRI, bordé de jaune et de violet.
       g.fillStyle = "#12033A"; g.fillRect(104, 528, 152, 32);
       for (let x = 100; x < 260; x += 16) { g.fillStyle = Y; g.beginPath(); g.moveTo(x, 528); g.lineTo(x + 8, 528); g.lineTo(x + 2, 536); g.lineTo(x - 6, 536); g.fill(); }
-      texte(g, "REBUT", 180, 549, 11, "rgba(255,251,242,.6)");
+      texte(g, "DASRI", 180, 549, 11, "rgba(255,251,242,.6)");
       g.restore();
       // Les rails chromés.
       g.lineCap = "round"; g.lineJoin = "round";
