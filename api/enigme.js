@@ -336,6 +336,24 @@ async function handler(req, res) {
       });
       return res.status(s.code).json(s.corps);
     }
+    // Changement de pseudo : la fiche entière (réponses, avatar, brigade, voix) suit le joueur sous son nouveau nom.
+    // Refusé si un autre joueur porte déjà ce nom. Le prénom envoyé reste l'ancien : c'est lui qui désigne la fiche.
+    if (b.action === 'renommer') {
+      if (jour < 1) return res.status(403).json({ error: 'scellee' });
+      const neuf = typeof b.pseudo === 'string' ? b.pseudo.trim().replace(/’/g, "'") : '';
+      if (neuf.length < 2 || neuf.length > 24 || !PRENOM.test(neuf)) return res.status(400).json({ error: 'pseudo' });
+      const cle2 = norm(neuf);
+      const s = await modifier(joueurs => {
+        const j = joueurs[cle];
+        if (!j) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
+        if (cle2 !== cle && joueurs[cle2]) return { fin: () => ({ code: 409, corps: { error: 'pris' } }) };
+        delete joueurs[cle];
+        j.p = neuf;
+        joueurs[cle2] = j;
+        return { ok: J => ({ code: 200, corps: { ok: true, ...etat(B, J, cle2, jour, maintenant) } }) };
+      });
+      return res.status(s.code).json(s.corps);
+    }
     // Voix d'un membre pour la devise et le jeu emblème de sa brigade : ouvert du 1er au 7 décembre, modifiable d'ici là.
     if (b.action === 'brigade') {
       if (jour < 1 || jour > CHOIX_FIN) return res.status(403).json({ error: jour < 1 ? 'scellee' : 'fige' });
