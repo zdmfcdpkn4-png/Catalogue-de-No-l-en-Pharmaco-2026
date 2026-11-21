@@ -1643,29 +1643,69 @@
       if (logo.complete && logo.naturalWidth) { ctx.save(); ctx.beginPath(); ctx.arc(0, -1, 6.6, 0, 6.3); ctx.clip(); ctx.drawImage(logo, -6.6, -7.6, 13.2, 13.2); ctx.restore(); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(0, -1, 6.6, 0, 6.3); ctx.stroke(); }
       ctx.restore();
     }
-    // Le fond : le mur carrelé de la salle, un hublot de sas et une étagère de flacons de chaque côté, et au milieu le tableau
-    // d'affichage du score, en chiffres à segments (ceux du flipper).
+    // Le fond : une salle de sport. Sous les projecteurs, une tribune de cinq gradins de collègues (certains ont gardé leur
+    // charlotte), qui se lèvent quand vous marquez ; devant, les panneaux du bord de terrain, puis le sol du terrain. Au milieu,
+    // le tableau d'affichage du score, en chiffres à segments (ceux du flipper). Le public est tiré une fois pour toutes.
+    const foule = [], PEAUX = ["#F3D2B3", "#E0B48C", "#B98458", "#8A5A3A"], TENUES = [O, P, V, G, B, Y, C, R, "#5B4AA8", "#2F7F86"], CHEVEUX = ["#2B1B12", "#5A3A1E", "#B9772E", "#D9D2C4", "#1A1030"];
+    { let gr = 20261219; const al = () => (gr = gr * 16807 % 2147483647) / 2147483647, un = t => t[Math.floor(al() * t.length)];
+      for (let r = 0; r < 5; r++) { const e = 0.72 + r * 0.1, pas = 16.5 * e; for (let x = VO_G + 3 + (r % 2) * pas / 2; x < VO_D + 4; x += pas) foule.push({ r, x: x + (al() - 0.5) * 3, e, tenue: un(TENUES), peau: un(PEAUX), cheveux: al() < 0.35 ? B : un(CHEVEUX), ph: al() * 6.3, vif: al() }); } }
+    const GRADIN = r => 158 + r * 31 + r * r * 1.2;        // la ligne des épaules du rang r
     function decor() {
-      ctx.strokeStyle = "rgba(38,7,109,.07)"; ctx.lineWidth = 2; ctx.beginPath();
-      for (let y = VO_HAUT + 73; y < VO_SOL; y += 73) { ctx.moveTo(VO_G, y); ctx.lineTo(VO_D, y); }
-      for (let x = VO_G + 83; x < VO_D - 10; x += 83) { ctx.moveTo(x, VO_HAUT); ctx.lineTo(x, VO_SOL); }
-      ctx.stroke();
-      ctx.fillStyle = "rgba(38,7,109,.1)"; ctx.fillRect(VO_G, VO_SOL - 16, VO_D - VO_G, 16);                         // la plinthe
-      for (const [x, coul] of [[56, B], [304, P]]) {                                                                 // les hublots
-        ctx.strokeStyle = "rgba(38,7,109,.28)"; ctx.lineWidth = 4; ctx.fillStyle = "rgba(255,251,242,.55)";
-        ctx.beginPath(); ctx.arc(x, 182, 22, 0, 6.3); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = coul; ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.arc(x, 182, 22, 0.35, Math.PI - 0.35); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
-        ctx.strokeStyle = "rgba(255,251,242,.9)"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, 182, 15, 3.5, 4.4); ctx.stroke();
+      const g0 = VO_G, l = VO_D - VO_G, joie = !clos && s.msg.endsWith("!") && s.t - s.msgT < 1.1 ? Math.sin((s.t - s.msgT) / 1.1 * Math.PI) : 0;
+      // La salle : le haut dans l'ombre, deux projecteurs et leur halo.
+      let d = ctx.createLinearGradient(0, VO_HAUT, 0, 320); d.addColorStop(0, "#120338"); d.addColorStop(0.45, "#2A1568"); d.addColorStop(1, "#3B2784");
+      ctx.fillStyle = d; ctx.fillRect(g0, VO_HAUT, l, VO_SOL - VO_HAUT);
+      ctx.strokeStyle = "rgba(255,251,242,.07)"; ctx.lineWidth = 3; ctx.beginPath();                                   // la charpente
+      for (let x = g0 - 20; x < VO_D; x += 46) { ctx.moveTo(x, VO_HAUT + 34); ctx.lineTo(x + 23, VO_HAUT + 4); ctx.lineTo(x + 46, VO_HAUT + 34); }
+      ctx.moveTo(g0, VO_HAUT + 34); ctx.lineTo(VO_D, VO_HAUT + 34); ctx.stroke();
+      for (const x of [46, 314]) {
+        d = ctx.createRadialGradient(x, 62, 2, x, 62, 150); d.addColorStop(0, "rgba(255,244,200,.5)"); d.addColorStop(0.25, "rgba(255,244,200,.14)"); d.addColorStop(1, "rgba(255,244,200,0)");
+        ctx.fillStyle = d; ctx.fillRect(g0, VO_HAUT, l, 280);
+        ctx.fillStyle = "#0D0228"; ctx.beginPath(); ctx.roundRect(x - 13, 50, 26, 12, 3); ctx.fill();
+        ctx.fillStyle = "#FFF6D0"; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(x - 8 + i * 8, 58, 2.6, 0, 6.3); ctx.fill(); }
       }
-      ctx.globalAlpha = 0.45;                                                                                         // les étagères
-      for (const x0 of [28, 276]) {
-        [G, O, V].forEach((c, i) => flacon(ctx, x0 + 10 + i * 18, 262, 0, c));
-        ctx.fillStyle = N; ctx.fillRect(x0, 274, 56, 4);
+      // La tribune, du fond vers l'avant : le gradin, puis ses spectateurs (épaules, tête, cheveux ou charlotte).
+      for (let r = 0; r < 5; r++) {
+        const y = GRADIN(r), e = 0.72 + r * 0.1;
+        d = ctx.createLinearGradient(0, y - 4, 0, y + 34); d.addColorStop(0, r % 2 ? "#3A2880" : "#33217A"); d.addColorStop(1, "#1C0B4E");
+        ctx.fillStyle = d; ctx.fillRect(g0, y - 4 * e, l, 40);
+        ctx.fillStyle = "rgba(255,251,242,.16)"; ctx.fillRect(g0, y + 9 * e, l, 1.5);                                 // le nez de marche, éclairé
+        for (const p of foule) {
+          if (p.r !== r) continue;
+          const leve = joie * (0.4 + 0.6 * p.vif), dy = calme ? 0 : -leve * 7 * e + Math.sin(s.t * 1.3 + p.ph) * 0.5, x = p.x, t = y + dy;
+          ctx.fillStyle = p.tenue; ctx.beginPath(); ctx.roundRect(x - 6.5 * e, t - 1 * e, 13 * e, 16 * e, [5 * e, 5 * e, 0, 0]); ctx.fill();
+          ctx.fillStyle = "rgba(18,3,56,.28)"; ctx.fillRect(x - 6.5 * e, t + 7 * e, 13 * e, 8 * e);                    // l'ombre du rang de devant
+          if (leve > 0.35 && !calme) { ctx.strokeStyle = p.tenue; ctx.lineWidth = 2.6 * e; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x - 5 * e, t + 2 * e); ctx.lineTo(x - 8 * e, t - 9 * e * leve); ctx.moveTo(x + 5 * e, t + 2 * e); ctx.lineTo(x + 8 * e, t - 9 * e * leve); ctx.stroke(); }
+          ctx.fillStyle = p.peau; ctx.beginPath(); ctx.arc(x, t - 5.5 * e, 4.6 * e, 0, 6.3); ctx.fill();
+          ctx.fillStyle = p.cheveux; ctx.beginPath(); ctx.arc(x, t - 6.3 * e, 4.8 * e, Math.PI * 1.02, Math.PI * 1.98); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,.22)"; ctx.beginPath(); ctx.arc(x - 1.6 * e, t - 7 * e, 1.5 * e, 0, 6.3); ctx.fill();   // le reflet des projecteurs
+        }
       }
-      ctx.globalAlpha = 1;
+      // Le voile : la tribune recule dans la pénombre, pour que la poche et les joueurs se détachent.
+      d = ctx.createLinearGradient(0, 130, 0, 326); d.addColorStop(0, "rgba(18,3,56,.5)"); d.addColorStop(1, "rgba(18,3,56,.2)");
+      ctx.fillStyle = d; ctx.fillRect(g0, 130, l, 196);
+      // Les panneaux du bord de terrain.
+      const PANNEAUX = [["PHARMACOTECHNIE", C], ["ZÉRO POCHE À TERRE", Y], ["LOT LIBÉRÉ", B]];
+      ctx.fillStyle = "#0D0228"; ctx.fillRect(g0, 322, l, 34);
+      PANNEAUX.forEach(([mot, coul], i) => {
+        const x = g0 + 2 + i * (l - 4) / 3, w = (l - 4) / 3 - 2;
+        d = ctx.createLinearGradient(0, 325, 0, 353); d.addColorStop(0, coul); d.addColorStop(1, "rgba(38,7,109,.35)");
+        ctx.fillStyle = coul; ctx.fillRect(x, 325, w, 28); ctx.fillStyle = d; ctx.fillRect(x, 339, w, 14);
+        texte(ctx, mot, x + w / 2, 339.5, 8.5, N);
+      });
+      ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(g0, 322, l, 1.5);
+      // Le sol du terrain, vu de trois quarts : il fuit vers le fond, avec le reflet des projecteurs.
+      d = ctx.createLinearGradient(0, 356, 0, VO_H); d.addColorStop(0, "#2C6E96"); d.addColorStop(0.3, "#3F8FB8"); d.addColorStop(1, "#63AFD6");
+      ctx.fillStyle = d; ctx.fillRect(g0, 356, l, VO_H - 356);
+      d = ctx.createLinearGradient(0, 356, 0, 372); d.addColorStop(0, "rgba(13,2,40,.45)"); d.addColorStop(1, "rgba(13,2,40,0)");
+      ctx.fillStyle = d; ctx.fillRect(g0, 356, l, 16);                                                                // l'ombre des panneaux
+      for (const x of [70, 290]) { d = ctx.createRadialGradient(x, 400, 2, x, 400, 70); d.addColorStop(0, "rgba(255,255,255,.22)"); d.addColorStop(1, "rgba(255,255,255,0)"); ctx.fillStyle = d; ctx.save(); ctx.translate(0, 400); ctx.scale(1, 0.35); ctx.translate(0, -400); ctx.fillRect(g0, 200, l, 400); ctx.restore(); }
+      ctx.fillStyle = "rgba(255,251,242,.85)"; ctx.fillRect(g0, 366, l, 2); ctx.fillRect(g0, VO_SOL, l, 3);           // les lignes du terrain
+      ctx.fillStyle = "rgba(255,251,242,.5)"; ctx.beginPath(); ctx.moveTo(VO_FX - 1.5, 367); ctx.lineTo(VO_FX + 1.5, 367); ctx.lineTo(VO_FX + 2.5, VO_SOL); ctx.lineTo(VO_FX - 2.5, VO_SOL); ctx.fill();
+      texte(ctx, "LE SOL N'EST PAS UNE ÉTAGÈRE", 180, VO_SOL + 31, 11, "rgba(255,251,242,.6)");
       // Le tableau d'affichage, pendu au plafond.
-      trait(ctx, 2.4); ctx.beginPath(); ctx.moveTo(122, VO_HAUT); ctx.lineTo(122, 56); ctx.moveTo(238, VO_HAUT); ctx.lineTo(238, 56); ctx.stroke();
-      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(84, 54, 192, 66, 10); ctx.fill();
+      ctx.strokeStyle = "#0D0228"; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(122, VO_HAUT); ctx.lineTo(122, 56); ctx.moveTo(238, VO_HAUT); ctx.lineTo(238, 56); ctx.stroke();
+      ctx.fillStyle = "#0D0228"; ctx.beginPath(); ctx.roundRect(84, 54, 192, 66, 10); ctx.fill();
       ctx.strokeStyle = Y; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(88.5, 58.5, 183, 57, 7); ctx.stroke();
       texte(ctx, "VOUS", 133, 69, 9, C); texte(ctx, "AUTOMATE", 227, 69, 9, C);
       const deux = (x, n, coul) => { const m = Math.min(99, n); chiffre(ctx, x - 18, 79, 15, 28, m > 9 ? Math.floor(m / 10) : -1, coul); chiffre(ctx, x + 3, 79, 15, 28, m % 10, coul); };
@@ -1674,20 +1714,14 @@
     }
     function dessiner() {
       ctx.fillStyle = N; ctx.fillRect(0, 0, W, VO_H);
-      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(VO_G, VO_HAUT, VO_D - VO_G, VO_SOL - VO_HAUT);                    // le mur de la salle
-      ctx.fillStyle = "rgba(143,199,232,.3)"; ctx.fillRect(VO_FX, VO_HAUT, VO_D - VO_FX, VO_SOL - VO_HAUT);     // le camp de l'automate
       decor();
-      // Le sol : c'est aussi là que se pose le doigt.
-      ctx.fillStyle = V; ctx.fillRect(VO_G, VO_SOL, VO_D - VO_G, VO_H - VO_SOL);
-      trait(ctx, 3); ctx.beginPath(); ctx.moveTo(VO_G, VO_SOL); ctx.lineTo(VO_D, VO_SOL); ctx.stroke();
-      texte(ctx, "LE SOL N'EST PAS UNE ÉTAGÈRE", 180, VO_SOL + 30, 11, PALE);
       // L'ombre de la poche aide à juger où elle retombe.
       const b = s.balle;
-      if (b) { const k = 1 - (VO_SOL - b.y) / (VO_SOL - VO_HAUT) * 0.6; ctx.fillStyle = "rgba(38,7,109,.22)"; ctx.beginPath(); ctx.ellipse(b.x, VO_SOL + 5, 13 * k, 3.5 * k, 0, 0, 6.3); ctx.fill(); }
+      if (b) { const k = 1 - (VO_SOL - b.y) / (VO_SOL - VO_HAUT) * 0.6; ctx.fillStyle = "rgba(13,2,40,.35)"; ctx.beginPath(); ctx.ellipse(b.x, VO_SOL + 6, 13 * k, 3.5 * k, 0, 0, 6.3); ctx.fill(); }
       // Le filet : un pied à perfusion.
       trait(ctx, 2.4); ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(VO_FX - 17, VO_SOL - 5, 34, 6, 3); ctx.fill();
       ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(VO_FX - VO_FE, VO_SOL - VO_FH - VO_FE, VO_FE * 2, VO_FH + VO_FE, VO_FE); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.arc(VO_FX - 9, VO_SOL - VO_FH + 5, 5, 0.2, Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(VO_FX + 9, VO_SOL - VO_FH + 5, 5, 0, Math.PI - 0.2); ctx.stroke();
+      ctx.strokeStyle = C; ctx.beginPath(); ctx.arc(VO_FX - 9, VO_SOL - VO_FH + 5, 5, 0.2, Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(VO_FX + 9, VO_SOL - VO_FH + 5, 5, 0, Math.PI - 0.2); ctx.stroke();
       const vifJ = s.t - s.tape[0] < 0.12, vifA = s.t - s.tape[1] < 0.12;
       automate(s.ax, vifA);
       preparateur(s.x, VO_SOL - s.y, vifJ);
@@ -1703,7 +1737,7 @@
         const u = (s.t - s.impact.t) / 0.7;
         poche({ x: s.impact.x, y: VO_SOL - 9, tour: 1.57 });
         if (!calme) { ctx.strokeStyle = "rgba(38,7,109," + (0.5 * (1 - u)).toFixed(2) + ")"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(s.impact.x, VO_SOL + 4, 14 + 26 * u, 4 + 5 * u, 0, 0, 6.3); ctx.stroke(); }
-      } else if (!clos && s.t - s.msgT >= 1) texte(ctx, "Nouvelle poche…", 180, 150, 14, "rgba(38,7,109,.6)");
+      } else if (!clos && s.t - s.msgT >= 1) texte(ctx, "Nouvelle poche…", 180, 140, 14, "rgba(255,251,242,.85)");
       if (s.t < 5 && !clos) {
         ctx.globalAlpha = Math.min(1, 5 - s.t) * 0.92;
         ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(42, 196, 276, 48, 14); ctx.fill();
