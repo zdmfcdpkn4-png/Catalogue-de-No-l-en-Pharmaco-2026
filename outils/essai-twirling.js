@@ -1,4 +1,4 @@
-// Aperçu de la parade de la spatule hors du site : parties automatiques dans Chromium (souris, clavier, doigt), avec captures.
+// Aperçu de la parade des seringues hors du site : parties automatiques dans Chromium (souris, clavier, doigt), avec captures.
 // Usage : node outils/essai-twirling.js <dossier de captures>
 const { chromium } = require('playwright');
 const fs = require('fs');

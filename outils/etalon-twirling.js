@@ -1,4 +1,4 @@
-// Étalonnage de la parade de la spatule par simulation, sans navigateur : des joueurs simulés (adroit, moyen, maladroit,
+// Étalonnage de la parade des seringues par simulation, sans navigateur : des joueurs simulés (adroit, moyen, maladroit,
 // immobile, tapoteurs) jouent des centaines de parties. Ce sont des profils inventés, pas des mesures sur de vrais joueurs.
 // Usage : node outils/etalon-twirling.js ['{"juste":0.18}'] [durée en s] [parties par profil]   (réglages à essayer, voir RTW dans jeux.js)
 const J = require(require('path').join(__dirname, '..', 'jeux.js'))._coeur, R = J.REGL_TWIRLING;

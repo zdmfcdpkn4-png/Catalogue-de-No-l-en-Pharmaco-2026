@@ -2675,21 +2675,21 @@
   /* ----- Fin [pastilles] ----- */
 
   /* ----- Repère [twirling] : le twirling ----- */
-  /* La parade de la spatule : le préparateur fait tournoyer une spatule comme un bâton de majorette. Elle retombe tantôt
+  /* La parade des seringues : le préparateur fait tournoyer une seringue (sans aiguille) comme un bâton de majorette. Elle retombe tantôt
      dans sa main gauche, tantôt dans sa main droite : on la rattrape (et on la relance du même geste) en touchant le bon côté
      au moment où elle arrive dans le gant. Plus le geste est juste, plus il rapporte ; une série sans chute ajoute un bonus.
-     À mi-parcours une deuxième spatule entre dans la danse, et si tout se passe bien, une troisième pour le bouquet final. La chorégraphie est la même pour tout le monde (graine fixe) et
+     À mi-parcours un infuseur entre dans la danse, et si tout se passe bien, une seconde seringue pour le bouquet final. La chorégraphie est la même pour tout le monde (graine fixe) et
      calée sur le temps : un rattrapage en avance ou en retard ne change pas l'instant des suivants. */
   {
     /* --- Le cœur : règles et trajectoires, sans navigateur --- */
     // Réglages étalonnés par simulation (node outils/etalon-twirling.js) : ils fixent la difficulté.
     // parfait, bien, juste : écarts tolérés (s) autour de l'instant d'arrivée. gel, vide : blocage de la main (s) et points perdus après un geste dans le vide.
-    // pA, pC, pD : fin de l'échauffement, entrée de la deuxième spatule, bouquet final à trois (parts de la durée). dA, dB, eC, eD : écarts entre deux retombées.
-    // trois : la troisième spatule n'entre que si le joueur a déjà marqué cette part des points possibles jusque-là.
+    // pA, pC, pD : fin de l'échauffement, entrée de le deuxième objet, bouquet final à trois (parts de la durée). dA, dB, eC, eD : écarts entre deux retombées.
+    // trois : le troisième objet n'entre que si le joueur a déjà marqué cette part des points possibles jusque-là.
     // serie, bonus : +1 point par tranche de « serie » rattrapages d'affilée, plafonné à « bonus ». seuils : parts du maximum.
     const RTW = { g: 1020, hmax: 250, parfait: 0.05, bien: 0.1, juste: 0.18, gel: 0.5, vide: 1, ramasse: 0.9, relance: 1, tmin: 0.6, depart: 1.9, envoi: 1.2, pA: 0.22, pC: 0.44, pD: 0.72, trois: 0.45, dA: 1.1, dB: [0.8, 0.95, 1.4], eC: [0.48, 0.54, 0.6], eD: [0.4, 0.44, 0.5], serie: 4, bonus: 3, seuils: [0.025, 0.06, 0.11, 0.18, 0.27, 0.37, 0.49, 0.63, 0.8, 0.93], plafond: 600 };
     const TW_PAS = 1 / 120, TW_MX = [96, 264], TW_YH = 330, TW_SOL = 436;
-    // La chorégraphie : la liste des retombées { t : instant, m : main (0 gauche, 1 droite), b : spatule }.
+    // La chorégraphie : la liste des retombées { t : instant, m : main (0 gauche, 1 droite), b : objet lancé }.
     function choreeTwirling(duree, graine) {
       let a = graine || 20261218, m = 1, suite = 0, t = RTW.depart, k = 0;
       const h = () => { a = a + 0x6D2B79F5 | 0; let x = Math.imul(a ^ a >>> 15, 1 | a); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x; return ((x ^ x >>> 14) >>> 0) / 4294967296; };
@@ -2698,12 +2698,12 @@
       const L = [], poser = b => L.push({ t: Math.round(t * 1000) / 1000, m: main(), b });
       while (t < duree * RTW.pA && t <= duree - 0.8) { poser(0); t += RTW.dA; }                      // échauffement : tempo régulier
       while (t < duree * RTW.pC && t <= duree - 0.8) { poser(0); const r = h(); t += RTW.dB[r < 0.5 ? 0 : r < 0.72 ? 1 : 2]; }   // le tempo varie, avec de grands lancers
-      while (t < duree * RTW.pD && t <= duree - 0.8) { poser(k++ % 2); t += RTW.eC[Math.floor(h() * RTW.eC.length)]; }   // deux spatules, en alternance
+      while (t < duree * RTW.pD && t <= duree - 0.8) { poser(k++ % 2); t += RTW.eC[Math.floor(h() * RTW.eC.length)]; }   // deux objets, en alternance
       k = 0; while (t <= duree - 0.8) { poser(k++ % 3); t += RTW.eD[Math.floor(h() * RTW.eD.length)]; }                 // bouquet final : trois spatules, à tour de rôle
       return L;
     }
     const gainTwirling = (q, serie) => q + Math.min(RTW.bonus, Math.floor(serie / RTW.serie));
-    // Où est la spatule b à l'instant t ? En vol : une cloche d'une main à l'autre, qui se prolonge jusqu'au sol si personne ne la rattrape.
+    // Où est l'objet b à l'instant t ? En vol : une cloche d'une main à l'autre, qui se prolonge jusqu'au sol si personne ne la rattrape.
     const placerTwirling = (b, t) => {
       if (b.etat === "main") { b.x = TW_MX[b.m]; b.y = TW_YH; b.rot = 0; return b; }
       if (b.etat === "sol") return b;
@@ -2713,7 +2713,7 @@
       b.rot = 2 * Math.PI * b.tours * u;
       return b;
     };
-    // La spatule b quitte la main b.m à l'instant t, pour retomber à l'heure dite dans la main prévue par la chorégraphie.
+    // L'objet b quitte la main b.m à l'instant t, pour retomber à l'heure dite dans la main prévue par la chorégraphie.
     const envolTwirling = (b, t) => {
       const e = b.liste[b.i], T = e.t - t;
       b.etat = "vol"; b.t0 = t; b.t1 = e.t; b.m1 = e.m; b.x0 = TW_MX[b.m]; b.x1 = TW_MX[e.m];
@@ -2750,7 +2750,7 @@
     };
     const unPasTwirling = s => {
       s.t += TW_PAS;
-      // La troisième spatule se mérite : au moment d'entrer, il faut avoir marqué une part suffisante des points possibles jusque-là.
+      // Le troisième objet se mérite : au moment d'entrer, il faut avoir marqué une part suffisante des points possibles jusque-là.
       const b3 = s.batons[2];
       if (s.trois === null && b3.liste.length && s.t >= b3.entree) {
         let possible = 0; for (const e of s.choree) if (e.t + RTW.juste < s.t) possible = e.cumul;
@@ -2761,7 +2761,7 @@
         if (b.etat === "main") { if (s.t >= b.tl) envolTwirling(b, b.tl); }
         else if (b.etat === "vol") {
           if (s.t > b.t1 + RTW.juste) {
-            // Trop tard : la spatule tombe. Le préparateur la ramasse et la relance pour la première retombée encore jouable.
+            // Trop tard : l'objet tombe. Le préparateur la ramasse et la relance pour la première retombée encore jouable.
             b.etat = "chute"; s.tombees++; s.serie = 0; s.ev = { q: 0, m: b.m1 }; s.evT = s.t;
             let k = b.i + 1; while (k < b.liste.length && b.liste[k].t < s.t + RTW.ramasse + RTW.tmin) k++;
             b.i = k; b.tl = k < b.liste.length ? Math.max(s.t + RTW.ramasse, b.liste[k].t - RTW.relance) : Infinity;
@@ -2782,7 +2782,7 @@
     const twirling = (el, opt) => {
       const duree = opt.duree || 50, { cv, ctx, xDe, liberer } = monter(el, H);
       cv.style.touchAction = "none";
-      cv.setAttribute("aria-label", "La parade de la spatule. La spatule tournoie et retombe dans la main gauche ou la main droite du préparateur : touchez ou cliquez le côté où elle retombe, au moment où elle arrive dans le gant. Une deuxième spatule arrive en cours de partie, puis une troisième si tout se passe bien. Au clavier : flèche gauche et flèche droite, ou F et J.");
+      cv.setAttribute("aria-label", "La parade des seringues. La seringue tournoie et retombe dans la main gauche ou la main droite du préparateur : touchez ou cliquez le côté où elle retombe, au moment où elle arrive dans le gant. Un infuseur la rejoint en cours de partie, puis une seconde seringue si tout se passe bien. Au clavier : flèche gauche et flèche droite, ou F et J.");
       const s = creerTwirling(duree), mm = q => typeof matchMedia === "function" && matchMedia(q).matches;
       const tactile = mm("(pointer: coarse)"), calme = mm("(prefers-reduced-motion: reduce)");
       if (typeof opt.espion === "function") opt.espion(s);                                         // pour le banc d'essai seulement
@@ -2799,15 +2799,34 @@
       const menu = e => e.preventDefault();
       cv.addEventListener("pointerdown", appui); cv.addEventListener("contextmenu", menu); window.addEventListener("keydown", enfonce);
       const retirer = () => { cv.removeEventListener("pointerdown", appui); cv.removeEventListener("contextmenu", menu); window.removeEventListener("keydown", enfonce); };
-      const TEINTES = [O, G, "#C2409B"];
-      // Une spatule : le manche (rot = 0 : manche en bas, dans le gant) et la lame.
+      const TEINTES = [O, "#4FA3D9", "#C2409B"];
+      // Les objets lancés : une seringue (sans aiguille, bouchon en place), un infuseur, puis une seconde seringue.
+      // rot = 0 : l'objet est tenu droit dans le gant. Un léger dégradé leur donne du volume.
       const spatule = (x, y, rot, teinte, alpha) => {
         ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha = alpha;
-        trait(ctx, 7); ctx.beginPath(); ctx.moveTo(0, 21); ctx.lineTo(0, -2); ctx.stroke();
-        ctx.strokeStyle = teinte; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 20); ctx.lineTo(0, 0); ctx.stroke();
-        trait(ctx, 2.2); ctx.fillStyle = "#E3E6EE"; ctx.beginPath(); ctx.roundRect(-6, -23, 12, 23, [6, 6, 2, 2]); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.fillRect(-3, -19, 2.5, 12);                      // le reflet de la lame
-        ctx.fillStyle = teinte; ctx.beginPath(); ctx.arc(0, 22, 4.6, 0, 6.3); ctx.fill(); ctx.stroke();   // l'embout du manche
+        const volume = (x0, x1) => { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, "rgba(255,255,255,.95)"); g.addColorStop(0.45, "rgba(255,255,255,.25)"); g.addColorStop(1, "rgba(38,7,109,.22)"); return g; };
+        trait(ctx, 2.2);
+        if (teinte === TEINTES[1]) {
+          // L'infuseur : une coque transparente, le ballonnet plein à l'intérieur, le bouchon et un bout de tubulure.
+          ctx.strokeStyle = N; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 15); ctx.bezierCurveTo(0, 26, 12, 24, 9, 17); ctx.stroke();
+          ctx.fillStyle = B; ctx.beginPath(); ctx.arc(9, 16, 2.6, 0, 6.3); ctx.fill(); ctx.stroke();
+          trait(ctx, 2.2); ctx.fillStyle = "#F3F7FB"; ctx.beginPath(); ctx.roundRect(-11, -16, 22, 31, 8); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = teinte; ctx.beginPath(); ctx.ellipse(0, 0, 7, 11, 0, 0, 6.3); ctx.fill();
+          ctx.fillStyle = volume(-11, 11); ctx.beginPath(); ctx.roundRect(-11, -16, 22, 31, 8); ctx.fill();
+          ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(-6, -23, 12, 8, 2); ctx.fill();
+        } else {
+          // La seringue : le corps gradué et son produit, le bouchon, les ailettes, le piston et son poussoir.
+          ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(0, 22); ctx.stroke();
+          ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(-7, 21, 14, 4, 2); ctx.fill();
+          ctx.fillStyle = "#F3F7FB"; ctx.beginPath(); ctx.roundRect(-6.5, -15, 13, 27, 2); ctx.fill();
+          ctx.fillStyle = teinte; ctx.beginPath(); ctx.roundRect(-6.5, -15, 13, 19, 2); ctx.fill();
+          ctx.fillStyle = N; ctx.fillRect(-6.5, 3, 13, 3);                                             // le joint du piston
+          ctx.fillStyle = volume(-6.5, 6.5); ctx.beginPath(); ctx.roundRect(-6.5, -15, 13, 27, 2); ctx.fill();
+          ctx.beginPath(); ctx.roundRect(-6.5, -15, 13, 27, 2); ctx.stroke();
+          ctx.lineWidth = 1.2; ctx.beginPath(); for (let i = 0; i < 4; i++) { ctx.moveTo(-6.5, -11 + i * 4.5); ctx.lineTo(-1.5, -11 + i * 4.5); } ctx.stroke();
+          ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(-10.5, 11, 21, 3.5, 1.5); ctx.fill();    // les ailettes
+          ctx.fillStyle = Y; trait(ctx, 2); ctx.beginPath(); ctx.roundRect(-3, -24, 6, 9, 2); ctx.fill(); ctx.stroke();   // le bouchon
+        }
         ctx.restore();
       };
       const rond = (x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 6.3); };
@@ -2835,23 +2854,58 @@
       }
       function decor() {
         const t = tAff(), k = bonus();
-        const mur = ctx.createLinearGradient(0, 0, 0, TW_SOL); mur.addColorStop(0, "#DCD5F3"); mur.addColorStop(1, "#F4F1FB");
-        ctx.fillStyle = mur; ctx.fillRect(0, 0, W, H);                                               // le mur du préparatoire
-        // Deux étagères de flacons, au fond.
-        ctx.globalAlpha = 0.4;
-        for (const x0 of [14, 258]) { ctx.fillStyle = N; ctx.fillRect(x0, 236, 88, 4); [14, 44, 74].forEach((dx, i) => flacon(ctx, x0 + dx, 222, 0, FANIONS[(i + (x0 > 100 ? 3 : 0)) % 6])); }
-        ctx.globalAlpha = 1;
-        // Les projecteurs : ils s'allument avec le bonus de série.
-        for (const m of [0, 1]) {
-          const x0 = m ? W - 26 : 26, xc = (m ? 228 : 132) + (calme ? 0 : Math.sin(t * 1.3 + m * 2) * 16 * (k ? 1 : 0.3));
-          const g = ctx.createLinearGradient(x0, 40, xc, TW_SOL); g.addColorStop(0, "rgba(236,213,103," + (0.16 + 0.12 * k) + ")"); g.addColorStop(1, "rgba(236,213,103,0)");
-          ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x0 - 8, 40); ctx.lineTo(x0 + 8, 40); ctx.lineTo(xc + 78, TW_SOL); ctx.lineTo(xc - 78, TW_SOL); ctx.closePath(); ctx.fill();
-          trait(ctx, 2.5); ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(x0 - 11, 39, 22, 12, [0, 0, 6, 6]); ctx.fill();
+        // La salle de préparation, vue en perspective : plafond, murs fuyants, mur du fond, carrelage. Point de fuite au centre.
+        const FX = 180, FY = 236, G0 = 46, D0 = 314, HT = 72, BAS = 398;                            // le mur du fond : de G0 à D0, de HT à BAS
+        const mur = ctx.createLinearGradient(0, HT, 0, BAS); mur.addColorStop(0, "#E3DDF6"); mur.addColorStop(1, "#F5F2FC");
+        ctx.fillStyle = "#CFC6EC"; ctx.fillRect(0, 0, W, H);                                         // les murs de côté, dans l'ombre
+        ctx.fillStyle = "#F4F1FB"; ctx.beginPath(); ctx.moveTo(0, 39); ctx.lineTo(W, 39); ctx.lineTo(D0, HT); ctx.lineTo(G0, HT); ctx.closePath(); ctx.fill();   // le plafond
+        ctx.fillStyle = mur; ctx.fillRect(G0, HT, D0 - G0, BAS - HT);                                // le mur du fond
+        const sol = ctx.createLinearGradient(0, BAS, 0, H); sol.addColorStop(0, "#E9DDB4"); sol.addColorStop(1, "#F9EDC6");
+        ctx.fillStyle = sol; ctx.beginPath(); ctx.moveTo(G0, BAS); ctx.lineTo(D0, BAS); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill(); ctx.save(); ctx.clip();
+        // Le carrelage : les joints fuient vers le point de fuite, les rangées se resserrent vers le fond.
+        ctx.strokeStyle = "rgba(38,7,109,.13)"; ctx.lineWidth = 1.2; ctx.beginPath();
+        for (let i = -6; i <= 6; i++) { const xb = FX + i * 60, k = (BAS - FY) / (H - FY); ctx.moveTo(FX + (xb - FX) * k, BAS); ctx.lineTo(xb, H); }
+        for (const y of [407, 419, 436, 458]) { const k = (y - FY) / (BAS - FY); ctx.moveTo(FX + (G0 - FX) * k, y); ctx.lineTo(FX + (D0 - FX) * k, y); }
+        ctx.stroke(); ctx.restore();
+        // Les arêtes de la salle, et la plinthe.
+        ctx.strokeStyle = "rgba(38,7,109,.35)"; ctx.lineWidth = 1.6; ctx.beginPath();
+        ctx.moveTo(0, 39); ctx.lineTo(G0, HT); ctx.lineTo(G0, BAS); ctx.lineTo(0, H); ctx.moveTo(W, 39); ctx.lineTo(D0, HT); ctx.lineTo(D0, BAS); ctx.lineTo(W, H); ctx.moveTo(G0, HT); ctx.lineTo(D0, HT); ctx.stroke();
+        ctx.fillStyle = "rgba(38,7,109,.3)"; ctx.fillRect(G0, BAS - 5, D0 - G0, 5);
+        // Mur de gauche : la porte du sas, avec son hublot (en perspective).
+        ctx.fillStyle = "#BDB2E2"; ctx.beginPath(); ctx.moveTo(8, 196); ctx.lineTo(36, 206); ctx.lineTo(36, 408); ctx.lineTo(8, 458); ctx.closePath(); ctx.fill(); ctx.strokeStyle = "rgba(38,7,109,.4)"; ctx.stroke();
+        ctx.fillStyle = "#EAF4FB"; ctx.beginPath(); ctx.ellipse(22, 262, 8, 17, 0.08, 0, 6.3); ctx.fill(); ctx.stroke();
+        // Mur de droite : le passe-plat, par où sortent les préparations libérées.
+        ctx.fillStyle = "#EAF4FB"; ctx.beginPath(); ctx.moveTo(324, 248); ctx.lineTo(352, 240); ctx.lineTo(352, 318); ctx.lineTo(324, 312); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "rgba(38,7,109,.45)"; ctx.beginPath(); ctx.moveTo(324, 312); ctx.lineTo(352, 318); ctx.lineTo(352, 324); ctx.lineTo(324, 317); ctx.closePath(); ctx.fill();
+        // Au fond à gauche : le poste de sécurité (la hotte), sa vitre inclinée, ses deux manchettes, son piètement.
+        ctx.globalAlpha = 0.78;
+        ctx.fillStyle = "rgba(38,7,109,.1)"; ctx.beginPath(); ctx.ellipse(110, BAS + 2, 62, 6, 0, 0, 6.3); ctx.fill();
+        trait(ctx, 2); ctx.strokeStyle = "rgba(38,7,109,.55)";
+        ctx.fillStyle = "#D7D0EF"; ctx.fillRect(62, 344, 6, 54); ctx.fillRect(152, 344, 6, 54);     // les pieds
+        ctx.fillStyle = "#C3B9E6"; ctx.beginPath(); ctx.moveTo(160, 196); ctx.lineTo(172, 206); ctx.lineTo(172, 352); ctx.lineTo(160, 344); ctx.closePath(); ctx.fill(); ctx.stroke();   // le flanc, qui donne l'épaisseur
+        ctx.fillStyle = "#FBFAFE"; ctx.beginPath(); ctx.roundRect(58, 196, 102, 148, 5); ctx.fill(); ctx.stroke();   // le caisson
+        ctx.fillStyle = "#D7D0EF"; ctx.fillRect(58, 196, 102, 26); ctx.strokeRect(58, 196, 102, 26);  // le bandeau du ventilateur
+        ctx.fillStyle = G; rond(72, 209, 3.2); ctx.fill(); ctx.fillStyle = "rgba(38,7,109,.4)"; for (let x = 90; x < 150; x += 7) ctx.fillRect(x, 204, 3, 10);
+        const vitre = ctx.createLinearGradient(66, 228, 152, 300); vitre.addColorStop(0, "#DDF0FA"); vitre.addColorStop(0.5, "#F6FBFE"); vitre.addColorStop(1, "#CFE7F5");
+        ctx.fillStyle = vitre; ctx.beginPath(); ctx.moveTo(66, 230); ctx.lineTo(152, 230); ctx.lineTo(152, 304); ctx.lineTo(66, 304); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(76, 290); ctx.lineTo(104, 238); ctx.moveTo(90, 292); ctx.lineTo(112, 252); ctx.stroke();   // les reflets
+        trait(ctx, 2); ctx.strokeStyle = "rgba(38,7,109,.55)"; ctx.fillStyle = "#EDEAF6"; ctx.fillRect(58, 304, 102, 40); ctx.strokeRect(58, 304, 102, 40);
+        for (const x of [88, 130]) { ctx.fillStyle = V; ctx.beginPath(); ctx.ellipse(x, 324, 13, 11, 0, 0, 6.3); ctx.fill(); ctx.stroke(); ctx.fillStyle = "rgba(38,7,109,.35)"; ctx.beginPath(); ctx.ellipse(x, 324, 6, 5, 0, 0, 6.3); ctx.fill(); }
+        // Au fond à droite : deux étagères de flacons, avec leur tranche, et l'horloge de la salle.
+        for (const y of [250, 304]) {
+          ctx.fillStyle = "rgba(38,7,109,.5)"; ctx.fillRect(206, y, 96, 4); ctx.fillStyle = "rgba(38,7,109,.25)"; ctx.beginPath(); ctx.moveTo(206, y + 4); ctx.lineTo(302, y + 4); ctx.lineTo(296, y + 9); ctx.lineTo(212, y + 9); ctx.closePath(); ctx.fill();
+          [20, 48, 76].forEach((dx, i) => flacon(ctx, 206 + dx, y - 14, 0, FANIONS[(i + (y > 260 ? 3 : 0)) % 6]));
         }
-        // Le sol : un parquet de scène, et le tapis du préparateur.
-        ctx.fillStyle = "#F7E7B8"; ctx.fillRect(0, TW_SOL, W, H - TW_SOL);
-        ctx.strokeStyle = "rgba(38,7,109,.12)"; ctx.lineWidth = 1.5; ctx.beginPath(); for (let x = -40; x <= W + 40; x += 40) { ctx.moveTo(180 + (x - 180) * 0.82, TW_SOL); ctx.lineTo(x, H); } ctx.stroke();
-        trait(ctx, 3); ctx.beginPath(); ctx.moveTo(0, TW_SOL); ctx.lineTo(W, TW_SOL); ctx.stroke();
+        trait(ctx, 2); ctx.strokeStyle = "rgba(38,7,109,.55)"; ctx.fillStyle = "#FBFAFE"; rond(254, 170, 15); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(254, 170); ctx.lineTo(254, 160); ctx.moveTo(254, 170); ctx.lineTo(261, 174); ctx.stroke();
+        ctx.globalAlpha = 1;
+        // Les plafonniers : leur lumière tombe sur le préparateur, et monte avec le bonus de série.
+        for (const m of [0, 1]) {
+          const x0 = m ? 248 : 112, xc = (m ? 222 : 138) + (calme ? 0 : Math.sin(t * 1.3 + m * 2) * 14 * (k ? 1 : 0.3));
+          const g = ctx.createLinearGradient(x0, 58, xc, TW_SOL); g.addColorStop(0, "rgba(236,213,103," + (0.14 + 0.12 * k) + ")"); g.addColorStop(1, "rgba(236,213,103,0)");
+          ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x0 - 30, 58); ctx.lineTo(x0 + 30, 58); ctx.lineTo(xc + 84, TW_SOL); ctx.lineTo(xc - 84, TW_SOL); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = k ? "#FFF6C9" : "#FFFFFF"; ctx.strokeStyle = "rgba(38,7,109,.4)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x0 - 40, 50); ctx.lineTo(x0 + 40, 50); ctx.lineTo(x0 + 32, 62); ctx.lineTo(x0 - 32, 62); ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
         // La guirlande de fanions, sous le bandeau : elle s'illumine fanion après fanion avec la série.
         const yG = x => 46 + 16 * Math.sin(Math.PI * x / W);
         ctx.strokeStyle = "rgba(38,7,109,.45)"; ctx.lineWidth = 1.5; ctx.beginPath(); for (let x = 0; x <= W; x += 12) ctx.lineTo(x, yG(x)); ctx.stroke();
@@ -2868,7 +2922,7 @@
         ctx.fillStyle = "rgba(38,7,109,.13)"; ctx.beginPath(); ctx.ellipse(180, TW_SOL + 3, 60, 7, 0, 0, 6.3); ctx.fill();
         trait(ctx, 10); ctx.beginPath(); ctx.moveTo(168, 416); ctx.lineTo(168, TW_SOL - 4); ctx.moveTo(192, 416); ctx.lineTo(192, TW_SOL - 4); ctx.stroke();
         const hy = m => TW_YH + 3 + (!calme && t - s.geste[m] < 0.12 ? -5 : 0);
-        if (!calme && t - secousse < 0.3) ctx.translate(Math.sin((t - secousse) * 60) * 2.5, 0);       // un sursaut quand une spatule tombe
+        if (!calme && t - secousse < 0.3) ctx.translate(Math.sin((t - secousse) * 60) * 2.5, 0);       // un sursaut quand un objet tombe
         for (const m of [0, 1]) {                                                                    // les bras, levés vers les gants
           const ex = 180 + (m ? 24 : -24), bras = () => { ctx.beginPath(); ctx.moveTo(ex, 364); ctx.quadraticCurveTo((ex + TW_MX[m]) / 2 + (m ? 10 : -10), 392, TW_MX[m], hy(m) + 8); ctx.stroke(); };
           trait(ctx, 15); bras(); ctx.strokeStyle = C; ctx.lineWidth = 9; bras();
@@ -2879,7 +2933,7 @@
         ctx.fillStyle = "#F4D6BF"; rond(180, 326, 20); ctx.fill(); ctx.stroke();                     // la tête, la charlotte, le masque
         ctx.fillStyle = B; ctx.beginPath(); ctx.ellipse(180, 319, 24, 17, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(165, 331, 30, 14, 6); ctx.fill(); ctx.stroke();
-        // Les yeux suivent la spatule qui vole.
+        // Les yeux suivent l'objet qui vole.
         const v = s.batons.find(b => b.etat === "vol" || b.etat === "chute"), a = v ? Math.atan2(v.y - 324, v.x - 180) : -Math.PI / 2;
         ctx.fillStyle = N; for (const x of [173, 187]) { rond(x + Math.cos(a) * 1.8, 325 + Math.sin(a) * 1.8, 2.3); ctx.fill(); }
         for (const m of [0, 1]) {                                                                    // les gants
@@ -2897,7 +2951,7 @@
           texte(ctx, m ? (tactile ? "DROITE" : "DROITE →") : (tactile ? "GAUCHE" : "← GAUCHE"), m ? 268 : 92, 461, 12, bloque ? "rgba(216,64,43,.8)" : "rgba(38,7,109,.6)");
         }
         ctx.save(); preparateur(); ctx.restore();
-        // Le repère de rythme : un anneau se referme sur le gant où la spatule va retomber.
+        // Le repère de rythme : un anneau se referme sur le gant où l'objet va retomber.
         if (!clos) for (const b of s.batons) {
           if (b.etat !== "vol") continue;
           const r = b.t1 - t;
@@ -2909,7 +2963,7 @@
           if (t < b.entree || b.absent) continue;
           if (!calme && b.etat === "vol") {
             const k = bonus();
-            if (k) {                                                                                 // en combo, la spatule traîne un ruban à sa couleur
+            if (k) {                                                                                 // en combo, l'objet traîne un ruban à sa couleur
               ctx.strokeStyle = TEINTES[b.k]; ctx.lineCap = "round";
               let o = placerTwirling(Object.assign({}, b), t);
               for (let i = 1; i <= 4 + 3 * k; i++) { const q = placerTwirling(Object.assign({}, b), Math.max(b.t0, t - i * 0.022)); ctx.globalAlpha = 0.5 * (1 - i / (5 + 3 * k)); ctx.lineWidth = 7 - i * 0.4; ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(q.x, q.y); ctx.stroke(); o = q; }
@@ -2937,8 +2991,8 @@
         // Les annonces : l'entrée des spatules, les combos.
         const b2 = s.batons[1], b3 = s.batons[2];
         const annonce = (txt, y, fond, encre) => { ctx.fillStyle = fond; ctx.beginPath(); ctx.roundRect(40, y - 16, 280, 32, 16); ctx.fill(); texte(ctx, txt, 180, y + 1, 15, encre); };
-        if (!clos && b2.liste.length && t > b2.entree && t < b2.entree + 2.4) annonce("Deuxième spatule !", 120, N, Y);
-        if (!clos && s.trois !== null && t < s.troisT + 2.6) annonce(s.trois ? "Bouquet final : trois spatules !" : "La troisième spatule reste au râtelier", 120, s.trois ? O : N, s.trois ? N : C);
+        if (!clos && b2.liste.length && t > b2.entree && t < b2.entree + 2.4) annonce("Et maintenant, un infuseur !", 120, N, Y);
+        if (!clos && s.trois !== null && t < s.troisT + 2.6) annonce(s.trois ? "Bouquet final : trois à la fois !" : "La seconde seringue reste dans son sachet", 120, s.trois ? O : N, s.trois ? N : C);
         if (pop && !clos && t - pop.t < 1.1) {
           const a = t - pop.t, z = calme ? 1 : 1 + 0.35 * Math.max(0, 1 - a * 6);
           ctx.save(); ctx.translate(180, pop.bas ? 270 : 164); ctx.scale(z, z); ctx.globalAlpha = Math.min(1, (1.1 - a) * 3);
@@ -2953,7 +3007,7 @@
             const x = e.m ? 286 : 74, y = 388 - (calme ? 0 : Math.min(dtE, 0.3) * 20);
             ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(x - 62, y - 14, 124, 28, 14); ctx.fill();
             texte(ctx, e.q < 0 ? "Dans le vide −" + RTW.vide : ["", "Juste", "Bien", "Parfait !"][e.q] + " +" + e.gain, x, y + 1, e.q < 0 ? 13 : 14, e.q === 3 ? Y : e.q < 0 ? P : C);
-          } else texte(ctx, "Tombée… on la ramasse !", 180, 290, 14, "rgba(38,7,109,.7)");
+          } else texte(ctx, "À terre… on ramasse !", 180, 290, 14, "rgba(38,7,109,.75)");
         }
         if (s.serie >= 2 && !clos) {                                                                  // le compteur de série, et ses trois pastilles de bonus
           const k = bonus();
@@ -2964,7 +3018,7 @@
         if (t < 6 && !clos && !joue) {
           ctx.globalAlpha = Math.min(1, 6 - t) * 0.94;
           ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(14, 196, 332, 46, 16); ctx.fill();
-          texte(ctx, tactile ? "Touchez le côté où la spatule retombe," : "Cliquez le côté où elle retombe (ou ← →),", 180, 211, 13, Y);
+          texte(ctx, tactile ? "Touchez le côté où la seringue retombe," : "Cliquez le côté où elle retombe (ou ← →),", 180, 211, 13, Y);
           texte(ctx, "pile quand elle arrive dans le gant", 180, 228, 13, Y);
           ctx.globalAlpha = 1;
         }
@@ -2983,7 +3037,7 @@
           const stats = [[s.points, s.points > 1 ? "points" : "point"], [s.pris + "/" + s.choree.length, "rattrapées"], [s.q[3], s.q[3] > 1 ? "parfaits" : "parfait"], [s.meilleure, "série max"]];
           ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(12, 340, 336, 64, 16); ctx.fill(); trait(ctx, 3); ctx.stroke();
           stats.forEach((q, i) => { const x = 54 + i * 84; texte(ctx, String(q[0]), x, 363, 21, N); texte(ctx, q[1], x, 387, 11, "rgba(38,7,109,.7)"); if (i) { ctx.strokeStyle = "rgba(38,7,109,.18)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 42, 350); ctx.lineTo(x - 42, 394); ctx.stroke(); } });
-          texte(ctx, s.trois ? "Bouquet final à trois spatules !" : n >= 5 ? "Belle parade !" : "La parade est libérée", 180, 424, 14, Y);
+          texte(ctx, s.trois ? "Bouquet final à trois réussi !" : n >= 5 ? "Belle parade !" : "La parade est libérée", 180, 424, 14, Y);
           confettis();                                                                               // rubans et paillettes passent devant le tableau
         }
       }
@@ -2994,7 +3048,7 @@
           if (s.fini) {
             clos = true; serieVue = s.serie; if (s.points) { rubans(14); paillettes(180, 196, 30, 150); }
             const n = noteTwirling(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
-            const bilan = pl(s.pris, "rattrapage", "rattrapages") + " sur " + s.choree.length + ", dont " + pl(s.q[3], "parfait", "parfaits") + ", meilleure série de " + s.meilleure + (s.trois ? ", bouquet final à trois spatules" : "") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (1 à 3 points selon la justesse du geste, jusqu'à 3 de bonus de série, 1 point perdu par geste dans le vide ; 10 sur 10 à partir de " + palierTwirling(s, 9) + " points).";
+            const bilan = pl(s.pris, "rattrapage", "rattrapages") + " sur " + s.choree.length + ", dont " + pl(s.q[3], "parfait", "parfaits") + ", meilleure série de " + s.meilleure + (s.trois ? ", bouquet final à trois objets" : "") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (1 à 3 points selon la justesse du geste, jusqu'à 3 de bonus de série, 1 point perdu par geste dans le vide ; 10 sur 10 à partir de " + palierTwirling(s, 9) + " points).";
             minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, brutTwirling(s)); }, 3600);
           }
         } else {
