@@ -194,7 +194,7 @@
     return -vn;
   }
   // Une série : des touches qui s'enchaînent à moins de RF.delai secondes. Elle ne rapporte rien, elle sert au spectacle.
-  function marquer(s, x, y) { s.serie = s.t - s.serieT < RF.delai ? s.serie + 1 : 1; s.serieT = s.t; s.choc = { x, y, n: s.serie }; }
+  function marquer(s, x, y) { s.serie = s.t - s.serieT < RF.delai ? s.serie + 1 : 1; s.serieT = s.t; s.serieMax = Math.max(s.serieMax || 0, s.serie); s.choc = { x, y, n: s.serie }; }
   function unPasFlipper(s, duree) {
     const dt = F_PAS;
     s.t += dt;
@@ -851,7 +851,8 @@
           clos = true; lache();
           const n = noteFlipper(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
           const bilan = pl(s.score, "point", "points") + " : " + n + " sur 10 (1 point de note par tranche de " + RF.palier + " points). " + pl(s.lots, "lot libéré", "lots libérés") + ", " + pl(s.pertes, "bille perdue", "billes perdues") + ".";
-          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, Math.round(s.score))); }, 2200);
+          const chiffres = [[s.score, s.score > 1 ? "points" : "point"], [s.lots, s.lots > 1 ? "lots libérés" : "lot libéré"], ["×" + (s.serieMax || 0), "meilleure série"], [s.pertes, s.pertes > 1 ? "billes perdues" : "bille perdue"]];
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, Math.round(s.score)), chiffres); }, 2200);
         }
       } else tFin += dt;
       effets(dt);
