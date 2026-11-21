@@ -18,7 +18,7 @@ const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content
     await p.evaluate(l => { if (l) document.querySelector('#z').style.width = l + 'px'; return document.fonts.ready; }, largeur);
     return p;
   };
-  const lancer = (p, duree) => p.evaluate(d => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.pastilles(document.querySelector('#z'), { duree: d, onFin: (n, t, brut) => { window.fois++; window.fin = [n, t, brut]; } }); }, duree);
+  const lancer = (p, duree) => p.evaluate(d => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.pastilles(document.querySelector('#z'), { duree: d, onFin: (n, t, brut, chiffres) => { window.fois++; window.fin = [n, t, brut, chiffres]; } }); }, duree);
   const fini = async p => { await p.waitForFunction(() => window.fin, null, { timeout: 90000 }); await p.waitForTimeout(300); return p.evaluate(() => [window.fin, window.fois]); };
   const tenir = async (p, touche, ms) => { await p.keyboard.down(touche); await p.waitForTimeout(ms); await p.keyboard.up(touche); };
   // 1. Au clavier : on pose, on s'écarte de deux cases en tournant le coin, on attend la mousse, on recommence ailleurs.

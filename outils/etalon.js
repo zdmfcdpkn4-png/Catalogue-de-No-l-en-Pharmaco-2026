@@ -68,7 +68,7 @@ function partieFlipper(p, graine, duree) {
   return s;
 }
 function profilFlipper(nom, p, duree) {
-  const h = Array(11).fill(0); let m = 0, mm = 0, sc = 0, pe = 0, lo = 0, co = 0; const K = 400;
+  const h = Array(11).fill(0); let m = 0, mm = 0, sc = 0, pe = 0, lo = 0, co = 0; const K = +(process.env.K || 400);
   for (let i = 0; i < K; i++) {
     const a = partieFlipper(p, 1000 + i * 2, duree), b = partieFlipper(p, 1001 + i * 2, duree), na = J.noteFlipper(a), nb = J.noteFlipper(b);
     h[na]++; m += na; mm += Math.max(na, nb); sc += a.score; pe += a.pertes; lo += a.lots; co += a.coups;
