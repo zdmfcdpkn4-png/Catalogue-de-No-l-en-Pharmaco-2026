@@ -1495,7 +1495,7 @@
   function creerVolley(graine) {
     let a = graine || 20261219;
     const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-    return { t: 0, acc: 0, x: 40, y: 0, vy: 0, cible: 40, saut: 0, ax: 268, avise: 268, avu: -1, aquand: 1e9, balle: null, attente: 1.4, vers: -1, pour: 0, contre: 0, echange: 0, record: 0, dernier: -1, touches: 0, tape: [-9, -9], smashT: -9, smashs: 0, msg: "", msgT: -9, impact: null, h, fini: false };
+    return { t: 0, acc: 0, x: 40, y: 0, vy: 0, cible: 40, saut: 0, ax: 268, avise: 268, avu: -1, aquand: 1e9, balle: null, attente: 1.4, vers: -1, pour: 0, contre: 0, echange: 0, record: 0, dernier: -1, touches: 0, tape: [-9, -9], smashT: -9, smashs: 0, frappes: 0, msg: "", msgT: -9, impact: null, h, fini: false };
   }
   // L'automate lit la trajectoire à chaque nouvelle frappe : si la poche retombe chez lui, il choisit où la renvoyer (plutôt loin
   // du joueur, selon sa malice), cherche l'angle de frappe qui y mène et se place en conséquence, après un
@@ -1528,7 +1528,7 @@
     const v = elanPoche(s);
     b.vx = nx * v + vx * RVO.elan; b.vy = ny * v + vy * RVO.elan;
     const w = Math.hypot(b.vx, b.vy); if (w > RVO.vmax) { b.vx *= RVO.vmax / w; b.vy *= RVO.vmax / w; }
-    b.x = cx + nx * r; b.y = cy + ny * r; b.n++; s.tape[qui] = s.t;
+    b.x = cx + nx * r; b.y = cy + ny * r; b.n++; s.tape[qui] = s.t; if (qui === 0) s.frappes++;
     // Le smash : le joueur frappe en l'air (pieds à plus de RVO.haut du sol) une poche qui est devant lui. Elle part alors tout
     // droit et plus vite, selon l'angle le plus plongeant qui passe encore le pied à perfusion.
     if (qui === 0 && s.y > RVO.haut && nx > 0.15 && b.x < VO_FX) {
@@ -1724,7 +1724,7 @@
           clos = true; lache();
           const n = noteVolley(s), joues = s.pour + s.contre, pl = (k, un, des) => k + " " + (k > 1 ? des : un);
           const bilan = pl(s.pour, "point gagné", "points gagnés") + " sur " + pl(joues, "joué", "joués") + " contre l'automate : " + n + " sur 10 (la note est la part des points gagnés).";
-          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, joues ? Math.round(100 * s.pour / joues) * 100 + Math.min(99, s.pour) : 0); }, 1300);
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, joues ? Math.round(100 * s.pour / joues) * 100 + Math.min(99, s.pour) : 0, [[s.pour + "/" + joues, s.pour > 1 ? "points gagnés" : "point gagné"], [s.smashs, s.smashs > 1 ? "smashs" : "smash"], [s.frappes, s.frappes > 1 ? "frappes" : "frappe"], [s.record, s.record > 1 ? "renvois d'affilée" : "renvoi d'affilée"]]); }, 1300);
         }
       }
       dessiner();
