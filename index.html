@@ -545,13 +545,13 @@ const RANGE=["","15 € et moins","15 à 30 €","30 à 50 €","plus de 50 €"
 const lvl=p=>p<=15?1:p<=30?2:p<=50?3:4;
 const PRESETS=[
  ["petits","Pédiatrie : 5 ou 6 ans",g=>g.c==="E"&&g.age<=6],
- ["apero","Apéro au PharmacoBar",g=>g.c==="F"&&g.tmin<=30&&g.j[1]>=5&&g.pf[3]==="1"],
+ ["apero","PharmacoBar : à l'apéro",g=>g.c==="F"&&g.tmin<=30&&g.j[1]>=5&&g.pf[3]==="1"],
  ["deux","En isolateur (2 postes)",g=>g.j[0]<=2&&g.j[1]>=2&&g.c!=="E"&&(g.j[1]===2||/^2 /.test(g.b))],
- ["coop","Travail d'équipe : coopératifs",g=>g.fl.includes("c")],
+ ["coop","Pour la Team : coopératifs",g=>g.fl.includes("c")],
  ["solo","Garde de nuit en solo ou en monoposte",g=>g.j[0]===1&&g.c!=="E"],
- ["prix","Petit budget : 15 € max",g=>g.p!=null&&g.p<=15],
+ ["prix","Petit dosage : 15 € max",g=>g.p!=null&&g.p<=15],
  ["prime","Médaillés de l'année",g=>/^(As d'Or|Kinderspiel|Kennerspiel|Diamant|Prix du jeu|Trophée|2e du Diamant)/.test(g.aw||"")],
- ["cerveau","Forte concentration",g=>g.c==="X"&&g.wn>=3.7]
+ ["cerveau","Surdosage : forte concentration",g=>g.c==="X"&&g.wn>=3.7]
 ];
 const DEF={cat:"E",q:"",budget:"0",players:"0",profil:"",dispo:"",sort:"cat",preset:"",rx:false};
 let S=Object.assign({},DEF),allOpen=false,L=[],RX=new Set();
