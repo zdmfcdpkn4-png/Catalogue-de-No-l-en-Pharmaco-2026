@@ -5,6 +5,7 @@
    Tailles : 120 px sur ordinateur, 96 px sur tablette (561 à 1100 px), 70 px au plus sur téléphone, proches des jetons du menu.
    Sur téléphone : quatre badges par ligne, avec le nom seul (la précision du bas est masquée).
    Le bouton d'origine reste en place (classe, data-p, aria-pressed) : la page continue de le piloter.
+   Les noms affichés sont ceux de BADGES, pas ceux des pastilles d'origine ; l'aria-label reprend le nom affiché.
    Sans ce fichier, les pastilles d'origine restent telles quelles. */
 (() => {
   const boite = document.querySelector("#presets");
@@ -16,13 +17,13 @@
   // Par indication (clé data-p de la page) : le nom en haut, la précision en bas, la teinte du verre, le dessin (repère de 32 sur 32).
   const BADGES = {
     petits: ["Pédiatrie", "5 ou 6 ans", "#F59A62", '<g transform="translate(2.5 3.5) scale(.27)"><path d="' + MEEPLE + '" fill="' + O + '" stroke-width="7.4"/></g><ellipse cx="16" cy="10.6" rx="3.6" ry="2.3" fill="' + P + '" stroke-width="1.6"/><circle cx="16" cy="13.8" r="1.7" stroke-width="1.5" fill="' + Y + '"/>'],
-    apero: ["Apéro", "au PharmacoBar", "#B9A6F0", '<path d="M5 9h22L16 21Z" fill="' + V + '"/><path d="M16 21v7M10.5 28h11"/><g transform="rotate(14 21 7)"><rect x="16.5" y="2.5" width="9" height="9" rx="2.2" fill="' + Y + '"/>' + pt(19.2, 5.2, 0.9) + pt(22.8, 8.8, 0.9) + pt(21, 7, 0.9) + "</g>"],
+    apero: ["PharmacoBar", "à l'apéro", "#B9A6F0", '<path d="M5 9h22L16 21Z" fill="' + V + '"/><path d="M16 21v7M10.5 28h11"/><g transform="rotate(14 21 7)"><rect x="16.5" y="2.5" width="9" height="9" rx="2.2" fill="' + Y + '"/>' + pt(19.2, 5.2, 0.9) + pt(22.8, 8.8, 0.9) + pt(21, 7, 0.9) + "</g>"],
     deux: ["En isolateur", "2 postes", "#BFE3C9", '<path d="M3 28V15a13 13 0 0 1 26 0v13Z" fill="' + B + '"/>' + pion(11, 13.5, O) + pion(21, 13.5, Y) + '<path d="M3 28h26"/>'],
-    coop: ["Travail d'équipe", "coopératifs", "#F2E39A", '<rect x="3" y="9" width="13" height="14" rx="2" fill="' + O + '"/><rect x="16" y="9" width="13" height="14" rx="2" fill="' + Y + '"/><circle cx="17" cy="16" r="3.3" fill="' + O + '"/><path d="M16 9v3.6M16 19.4V23"/>'],
+    coop: ["Pour la Team", "coopératifs", "#F2E39A", '<rect x="3" y="9" width="13" height="14" rx="2" fill="' + O + '"/><rect x="16" y="9" width="13" height="14" rx="2" fill="' + Y + '"/><circle cx="17" cy="16" r="3.3" fill="' + O + '"/><path d="M16 9v3.6M16 19.4V23"/>'],
     solo: ["Garde de nuit", "en solo ou en monoposte", "#B9A6F0", '<path d="M19 3A13 13 0 1 0 29 21A10.5 10.5 0 0 1 19 3Z" fill="' + Y + '"/>' + pion(24.5, 5.5, O)],
-    prix: ["Petit budget", "15 € max", "#F2E39A", '<circle cx="16" cy="16" r="12.5" fill="' + Y + '"/><circle cx="16" cy="16" r="9" stroke-width="1.2" stroke-dasharray="1.5 2.4"/><path d="M20.5 11.8a5.6 5.6 0 1 0 0 8.4M9.5 14.6h7M9.5 17.6h7" stroke-width="2.2"/>'],
+    prix: ["Petit dosage", "15 € max", "#F2E39A", '<circle cx="16" cy="16" r="12.5" fill="' + Y + '"/><circle cx="16" cy="16" r="9" stroke-width="1.2" stroke-dasharray="1.5 2.4"/><path d="M20.5 11.8a5.6 5.6 0 1 0 0 8.4M9.5 14.6h7M9.5 17.6h7" stroke-width="2.2"/>'],
     prime: ["Médaillés", "de l'année", "#EFC7E4", '<path d="M9 2h6l3 9h-6Z" fill="' + O + '"/><path d="M23 2h-6l-3 9h6Z" fill="' + P + '"/><circle cx="16" cy="20" r="9" fill="' + Y + '"/><path d="M16 14.6l1.6 3.4 3.7.4-2.8 2.5.8 3.7L16 22.7l-3.3 1.9.8-3.7-2.8-2.5 3.7-.4Z" fill="' + N + '" stroke="none"/>'],
-    cerveau: ["Concentration", "forte", "#F59A62", '<path d="M13 3v8L5.3 25.6A2.3 2.3 0 0 0 7.3 29h17.4a2.3 2.3 0 0 0 2-3.4L19 11V3" fill="' + C + '"/><path d="M9.2 18.2h13.6l3.9 7.4a2.3 2.3 0 0 1-2 3.4H7.3a2.3 2.3 0 0 1-2-3.4Z" fill="' + O + '"/><path d="M11 3h10"/>' + pt(12, 24.6, 1.25) + pt(16, 21.6, 1.25) + pt(20, 24.6, 1.25)],
+    cerveau: ["Surdosage", "forte concentration", "#F59A62", '<path d="M13 3v8L5.3 25.6A2.3 2.3 0 0 0 7.3 29h17.4a2.3 2.3 0 0 0 2-3.4L19 11V3" fill="' + C + '"/><path d="M9.2 18.2h13.6l3.9 7.4a2.3 2.3 0 0 1-2 3.4H7.3a2.3 2.3 0 0 1-2-3.4Z" fill="' + O + '"/><path d="M11 3h10"/>' + pt(12, 24.6, 1.25) + pt(16, 21.6, 1.25) + pt(20, 24.6, 1.25)],
   };
   const dessin = (k, x, t) => '<svg x="' + x + '" y="' + x + '" width="' + t + '" height="' + t + '" viewBox="0 0 32 32" fill="none" stroke="' + N + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">' + BADGES[k][3] + "</svg>";
   const TRANCHE = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5].map(z => '<span class="bd-t" style="--z:' + z + 'px"></span>').join("");
@@ -67,7 +68,7 @@
     boite.querySelectorAll(".chip:not(.bd)").forEach(b => {
       const k = b.dataset.p, d = BADGES[k];
       if (!d) return;
-      b.setAttribute("aria-label", b.textContent.trim());
+      b.setAttribute("aria-label", d[0] + " : " + d[1]);
       b.classList.add("bd");
       b.style.setProperty("--fond", d[2]);
       b.innerHTML = '<span class="bd-o"></span><span class="bd-j"><span class="bd-f"><svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">'
