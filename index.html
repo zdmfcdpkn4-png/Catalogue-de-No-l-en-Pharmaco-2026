@@ -630,12 +630,12 @@ function card(g){
   +'</dl></details></div></article>';
 }
 /* Une recherche porte toujours sur le catalogue complet : elle ignore l'onglet, l'indication et la vue « Mon ordonnance »,
-   que l'on retrouve en effaçant le texte. Les listes (budget, effectif, profil, disponibilité) restent appliquées. */
+   comme les listes (budget, effectif, profil, disponibilité) : tout reprend effet en effaçant le texte. Seul le tri s'applique. */
 function match(g,q){return norm(g.n+" "+g.e+" "+g.m+" "+g.t+" "+g.nt+" "+(g.aw||"")).includes(q)}
 function pass(g){
   const q=norm(S.q.trim());
-  if(q){if(!match(g,q))return false}
-  else if(S.rx)return RX.has(g.n);
+  if(q)return match(g,q);
+  if(S.rx)return RX.has(g.n);
   else if(S.preset){const P=PRESETS.find(p=>p[0]===S.preset);if(P&&!P[2](g))return false}
   else if(S.cat!=="T"&&g.c!==S.cat)return false;
   const bud=+S.budget,pl=+S.players;
@@ -670,10 +670,8 @@ function render(){
   }else h='<div class="grid" style="margin-top:20px">'+L.map(card).join("")+'</div>';
   $("#list").innerHTML=h;
   /* Une recherche porte sur tout le catalogue, quel que soit l'onglet : le compteur le dit et « Toute la pharmaco » s'allume le temps de la recherche. */
-  const qn=norm(S.q.trim()),tout=!!qn,nq=tout?G.filter(g=>match(g,qn)).length:0,pl=n=>n>1?" préparations":" préparation";
-  if(!tout)$("#count").textContent=(S.rx?"Mon ordonnance : ":"")+L.length+pl(L.length)+(L.length>1?" affichées":" affichée");
-  else if(nq>L.length)$("#count").innerHTML=L.length+pl(L.length)+" avec ces filtres · "+nq+" dans tout le catalogue : "+'<button class="linkbtn" type="button" data-lever>lever les filtres</button>';
-  else $("#count").textContent=L.length+pl(L.length)+(L.length>1?" trouvées":" trouvée")+" dans tout le catalogue";
+  const tout=!!norm(S.q.trim()),filtres=S.budget!==DEF.budget||S.players!==DEF.players||S.profil!==DEF.profil||S.dispo!==DEF.dispo;
+  $("#count").textContent=tout?L.length+(L.length>1?" préparations trouvées":" préparation trouvée")+" dans tout le catalogue"+(filtres?", filtres ignorés":""):(S.rx?"Mon ordonnance : ":"")+L.length+(L.length>1?" préparations affichées":" préparation affichée");
   document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-pressed",tout?t.dataset.c==="T":!S.preset&&!S.rx&&t.dataset.c===S.cat));
   document.querySelectorAll("#presets .chip").forEach(t=>t.setAttribute("aria-pressed",!tout&&!S.rx&&t.dataset.p===S.preset));
   ["q","budget","players","profil","dispo","sort"].forEach(id=>{if($("#"+id).value!==S[id])$("#"+id).value=S[id]});
@@ -927,7 +925,6 @@ function start(saved){
   ["play","pause","ended"].forEach(ev=>$("#avPanel").addEventListener(ev,()=>{const s=$("#avPanel .ap-song");if(s)s.classList.toggle("playing",ev==="play")},true));
   $("#bagout").addEventListener("click",e=>{if(e.target.closest("[data-again]")){openBag();return}const b=e.target.closest("[data-go]");if(b)goTo(+b.dataset.go)});
   $("#list").addEventListener("click",e=>{const b=e.target.closest(".rxbtn");if(!b)return;const n=b.dataset.n,on=!RX.has(n);on?RX.add(n):RX.delete(n);saveRx();b.setAttribute("aria-pressed",on);b.setAttribute("aria-label",(on?"Retirer de mon ordonnance":"Prescrire")+" : "+n);b.lastElementChild.textContent=on?"Prescrit":"Prescrire";b.classList.remove("pop");void b.offsetWidth;b.classList.add("pop");rxBar();if(S.rx&&!on)render()});
-  $("#count").addEventListener("click",e=>{if(!e.target.closest("[data-lever]"))return;Object.assign(S,{budget:DEF.budget,players:DEF.players,profil:DEF.profil,dispo:DEF.dispo});render()});
   $("#rxSee").addEventListener("click",()=>{S.rx=S.q.trim()?true:!S.rx;S.q="";render();rxBar();$(".bar").scrollIntoView({block:"start"})});
   $("#rxClear").addEventListener("click",()=>{RX.clear();saveRx();S.rx=false;render();rxBar()});
   $("#rxCopy").addEventListener("click",async()=>{const b=$("#rxCopy");try{await navigator.clipboard.writeText(rxText());b.textContent="Ordonnance copiée"}catch(e){b.textContent="Copie impossible"}setTimeout(()=>b.textContent="Copier l'ordonnance",1800)});
