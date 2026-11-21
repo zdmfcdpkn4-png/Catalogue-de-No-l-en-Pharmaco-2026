@@ -54,7 +54,8 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await p.waitForTimeout(6000); await p.screenshot({ path: dir + '/twirling-6-final.png' });
   await p.waitForFunction(() => window.etat.trois !== null && window.etat.t > window.etat.troisT + 1.2, null, { timeout: 90000 }); await p.screenshot({ path: dir + '/twirling-6b-trois-annonce.png' });
   await p.waitForTimeout(5000); await p.screenshot({ path: dir + '/twirling-6c-trois.png' });
-  const souris = await fin(p); await p.screenshot({ path: dir + '/twirling-7-fin.png' });
+  await p.waitForFunction(() => window.etat.fini); await p.waitForTimeout(1500); await p.screenshot({ path: dir + '/twirling-7-fin.png' });
+  const souris = await fin(p);
   const etatSouris = await bilan(p);
   // 2. Au clavier : de vraies touches (une flèche du bon côté au bon moment, puis F ou J), l'automate ensuite.
   await lancer(p, 30); await p.mouse.move(2, 2);
@@ -68,7 +69,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await p.evaluate(() => { window.fois = 0; window.stop(); }); await p.waitForTimeout(9500);
   const apresArret = await p.evaluate(() => window.fois);
   // 3 ter. Arrêt pendant le panneau de fin (minuterie en cours).
-  await lancer(p, 5); await p.waitForTimeout(5400); await p.evaluate(() => window.stop()); await p.waitForTimeout(2500);
+  await lancer(p, 5); await p.waitForTimeout(6500); await p.evaluate(() => window.stop()); await p.waitForTimeout(4500);
   const apresArretFin = await p.evaluate(() => window.fois);
   // 4. Téléphone de 320 px, au doigt, mouvements réduits.
   const tel = await ouvrir({ viewport: { width: 320, height: 568 }, deviceScaleFactor: 2, hasTouch: true, reducedMotion: 'reduce' }, 296);
@@ -80,12 +81,14 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   const vraiDoigt = await tel.evaluate(() => window.etat.pris);
   await joueur(tel, 'touch');
   await tel.waitForFunction(() => window.etat.t > window.etat.batons[2].entree + 5, null, { timeout: 90000 }); await tel.screenshot({ path: dir + '/twirling-10-telephone-320-final.png' });
+  await tel.waitForFunction(() => window.etat.fini); await tel.waitForTimeout(1200); await tel.screenshot({ path: dir + '/twirling-11-telephone-320-fin.png' });
   const telephone = [await fin(tel), await tel.evaluate(() => document.documentElement.scrollWidth), await bilan(tel)];
-  await tel.screenshot({ path: dir + '/twirling-11-telephone-320-fin.png' });
+  
   // 4 bis. Un joueur qui ne rattrape qu'une spatule sur deux : la troisième ne doit pas entrer.
   await lancer(p, 30);
   await p.evaluate(() => { let n = 0; const faits = new Map(); window.auto = setInterval(() => { const s = window.etat; if (!s || s.fini) return; for (const b of s.batons) { if (b.etat !== 'vol' || faits.get(b) === b.t1 || s.t + s.acc < b.t1 - 0.012) continue; faits.set(b, b.t1); if (n++ % 3) continue; window.dispatchEvent(new KeyboardEvent('keydown', { key: b.m1 ? 'ArrowRight' : 'ArrowLeft', bubbles: true, cancelable: true })); } }, 4); });
   await p.waitForFunction(() => window.etat.trois !== null && window.etat.t > window.etat.troisT + 1); await p.screenshot({ path: dir + '/twirling-8b-sans-troisieme.png' });
+  await p.waitForFunction(() => window.etat.fini); await p.waitForTimeout(1200); await p.screenshot({ path: dir + '/twirling-8c-fin-modeste.png' });
   const sansTroisieme = [await fin(p), await bilan(p)];
   // 5. Largeur PC, sans jouer : note 0 et score brut 0.
   const pc = await ouvrir({ viewport: { width: 1280, height: 800 } }, 640);

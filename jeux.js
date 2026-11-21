@@ -2787,7 +2787,7 @@
       const tactile = mm("(pointer: coarse)"), calme = mm("(prefers-reduced-motion: reduce)");
       if (typeof opt.espion === "function") opt.espion(s);                                         // pour le banc d'essai seulement
       const logo = new Image(); logo.src = opt.logo || api._logo;
-      let clos = false, minuterie = 0, vu = performance.now(), joue = false;
+      let clos = false, minuterie = 0, vu = performance.now(), joue = false, tFin = 0, salve = 0;
       // L'appui est daté au plus juste : le temps écoulé depuis la dernière image s'ajoute à l'horloge du jeu.
       const geste = m => { if (clos) return; joue = true; frapperTwirling(s, m, borne((performance.now() - vu) / 1000, 0, 0.05)); };
       const TOUCHES = { ArrowLeft: 0, ArrowRight: 1, f: 0, F: 0, j: 1, J: 1 };
@@ -2813,23 +2813,25 @@
       const rond = (x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 6.3); };
       const FANIONS = [Y, O, P, V, G, B];
       const bonus = () => Math.min(RTW.bonus, Math.floor(s.serie / RTW.serie));
-      // Les effets : étincelles et confettis (parts), annonce de combo (pop). Rien de tout cela en mouvements réduits.
+      // Les effets : confettis, paillettes (k = "p") et rubans (k = "r") dans parts, annonce de combo dans pop. Rien de tout cela en mouvements réduits.
       let parts = [], pop = null, serieVue = 0, evVu = -9, secousse = -9;
       const jet = (x, y, n, coul, force, bas) => { if (calme) return; for (let i = 0; i < n; i++) { const a = Math.random() * 6.3, v = force * (0.4 + Math.random() * 0.6); parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (bas ? 0 : force * 0.5), vie: 0.5 + Math.random() * 0.5, age: 0, c: coul || FANIONS[i % 6], r: 2 + Math.random() * 2.5, tour: Math.random() * 6 }); } };
+      const paillettes = (x, y, n, rayon) => { if (calme) return; for (let i = 0; i < n; i++) { const a = Math.random() * 6.3, d = Math.random() * rayon; parts.push({ k: "p", x: x + Math.cos(a) * d, y: y + Math.sin(a) * d * 0.7, vx: Math.cos(a) * 26, vy: -10 - Math.random() * 30, vie: 0.7 + Math.random() * 0.8, age: 0, c: clos ? [Y, C, "#fff", P][i % 4] : [O, "#E0B400", "#C2409B", V][i % 4], r: 3 + Math.random() * 3.5, tour: Math.random() * 6 }); } };
+      const rubans = n => { if (calme) return; for (let i = 0; i < n; i++) parts.push({ k: "r", x: 20 + Math.random() * (W - 40), y: 44 - Math.random() * 50, vx: 0, vy: 95 + Math.random() * 70, vie: 2.2 + Math.random(), age: 0, c: FANIONS[(i + (Math.random() * 6 | 0)) % 6], r: 5 + Math.random() * 4, tour: Math.random() * 6 }); };
       function effets(dt) {
         if (s.evT !== evVu) {                                                                        // un nouveau geste vient d'être jugé
           evVu = s.evT; const e = s.ev;
-          if (e && e.q === 3) jet(TW_MX[e.m], TW_YH, 7, Y, 110);
+          if (e && e.q === 3) paillettes(TW_MX[e.m], TW_YH, 5 + 2 * bonus(), 26);
           if (e && e.q === 0) secousse = s.t;
         }
         if (s.serie > serieVue) {
           const k = Math.floor(s.serie / RTW.serie);
-          if (s.serie % RTW.serie === 0 && k <= RTW.bonus) { pop = { txt: "Combo ! bonus +" + k, t: s.t, c: [V, Y, O][k - 1] }; jet(180, 150, 14 + 8 * k, null, 190); }
-          else if (s.serie >= 20 && s.serie % 10 === 0) { pop = { txt: "Série de " + s.serie + " !", t: s.t, c: O }; for (let x = 30; x < W; x += 50) jet(x, 60, 5, null, 90, true); }
+          if (s.serie % RTW.serie === 0 && k <= RTW.bonus) { pop = { txt: "Combo ! bonus +" + k, t: s.t, c: [V, Y, O][k - 1] }; jet(180, 150, 10 + 6 * k, null, 190); rubans(4 + 3 * k); paillettes(180, 150, 12 + 6 * k, 110); }
+          else if (s.serie >= 20 && s.serie % 10 === 0) { pop = { txt: "Série de " + s.serie + " !", t: s.t, c: O }; rubans(12); paillettes(180, 180, 26, 150); }
         } else if (s.serie < serieVue && serieVue >= RTW.serie) pop = { txt: "Série rompue", t: s.t, c: "#C9C3DA", bas: true };
         serieVue = s.serie;
-        for (const q of parts) { q.age += dt; q.vy += 520 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.tour += dt * 9; }
-        parts = parts.filter(q => q.age < q.vie && q.y < TW_SOL);
+        for (const q of parts) { q.age += dt; q.vy += (q.k === "r" ? 0 : q.k === "p" ? 70 : 520) * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.tour += dt * 9; }
+        parts = parts.filter(q => q.age < q.vie && q.y < (clos ? H + 60 : TW_SOL));
       }
       function decor() {
         const t = tAff(), k = bonus();
@@ -2918,7 +2920,20 @@
           const o = b.etat === "vol" || b.etat === "chute" ? placerTwirling(Object.assign({}, b), t) : b;
           spatule(o.x + (b.etat === "main" ? (b.k - 1) * 5 : 0), o.y - (b.etat === "main" ? 6 : 0), o.rot, TEINTES[b.k], 1);
         }
-        for (const q of parts) { ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.tour); ctx.globalAlpha = 1 - q.age / q.vie; ctx.fillStyle = q.c; ctx.fillRect(-q.r, -q.r * 0.6, q.r * 2, q.r * 1.2); ctx.restore(); }
+        if (!clos) confettis();
+        function confettis() { for (const q of parts) {
+          const a = 1 - q.age / q.vie;
+          if (q.k === "r") {                                                                         // un ruban : il descend en ondulant
+            ctx.globalAlpha = Math.min(1, a * 3) * 0.9; ctx.strokeStyle = q.c; ctx.lineWidth = 3.5; ctx.lineCap = "round"; ctx.beginPath();
+            for (let i = 0; i <= 9; i++) ctx.lineTo(q.x + Math.sin(q.age * 6 + i * 0.75 + q.tour) * q.r, q.y - i * 6);
+            ctx.stroke();
+          } else if (q.k === "p") {                                                                  // une paillette : une étoile à quatre branches qui scintille
+            ctx.globalAlpha = a * (0.45 + 0.55 * Math.abs(Math.sin(q.age * 18 + q.tour))); ctx.fillStyle = q.c; ctx.beginPath();
+            for (let i = 0; i < 8; i++) { const r = i % 2 ? q.r * 0.3 : q.r, b = i * Math.PI / 4; ctx.lineTo(q.x + Math.cos(b) * r, q.y + Math.sin(b) * r); }
+            ctx.fill();
+          } else { ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.tour); ctx.globalAlpha = a; ctx.fillStyle = q.c; ctx.fillRect(-q.r, -q.r * 0.6, q.r * 2, q.r * 1.2); ctx.restore(); }
+        }
+        ctx.globalAlpha = 1; }
         // Les annonces : l'entrée des spatules, les combos.
         const b2 = s.batons[1], b3 = s.batons[2];
         const annonce = (txt, y, fond, encre) => { ctx.fillStyle = fond; ctx.beginPath(); ctx.roundRect(40, y - 16, 280, 32, 16); ctx.fill(); texte(ctx, txt, 180, y + 1, 15, encre); };
@@ -2955,18 +2970,37 @@
         }
         const n = noteTwirling(s);
         bandeau(ctx, s.points + " pts · " + n + "/10" + (n < 10 ? " · palier à " + palierTwirling(s, n) : ""), duree - s.t, duree);
-        if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 150, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 190, 40, Y); texte(ctx, s.points + " points · meilleure série " + s.meilleure, 180, 232, 16, C); }
+        if (clos) {
+          // Le tableau final : la note en grand au cœur du logo de l'unité, et quelques chiffres de la partie.
+          ctx.fillStyle = "rgba(38,7,109,.8)"; ctx.fillRect(0, 39, W, H - 39);
+          const z = calme ? 1 : 1 + 0.03 * Math.sin(tFin * 3) + 0.25 * Math.max(0, 1 - tFin * 4);
+          ctx.save(); ctx.translate(180, 196); ctx.scale(z, z);
+          ctx.fillStyle = C; rond(0, 0, 124); ctx.fill();
+          if (logo.complete && logo.naturalWidth) { ctx.save(); if (!calme) ctx.rotate(Math.sin(tFin * 0.9) * 0.05); ctx.drawImage(logo, -122, -119, 244, 244); ctx.restore(); }
+          trait(ctx, 4); ctx.fillStyle = N; rond(0, 0, 60); ctx.fill(); ctx.strokeStyle = Y; ctx.stroke();
+          texte(ctx, String(n), n === 10 ? -14 : -10, -3, 62, Y); texte(ctx, "/10", n === 10 ? 38 : 30, 12, 20, C);
+          ctx.restore();
+          const stats = [[s.points, s.points > 1 ? "points" : "point"], [s.pris + "/" + s.choree.length, "rattrapées"], [s.q[3], s.q[3] > 1 ? "parfaits" : "parfait"], [s.meilleure, "série max"]];
+          ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(12, 340, 336, 64, 16); ctx.fill(); trait(ctx, 3); ctx.stroke();
+          stats.forEach((q, i) => { const x = 54 + i * 84; texte(ctx, String(q[0]), x, 363, 21, N); texte(ctx, q[1], x, 387, 11, "rgba(38,7,109,.7)"); if (i) { ctx.strokeStyle = "rgba(38,7,109,.18)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 42, 350); ctx.lineTo(x - 42, 394); ctx.stroke(); } });
+          texte(ctx, s.trois ? "Bouquet final à trois spatules !" : n >= 5 ? "Belle parade !" : "La parade est libérée", 180, 424, 14, Y);
+          confettis();                                                                               // rubans et paillettes passent devant le tableau
+        }
       }
       const arret = boucle(dt => {
         vu = performance.now();
         if (!clos) {
           pasTwirling(s, dt); effets(dt);
           if (s.fini) {
-            clos = true;
+            clos = true; serieVue = s.serie; if (s.points) { rubans(14); paillettes(180, 196, 30, 150); }
             const n = noteTwirling(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
             const bilan = pl(s.pris, "rattrapage", "rattrapages") + " sur " + s.choree.length + ", dont " + pl(s.q[3], "parfait", "parfaits") + ", meilleure série de " + s.meilleure + (s.trois ? ", bouquet final à trois spatules" : "") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (1 à 3 points selon la justesse du geste, jusqu'à 3 de bonus de série, 1 point perdu par geste dans le vide ; 10 sur 10 à partir de " + palierTwirling(s, 9) + " points).";
-            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, brutTwirling(s)); }, 1300);
+            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, brutTwirling(s)); }, 3600);
           }
+        } else {
+          // Le tableau final : la fête continue quelques secondes, plus fournie quand la note est bonne.
+          tFin += dt; effets(dt);
+          if (noteTwirling(s) >= 5 && tFin > salve) { salve += 0.7; rubans(6); paillettes(180, 196, 14, 160); }
         }
         dessiner();
       });
