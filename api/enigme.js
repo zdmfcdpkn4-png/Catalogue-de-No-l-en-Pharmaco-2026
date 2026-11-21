@@ -25,6 +25,11 @@ const PRENOM = /^\p{L}+(?:[-']\p{L}+)*$/u;
 // chacun sous le nombre de choix de sa liste (les listes sont dessinées dans participants.js : garder les longueurs accordées).
 const NB_BRIGADES = 5;
 const AVATAR = [8, 8, 8];
+// Devise et jeu emblème d'une brigade : chaque membre vote du 1er au 7 décembre, puis le choix est figé.
+// La devise est un numéro de la liste DEVISES de participants.js ; le jeu emblème, le nom d'un jeu du catalogue
+// (même contrôle que le vote du palmarès : la page ne montre que les noms qu'elle connaît).
+const NB_DEVISES = 20;
+const CHOIX_FIN = 7;
 const avatarOk = a => Array.isArray(a) && a.length === AVATAR.length && a.every((v, i) => Number.isInteger(v) && v >= 0 && v < AVATAR[i]);
 // Tirage équilibré : la brigade la moins fournie, au hasard entre les ex aequo. Les effectifs ne diffèrent jamais de plus d'un.
 function tirer(joueurs) {
@@ -66,7 +71,7 @@ const dateDe = n => new Date(JOUR1 + (n - 1) * 864e5).toISOString().slice(0, 10)
 const etatDe = (n, jour) => (jour < n ? 'avenir' : jour <= n + DELAI ? 'ouverte' : 'close');
 
 // Ce que le serveur garde par joueur : { p: nom affiché, t: heure d'inscription, r: { porte: réponses },
-//   a: avatar [couleur, coiffe, accessoire], b: brigade de 0 à 4 }. `a` et `b` manquent chez un joueur d'avant les brigades :
+//   a: avatar [couleur, coiffe, accessoire], b: brigade de 0 à 4, d: sa voix pour la devise, g: sa voix pour le jeu emblème }. `a` et `b` manquent chez un joueur d'avant les brigades :
 //   la brigade lui est tirée à sa prochaine ouverture de porte, l'avatar quand il remplit sa fiche.
 // Ce que le serveur garde par joueur et par porte.
 //   question : { d: départ du chrono, v: réponse, t: heure de la réponse }   (v absent : chrono lancé, pas de réponse)
@@ -165,10 +170,26 @@ function classementSuivi(B, joueurs, jour) {
 
 // Classement des brigades, tiré du classement individuel (donc des seules portes closes) : la moyenne par membre,
 // pour qu'une brigade plus nombreuse ne soit pas avantagée. Les ex aequo partagent le rang.
-function brigades(L) {
+// Devise et jeu emblème : l'option la plus soutenue par les membres ; à égalité, la première de la liste (devise)
+// ou de l'alphabet (jeu). `voix` donne le détail des voix à la brigade `mienne` seulement.
+function brigades(L, joueurs, mienne) {
   const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, pts: 0, moy: 0 }));
   for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; }
   for (const t of T) t.moy = t.n ? Math.round(t.pts / t.n * 10) / 10 : 0;
+  const V = T.map(() => ({ d: {}, g: {} }));
+  for (const cle of Object.keys(joueurs)) {
+    const j = joueurs[cle], v = V[j.b];
+    if (!v) continue;
+    if (j.d !== undefined) v.d[j.d] = (v.d[j.d] || 0) + 1;
+    if (j.g !== undefined) v.g[j.g] = (v.g[j.g] || 0) + 1;
+  }
+  const elu = (o, tri) => Object.keys(o).sort((x, y) => o[y] - o[x] || tri(x, y))[0];
+  for (const t of T) {
+    const v = V[t.b], d = elu(v.d, (x, y) => x - y), g = elu(v.g, (x, y) => (x < y ? -1 : x > y ? 1 : 0));
+    if (d !== undefined) t.devise = Number(d);
+    if (g !== undefined) t.jeu = g;
+    if (t.b === mienne) t.voix = v;
+  }
   T.sort((x, y) => y.moy - x.moy || x.b - y.b);
   let rang = 0;
   T.forEach((t, i) => { if (!i || t.moy !== T[i - 1].moy) rang = i + 1; t.rang = rang; });
@@ -247,11 +268,12 @@ function etat(B, joueurs, cle, jour, maintenant) {
   return {
     jour,
     prenom: j ? j.p : undefined,
-    profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b } : undefined,
+    profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b, d: j.d, g: j.g } : undefined,
+    choix: { etat: jour < 1 ? 'avenir' : jour <= CHOIX_FIN ? 'ouvert' : 'fige', ferme: dateDe(CHOIX_FIN) },
     portes,
     total: portes.reduce((s, p) => s + (p.pts || 0), 0),
     classement: L,
-    brigades: brigades(L),
+    brigades: brigades(L, joueurs, j ? j.b : undefined),
   };
 }
 
@@ -308,6 +330,22 @@ async function handler(req, res) {
         const j = joueurs[cle];
         j.a = b.avatar.slice();
         if (j.b === undefined) j.b = tirer(joueurs);
+        return { ok: J => ({ code: 200, corps: { ok: true, ...etat(B, J, cle, jour, maintenant) } }) };
+      });
+      return res.status(s.code).json(s.corps);
+    }
+    // Voix d'un membre pour la devise et le jeu emblème de sa brigade : ouvert du 1er au 7 décembre, modifiable d'ici là.
+    if (b.action === 'brigade') {
+      if (jour < 1 || jour > CHOIX_FIN) return res.status(403).json({ error: jour < 1 ? 'scellee' : 'fige' });
+      const d = b.devise, g = typeof b.jeu === 'string' ? b.jeu.trim() : b.jeu;
+      if (d === undefined && g === undefined) return res.status(400).json({ error: 'choix' });
+      if (d !== undefined && !(Number.isInteger(d) && d >= 0 && d < NB_DEVISES)) return res.status(400).json({ error: 'devise' });
+      if (g !== undefined && (typeof g !== 'string' || !g || g.length > 80 || /[\u0000-\u001f<>]/.test(g))) return res.status(400).json({ error: 'jeu' });
+      const s = await modifier(joueurs => {
+        const j = joueurs[cle];
+        if (!j || j.b === undefined) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
+        if (d !== undefined) j.d = d;
+        if (g !== undefined) j.g = g;
         return { ok: J => ({ code: 200, corps: { ok: true, ...etat(B, J, cle, jour, maintenant) } }) };
       });
       return res.status(s.code).json(s.corps);

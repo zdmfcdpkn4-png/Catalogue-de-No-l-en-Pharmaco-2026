@@ -254,7 +254,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<div class="eg-grid" id="egGrid" role="group" aria-label="Calendrier des 25 portes"></div>'
       + '<p class="eg-legend" aria-hidden="true"><span><i class="k0"></i>Sous scellé</span><span><i class="k1"></i>Ouverte</span><span><i class="k2"></i>Réponse scellée</span><span><i class="k3"></i>Résultat libéré</span></p>'
       + '<p class="eg-score" id="egScore" role="status"></p>'
-      + '<p class="eg-tools"><button class="go" type="button" id="egReload">Actualiser</button><button class="linkbtn" type="button" id="egAvatar" hidden>Retoucher mon avatar</button><button class="linkbtn" type="button" id="egChange">Changer de prénom</button></p></div>'
+      + '<p class="eg-tools"><button class="go" type="button" id="egReload">Actualiser</button><button class="linkbtn" type="button" id="egBrigade" hidden>Ma brigade</button><button class="linkbtn" type="button" id="egAvatar" hidden>Retoucher mon avatar</button><button class="linkbtn" type="button" id="egChange">Changer de prénom</button></p></div>'
       + '<aside class="eg-panel" id="egPanel" aria-live="polite"></aside>'
       + "</div>"
       + '<div class="eg-panel eg-rank" id="egRank" hidden><div class="eg-rhead"><h3>Classement des Pharmacogames</h3><p class="eg-sum" id="egSum"></p></div>'
@@ -292,6 +292,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egPanel").addEventListener("input", e => { if (e.target.id === "egRange") noter(Number(e.target.value)); });
     q("#egChange").addEventListener("click", sortir);
     q("#egAvatar").addEventListener("click", () => { if (!enJeu && brouillon === null && !q("#egTime")) identifier(); });
+    q("#egBrigade").addEventListener("click", () => { if (!enJeu && brouillon === null && !q("#egTime")) carnet(); });
     q("#egTout").addEventListener("click", () => { toutVoir = !toutVoir; rang(); });
     q("#egLib").addEventListener("click", e => { if (e.target.id === "egVu") { vuLib(); rang(); } });
     q("#egReload").addEventListener("click", () => charger("Calendrier à jour."));
@@ -406,14 +407,41 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   function identite() {
     const P = !relecture && E && E.profil, bouton = q("#egAvatar");
     bouton.hidden = !(P && P.a);
+    q("#egBrigade").hidden = !(P && P.a && P.b !== undefined);
     if (!P) { q("#egBrig").hidden = true; return; }
     chargerParticipants().then(() => {
       if (!E || E.profil !== P) return;
       const W = window.PharmacoParticipants, B = W.BRIGADES[P.b];
       if (P.a) q("#egWho").innerHTML = W.avatar(P.a, { brigade: P.b, cls: "pp-mini" }) + h(mem.prenom);
       q("#egBrig").hidden = !B;
-      if (B) q("#egBrig").innerHTML = W.embleme(P.b) + h(B.nom);
+      const ligne = (E.brigades || []).find(x => x.b === P.b), devise = ligne && W.DEVISES[ligne.devise];
+      if (B) q("#egBrig").innerHTML = W.embleme(P.b) + "<span>" + h(B.nom) + (devise ? " · « " + h(devise) + " »" : "") + "</span>";
     }).catch(() => {});
+  }
+  // Carnet de brigade : membres, devise et jeu emblème, et la voix du joueur tant que le vote est ouvert (serveur : 1er au 7 décembre).
+  async function carnet() {
+    if (relecture || occupe || enJeu || !fiche()) return;
+    try { await chargerParticipants(); } catch (e) { return dire("#egMsg", "Le carnet de brigade ne s'est pas chargé. Vérifiez la connexion et réessayez.", "err"); }
+    const b = E.profil.b, ligne = () => (E.brigades || []).find(x => x.b === b) || {};
+    enFiche = true;
+    clearInterval(tic);
+    window.PharmacoParticipants.brigade(q("#egPanel"), {
+      pseudo: mem.prenom, brigade: b, ligne: ligne(), moi: E.profil, choix: E.choix,
+      membres: (E.classement || []).filter(x => x.b === b).sort((x, y) => x.p.localeCompare(y.p, "fr")),
+      jeux: typeof G !== "undefined" ? G : [], familles: typeof CATS !== "undefined" ? CATS : {},
+      voter: async v => {
+        let r;
+        try { r = await call({ code: mem.code, prenom: mem.prenom, action: "brigade", devise: v.devise, jeu: v.jeu }); } catch (e) { r = { status: 0, j: {} }; }
+        if (r.status === 403 && r.j.error === "fige") return { ok: false, message: "Trop tard : devise et jeu emblème sont scellés depuis la fin de la première semaine." };
+        if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "Le vote de la brigade ouvrira avec le calendrier, le 1er décembre." };
+        if (r.status !== 200 || !r.j.profil) return { ok: false };
+        E = r.j;
+        identite();
+        return { ok: true, ligne: ligne(), moi: E.profil };
+      },
+      onFin: () => { enFiche = false; panneau(); },
+    });
+    q("#egPanel").scrollIntoView({ block: "nearest" });
   }
   // La fiche d'identification prend la place de la porte dans le panneau : à la première porte lancée, ou pour une retouche.
   async function identifier() {

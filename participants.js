@@ -42,6 +42,14 @@
     { nom: "Brigade des Gélules", court: "Gélules", c: "#ECD567", fond: "#F8EFC0", d: '<g transform="rotate(-40 12 12)"><rect x="2" y="7" width="20" height="10" rx="5" ' + E + '/><path d="M12 7h5a5 5 0 0 1 0 10h-5z" fill="currentColor" stroke="' + L + '" stroke-width="2"/></g>' },
     { nom: "Brigade des Ampoules", court: "Ampoules", c: "#EC7739", fond: "#F9D6C0", d: '<path d="M10 1.5h4v4l-1.2 2 1.2 2.5c2 1 3 2 3 4.5V20a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 7 20v-5.5c0-2.5 1-3.5 3-4.5l1.2-2.5L10 5.5z" ' + E + '/><path d="M8 15h8v5a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 8 20z" fill="currentColor"/>' },
   ];
+  // Devises proposées aux brigades : chaque membre en soutient une, la plus soutenue s'affiche (serveur : NB_DEVISES).
+  const DEVISES = [
+    "Un pour tous, tous au plateau", "Qui dose bien joue bien", "Jamais de pioche sans double contrôle", "Lancer, compter, libérer",
+    "Petits lots, grandes victoires", "La règle d'abord, le bluff ensuite", "Aseptiques, mais pas sans saveur", "Un coup d'avance, jamais un lot de retard",
+    "Préparés avec soin, joués avec panache", "À la paillasse comme au plateau", "Zéro particule, cent pour cent meeple", "Qui scelle sa réponse scelle son destin",
+    "Agiter avant de jouer", "Tenir hors de portée des mauvais perdants", "Une partie matin, midi et soir", "Sous hotte, mais pas sous cloche",
+    "La chance se prépare", "Posologie : une victoire par jour", "Le dé est jeté, le lot est libéré", "Traçabilité totale, bluff compris",
+  ];
   const MEEPLE = "M50 4c-9 0-16 7-16 16 0 6 3 11 8 14-14 3-34 12-36 20-1 5 6 14 10 13 6-1 13-6 19-8-3 11-13 26-13 33 0 3 2 4 5 4h16c2 0 3-1 4-3l3-10 3 10c1 2 2 3 4 3h16c3 0 5-1 5-4 0-7-10-22-13-33 6 2 13 7 19 8 4 1 11-8 10-13-2-8-22-17-36-20 5-3 8-8 8-14 0-9-7-16-16-16z";
 
   const borne = (v, n) => (Number.isInteger(v) && v >= 0 && v < n ? v : 0);
@@ -90,6 +98,21 @@
 .pp-carte .pp-emb{width:34px;height:34px;margin-bottom:4px}
 .pp-pop{animation:pp-pop .5s cubic-bezier(.3,1.6,.5,1)}
 @keyframes pp-pop{from{transform:scale(.6) rotate(-6deg);opacity:0}}
+.pp-elus{display:grid;gap:8px;margin:12px 0 0;padding:0;list-style:none}
+.pp-elus li{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;padding:8px 10px;background:#fff;border:2.5px solid var(--line,#26076D);border-radius:12px}
+.pp-elus img,.pp-elus .pp-emb{width:44px;height:44px;object-fit:cover;border-radius:8px}
+.pp-elus small,.pp-membres+small{display:block;font:600 .68rem var(--mono,monospace);letter-spacing:.05em;text-transform:uppercase;color:var(--muted,#4E3D7C)}
+.pp-elus b{display:block;line-height:1.2}
+.pp-membres{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px 4px;margin:12px 0 0;padding:0;list-style:none}
+.pp-membres li{display:grid;justify-items:center;gap:2px;font-size:.72rem;font-weight:700;text-align:center;overflow-wrap:anywhere}
+.pp-membres .pp-av{width:46px}
+.pp-devises{display:grid;gap:6px}
+.pp-dev{position:relative;display:block;margin:0!important;cursor:pointer;text-transform:none!important;letter-spacing:0!important}
+.pp-dev span{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:#fff;color:var(--on-surface,#26076D);border:2.5px solid var(--line,#26076D);border-radius:12px;font:700 .9rem/1.2 var(--display,sans-serif)}
+.pp-dev em{flex:0 0 auto;font:600 .68rem var(--mono,monospace);font-style:normal;white-space:nowrap}
+.pp-dev input:checked+span{background:var(--mu,#ECD567);box-shadow:3px 3px 0 var(--shadow,#26076D)}
+.pp-dev input:focus-visible+span{outline:3px solid var(--line,#26076D);outline-offset:3px}
+.pp-jeu{display:block;width:100%;min-height:46px;font:700 1rem var(--display,sans-serif);color:var(--on-surface,#26076D);background:#fff;border:2.5px solid var(--line,#26076D);border-radius:12px;padding:8px 10px}
 @media(max-width:380px){.pp-apercu{width:96px}.pp-top{gap:10px}.pp-opts{gap:5px}.pp-opt span{padding:6px 0 5px;font-size:.6rem;letter-spacing:-.01em}.pp-opt span svg,.pp-opt span i{width:34px;height:34px}.pp-carte .pp-apercu{width:84px}}
 @media(prefers-reduced-motion:reduce){.pp-pop{animation:none}.pp-opt input:checked+span{transform:none}}`;
   const st = document.createElement("style");
@@ -168,5 +191,57 @@
     });
   }
 
-  window.PharmacoParticipants = { COULEURS, COIFFES, ACCESSOIRES, BRIGADES, avatar, embleme: emblemeSvg, decrire, fiche };
+  /* Carnet de brigade, dessiné dans `el` : les membres, la devise et le jeu emblème élus, et le vote tant qu'il est ouvert.
+     o.pseudo ; o.brigade : numéro ; o.ligne : la ligne de la brigade envoyée par le serveur { n, devise, jeu, voix } ;
+     o.membres : [ { p, a } ] ; o.moi : { d, g } mes voix ; o.choix : { etat: "ouvert" | "fige" | "avenir", ferme: "AAAA-MM-JJ" } ;
+     o.jeux : jeux du catalogue [ { n, c, img } ] et o.familles : { c: { n, o } } ;
+     o.voter({ devise, jeu }) : promesse de { ok: true, ligne, moi } ou { ok: false, message } ; o.onFin(). */
+  function brigade(el, o) {
+    const B = BRIGADES[o.brigade], q = s => el.querySelector(s), jeux = o.jeux || [], parNom = new Map(jeux.map(g => [g.n, g]));
+    let ligne = o.ligne || {}, moi = o.moi || {}, occupe = false;
+    const pl = (n, un, des) => n + " " + (n > 1 ? des : un);
+    function peindre(msg) {
+      const ouvert = o.choix && o.choix.etat === "ouvert", voix = ligne.voix || { d: {}, g: {} };
+      const jeu = parNom.get(ligne.jeu), [a, m, j] = ((o.choix && o.choix.ferme) || "2026-12-07").split("-").map(Number);
+      const fam = o.familles || {}, cats = [...new Set(jeux.map(g => g.c))].sort((x, y) => ((fam[x] || {}).o || 0) - ((fam[y] || {}).o || 0));
+      const cites = Object.keys(voix.g).filter(n => parNom.has(n)).sort((x, y) => voix.g[y] - voix.g[x] || x.localeCompare(y, "fr"));
+      el.innerHTML = '<div class="pp"><p class="ap-m">Carnet de brigade · ' + pl(ligne.n || 0, "membre", "membres") + '</p><h3 tabindex="-1" id="ppTitre">' + emblemeSvg(o.brigade) + " " + h(B.nom) + "</h3>"
+        + '<ul class="pp-elus"><li>' + emblemeSvg(o.brigade) + "<span><small>Devise</small><b>" + (ligne.devise !== undefined && DEVISES[ligne.devise] ? "« " + h(DEVISES[ligne.devise]) + " »" : "Pas encore de devise") + "</b></span></li>"
+        + "<li>" + (jeu && jeu.img ? '<img src="img/' + h(jeu.img) + '" alt="">' : emblemeSvg(o.brigade)) + "<span><small>Jeu emblème</small><b>" + (jeu ? h(jeu.n) : "Pas encore de jeu emblème") + "</b></span></li></ul>"
+        + '<ul class="pp-membres">' + (o.membres || []).map(x => "<li>" + avatar(x.a, { brigade: o.brigade }) + h(x.p) + "</li>").join("") + "</ul>"
+        + (ouvert ? '<form id="ppVote" novalidate><fieldset class="pp-set"><legend>Ma voix pour la devise</legend><div class="pp-devises">'
+          + DEVISES.map((t, i) => '<label class="pp-dev"><input class="pp-vh" type="radio" name="ppDevise" value="' + i + '"' + (moi.d === i ? " checked" : "") + "><span>" + h(t) + (voix.d[i] ? "<em>" + pl(voix.d[i], "voix", "voix") + "</em>" : "") + "</span></label>").join("") + "</div></fieldset>"
+          + '<fieldset class="pp-set"><legend><label for="ppJeu" style="margin:0;font:inherit;color:inherit">Ma voix pour le jeu emblème</label></legend><select class="pp-jeu" id="ppJeu"><option value="">Choisir un jeu du catalogue</option>'
+          + cats.map(c => '<optgroup label="' + h((fam[c] || {}).n || c) + '">' + jeux.filter(g => g.c === c).sort((x, y) => x.n.localeCompare(y.n, "fr")).map(g => '<option value="' + h(g.n) + '"' + (moi.g === g.n ? " selected" : "") + ">" + h(g.n) + "</option>").join("") + "</optgroup>").join("") + "</select>"
+          + (cites.length ? '<p class="eg-hint">Déjà cités : ' + cites.map(n => h(n) + " (" + voix.g[n] + ")").join(", ") + ".</p>" : "") + "</fieldset>"
+          + '<p class="eg-hint">L\'option la plus soutenue par la brigade s\'affiche. Votre voix se modifie jusqu\'au ' + j + (j === 1 ? "er" : "") + " " + ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"][m - 1] + " à minuit ; ensuite, devise et jeu emblème sont scellés.</p>"
+          : '<p class="eg-hint">' + (o.choix && o.choix.etat === "fige" ? "Devise et jeu emblème sont scellés depuis la fin de la première semaine." : "Le vote de la devise et du jeu emblème ouvrira avec le calendrier.") + "</p>")
+        + '<p class="eg-msg ok" id="ppMsg" role="status">' + h(msg || "") + "</p>"
+        + '<p class="pp-fin">' + (ouvert ? '<button class="go main" type="submit" id="ppOk">Enregistrer ma voix</button>' : "") + '<button class="' + (ouvert ? "linkbtn" : "go main") + '" type="button" id="ppNon">Retour à la porte</button></p>'
+        + (ouvert ? "</form>" : "") + "</div>";
+      q("#ppNon").addEventListener("click", () => o.onFin());
+      if (!ouvert) return;
+      q("#ppVote").addEventListener("submit", async e => {
+        e.preventDefault();
+        if (occupe) return;
+        const r0 = q('input[name="ppDevise"]:checked'), g = q("#ppJeu").value, envoi = {};
+        if (r0) envoi.devise = Number(r0.value);
+        if (g) envoi.jeu = g;
+        const dit = (t, cls) => { q("#ppMsg").textContent = t; q("#ppMsg").className = "eg-msg " + cls; };
+        if (!r0 && !g) return dit("Choisissez une devise ou un jeu emblème avant d'enregistrer.", "err");
+        occupe = true; q("#ppOk").disabled = true;
+        let r;
+        try { r = await o.voter(envoi); } catch (x) { r = null; }
+        occupe = false;
+        if (!r || !r.ok) { q("#ppOk").disabled = false; return dit((r && r.message) || "La voix n'est pas partie : le serveur ne répond pas. Réessayez dans un instant.", "err"); }
+        ligne = r.ligne || ligne; moi = r.moi || moi;
+        peindre("Voix enregistrée. La brigade vous remercie.");
+        q("#ppMsg").scrollIntoView({ block: "nearest" });
+      });
+    }
+    peindre();
+    q("#ppTitre").focus({ preventScroll: true });
+  }
+
+  window.PharmacoParticipants = { COULEURS, COIFFES, ACCESSOIRES, BRIGADES, DEVISES, avatar, embleme: emblemeSvg, decrire, fiche, brigade };
 })();
