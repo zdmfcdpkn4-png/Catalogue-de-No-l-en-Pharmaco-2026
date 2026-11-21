@@ -19,6 +19,8 @@
   // echeance : fin du chrono de chaque question lancée, à l'horloge de l'appareil ; enJeu : arrêt du jeu en cours.
   let E = null, choix = 0, brouillon = null, aConfirmer = false, relecture = "", occupe = false, sec;
   let echeance = {}, tic = 0, enJeu = null;
+  // enFiche : la fiche d'identification (avatar, brigade) occupe le panneau ; participants.js la dessine.
+  let enFiche = false;
 
   const call = async body => {
     const r = await fetch(API, { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -241,17 +243,18 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<p class="adv-intro">Le concours de l\'équipe, chacun pour soi : 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, cinq questions au chrono sur un thème du jeu de société (quatre flacons au choix, ou une dose à estimer entre 0 et 100) ou un vrai jeu d\'adresse. Chaque porte vaut 10 points. Pour élire votre jeu préféré, c\'est au <a href="#vote">Palmarès</a>.</p></div>'
       + NOTICE
       + '<form class="eg-panel eg-gate" id="egGate" novalidate><h3>Entrer dans le calendrier</h3>'
-      + '<label for="egPrenom">Votre prénom</label><input id="egPrenom" type="text" autocomplete="given-name" maxlength="24" required>'
+      + '<label for="egPrenom">Pseudo ou prénom</label><input id="egPrenom" type="text" autocomplete="given-name" maxlength="24" required>'
       + '<label for="egCode">Code d\'équipe</label><input id="egCode" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" required>'
-      + '<p class="eg-hint">Même prénom, même fiche, sur tous vos appareils : vos réponses sont gardées par le serveur de l\'équipe. Deux collègues du même prénom ? Ajoutez une initiale collée, par exemple CamilleB.</p>'
+      + '<p class="eg-hint">Même nom, même fiche, sur tous vos appareils : vos réponses sont gardées par le serveur de l\'équipe. Deux collègues du même prénom ? Ajoutez une initiale collée, par exemple CamilleB. Avatar et brigade se règlent à votre première porte.</p>'
       + '<p class="eg-msg err" id="egGateMsg" role="status"></p><button class="go main" type="submit">Ouvrir mon calendrier</button></form>'
       + '<p class="eg-banner" id="egBanner" hidden>Mode relecture : les 25 portes s\'affichent avec leur solution. Rien n\'est enregistré.</p>'
       + '<div class="eg-body" id="egBody" hidden>'
       + '<div class="eg-sheet"><div class="eg-cap"><span>Calendrier des 25 portes</span><b id="egWho"></b></div>'
+      + '<p class="pp-brig" id="egBrig" hidden></p>'
       + '<div class="eg-grid" id="egGrid" role="group" aria-label="Calendrier des 25 portes"></div>'
       + '<p class="eg-legend" aria-hidden="true"><span><i class="k0"></i>Sous scellé</span><span><i class="k1"></i>Ouverte</span><span><i class="k2"></i>Réponse scellée</span><span><i class="k3"></i>Résultat libéré</span></p>'
       + '<p class="eg-score" id="egScore" role="status"></p>'
-      + '<p class="eg-tools"><button class="go" type="button" id="egReload">Actualiser</button><button class="linkbtn" type="button" id="egChange">Changer de prénom</button></p></div>'
+      + '<p class="eg-tools"><button class="go" type="button" id="egReload">Actualiser</button><button class="linkbtn" type="button" id="egBrigade" hidden>Ma brigade</button><button class="linkbtn" type="button" id="egAvatar" hidden>Retoucher mon avatar</button><button class="linkbtn" type="button" id="egChange">Changer de prénom</button></p></div>'
       + '<aside class="eg-panel" id="egPanel" aria-live="polite"></aside>'
       + "</div>"
       + '<div class="eg-panel eg-rank" id="egRank" hidden><div class="eg-rhead"><h3>Classement des Pharmacogames</h3><p class="eg-sum" id="egSum"></p></div>'
@@ -288,6 +291,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     });
     q("#egPanel").addEventListener("input", e => { if (e.target.id === "egRange") noter(Number(e.target.value)); });
     q("#egChange").addEventListener("click", sortir);
+    q("#egAvatar").addEventListener("click", () => { if (!enJeu && brouillon === null && !q("#egTime")) identifier(); });
+    q("#egBrigade").addEventListener("click", () => { if (!enJeu && brouillon === null && !q("#egTime")) carnet(); });
     q("#egTout").addEventListener("click", () => { toutVoir = !toutVoir; rang(); });
     q("#egLib").addEventListener("click", e => { if (e.target.id === "egVu") { vuLib(); rang(); } });
     q("#egReload").addEventListener("click", () => charger("Calendrier à jour."));
@@ -300,7 +305,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 
     window.addEventListener("hashchange", view);
     // Retour sur l'onglet resté ouvert : le calendrier se remet à jour, sauf si une réponse est en cours de saisie.
-    document.addEventListener("visibilitychange", () => { if (!document.hidden && !sec.hidden && E && brouillon === null && !enJeu) charger(); });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden && !sec.hidden && E && brouillon === null && !enJeu && !enFiche) charger(); });
     view();
   }
 
@@ -328,7 +333,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (r.status !== 200) return dire("#egGateMsg", "Le serveur ne répond pas. Réessayez dans un instant.", "err");
     if (r.j.relecture) relecture = code;
     else {
-      if (!(p.length >= 2 && p.length <= 24 && PRENOM.test(p))) return dire("#egGateMsg", "Un seul prénom, de 2 à 24 lettres, sans espace ni chiffre.", "err");
+      if (!(p.length >= 2 && p.length <= 24 && PRENOM.test(p))) return dire("#egGateMsg", "Un pseudo ou un prénom en un seul mot, de 2 à 24 lettres, sans espace ni chiffre.", "err");
       relecture = "";
       mem.prenom = p; mem.code = code;
       save();
@@ -341,7 +346,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (enJeu) { enJeu(); enJeu = null; }
     clearInterval(tic); echeance = {};
     relecture = "";
-    E = null;
+    E = null; enFiche = false;
     q("#egBody").hidden = true; q("#egRank").hidden = true; q("#egBanner").hidden = true;
     q("#egGate").hidden = false;
     q("#egNotice").open = true;
@@ -383,9 +388,89 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egBanner").hidden = !relecture;
     if (premier) { q("#egNotice").open = false; choix = parDefaut(); brouillon = null; aConfirmer = false; }
     q("#egWho").textContent = relecture ? "Relecture" : mem.prenom;
+    identite();
     grille();
     panneau(msg, cls);
     rang();
+  }
+
+  // Participants : l'avatar et la brigade du joueur. Le dessin vient de participants.js, chargé à la demande ;
+  // le choix de l'avatar est validé par le serveur, qui tire seul la brigade.
+  const chargerParticipants = () => new Promise((ok, ko) => {
+    if (window.PharmacoParticipants) return ok();
+    const sc = document.createElement("script");
+    sc.src = "participants.js"; sc.onload = () => (window.PharmacoParticipants ? ok() : ko()); sc.onerror = ko;
+    document.head.appendChild(sc);
+  });
+  const fiche = () => !relecture && E && E.profil && E.profil.a;
+  // En tête du calendrier : l'avatar devant le nom, la brigade dessous. Le texte de #egWho reste le nom seul.
+  function identite() {
+    const P = !relecture && E && E.profil, bouton = q("#egAvatar");
+    bouton.hidden = !(P && P.a);
+    q("#egBrigade").hidden = !(P && P.a && P.b !== undefined);
+    // Avant l'ouverture du calendrier : la rubrique est annoncée, sous scellé comme les portes, sans rien d'actif.
+    const scelle = !relecture && E && E.choix && E.choix.etat === "avenir";
+    q("#egBrig").className = scelle ? "eg-hint" : "pp-brig";
+    q("#egBrig").style.margin = scelle ? "6px 0 10px" : "";
+    if (scelle) { q("#egBrig").innerHTML = CADENAS + " Fiche d'identification, avatar et brigades : sous scellé jusqu'au " + jour(dt(E.portes[0].ouvre)) + "."; q("#egBrig").hidden = false; return; }
+    if (!P) { q("#egBrig").hidden = true; return; }
+    chargerParticipants().then(() => {
+      if (!E || E.profil !== P) return;
+      const W = window.PharmacoParticipants, B = W.BRIGADES[P.b];
+      if (P.a) q("#egWho").innerHTML = W.avatar(P.a, { brigade: P.b, cls: "pp-mini" }) + h(mem.prenom);
+      q("#egBrig").hidden = !B;
+      const ligne = (E.brigades || []).find(x => x.b === P.b), devise = ligne && W.DEVISES[ligne.devise];
+      if (B) q("#egBrig").innerHTML = W.embleme(P.b) + "<span>" + h(B.nom) + (devise ? " · « " + h(devise) + " »" : "") + "</span>";
+    }).catch(() => {});
+  }
+  // Carnet de brigade : membres, devise et jeu emblème, et la voix du joueur tant que le vote est ouvert (serveur : 1er au 7 décembre).
+  async function carnet() {
+    if (relecture || occupe || enJeu || !fiche()) return;
+    try { await chargerParticipants(); } catch (e) { return dire("#egMsg", "Le carnet de brigade ne s'est pas chargé. Vérifiez la connexion et réessayez.", "err"); }
+    const b = E.profil.b, ligne = () => (E.brigades || []).find(x => x.b === b) || {};
+    enFiche = true;
+    clearInterval(tic);
+    window.PharmacoParticipants.brigade(q("#egPanel"), {
+      pseudo: mem.prenom, brigade: b, ligne: ligne(), moi: E.profil, choix: E.choix,
+      membres: (E.classement || []).filter(x => x.b === b).sort((x, y) => x.p.localeCompare(y.p, "fr")),
+      jeux: typeof G !== "undefined" ? G : [], familles: typeof CATS !== "undefined" ? CATS : {},
+      voter: async v => {
+        let r;
+        try { r = await call({ code: mem.code, prenom: mem.prenom, action: "brigade", devise: v.devise, jeu: v.jeu }); } catch (e) { r = { status: 0, j: {} }; }
+        if (r.status === 403 && r.j.error === "fige") return { ok: false, message: "Trop tard : devise et jeu emblème sont scellés depuis la fin de la première semaine." };
+        if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "Le vote de la brigade ouvrira avec le calendrier, le 1er décembre." };
+        if (r.status !== 200 || !r.j.profil) return { ok: false };
+        E = r.j;
+        identite();
+        return { ok: true, ligne: ligne(), moi: E.profil };
+      },
+      onFin: () => { enFiche = false; panneau(); },
+    });
+    q("#egPanel").scrollIntoView({ block: "nearest" });
+  }
+  // La fiche d'identification prend la place de la porte dans le panneau : à la première porte lancée, ou pour une retouche.
+  async function identifier() {
+    if (relecture || occupe || enJeu) return;
+    try { await chargerParticipants(); } catch (e) { return dire("#egMsg", "La fiche d'identification ne s'est pas chargée. Vérifiez la connexion et réessayez.", "err"); }
+    const P = E.profil || {};
+    enFiche = true;
+    clearInterval(tic);
+    window.PharmacoParticipants.fiche(q("#egPanel"), {
+      pseudo: mem.prenom, avatar: P.a, brigade: P.b,
+      enregistrer: async a => {
+        let r;
+        try { r = await call({ code: mem.code, prenom: mem.prenom, action: "profil", avatar: a }); } catch (e) { r = { status: 0, j: {} }; }
+        if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "La fiche d'identification reste sous scellé jusqu'à l'ouverture du calendrier, le 1er décembre." };
+        if (r.status === 403 && r.j.error === "complet") return { ok: false, message: "Le calendrier affiche complet : plus de place pour un nouveau joueur." };
+        if (r.status !== 200 || !r.j.profil) return { ok: false };
+        E = r.j;
+        identite(); grille(); rang();
+        const b = E.profil.b, ligne = (E.brigades || []).find(x => x.b === b);
+        return { ok: true, brigade: b, effectif: ligne ? ligne.n : 0 };
+      },
+      onFin: msg => { enFiche = false; panneau(msg); },
+    });
+    q("#egPanel").scrollIntoView({ block: "nearest" });
   }
 
   function grille() {
@@ -417,6 +502,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 
   function choisir(n) {
     if (enJeu) { if (!relecture) return; enJeu(); enJeu = null; } // partie en cours : on ne change pas de porte, sauf en relecture
+    enFiche = false;
     choix = n; brouillon = null; aConfirmer = false;
     grille();
     panneau();
@@ -459,6 +545,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   const essaisFaits = p => (tentatives(p) ? '<ul class="eg-tent">' + p.scores.map((n, i) => '<li' + (n !== null && n === p.meilleur ? ' class="top"' : "") + "><span>Tentative " + (i + 1) + "</span>" + (n === null ? "interrompue : 0 / 10" : n + " / 10") + "</li>").join("") + "</ul>" : "");
 
   function panneau(msg, cls) {
+    if (enFiche) return; // la fiche d'identification reste en place tant qu'elle n'est pas refermée
     const p = E.portes[choix - 1];
     let html;
     if (!p) {
@@ -533,6 +620,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   async function lancer() {
     const p = E.portes[choix - 1];
     if (!p || occupe) return;
+    if (!fiche()) return identifier(); // première porte : on s'identifie d'abord, le chrono ne part pas
     occupe = true;
     q("#egStart").disabled = true;
     let r;
@@ -589,6 +677,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   async function jouer(reel) {
     const p = E.portes[choix - 1];
     if (!p || p.type !== "jeu" || enJeu || occupe) return;
+    if (reel && !fiche()) return identifier(); // première porte : on s'identifie d'abord, aucune tentative n'est décomptée
     occupe = true;
     try { await chargerJeux(); } catch (e) { occupe = false; return dire("#egMsg", "Le jeu ne s'est pas chargé. Vérifiez la connexion et réessayez : aucune tentative n'a été décomptée.", "err"); }
     let jeton = "";
