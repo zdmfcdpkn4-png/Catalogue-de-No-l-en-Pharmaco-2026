@@ -17,7 +17,7 @@ et le **palmarès** (vote de chacun pour son jeu préféré, avec hall of fame).
 | Fichier | Rôle |
 |---|---|
 | `index.html` | Le catalogue et le sapin. C'est la copie de l'artefact claude.ai, qui reste la source de vérité : ne pas le modifier ici, sauf les lignes « propres au site » : l'icône de favori dans l'en-tête, et en fin de fichier les scripts `menu.js`, `badges.js`, `vote.js`, `enigme.js`. |
-| `menu.js`, `img/menu-*.webp` | Menu à quatre boutons ronds : le logo de l'unité décliné par page. |
+| `menu.js`, `img/menu-*.webp` | Menu à quatre boutons ronds (le logo de l'unité décliné par page), plus une cinquième pastille « Pharmacomeeple » en tête de page (`.pm-haut`, vers `#pharmacomeeple`). Les étiquettes « Bientôt disponible » sont datées (champ `ouvre` de `PAGES`, heure de Paris) : simple affichage, la barrière reste le serveur. |
 | `img/favicon*`, `img/apple-touch-icon.png`, `img/icone-*.png` | Icône de favori : le meeple sur son jeton. |
 | `badges.js` | Habille les huit pastilles d'indication du catalogue (`#presets .chip`) en badges ronds, sans toucher à `index.html`. Sans ce fichier, les pastilles d'origine restent. |
 | `vote.js`, `api/votes.js` | Palmarès : un vote par prénom, hall of fame des jeux. |
