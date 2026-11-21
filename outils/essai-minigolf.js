@@ -20,18 +20,17 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   // espion : le jeu confie son état au banc, qui s'en sert pour viser comme un joueur appliqué.
   const lancer = (p, duree) => p.evaluate(d => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.minigolf(document.querySelector('#z'), { duree: d, espion: s => { window.etat = s; }, onFin: (n, t, brut) => { window.fois++; window.fin = [n, t, brut]; } }); }, duree);
   const fin = async p => { await p.waitForFunction(() => window.fin, null, { timeout: 90000 }); return p.evaluate(() => window.fin); };
-  // Un joueur automatique : dès que le comprimé est arrêté, il cherche le coup qui laisse le moins de chemin jusqu'à l'alvéole,
+  // Un joueur automatique : dès que le comprimé est arrêté, il cherche le coup qui laisse le moins de chemin jusqu'au trou,
   // puis fait le geste du piston tiré en arrière (type = mouse ou touch), à partir du milieu de la paillasse.
   const joueur = (p, type) => p.evaluate(type => {
-    const J = PharmacoJeux._coeur, R = J.REGL_MINIGOLF, c = () => document.querySelector('.pj-cv'), cartes = new Map();
+    const J = PharmacoJeux._coeur, R = J.REGL_MINIGOLF, c = () => document.querySelector('.pj-cv');
     const ev = (t, x, y, btn) => { const r = c().getBoundingClientRect(); c().dispatchEvent(new PointerEvent(t, { pointerId: 5, pointerType: type, buttons: btn, pressure: btn ? 0.5 : 0, clientX: r.left + x / 360 * r.width, clientY: r.top + y / 360 * r.width, bubbles: true, cancelable: true })); };
     clearInterval(window.auto); window.gestes = 0;
     window.auto = setInterval(() => {
       const s = window.etat; if (!s || !J.pretMinigolf(s, 1e9) || window.enGeste) return;
-      if (!cartes.has(s.plan)) cartes.set(s.plan, J.distancesMinigolf(s.plan));
-      const d = cartes.get(s.plan); let mieux = null;
+      const d = J.distancesMinigolf(s.plan); let mieux = null;
       for (let a = 0; a < 360; a += 5) for (const f of [0.25, 0.4, 0.55, 0.7, 0.85, 1]) {
-        const vx = Math.sin(a * Math.PI / 180) * f * R.vmax, vy = -Math.cos(a * Math.PI / 180) * f * R.vmax, r = J.apresMinigolf(s, vx, vy), v = r.dedans ? -1 : d(r.x, r.y);
+        const vx = Math.sin(a * Math.PI / 180) * f * R.vmax, vy = -Math.cos(a * Math.PI / 180) * f * R.vmax, r = J.apresMinigolf(s, vx, vy), v = r.dedans ? -1 : r.bac ? 1e6 : d(r.x, r.y);
         if (!mieux || v < mieux.v) mieux = { v, vx, vy };
       }
       window.enGeste = true; window.gestes++;
@@ -40,10 +39,10 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
       setTimeout(() => { ev('pointerup', x1, y1, 0); window.enGeste = false; }, 30);
     }, 60);
   }, type);
-  const etat = p => p.evaluate(() => { const s = window.etat; return { points: s.points, alveoles: s.trous, premiers: s.premiers, coups: s.coupsT, paillasse: s.n + 1, gestes: window.gestes }; });
+  const etat = p => p.evaluate(() => { const s = window.etat; return { points: s.points, trous: s.trous, carte: s.carte, coups: s.coupsT, penalites: s.penalites, boucle: s.boucle, bonus: s.bonus, duree: Math.round(s.t), gestes: window.gestes }; });
   // 1. Téléphone large, à la souris.
   const p = await ouvrir({ viewport: { width: 390, height: 560 }, deviceScaleFactor: 2 });
-  await lancer(p, 40);
+  await lancer(p, 150);
   await p.waitForTimeout(700); await p.screenshot({ path: dir + '/minigolf-1-depart.png' });
   // Un geste tenu, pour la capture de la visée (piston tiré vers le bas : le comprimé partira vers le haut).
   const bx = await p.locator('.pj-cv').boundingBox(), k = bx.width / 360;
@@ -52,17 +51,17 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await p.waitForTimeout(500); await p.screenshot({ path: dir + '/minigolf-2-roule.png' });
   const apresGeste = await p.evaluate(() => window.etat.coupsT);
   await joueur(p, 'mouse');
-  // Une capture de chaque paillasse, à son arrivée (les huit plans, si le joueur automatique va assez loin).
+  // Une capture de chaque trou du parcours : à son arrivée (panneau du trou), puis en cours de jeu.
   const vues = new Set();
-  for (let i = 0; i < 380; i++) {
+  for (let i = 0; i < 1500; i++) {
     const n = await p.evaluate(() => window.fin ? -1 : window.etat.n);
     if (n < 0) break;
-    if (n > 0 && n < 8 && !vues.has(n) && await p.evaluate(() => window.etat.pause <= 0)) { vues.add(n); await p.waitForTimeout(120); await p.screenshot({ path: dir + '/minigolf-3-paillasse-' + (n + 1) + '.png' }); }
-    await p.waitForTimeout(100);
+    if (n > 0 && !vues.has(n) && await p.evaluate(() => window.etat.pause <= 0)) { vues.add(n); await p.screenshot({ path: dir + '/minigolf-3-trou-' + (n + 1) + '.png' }); }
+    await p.waitForTimeout(40);
   }
   const souris = await fin(p); await p.screenshot({ path: dir + '/minigolf-4-fin.png' });
   const etatSouris = await etat(p); await p.evaluate(() => clearInterval(window.auto));
-  // 2. Au clavier : la visée part vers l'alvéole ; forcer, jouer : le comprimé doit partir (un coup compté) et, sur la première paillasse, rentrer.
+  // 2. Au clavier : la visée part vers l'alvéole ; forcer, jouer : le comprimé doit partir (un coup compté) et, sur le premier trou, rentrer en un coup.
   await lancer(p, 9); await p.mouse.move(2, 2);
   await p.keyboard.down('ArrowRight'); await p.waitForTimeout(300); await p.keyboard.up('ArrowRight');
   await p.screenshot({ path: dir + '/minigolf-5-clavier-visee.png' });
@@ -75,11 +74,11 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await lancer(p, 6); await p.waitForTimeout(500); await p.evaluate(() => window.stop()); await p.waitForTimeout(8500);
   const apresArret = await p.evaluate(() => window.fois);
   // 3 bis. Arrêt pendant le panneau de fin (minuterie en cours).
-  await lancer(p, 5); await p.waitForTimeout(5400); await p.evaluate(() => window.stop()); await p.waitForTimeout(2500);
+  await lancer(p, 5); await p.waitForTimeout(5600); await p.evaluate(() => window.stop()); await p.waitForTimeout(3800);
   const apresArretFin = await p.evaluate(() => window.fois);
   // 4. Téléphone de 320 px, au doigt, mouvements réduits.
   const tel = await ouvrir({ viewport: { width: 320, height: 568 }, deviceScaleFactor: 2, hasTouch: true, reducedMotion: 'reduce' }, 296);
-  await lancer(tel, 25); await tel.waitForTimeout(600); await tel.screenshot({ path: dir + '/minigolf-7-telephone-320-depart.png' });
+  await lancer(tel, 150); await tel.waitForTimeout(600); await tel.screenshot({ path: dir + '/minigolf-7-telephone-320-depart.png' });
   await joueur(tel, 'touch');
   await tel.waitForTimeout(12000); await tel.screenshot({ path: dir + '/minigolf-7-telephone-320.png' });
   const telephone = [await fin(tel), await tel.evaluate(() => document.documentElement.scrollWidth), await etat(tel)];
