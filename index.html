@@ -279,8 +279,11 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .adv h2 span{display:block;color:var(--title2)}
 .adv-intro{max-width:52ch;margin:0;padding:10px 14px;background:var(--surface);color:var(--on-surface);border:3px solid var(--line);border-radius:14px;box-shadow:5px 5px 0 var(--shadow);font-size:.95rem}
 .adv-body{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px 28px;align-items:center;margin-top:18px}
-.adv-tree{min-width:0}
-.adv-tree svg{display:block;width:100%;max-width:640px;height:auto;margin:0 auto;overflow:visible}
+/* Décor derrière le sapin (img/fond-sapin.webp) : 130 % de la largeur du sapin pour dégager les gouttes, marge haute pour les fenêtres. Sans overflow-x:clip (vieux Safari), le décor est borné à la largeur de l'écran. */
+.adv-tree{min-width:0;position:relative;overflow-x:clip;padding-top:calc(min(100%,640px)*.22)}
+.adv-tree svg{display:block;position:relative;z-index:1;width:100%;max-width:640px;height:auto;margin:0 auto;overflow:visible}
+.adv-tree::before{content:"";position:absolute;z-index:0;pointer-events:none;left:50%;top:0;width:calc(min(100%,640px)*1.3);aspect-ratio:9/8;transform:translateX(-50%);background:url(img/fond-sapin.webp) center/100% 100% no-repeat}
+@supports not (overflow-x:clip){.adv-tree::before{width:min(calc(min(100%,640px)*1.3),100vw)}}
 .adv-tree .dp{cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent}
 .adv-tree .fr{opacity:0}
 .adv-tree .dp:focus-visible .fr{opacity:1}
