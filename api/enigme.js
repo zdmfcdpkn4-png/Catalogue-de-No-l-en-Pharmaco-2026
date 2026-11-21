@@ -25,11 +25,11 @@ const PRENOM = /^\p{L}+(?:[-']\p{L}+)*$/u;
 // chacun sous le nombre de choix de sa liste (les listes sont dessinées dans participants.js : garder les longueurs accordées).
 const NB_BRIGADES = 5;
 const AVATAR = [8, 8, 8];
-// Devise et jeu emblème d'une brigade : chaque membre vote du 1er au 7 décembre, puis le choix est figé.
+// Devise et jeu emblème d'une brigade : chaque membre vote du 26 novembre au 7 décembre, puis le choix est figé.
 // La devise est un numéro de la liste DEVISES de participants.js ; le jeu emblème, le nom d'un jeu du catalogue
 // (même contrôle que le vote du palmarès : la page ne montre que les noms qu'elle connaît).
 // L'identification (fiche, avatar, tirage de la brigade, changement de pseudo) ouvre le 26 novembre, avant le calendrier :
-// c'est le jour -4 (le jour 1 est le 1er décembre). Le vote de la devise et du jeu emblème, lui, attend le 1er décembre.
+// c'est le jour -4 (le jour 1 est le 1er décembre). Le vote de la devise et du jeu emblème ouvre le même jour.
 const FICHE_JOUR = -4;
 const NB_DEVISES = 20;
 const CHOIX_FIN = 7;
@@ -277,7 +277,7 @@ function etat(B, joueurs, cle, jour, maintenant) {
     prenom: j ? j.p : undefined,
     profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b, d: j.d, g: j.g } : undefined,
     fiche: { etat: jour < FICHE_JOUR ? 'avenir' : 'ouvert', ouvre: dateDe(FICHE_JOUR) },
-    choix: { etat: jour < 1 ? 'avenir' : jour <= CHOIX_FIN ? 'ouvert' : 'fige', ferme: dateDe(CHOIX_FIN) },
+    choix: { etat: jour < FICHE_JOUR ? 'avenir' : jour <= CHOIX_FIN ? 'ouvert' : 'fige', ferme: dateDe(CHOIX_FIN) },
     portes,
     total: portes.reduce((s, p) => s + (p.pts || 0), 0),
     classement: L,
@@ -360,9 +360,9 @@ async function handler(req, res) {
       });
       return res.status(s.code).json(s.corps);
     }
-    // Voix d'un membre pour la devise et le jeu emblème de sa brigade : ouvert du 1er au 7 décembre, modifiable d'ici là.
+    // Voix d'un membre pour la devise et le jeu emblème de sa brigade : ouvert du 26 novembre au 7 décembre, modifiable d'ici là.
     if (b.action === 'brigade') {
-      if (jour < 1 || jour > CHOIX_FIN) return res.status(403).json({ error: jour < 1 ? 'scellee' : 'fige' });
+      if (jour < FICHE_JOUR || jour > CHOIX_FIN) return res.status(403).json({ error: jour < FICHE_JOUR ? 'scellee' : 'fige' });
       const d = b.devise, g = typeof b.jeu === 'string' ? b.jeu.trim() : b.jeu;
       if (d === undefined && g === undefined) return res.status(400).json({ error: 'choix' });
       if (d !== undefined && !(Number.isInteger(d) && d >= 0 && d < NB_DEVISES)) return res.status(400).json({ error: 'devise' });

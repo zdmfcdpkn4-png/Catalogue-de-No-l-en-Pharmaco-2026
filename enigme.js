@@ -436,7 +436,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       if (B) q("#egBrig").innerHTML = W.embleme(P.b) + "<span>" + h(B.nom) + (devise ? " · « " + h(devise) + " »" : "") + "</span>";
     }).catch(() => {});
   }
-  // Carnet de brigade : membres, devise et jeu emblème, et la voix du joueur tant que le vote est ouvert (serveur : 1er au 7 décembre).
+  // Carnet de brigade : membres, devise et jeu emblème, et la voix du joueur tant que le vote est ouvert (serveur : du 26 novembre au 7 décembre).
   async function carnet() {
     if (relecture || occupe || enJeu || !fiche()) return;
     try { await chargerParticipants(); } catch (e) { return dire("#egMsg", "Le carnet de brigade ne s'est pas chargé. Vérifiez la connexion et réessayez.", "err"); }
@@ -451,7 +451,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         let r;
         try { r = await call({ code: mem.code, prenom: mem.prenom, action: "brigade", devise: v.devise, jeu: v.jeu }); } catch (e) { r = { status: 0, j: {} }; }
         if (r.status === 403 && r.j.error === "fige") return { ok: false, message: "Trop tard : devise et jeu emblème sont scellés depuis la fin de la première semaine." };
-        if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "Le vote de la brigade ouvrira avec le calendrier, le 1er décembre." };
+        if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "Le vote de la brigade est encore sous scellé." };
         if (r.status !== 200 || !r.j.profil) return { ok: false };
         E = r.j;
         identite();
