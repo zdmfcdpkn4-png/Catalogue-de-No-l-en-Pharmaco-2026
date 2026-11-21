@@ -572,20 +572,38 @@
     }
     function dessiner() {
       ctx.fillStyle = N; ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(T_G, T_HAUT, T_D - T_G, H - T_HAUT);                          // la paillasse
-      ctx.fillStyle = "rgba(143,199,232,.35)"; ctx.fillRect(T_G, T_HAUT, T_D - T_G, 22);                     // derrière l'automate : la libération
-      ctx.fillStyle = "rgba(216,64,43,.16)"; ctx.fillRect(T_G, H - 20, T_D - T_G, 20);                       // derrière le joueur : la quarantaine
-      texte(ctx, "LIBÉRATION", 180, T_HAUT + 12, 10, "rgba(38,7,109,.5)"); texte(ctx, "QUARANTAINE", 180, H - 9, 10, "rgba(38,7,109,.5)");
-      ctx.strokeStyle = "rgba(38,7,109,.09)"; ctx.lineWidth = 2;
-      for (let x = T_G + 41.5; x < T_D - 10; x += 41.5) { ctx.beginPath(); ctx.moveTo(x, T_HAUT + 22); ctx.lineTo(x, H - 20); ctx.stroke(); }
+      // Le terrain : un court vert bloc opératoire, lignes crème, tracé comme un vrai (couloirs, carrés de service).
+      ctx.fillStyle = "#A9D9BE"; ctx.fillRect(T_G, T_HAUT, T_D - T_G, H - T_HAUT);                          // les dégagements
+      ctx.fillStyle = "#A8D4EA"; ctx.fillRect(T_G, T_HAUT, T_D - T_G, 22);                     // derrière l'automate : la libération
+      ctx.fillStyle = "#F3C5A5"; ctx.fillRect(T_G, H - 20, T_D - T_G, 20);                       // derrière le joueur : la quarantaine
+      texte(ctx, "LIBÉRATION", 180, T_HAUT + 12, 10, "rgba(38,7,109,.6)"); texte(ctx, "QUARANTAINE", 180, H - 9, 10, "rgba(38,7,109,.6)");
+      ctx.fillStyle = "#63B892"; ctx.fillRect(34, 100, 292, 322);                                           // le court
+      ctx.fillStyle = "#57AD87"; ctx.fillRect(64, 180, 232, 162);                                           // les carrés de service, un ton plus soutenu
+      // En filigrane dans les carrés de service : croix de pharmacie, gélule, comprimé sécable, flacon.
+      ctx.save(); ctx.strokeStyle = "rgba(255,251,242,.32)"; ctx.fillStyle = "rgba(255,251,242,.32)"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.fillRect(115, 204, 14, 38); ctx.fillRect(103, 216, 38, 14);                                       // croix
+      ctx.save(); ctx.translate(238, 223); ctx.rotate(-0.6); ctx.beginPath(); ctx.roundRect(-22, -9, 44, 18, 9); ctx.moveTo(0, -9); ctx.lineTo(0, 9); ctx.stroke(); ctx.restore();   // gélule
+      ctx.beginPath(); ctx.arc(122, 304, 17, 0, 6.3); ctx.moveTo(112, 304); ctx.lineTo(132, 304); ctx.stroke();                                                                  // comprimé
+      ctx.beginPath(); ctx.roundRect(224, 296, 28, 30, 5); ctx.rect(231, 284, 14, 12); ctx.moveTo(224, 310); ctx.lineTo(252, 310); ctx.stroke();                                    // flacon
+      ctx.restore();
+      ctx.strokeStyle = C; ctx.lineWidth = 3; ctx.lineJoin = "miter"; ctx.lineCap = "butt"; ctx.beginPath();
+      ctx.rect(34, 100, 292, 322);                                                                          // lignes de fond et de côté
+      ctx.moveTo(64, 100); ctx.lineTo(64, 422); ctx.moveTo(296, 100); ctx.lineTo(296, 422);                   // couloirs
+      ctx.moveTo(64, 180); ctx.lineTo(296, 180); ctx.moveTo(64, 342); ctx.lineTo(296, 342);                   // lignes de service
+      ctx.moveTo(180, 180); ctx.lineTo(180, 342);                                                           // ligne médiane
+      ctx.moveTo(180, 100); ctx.lineTo(180, 108); ctx.moveTo(180, 414); ctx.lineTo(180, 422);                 // marques centrales
+      ctx.stroke();
+      // Dans les couloirs, le marquage du lot, comme un panneau de bord de court.
+      for (const [x, y, t] of [[311, 165, "LOT 2026-12"], [49, 357, "PÉR. 25/12/2026"]]) { ctx.save(); ctx.translate(x, y); ctx.rotate(-Math.PI / 2); texte(ctx, t, 0, 0, 9, "rgba(255,251,242,.75)"); ctx.restore(); }
       // Le filet : une réglette graduée posée en travers.
       trait(ctx, 2); ctx.fillStyle = C; ctx.beginPath(); ctx.rect(T_G, 255, T_D - T_G, 12); ctx.fill(); ctx.stroke();
       ctx.lineWidth = 1.5; ctx.beginPath();
       for (let i = 1; i * 8 < T_D - T_G; i++) { ctx.moveTo(T_G + i * 8, 255); ctx.lineTo(T_G + i * 8, i % 5 ? 259 : 263); }
       ctx.stroke();
+      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(T_G + 4, 261, 5, 0, 6.3); ctx.arc(T_D - 4, 261, 5, 0, 6.3); ctx.fill();   // les poteaux
       // Le score, sur le côté du terrain : celui de l'automate au-dessus de la réglette, le vôtre en dessous.
-      texte(ctx, "AUTOMATE", T_G + 8, 222, 9, "rgba(38,7,109,.5)", "left"); texte(ctx, String(s.contre), T_G + 8, 239, 22, "rgba(38,7,109,.75)", "left");
-      texte(ctx, String(s.pour), T_G + 8, 284, 22, "rgba(38,7,109,.75)", "left"); texte(ctx, "VOUS", T_G + 8, 301, 9, "rgba(38,7,109,.5)", "left");
+      texte(ctx, "AUTOMATE", T_G + 8, 222, 9, "rgba(38,7,109,.7)", "left"); texte(ctx, String(s.contre), T_G + 8, 239, 22, N, "left");
+      texte(ctx, String(s.pour), T_G + 8, 284, 22, N, "left"); texte(ctx, "VOUS", T_G + 8, 301, 9, "rgba(38,7,109,.7)", "left");
       // L'automate : un chariot sur son rail, qui tient sa spatule.
       trait(ctx, 3); ctx.beginPath(); ctx.moveTo(T_G, T_YA - 24); ctx.lineTo(T_D, T_YA - 24); ctx.stroke();
       const vifA = s.t - s.tape[1] < 0.12, vifJ = s.t - s.tape[0] < 0.12;
