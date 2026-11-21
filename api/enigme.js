@@ -171,7 +171,7 @@ function classementSuivi(B, joueurs, jour) {
 // Classement des brigades, tiré du classement individuel (donc des seules portes closes) : la moyenne par membre,
 // pour qu'une brigade plus nombreuse ne soit pas avantagée. Les ex aequo partagent le rang.
 // Devise et jeu emblème : l'option la plus soutenue par les membres ; à égalité, la première de la liste (devise)
-// ou de l'alphabet (jeu). `voix` donne le détail des voix à la brigade `mienne` seulement.
+// ou de l'alphabet (jeux). `voix` donne le détail des voix à la brigade `mienne` seulement.
 function brigades(L, joueurs, mienne) {
   const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, pts: 0, moy: 0 }));
   for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; }
@@ -183,11 +183,13 @@ function brigades(L, joueurs, mienne) {
     if (j.d !== undefined) v.d[j.d] = (v.d[j.d] || 0) + 1;
     if (j.g !== undefined) v.g[j.g] = (v.g[j.g] || 0) + 1;
   }
-  const elu = (o, tri) => Object.keys(o).sort((x, y) => o[y] - o[x] || tri(x, y))[0];
+  const tries = (o, tri) => Object.keys(o).sort((x, y) => o[y] - o[x] || tri(x, y));
   for (const t of T) {
-    const v = V[t.b], d = elu(v.d, (x, y) => x - y), g = elu(v.g, (x, y) => (x < y ? -1 : x > y ? 1 : 0));
+    const v = V[t.b], d = tries(v.d, (x, y) => x - y)[0];
     if (d !== undefined) t.devise = Number(d);
-    if (g !== undefined) t.jeu = g;
+    // Les cinq jeux les plus soutenus, dans l'ordre : la page retient le premier qui est au catalogue,
+    // si bien qu'un nom inconnu (appel direct, jeu retiré ou renommé) ne prive pas la brigade de son emblème.
+    t.jeux = tries(v.g, (x, y) => (x < y ? -1 : x > y ? 1 : 0)).slice(0, 5);
     if (t.b === mienne) t.voix = v;
   }
   T.sort((x, y) => y.moy - x.moy || x.b - y.b);

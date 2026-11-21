@@ -192,7 +192,7 @@
   }
 
   /* Carnet de brigade, dessiné dans `el` : les membres, la devise et le jeu emblème élus, et le vote tant qu'il est ouvert.
-     o.pseudo ; o.brigade : numéro ; o.ligne : la ligne de la brigade envoyée par le serveur { n, devise, jeu, voix } ;
+     o.pseudo ; o.brigade : numéro ; o.ligne : la ligne de la brigade envoyée par le serveur { n, devise, jeux, voix } ;
      o.membres : [ { p, a } ] ; o.moi : { d, g } mes voix ; o.choix : { etat: "ouvert" | "fige" | "avenir", ferme: "AAAA-MM-JJ" } ;
      o.jeux : jeux du catalogue [ { n, c, img } ] et o.familles : { c: { n, o } } ;
      o.voter({ devise, jeu }) : promesse de { ok: true, ligne, moi } ou { ok: false, message } ; o.onFin(). */
@@ -202,7 +202,7 @@
     const pl = (n, un, des) => n + " " + (n > 1 ? des : un);
     function peindre(msg) {
       const ouvert = o.choix && o.choix.etat === "ouvert", voix = ligne.voix || { d: {}, g: {} };
-      const jeu = parNom.get(ligne.jeu), [a, m, j] = ((o.choix && o.choix.ferme) || "2026-12-07").split("-").map(Number);
+      const jeu = parNom.get((ligne.jeux || []).find(n => parNom.has(n))), [a, m, j] = ((o.choix && o.choix.ferme) || "2026-12-07").split("-").map(Number);
       const fam = o.familles || {}, cats = [...new Set(jeux.map(g => g.c))].sort((x, y) => ((fam[x] || {}).o || 0) - ((fam[y] || {}).o || 0));
       const cites = Object.keys(voix.g).filter(n => parNom.has(n)).sort((x, y) => voix.g[y] - voix.g[x] || x.localeCompare(y, "fr"));
       el.innerHTML = '<div class="pp"><p class="ap-m">Carnet de brigade · ' + pl(ligne.n || 0, "membre", "membres") + '</p><h3 tabindex="-1" id="ppTitre">' + emblemeSvg(o.brigade) + " " + h(B.nom) + "</h3>"
