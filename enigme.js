@@ -21,6 +21,8 @@
   let echeance = {}, tic = 0, enJeu = null;
   // enFiche : la fiche d'identification (avatar, brigade) occupe le panneau ; participants.js la dessine.
   let enFiche = false;
+  // versFiche : arrivée par la pastille « Pharmacomeeple » du menu (#pharmacomeeple) ; la fiche s'ouvre dès que le calendrier est chargé.
+  let versFiche = false;
 
   const call = async body => {
     const r = await fetch(API, { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -311,12 +313,20 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 
   function view() {
     if (location.hash === "#enigme") history.replaceState(null, "", "#pharmacogames"); // ancienne adresse de la page
-    const on = location.hash === "#pharmacogames";
+    const on = location.hash === "#pharmacogames" || location.hash === "#pharmacomeeple";
     sec.hidden = !on;
-    if (!on) return;
+    if (!on) { if (enFiche) { enFiche = false; if (E) panneau(); } return; } // en quittant la page, la fiche ouverte se referme
+    versFiche = location.hash === "#pharmacomeeple";
     document.querySelectorAll("#avent,.ind,.bar,main").forEach(e => { e.hidden = true; });
     sec.scrollIntoView({ block: "start" });
     if (relecture || (mem.prenom && mem.code)) charger();
+  }
+  // Pastille « Pharmacomeeple » : une fois le joueur entré, sa fiche d'identification s'ouvre (création ou retouche).
+  // Avant le 1er décembre, rien ne s'ouvre : la mention « sous scellé » en tête du calendrier suffit.
+  function allerFiche() {
+    if (!versFiche || !E || relecture) return;
+    versFiche = false;
+    if (E.choix && E.choix.etat !== "avenir" && !enJeu && !enFiche && brouillon === null && !q("#egTime")) identifier();
   }
 
   const dire = (id, t, cls) => { const el = q(id); if (el) { el.textContent = t || ""; el.className = "eg-msg " + (cls || "ok"); } };
@@ -392,6 +402,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     grille();
     panneau(msg, cls);
     rang();
+    allerFiche();
   }
 
   // Participants : l'avatar et la brigade du joueur. Le dessin vient de participants.js, chargé à la demande ;
