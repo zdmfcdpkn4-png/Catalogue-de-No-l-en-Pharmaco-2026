@@ -149,7 +149,8 @@ function classement(B, joueurs, jour) {
     const j = joueurs[cle];
     let pts = 0;
     for (const [q, M] of closes) pts += M ? (M[cle] ? M[cle].pts : 0) : points(q, j.r[q.n]);
-    return { p: j.p, pts, rep: Object.keys(j.r).length, a: j.a, b: j.b };
+    // cl : nombre de portes closes que le joueur a jouées (une porte lancée compte), pour la moyenne de sa brigade.
+    return { p: j.p, pts, rep: Object.keys(j.r).length, cl: closes.filter(([q]) => j.r[q.n]).length, a: j.a, b: j.b };
   }).sort((a, b) => b.pts - a.pts || a.p.localeCompare(b.p, 'fr'));
   let rang = 0;
   L.forEach((x, i) => { if (!i || x.pts !== L[i - 1].pts) rang = i + 1; x.rang = rang; });
@@ -168,14 +169,15 @@ function classementSuivi(B, joueurs, jour) {
   return L;
 }
 
-// Classement des brigades, tiré du classement individuel (donc des seules portes closes) : la moyenne par membre,
-// pour qu'une brigade plus nombreuse ne soit pas avantagée. Les ex aequo partagent le rang.
+// Classement des brigades, tiré du classement individuel (donc des seules portes closes) : la moyenne par membre actif,
+// pour qu'une brigade plus nombreuse ne soit pas avantagée. Est actif (`actifs`) le membre qui a joué au moins une porte
+// close : un inscrit qui ne joue pas ne pèse pas sur sa brigade. `n` reste l'effectif. Les ex aequo partagent le rang.
 // Devise et jeu emblème : l'option la plus soutenue par les membres ; à égalité, la première de la liste (devise)
 // ou de l'alphabet (jeux). `voix` donne le détail des voix à la brigade `mienne` seulement.
 function brigades(L, joueurs, mienne) {
-  const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, pts: 0, moy: 0 }));
-  for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; }
-  for (const t of T) t.moy = t.n ? Math.round(t.pts / t.n * 10) / 10 : 0;
+  const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, actifs: 0, pts: 0, moy: 0 }));
+  for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; if (x.cl) T[x.b].actifs++; }
+  for (const t of T) t.moy = t.actifs ? Math.round(t.pts / t.actifs * 10) / 10 : 0;
   const V = T.map(() => ({ d: {}, g: {} }));
   for (const cle of Object.keys(joueurs)) {
     const j = joueurs[cle], v = V[j.b];
