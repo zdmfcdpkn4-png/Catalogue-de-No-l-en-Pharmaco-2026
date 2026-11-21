@@ -2306,7 +2306,9 @@
           clos = true; oubli();
           const n = noteEtageres(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
           const bilan = pl(s.lots, "lot urgent livré", "lots urgents livrés") + ", " + pl(s.etages, "rayon gravi", "rayons gravis") + ", " + pl(s.chocs, "bobine reçue", "bobines reçues") + (s.perdu ? " (−" + s.perdu + ")" : "") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (1 point de note par tranche de " + RE.palier + " points).";
-          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, s.points)); }, 1300);
+          // Les quatre chiffres du tableau final commun.
+          const chiffres = [[s.points, s.points > 1 ? "points" : "point"], [s.lots, s.lots > 1 ? "lots livrés" : "lot livré"], [s.etages, s.etages > 1 ? "rayons gravis" : "rayon gravi"], [s.chocs, s.chocs > 1 ? "bobines reçues" : "bobine reçue"]];
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, s.points), chiffres); }, 1300);
         }
       }
       dessiner();
