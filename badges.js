@@ -57,7 +57,8 @@
 .chip.bd.tourne .bd-o{animation:bdOmbre 1.6s linear both}
 @keyframes bdTour{0%{transform:rotateX(0) rotateY(0)}12%{transform:rotateX(14deg) rotateY(-24deg)}30%{transform:translateY(-5px) rotateX(10deg) rotateY(60deg)}40%{transform:translateY(-7px) rotateX(8deg) rotateY(90deg)}55%{transform:translateY(-7px) rotateX(8deg) rotateY(180deg)}68%{transform:translateY(-5px) rotateX(6deg) rotateY(270deg)}80%{transform:rotateX(2deg) rotateY(345deg)}90%{transform:rotateX(0) rotateY(367deg)}100%{transform:rotateX(0) rotateY(360deg)}}
 @keyframes bdOmbre{0%{transform:translate(4px,4px) scaleX(1)}12%{transform:translate(4px,5px) scaleX(.91)}30%{transform:translate(6px,8px) scaleX(.5)}40%{transform:translate(7px,9px) scaleX(.12)}55%{transform:translate(7px,9px) scaleX(1)}68%{transform:translate(6px,8px) scaleX(.12)}80%{transform:translate(4px,5px) scaleX(.97)}90%,100%{transform:translate(4px,4px) scaleX(1)}}
-@media(min-width:561px) and (max-width:1100px){#presets{gap:12px 10px}#presets .chip.bd{width:96px;height:96px}.bd-f .bd-p{font-size:8.6px}.bd-f .bd-p.long{font-size:7.2px}}
+@media(min-width:561px) and (max-width:1100px){#presets{gap:12px 10px}#presets .chip.bd{width:calc((100% - 70px)/8);max-width:96px;height:auto;aspect-ratio:1}.bd-f .bd-p{font-size:8.6px}.bd-f .bd-p.long{font-size:7.2px}}
+@media(min-width:561px) and (max-width:741px){#presets{gap:12px 14px;max-width:458px}#presets .chip.bd{width:96px}}
 @media(max-width:560px){#presets{gap:10px 14px}#presets .chip.bd{width:calc((100% - 42px)/4);max-width:70px;height:auto;aspect-ratio:1}.bd-f .bd-p{display:none}.bd-f .bd-n{font-size:13.2px}}
 @media(prefers-reduced-motion:reduce){#presets .chip.bd,.bd-o{transition:none}.chip.bd.tourne .bd-j,.chip.bd.tourne .bd-o{animation:none}}`;
   document.head.appendChild(st);
