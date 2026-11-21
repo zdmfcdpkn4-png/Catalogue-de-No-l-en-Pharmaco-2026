@@ -1450,7 +1450,10 @@
           clos = true; lache(); prise = visee = null;
           const n = notePenalty(s), joues = s.issues.length, pl = (k, un, des) => k + " " + (k > 1 ? des : un);
           const bilan = pl(s.buts, "bouchon", "bouchons") + " au fond de la cage sur " + RP.tirs + " tirs" + (s.lucarnes ? ", dont " + s.lucarnes + " en pleine lucarne" : "") + (joues < RP.tirs ? " (" + pl(RP.tirs - joues, "tir non joué", "tirs non joués") + " faute de temps)" : "") + " : " + n + " sur 10 (la note est le nombre de buts).";
-          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.brut); }, 1300);
+          // Quatre chiffres pour le tableau final : points, tirs réussis, lucarnes, plus longue série de buts.
+          let serie = 0, suite = 0; for (const r of s.issues) { suite = r === "but" ? suite + 1 : 0; serie = Math.max(serie, suite); }
+          const chiffres = [[s.brut, s.brut > 1 ? "points" : "point"], [s.buts + "/" + RP.tirs, s.buts > 1 ? "tirs réussis" : "tir réussi"], [s.lucarnes, s.lucarnes > 1 ? "lucarnes" : "lucarne"], [serie, serie > 1 ? "buts d'affilée" : "but d'affilée"]];
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.brut, chiffres); }, 1300);
         }
       }
       for (let i = eclats.length - 1; i >= 0; i--) { eclats[i].t += dt; if (eclats[i].t >= eclats[i].d) eclats.splice(i, 1); }
