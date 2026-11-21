@@ -38,9 +38,9 @@
 
   const NOTICE = `<details class="eg-panel eg-notice" id="egNotice" open><summary>Notice des Pharmacogames : à lire avant la première prise</summary>
 <ol class="eg-rules">
-<li><b>Composition.</b> 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre : des questions illustrées sur le jeu de société, et cinq vrais jeux d'adresse, aux portes 1, 7, 13, 19 et 25.</li>
-<li><b>Chrono.</b> L'énoncé ne s'affiche qu'au lancement du chrono : 30 ou 40 secondes selon la porte, annoncées avant le départ. Une seule tentative, et pas le temps d'aller chercher la réponse ailleurs.</li>
-<li><b>Barème des questions.</b> Le bon flacon : 10 points. Au dosage, entre 0 et 100 : 10 points pile sur la cible, puis 1 de moins par tranche de 2 d'écart. Le plus proche marque le plus.</li>
+<li><b>Composition.</b> 25 portes, une par jour du 1<sup>er</sup> au 25 décembre : dix cases de cinq questions illustrées, chacune sur un thème du jeu de société, et quinze vrais jeux d'adresse.</li>
+<li><b>Chrono.</b> Les cinq questions d'une case s'enchaînent, chacune avec son chrono : 30 ou 40 secondes, annoncées avant le départ. L'énoncé ne s'affiche qu'au lancement du chrono. Une seule tentative par question, et pas le temps d'aller chercher la réponse ailleurs.</li>
+<li><b>Barème des questions.</b> Chaque question vaut 2 points, soit 10 par case. Le bon flacon : 2 points. Au dosage, entre 0 et 100 : 2 points à 2 près de la cible, 1 point à 10 près.</li>
 <li><b>Jeux d'adresse.</b> Deux tentatives chronométrées, la meilleure compte. La note sur 10 affichée après la partie vous situe ; les points, eux, viennent du classement de la porte à sa clôture : 10 points pour le premier, 1 pour le dernier, les autres répartis entre les deux. Sans rien marquer : 0 point.</li>
 <li><b>Délai de péremption.</b> Une porte reste ouverte trois jours : le sien, le lendemain et le surlendemain jusqu'à minuit. Les week-ends se rattrapent.</li>
 <li><b>Libération des résultats.</b> Bonne réponse, points et classement sortent à la clôture de la porte. D'ici là, tout reste sous scellé, et on ne souffle rien au voisin.</li>
@@ -111,6 +111,8 @@
 .eg-ill{margin:12px 0 0;border:3px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
 .eg-ill svg{display:block;width:100%;height:auto;font-family:var(--display)}
 .eg-q{margin:12px 0 0;font-size:1.08rem;font-weight:800;line-height:1.3}
+.eg-sub{margin-top:18px;padding-top:14px;border-top:2.5px dashed var(--line)}
+.eg-sub h4{margin:2px 0 0;font-weight:800;font-size:1.1rem;line-height:1.15}
 .eg-opts{display:grid;gap:9px;margin:12px 0 0}
 .eg-opts.img{grid-template-columns:repeat(2,minmax(0,1fr))}
 .eg-opt{display:flex;align-items:center;gap:10px;min-width:0;min-height:50px;margin:0;padding:8px 12px;text-align:left;font:700 .98rem/1.25 var(--display);color:var(--on-surface);background:#fff;border:2.5px solid var(--line);border-radius:12px;cursor:pointer}
@@ -195,7 +197,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     sec.setAttribute("aria-labelledby", "pharmacogames-t");
     sec.innerHTML = '<p class="adv-back"><a class="go" href="#">Retour au catalogue</a></p>'
       + '<div class="adv-head"><h2 id="pharmacogames-t">Pharmacogames <span>de Noël</span></h2>'
-      + '<p class="adv-intro">Le concours de l\'équipe, chacun pour soi : 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, une question au chrono sur le jeu de société (quatre flacons au choix, ou une dose à estimer entre 0 et 100) ou un vrai jeu d\'adresse. Le plus précis marque le plus de points. Pour élire votre jeu préféré, c\'est au <a href="#vote">Palmarès</a>.</p></div>'
+      + '<p class="adv-intro">Le concours de l\'équipe, chacun pour soi : 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, cinq questions au chrono sur un thème du jeu de société (quatre flacons au choix, ou une dose à estimer entre 0 et 100) ou un vrai jeu d\'adresse. Chaque porte vaut 10 points. Pour élire votre jeu préféré, c\'est au <a href="#vote">Palmarès</a>.</p></div>'
       + NOTICE
       + '<form class="eg-panel eg-gate" id="egGate" novalidate><h3>Entrer dans le calendrier</h3>'
       + '<label for="egPrenom">Votre prénom</label><input id="egPrenom" type="text" autocomplete="given-name" maxlength="24" required>'
@@ -312,7 +314,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 
   // Une porte ouverte reste « à faire » tant que la question n'a pas reçu de réponse ou qu'il reste une tentative de jeu.
   const tentatives = p => (p.scores || []).length;
-  const aFaire = p => p.etat === "ouverte" && (p.type === "jeu" ? tentatives(p) < p.essais : p.rep === undefined && !p.hors);
+  const aFaire = p => p.etat === "ouverte" && (p.type === "jeu" ? tentatives(p) < p.essais : p.type === "quiz" ? !p.fini : p.rep === undefined && !p.hors);
   // Porte montrée d'office : la plus ancienne encore à faire, sinon la dernière ouverte, sinon la dernière close.
   function parDefaut() {
     if (relecture) return 1;
@@ -342,7 +344,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   function grille() {
     q("#egGrid").innerHTML = E.portes.map(p => {
       let k, lab, dit;
-      if (relecture) { k = "rl"; lab = p.type === "qcm" ? "QCM" : p.type === "jeu" ? "Jeu" : "Dose"; dit = "relecture"; }
+      if (relecture) { k = "rl"; lab = p.type === "qcm" ? "QCM" : p.type === "jeu" ? "Jeu" : p.type === "quiz" ? "5 Q" : "Dose"; dit = "relecture"; }
       else if (p.etat === "avenir") { k = "av"; lab = CADENAS; dit = "sous scellé jusqu'au " + jour(dt(p.ouvre)); }
       else if (p.etat === "ouverte") {
         if (p.type === "jeu") {
@@ -350,7 +352,9 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
           if (!nb) { k = "ou"; lab = "Ouverte"; dit = "jeu d'adresse ouvert"; }
           else if (nb < p.essais) { k = "ou"; lab = p.meilleur + "/10"; dit = "note " + p.meilleur + " sur 10, une tentative restante"; }
           else { k = "sc"; lab = SCEAU + p.meilleur + "/10"; dit = "note scellée, " + p.meilleur + " sur 10"; }
-        } else if (p.rep !== undefined) { k = "sc"; lab = SCEAU + "Scellée"; dit = "réponse scellée"; }
+        } else if (p.type === "quiz") { k = "sc"; lab = SCEAU + "Scellée"; dit = "cinq questions jouées, réponses scellées"; }
+        else if (p.quiz && p.reste === undefined) { k = "ou"; lab = p.quiz.i > 1 ? (p.quiz.i - 1) + "/" + p.quiz.nb : "Ouverte"; dit = p.quiz.i > 1 ? pl(p.quiz.i - 1, "question jouée", "questions jouées") + " sur " + p.quiz.nb : "ouverte, cinq questions à faire"; }
+        else if (p.rep !== undefined) { k = "sc"; lab = SCEAU + "Scellée"; dit = "réponse scellée"; }
         else if (p.hors) { k = "ko"; lab = "Hors délai"; dit = "chrono écoulé sans réponse"; }
         else if (p.reste !== undefined) { k = "ou"; lab = "Chrono"; dit = "chrono en cours"; }
         else { k = "ou"; lab = "Ouverte"; dit = "ouverte, à faire"; }
@@ -359,7 +363,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         + '<span class="eg-door"><b>' + p.n + "</b><small>" + lab + "</small></span></button>";
     }).join("");
     const clos = E.portes.filter(p => p.etat === "close").length;
-    const att = E.portes.filter(p => p.etat === "ouverte" && (p.rep !== undefined || tentatives(p) > 0)).length;
+    const att = E.portes.filter(p => p.etat === "ouverte" && (p.rep !== undefined || tentatives(p) > 0 || p.type === "quiz" || (p.quiz && p.quiz.i > 1))).length;
     q("#egScore").textContent = relecture ? "25 portes à relire, solutions comprises."
       : "Total : " + pl(E.total, "point", "points") + " · " + pl(clos, "porte close", "portes closes") + (att ? " · " + pl(att, "résultat scellé en attente", "résultats scellés en attente") : "");
   }
@@ -376,10 +380,10 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   const LETTRES = ["A", "B", "C", "D"];
   const flacon = (o, i, tag, cls, note) => "<" + tag + ' class="eg-opt' + (cls ? " " + cls : "") + '"' + (tag === "button" ? ' type="button" data-v="' + i + '" aria-pressed="false"' : "") + "><i>" + LETTRES[i] + "</i>"
     + (o.img ? '<img src="img/' + h(o.img) + '" alt="" loading="lazy">' : "") + "<span>" + fr(o.t) + (note ? "<em>" + note + "</em>" : "") + "</span></" + tag + ">";
-  const forme = p => (p.type === "qcm" ? "quatre flacons" : p.type === "jeu" ? "jeu d'adresse" : "dosage de 0 à 100");
+  const forme = p => (p.type === "quiz" ? "cinq questions" : (p.quiz ? "question " + p.quiz.i + " sur " + p.quiz.nb + " · " : "") + (p.type === "qcm" ? "quatre flacons" : p.type === "jeu" ? "jeu d'adresse" : "dosage de 0 à 100"));
 
   function saisie(p) {
-    const fin = '<p class="eg-hint">Une seule prise par porte : la réponse est définitive. Si le chrono tombe à zéro, la proposition affichée part telle quelle.</p>'
+    const fin = '<p class="eg-hint">Une seule prise par ' + (p.quiz ? "question" : "porte") + ' : la réponse est définitive. Si le chrono tombe à zéro, la proposition affichée part telle quelle.</p>'
       + '<button class="go main" type="button" id="egSend" disabled>Sceller ma réponse</button>';
     const chrono = '<div class="eg-time" id="egTime" role="timer" aria-live="off"><b>' + Math.ceil(p.reste) + ' s</b><span><i></i></span></div>';
     if (p.type === "qcm") return chrono + '<div class="eg-opts' + (p.options.some(o => o.img) ? " img" : "") + '" role="group" aria-label="Quatre propositions">' + p.options.map((o, i) => flacon(o, i, "button")).join("") + "</div>" + fin;
@@ -400,7 +404,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       s = '<div class="eg-cible"><div class="bon"><small>Valeur cible</small><b>' + h(val(p, p.bonne)) + "</b></div>"
         + (fait ? "<div><small>Votre dose · écart " + Math.abs(p.rep - p.bonne) + "</small><b>" + h(val(p, p.rep)) + "</b></div>" : "") + "</div>";
     }
-    if (!relecture) s += '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (fait ? "+" + pl(p.pts, "point", "points") : p.pts !== undefined ? "Chrono écoulé sans réponse : 0 point" : "Porte manquée : 0 point") + "</p>";
+    if (!relecture && !(p.deCase && p.pts === undefined)) s += '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (fait ? "+" + pl(p.pts, "point", "points") : p.pts !== undefined ? (p.deCase ? "Sans réponse : 0 point" : "Chrono écoulé sans réponse : 0 point") : "Porte manquée : 0 point") + "</p>";
     return s + '<p class="eg-ex">' + fr(p.explication) + "</p>" + origine(p);
   }
 
@@ -418,7 +422,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       html = '<p class="ap-m">Porte ' + p.n + ' · sous scellé</p><h3>Patience</h3><p class="eg-d">Cette porte s\'ouvrira le ' + jour(dt(p.ouvre)) + ". D'ici là, elle reste en quarantaine.</p>";
     } else {
       const ouverte = p.etat === "ouverte" && !relecture;
-      html = '<p class="ap-m">Porte ' + p.n + " · " + jour(dt(p.ouvre)) + " · " + forme(p) + "</p><h3>" + fr(p.titre) + "</h3>";
+      html = '<p class="ap-m">Porte ' + p.n + " · " + jour(dt(p.ouvre)) + " · " + forme(p) + "</p><h3>" + fr(p.titre) + "</h3>"
+        + (p.quiz && p.quiz.titre ? '<p class="ap-m">Question ' + p.quiz.i + " sur " + p.quiz.nb + " · " + fr(p.quiz.titre) + "</p>" : "");
       const enonce = () => '<div class="eg-ill" id="egJeu">' + p.ill + '</div><p class="eg-q">' + fr(p.question) + "</p>";
       if (p.type === "jeu") {
         const nb = tentatives(p);
@@ -432,11 +437,17 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
           else html += '<div class="eg-seal">' + SCEAU + "<span><small>Note scellée</small><b>" + p.meilleur + " / 10</b></span></div>"
             + '<p class="eg-d">Vos points seront libérés à la clôture de la porte : rendez-vous le ' + jour(dt(p.ferme, 1)) + ".</p>";
         } else html += essaisFaits(p) + '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (p.pts !== undefined ? (p.rang ? "Rang " + p.rang + " sur " + p.sur + " : " : "") + "+" + pl(p.pts, "point", "points") : "Porte manquée : 0 point") + '</p><p class="eg-ex">' + fr(p.explication) + "</p>" + origine(p);
+      } else if (p.type === "quiz") {
+        // Case de cinq questions : toutes jouées (réponses scellées), ou close (les cinq solutions).
+        if (!p.qs) html += '<div class="eg-ill">' + p.ill + '</div><div class="eg-seal">' + SCEAU + "<span><small>Case jouée</small><b>" + pl(p.scellees, "réponse scellée", "réponses scellées") + " sur " + p.nb + "</b></span></div>"
+          + '<p class="eg-d">Bonnes réponses et points seront libérés à la clôture de la porte : rendez-vous le ' + jour(dt(p.ferme, 1)) + ".</p>";
+        else html += (relecture ? "" : '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (p.pts !== undefined ? "Total de la case : +" + pl(p.pts, "point", "points") + " sur 10" : "Porte manquée : 0 point") + "</p>")
+          + p.qs.map((c, i) => '<section class="eg-sub"><p class="ap-m">Question ' + (i + 1) + " sur " + p.nb + " · " + forme(c) + (relecture ? " · " + c.duree + " s" : "") + "</p><h4>" + fr(c.titre || "") + '</h4><div class="eg-ill">' + c.ill + '</div><p class="eg-q">' + fr(c.question) + "</p>" + solution(Object.assign({ deCase: true }, c, p.pts === undefined ? { pts: undefined } : {})) + "</section>").join("");
       } else if (ouverte && p.rep === undefined && !p.hors && p.reste === undefined) {
         // Énoncé encore sous scellé : il n'arrive qu'avec le chrono.
-        html += '<div class="eg-chrono"><b>' + p.duree + ' s</b><span>Une seule tentative. Le chrono part dès que l\'énoncé s\'affiche et ne s\'arrête plus, même si vous quittez la page.</span></div>'
+        html += '<div class="eg-chrono"><b>' + p.duree + ' s</b><span>' + (p.quiz ? "Cinq questions à la suite, chacune avec son chrono. " : "") + 'Une seule tentative. Le chrono part dès que l\'énoncé s\'affiche et ne s\'arrête plus, même si vous quittez la page.</span></div>'
           + '<p class="eg-hint">Installez-vous : pas le temps d\'aller chercher la réponse ailleurs. Clôture de la porte le ' + jour(dt(p.ferme)) + ' à minuit.</p>'
-          + '<button class="go main" type="button" id="egStart">Lancer le chrono</button>';
+          + '<button class="go main" type="button" id="egStart">' + (p.quiz ? "Lancer la question " + p.quiz.i + " sur " + p.quiz.nb : "Lancer le chrono") + "</button>";
       } else {
         html += enonce();
         if (ouverte && p.rep === undefined && !p.hors) html += saisie(p);
@@ -505,10 +516,10 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     occupe = true; if (b) b.disabled = true;
     clearInterval(tic);
     let r;
-    try { r = await call({ code: mem.code, prenom: mem.prenom, n: p.n, reponse: brouillon }); } catch (e) { r = { status: 0, j: {} }; }
+    try { r = await call({ code: mem.code, prenom: mem.prenom, n: p.n, reponse: brouillon, i: p.quiz ? p.quiz.i : undefined }); } catch (e) { r = { status: 0, j: {} }; }
     occupe = false;
     brouillon = null; aConfirmer = false;
-    if (r.status === 200) return recevoir(r.j, "Réponse scellée. La traçabilité vous remercie.");
+    if (r.status === 200) return recevoir(r.j, p.quiz && p.quiz.i < p.quiz.nb ? "Réponse scellée. Question suivante quand vous voulez." : "Réponse scellée. La traçabilité vous remercie.");
     if (r.status === 409) return recevoir(r.j, "Une réponse était déjà scellée pour cette porte : elle fait foi.", "err");
     if (r.status === 403 && r.j.error === "delai") return recevoir(r.j, "Trop tard : le chrono était écoulé à l'arrivée de la réponse.", "err");
     if (r.status === 403 && (r.j.error === "close" || r.j.error === "scellee")) return charger("Trop tard : cette porte vient de se refermer.");

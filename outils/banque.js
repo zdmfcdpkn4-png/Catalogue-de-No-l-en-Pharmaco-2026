@@ -15,21 +15,33 @@ const cle = (code, sel) => crypto.scryptSync(norm(code), sel, 32);
 function controler(b) {
   const e = [];
   if (!b || !Array.isArray(b.portes) || b.portes.length !== 25) return ['il faut exactement 25 portes'];
-  b.portes.forEach((p, i) => {
-    const ou = 'porte ' + (i + 1) + ' : ';
-    if (p.n !== i + 1) e.push(ou + 'numéro attendu ' + (i + 1));
-    for (const k of ['titre', 'question', 'ill', 'explication']) if (typeof p[k] !== 'string' || !p[k]) e.push(ou + k + ' manquant');
+  const JEUX = ['bowling', 'tir', 'flipper', 'tennis', 'labyrinthe', 'basket', 'penalty', 'volley', 'haies', 'etageres', 'pastilles'];
+  const chrono = (x, ou) => { if (!Number.isInteger(x.duree) || x.duree < 10 || x.duree > 120) e.push(ou + 'durée du chrono entre 10 et 120 secondes'); };
+  // Une question, seule dans sa porte ou dans une case de cinq.
+  const question = (p, ou) => {
+    for (const k of ['question', 'explication']) if (typeof p[k] !== 'string' || !p[k]) e.push(ou + k + ' manquant');
     if (p.type === 'qcm') {
       if (!Array.isArray(p.options) || p.options.length !== 4 || p.options.some(o => !o || typeof o.t !== 'string' || !o.t)) e.push(ou + 'il faut 4 propositions');
       if (!Number.isInteger(p.bonne) || p.bonne < 0 || p.bonne > 3) e.push(ou + 'bonne réponse entre 0 et 3');
     } else if (p.type === 'dose') {
       if (!Number.isInteger(p.bonne) || p.bonne < 0 || p.bonne > 100) e.push(ou + 'valeur cible entre 0 et 100');
       if (typeof p.unite !== 'string') e.push(ou + 'unité manquante');
+    } else e.push(ou + 'type de question inconnu');
+    chrono(p, ou);
+  };
+  b.portes.forEach((p, i) => {
+    const ou = 'porte ' + (i + 1) + ' : ';
+    if (p.n !== i + 1) e.push(ou + 'numéro attendu ' + (i + 1));
+    for (const k of ['titre', 'ill']) if (typeof p[k] !== 'string' || !p[k]) e.push(ou + k + ' manquant');
+    if (p.type === 'quiz') {
+      if (!Array.isArray(p.questions) || p.questions.length !== 5) e.push(ou + 'il faut exactement 5 questions');
+      else p.questions.forEach((c, k) => question(c, ou + 'question ' + (k + 1) + ' : '));
     } else if (p.type === 'jeu') {
-      if (!['bowling', 'tir', 'flipper', 'tennis', 'labyrinthe'].includes(p.jeu)) e.push(ou + 'jeu inconnu');
+      for (const k of ['question', 'explication']) if (typeof p[k] !== 'string' || !p[k]) e.push(ou + k + ' manquant');
+      if (!JEUX.includes(p.jeu)) e.push(ou + 'jeu inconnu');
       if (!Number.isInteger(p.essais) || p.essais < 1 || p.essais > 3) e.push(ou + 'nombre de tentatives entre 1 et 3');
-    } else e.push(ou + 'type inconnu');
-    if (!Number.isInteger(p.duree) || p.duree < 10 || p.duree > 120) e.push(ou + 'durée du chrono entre 10 et 120 secondes');
+      chrono(p, ou);
+    } else question(p, ou);
     if (/—/.test(JSON.stringify(p))) e.push(ou + 'tiret cadratin');
   });
   return e;

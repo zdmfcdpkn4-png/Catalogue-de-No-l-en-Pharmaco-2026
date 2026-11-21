@@ -22,7 +22,7 @@ et le **palmarès** (vote de chacun pour son jeu préféré, avec hall of fame).
 | `badges.js` | Habille les huit pastilles d'indication du catalogue (`#presets .chip`) en badges ronds, sans toucher à `index.html`. Sans ce fichier, les pastilles d'origine restent. |
 | `vote.js`, `api/votes.js` | Palmarès : un vote par prénom, hall of fame des jeux. |
 | `enigme.js`, `api/enigme.js` | Pharmacogames : 25 portes, une par jour du 1er au 25 décembre, ouvertes jusqu'à J+2. Le serveur décide de tout : dates (heure de Paris), chrono, tentatives, points, classement. |
-| `api/_banque.js` | Les 25 portes (énoncés, réponses, illustrations), **chiffrées**. Ne jamais écrire de question ni de réponse en clair dans le dépôt. |
+| `api/_banque.js` | Les 25 portes, **chiffrées** : dix cases de cinq questions sur un thème (portes 2, 4, 7, 9, 12, 14, 17, 19, 22, 24) et quinze jeux d'adresse. Ne jamais écrire de question ni de réponse en clair dans le dépôt. |
 | `jeux.js` | Les cinq jeux d'adresse (bowling des flacons, la hotte en folie, le flipper du préparatoire, le tennis de paillasse, le labyrinthe de la ZAC), chargés à la demande. Cœur du jeu séparé du dessin. |
 | `outils/` | Outils de développement, non publiés sur le site (voir `.vercelignore`). |
 
@@ -30,7 +30,7 @@ Le stockage des votes et des parties est un magasin Vercel Blob privé. Les modu
 
 ## Règles du concours (à ne pas casser)
 - Question : l'énoncé ne sort du serveur qu'au lancement du chrono (30 ou 40 s), une seule tentative, réponse scellée.
-- QCM : 10 points. Dosage de 0 à 100 : 10 points pile sur la cible, 1 de moins par tranche de 2 d'écart.
+- Case de cinq questions : elles s'enchaînent, chacune avec son chrono ; 2 points par question, 10 par case. QCM : 2 points. Dosage de 0 à 100 : 2 points à 2 près de la cible, 1 point à 10 près.
 - Jeu d'adresse : `onFin(note, bilan, brut)` rend une note de 0 à 10 (affichée au joueur) et un score brut (classé par le serveur), deux tentatives, la meilleure compte. À la clôture, les points viennent du rang parmi ceux qui ont marqué : 10 au premier, 1 au dernier, répartition régulière, ex aequo à égalité ; sans rien marquer, 0.
 - Solution, points et classement ne sortent qu'à la clôture de la porte.
 

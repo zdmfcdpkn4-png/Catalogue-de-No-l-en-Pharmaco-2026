@@ -1,5 +1,7 @@
 // Pharmacogames de Noël (ex-grande énigme) : 25 portes, une par jour du 1er au 25 décembre 2026 (heure de Paris).
 // Chaque porte reste ouverte son jour, le lendemain et le surlendemain.
+// Trois sortes de portes : une question seule (qcm, dose), une case de cinq questions sur un thème (quiz),
+// un jeu d'adresse (jeu). Dans une case de cinq questions, elles s'enchaînent, chacune avec son chrono.
 // Questions : l'énoncé ne sort du serveur qu'au lancement du chrono, et la réponse doit arriver avant sa fin.
 // Une seule tentative. Jeux d'adresse : le navigateur renvoie une note de 0 à 10 et un score brut, deux tentatives,
 // la meilleure compte. À la clôture, les points d'un jeu d'adresse viennent du rang : 10 au premier, 1 au dernier.
@@ -68,9 +70,27 @@ function rangs(q, joueurs) {
   L.forEach((x, i) => { if (!i || x[1] !== L[i - 1][1]) rang = i + 1; M[x[0]] = { rang, sur: N, pts: N === 1 ? 10 : 1 + Math.round(9 * (N - rang) / (N - 1)) }; });
   return M;
 }
+// Case de cinq questions : 2 points par question, soit 10 au plus. Bon flacon : 2. Dosage : 2 à 2 près, 1 à 10 près.
+//   quiz     : { q: [ { d: départ du chrono, v: réponse, t: heure de la réponse }, … ] }   (une entrée par question lancée, dans l'ordre)
+const pointsQuestion = (c, a) => {
+  if (!a || a.v === undefined) return 0;
+  if (c.type === 'qcm') return a.v === c.bonne ? 2 : 0;
+  const e = Math.abs(a.v - c.bonne);
+  return e <= 2 ? 2 : e <= 10 ? 1 : 0;
+};
+// Rang de la question en cours d'une case : la première qui n'a ni réponse ni chrono écoulé. Vaut le nombre de questions quand tout est joué.
+function rangQuiz(q, r, maintenant) {
+  const L = (r && r.q) || [];
+  for (let i = 0; i < q.questions.length; i++) {
+    const a = L[i];
+    if (!a || (a.v === undefined && (maintenant - a.d) / 1000 < q.questions[i].duree)) return i;
+  }
+  return q.questions.length;
+}
 function points(q, r) {
   if (!r) return 0;
   if (q.type === 'jeu') return meilleure(r);
+  if (q.type === 'quiz') return q.questions.reduce((s, c, i) => s + pointsQuestion(c, (r.q || [])[i]), 0);
   if (r.v === undefined) return 0;
   return q.type === 'qcm' ? (r.v === q.bonne ? 10 : 0) : Math.max(0, 10 - Math.ceil(Math.abs(r.v - q.bonne) / 2));
 }
@@ -122,6 +142,7 @@ function vue(q, etat, r, tout, maintenant, rg) {
   const o = { n: q.n, etat, ouvre: dateDe(q.n), ferme: dateDe(q.n + DELAI) };
   if (etat === 'avenir' && !tout) return o;
   const clos = etat === 'close' || tout;
+  if (q.type === 'quiz') return vueQuiz(o, q, etat, r, clos, maintenant);
   Object.assign(o, { type: q.type, titre: q.titre, duree: q.duree, essais: q.type === 'jeu' ? q.essais : 1 });
   if (q.type === 'jeu') {
     Object.assign(o, { jeu: q.jeu, question: q.question, ill: q.ill });
@@ -145,6 +166,35 @@ function vue(q, etat, r, tout, maintenant, rg) {
     Object.assign(o, { bonne: q.bonne, explication: q.explication, source: q.source });
     if (r && etat === 'close') o.pts = points(q, r);
   }
+  return o;
+}
+
+// Case de cinq questions. Ouverte : la page reçoit la question en cours comme une porte de question ordinaire (type qcm
+// ou dose, énoncé seulement une fois son chrono lancé), avec `quiz` pour dire où l'on en est. Tout joué : type quiz, `fini`.
+// Close ou en relecture : type quiz et les cinq questions avec leurs solutions.
+function vueQuiz(o, q, etat, r, clos, maintenant) {
+  const nb = q.questions.length, L = (r && r.q) || [];
+  const enonce = c => {
+    const x = { type: c.type, titre: c.titre, duree: c.duree, question: c.question, ill: c.ill || q.ill };
+    if (c.type === 'qcm') x.options = c.options; else { x.unite = c.unite; if (c.prefixe) x.prefixe = c.prefixe; }
+    return x;
+  };
+  if (clos) {
+    Object.assign(o, { type: 'quiz', titre: q.titre, ill: q.ill, nb, essais: 1 });
+    o.qs = q.questions.map((c, i) => {
+      const x = Object.assign(enonce(c), { bonne: c.bonne, explication: c.explication, source: c.source }), a = L[i];
+      if (a && a.v !== undefined) x.rep = a.v;
+      if (r && etat === 'close') x.pts = pointsQuestion(c, a);
+      return x;
+    });
+    if (r && etat === 'close') o.pts = points(q, r);
+    return o;
+  }
+  const k = rangQuiz(q, r, maintenant);
+  if (k >= nb) return Object.assign(o, { type: 'quiz', titre: q.titre, ill: q.ill, nb, essais: 1, fini: true, scellees: L.filter(a => a.v !== undefined).length });
+  const c = q.questions[k], a = L[k];
+  Object.assign(o, { type: c.type, titre: q.titre, duree: c.duree, essais: 1, quiz: { i: k + 1, nb, titre: c.titre } });
+  if (a) Object.assign(o, enonce(c), { titre: q.titre, reste: Math.round((c.duree - (maintenant - a.d) / 1000) * 10) / 10 });
   return o;
 }
 
@@ -228,6 +278,12 @@ async function handler(req, res) {
           if (r.e.length >= q.essais) return refus(409, 'essais');
           jeton = crypto.randomBytes(8).toString('hex');
           r.e.push({ d: maintenant, k: jeton });
+        } else if (q.type === 'quiz') {
+          const r = j.r[q.n] || (j.r[q.n] = { q: [] });
+          const k = rangQuiz(q, r, maintenant);
+          if (k >= q.questions.length) return refus(409, 'essais');
+          if (r.q[k]) return { fin: J => ({ code: 200, corps: { ok: true, dejaLance: true, ...vu(J) } }) }; // chrono déjà parti : il continue
+          r.q[k] = { d: maintenant };
         } else {
           if (j.r[q.n]) return { fin: J => ({ code: 200, corps: { ok: true, dejaLance: true, ...vu(J) } }) }; // chrono déjà parti : il continue
           j.r[q.n] = { d: maintenant };
@@ -247,6 +303,21 @@ async function handler(req, res) {
         if (dt < JEU_MIN || dt > q.duree + JEU_MARGE) return refus(403, 'delai');
         a.s = b.score; a.t = maintenant;
         if (b.brut !== undefined) a.b = b.brut;
+        return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
+      });
+    } else if (q.type === 'quiz') {
+      // Réponse à la question en cours d'une case de cinq : `i` dit à laquelle elle s'adresse (de 1 à 5).
+      const v = b.reponse, i = b.i;
+      if (!Number.isInteger(i) || i < 1 || i > q.questions.length) return res.status(400).json({ error: 'reponse' });
+      const c = q.questions[i - 1];
+      if (!Number.isInteger(v) || v < 0 || v > (c.type === 'qcm' ? c.options.length - 1 : 100)) return res.status(400).json({ error: 'reponse' });
+      sortie = await modifier(joueurs => {
+        const r = joueurs[cle] && joueurs[cle].r[q.n];
+        const a = r && r.q && r.q[i - 1];
+        if (!a) return refus(403, 'nondemarre');
+        if (a.v !== undefined) return refus(409, 'deja');
+        if ((maintenant - a.d) / 1000 > c.duree + GRACE) return refus(403, 'delai');
+        a.v = v; a.t = maintenant;
         return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
       });
     } else {
