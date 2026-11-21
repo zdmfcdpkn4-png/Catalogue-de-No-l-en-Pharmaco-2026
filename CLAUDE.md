@@ -23,7 +23,7 @@ et le **palmarès** (vote de chacun pour son jeu préféré, avec hall of fame).
 | `vote.js`, `api/votes.js` | Palmarès : un vote par prénom, hall of fame des jeux. |
 | `enigme.js`, `api/enigme.js` | Pharmacogames : 25 portes, une par jour du 1er au 25 décembre, ouvertes jusqu'à J+2. Le serveur décide de tout : dates (heure de Paris), chrono, tentatives, points, classement. |
 | `api/_banque.js` | Les 25 portes, **chiffrées** : dix cases de cinq questions sur un thème (portes 2, 4, 7, 9, 12, 14, 17, 19, 22, 24) et quinze jeux d'adresse. Ne jamais écrire de question ni de réponse en clair dans le dépôt. |
-| `jeux.js` | Les cinq jeux d'adresse (bowling des flacons, la hotte en folie, le flipper du préparatoire, le tennis de paillasse, le labyrinthe de la ZAC), chargés à la demande. Cœur du jeu séparé du dessin. |
+| `jeux.js` | Les quatorze jeux d'adresse, chargés à la demande : bowling, tir (la hotte), flipper, tennis, labyrinthe, puis, chacun entre ses repères `Repère [nom]` / `Fin [nom]` : basket, penalty, volley, haies, etageres, pastilles, twirling, tour, seringue. Cœur du jeu séparé du dessin. |
 | `outils/` | Outils de développement, non publiés sur le site (voir `.vercelignore`). |
 
 Le stockage des votes et des parties est un magasin Vercel Blob privé. Les modules `vote.js` et `enigme.js` ne s'affichent que si leur serveur répond.
@@ -57,6 +57,10 @@ pour une demande qui en sort, elle indique la session concernée.
 | Jeu : Le flipper du préparatoire | La partie flipper de `jeux.js` et ses réglages | `claude/jeu-flipper` |
 | Jeu : Le tennis de paillasse | La partie tennis de `jeux.js`, `outils/essai-tennis.js`, `outils/etalon-tennis.js` | `claude/jeu-tennis` |
 | Jeu : Le labyrinthe de la ZAC | La partie labyrinthe de `jeux.js`, `outils/essai-labyrinthe.js`, `outils/etalon-labyrinthe.js` | `claude/jeu-labyrinthe` |
+| Jeu : un par nouveau jeu (basket, penalty, volley, haies, étagères, pastilles, twirling, tour, seringue, minigolf) | Le bloc du jeu entre ses repères dans `jeux.js`, `outils/essai-<nom>.js`, `outils/etalon-<nom>.js` | `claude/jeu-<nom>` |
+| Quiz | Les cases de cinq questions (dans l'atelier) | `claude/quiz` |
+| Palmarès : hall of fame et résultats | Structure et contenu du hall of fame (`vote.js`) et du classement (`enigme.js`) | `claude/resultats` |
+| Sapin, Catalogue | Le sapin de l'Avent, le catalogue (artefact, `index.html`) | `claude/sapin`, `claude/catalogue` |
 | Design | Apparence : `menu.js`, `badges.js`, logos, blocs de styles de `enigme.js` et `vote.js`, habillage des jeux | `claude/design` |
 | Organisation et orchestration | Serveur, banque, intégration des branches, bancs d'essai complets, publication, suivi | `claude/vibrant-edison-rs93fn` |
 

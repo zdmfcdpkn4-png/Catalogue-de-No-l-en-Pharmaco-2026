@@ -136,6 +136,18 @@ function classement(B, joueurs, jour) {
   return L;
 }
 
+// Le classement du jour, avec pour chacun son rang d'avant la dernière clôture (`av`) quand une porte vient de clore :
+// la page en tire les flèches de progression. Rien ne fuit : le classement de la veille ne compte que des portes déjà closes.
+function classementSuivi(B, joueurs, jour) {
+  const L = classement(B, joueurs, jour);
+  const n = j => B.portes.filter(q => etatDe(q.n, j) === 'close').length;
+  if (n(jour - 1) && n(jour) > n(jour - 1)) {
+    const hier = new Map(classement(B, joueurs, jour - 1).map(x => [x.p, x.rang]));
+    L.forEach(x => { x.av = hier.get(x.p); });
+  }
+  return L;
+}
+
 // Ce que le joueur a le droit de voir d'une porte : rien avant son jour ; l'énoncé d'une question seulement une fois
 // son chrono lancé ; la solution seulement après la clôture. La règle d'un jeu d'adresse se lit avant de jouer.
 function vue(q, etat, r, tout, maintenant, rg) {
@@ -209,7 +221,7 @@ function etat(B, joueurs, cle, jour, maintenant) {
     prenom: j ? j.p : undefined,
     portes,
     total: portes.reduce((s, p) => s + (p.pts || 0), 0),
-    classement: classement(B, joueurs, jour),
+    classement: classementSuivi(B, joueurs, jour),
   };
 }
 
