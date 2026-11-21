@@ -200,7 +200,7 @@
         + '<div class="pp-carte" style="background:' + B.fond + '"><div class="pp-apercu pp-pop">' + avatar(a, { brigade: r.brigade }) + "</div>"
         + "<div>" + emblemeSvg(r.brigade) + "<b>" + h(o.pseudo) + "</b><small>" + h(B.nom) + (r.effectif ? " · " + r.effectif + (r.effectif > 1 ? " membres" : " membre") : "") + "</small></div></div>"
         + '<p class="eg-d">Fiche validée, lot identifié. Vous jouez toujours pour vous, et vos points comptent aussi dans la moyenne de votre brigade.</p>'
-        + '<button class="go main" type="button" id="ppFin">Retour à la porte</button></div>';
+        + '<button class="go main" type="button" id="ppFin">Retour au calendrier</button></div>';
       q("#ppFin").addEventListener("click", () => o.onFin());
       q("#ppTitre").focus({ preventScroll: true });
     });
@@ -232,7 +232,7 @@
           + '<p class="eg-hint">L\'option la plus soutenue par la brigade s\'affiche. Votre voix se modifie jusqu\'au ' + j + (j === 1 ? "er" : "") + " " + ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"][m - 1] + " à minuit ; ensuite, devise et jeu emblème sont scellés.</p>"
           : '<p class="eg-hint">' + (o.choix && o.choix.etat === "fige" ? "Devise et jeu emblème sont scellés depuis la fin de la première semaine." : "Le vote de la devise et du jeu emblème ouvrira avec le calendrier.") + "</p>")
         + '<p class="eg-msg ok" id="ppMsg" role="status">' + h(msg || "") + "</p>"
-        + '<p class="pp-fin">' + (ouvert ? '<button class="go main" type="submit" id="ppOk">Enregistrer ma voix</button>' : "") + '<button class="' + (ouvert ? "linkbtn" : "go main") + '" type="button" id="ppNon">Retour à la porte</button></p>'
+        + '<p class="pp-fin">' + (ouvert ? '<button class="go main" type="submit" id="ppOk">Enregistrer ma voix</button>' : "") + '<button class="' + (ouvert ? "linkbtn" : "go main") + '" type="button" id="ppNon">Retour au calendrier</button></p>'
         + (ouvert ? "</form>" : "") + "</div>";
       q("#ppNon").addEventListener("click", () => o.onFin());
       if (!ouvert) return;
