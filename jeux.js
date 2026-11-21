@@ -139,8 +139,9 @@
     return L;
   }
   function creerTir() {
-    return { t: 0, x: 180, cible: 180, tirs: [], germes: [], file: pluie(), suivant: 0, recharge: 0, touches: 0, rates: 0, eclats: [], fini: false };
+    return { t: 0, x: 180, cible: 180, tirs: [], germes: [], file: pluie(), suivant: 0, recharge: 0, touches: 0, rates: 0, serie: 0, record: 0, eclats: [], fini: false };
   }
+  // serie : particules neutralisées d'affilée, sans en laisser passer une. Elle ne rapporte rien, elle sert au spectacle.
   function pasTir(s, dt, duree) {
     s.t += dt;
     const dx = s.cible - s.x, vmax = REGL.vitesse * dt;
@@ -153,8 +154,8 @@
     for (const g of s.germes) {
       g.y += g.v * dt;
       g.x = Math.max(g.r + 20, Math.min(W - g.r - 20, g.x0 + Math.sin(g.ph + g.y / 34) * g.amp));
-      for (const t of s.tirs) if (!t.mort && Math.hypot(t.x - g.x, t.y - g.y) < g.r + REGL.portee) { t.mort = g.mort = true; s.touches++; s.eclats.push({ x: g.x, y: g.y, t: 0, k: g.k }); break; }
-      if (!g.mort && g.y > 446) { g.mort = true; s.rates++; s.eclats.push({ x: g.x, y: 452, t: 0, k: -1 }); }
+      for (const t of s.tirs) if (!t.mort && Math.hypot(t.x - g.x, t.y - g.y) < g.r + REGL.portee) { t.mort = g.mort = true; s.touches++; s.serie++; if (s.serie > s.record) s.record = s.serie; s.eclats.push({ x: g.x, y: g.y, t: 0, k: g.k }); break; }
+      if (!g.mort && g.y > 446) { g.mort = true; s.rates++; s.serie = 0; s.eclats.push({ x: g.x, y: 452, t: 0, k: -1 }); }
     }
     s.tirs = s.tirs.filter(t => !t.mort);
     s.germes = s.germes.filter(g => !g.mort);
@@ -626,7 +627,7 @@
   function tir(el, opt) {
     const duree = opt.duree || 45, { cv, ctx, xDe, liberer } = monter(el, H);
     cv.setAttribute("aria-label", "La hotte en folie. Glissez le doigt ou utilisez les flèches pour déplacer la seringue : elle tire toute seule.");
-    const s = creerTir();
+    const s = creerTir(), calme = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     let clos = false, gauche = false, droite = false;
     const viser = e => { e.preventDefault(); s.cible = Math.max(24, Math.min(W - 24, xDe(e))); };
     cv.addEventListener("pointerdown", e => { cv.focus({ preventScroll: true }); cv.setPointerCapture && cv.setPointerCapture(e.pointerId); viser(e); });
@@ -643,15 +644,130 @@
       ctx.fillStyle = N; ctx.beginPath(); ctx.arc(-g.r * 0.32, -g.r * 0.15, 2.2, 0, 6.3); ctx.arc(g.r * 0.32, -g.r * 0.15, 2.2, 0, 6.3); ctx.fill();
       ctx.restore();
     }
+    // Les séries : un petit « ×N » à chaque touche d'affilée, et aux paliers un numéro en relief qui pivote, entouré de flacons en orbite.
+    const PALIERS = [[5, "Geste sûr"], [10, "Asepsie parfaite"], [15, "Lot conforme"], [20, "Zone maîtrisée"], [30, "Classe A !"], [40, "Lot libéré !"]];
+    const pops = [], gerbes = [];
+    let tt = 0, combo = null, alerte = 9, serieVue = 0;
+    // Après chaque pas du cœur : repérer les nouvelles touches et les paliers franchis.
+    function suivre() {
+      for (const e of s.eclats) {
+        if (e.vu) continue;
+        e.vu = true;
+        if (e.k < 0) { alerte = 0; continue; }
+        if (s.serie >= 2) pops.push({ x: e.x, y: e.y, n: s.serie, t: 0 });
+        const p = PALIERS.find(q => serieVue < q[0] && s.serie >= q[0]);
+        if (p) {
+          combo = { n: p[0], mot: p[1], t: 0 };
+          const pts = [];
+          for (let i = 0; i < 22; i++) { const a = Math.random() * 6.283, b = Math.acos(2 * Math.random() - 1), v = 90 + Math.random() * 110; pts.push({ vx: Math.sin(b) * Math.cos(a) * v, vy: Math.cos(b) * v, vz: Math.sin(b) * Math.sin(a) * v, c: [Y, B, C, P][i % 4] }); }
+          gerbes.push({ x: e.x, y: e.y, t: 0, pts });
+        }
+      }
+      serieVue = s.serie;
+    }
+    function animer(dt) {
+      tt += dt; alerte += dt;
+      for (const p of pops) p.t += dt;
+      for (const g of gerbes) g.t += dt;
+      while (pops.length && pops[0].t > 0.7) pops.shift();
+      while (gerbes.length && gerbes[0].t > 0.9) gerbes.shift();
+      if (combo && (combo.t += dt) > 1.5) combo = null;
+    }
+    const quad = (pts, coul) => { ctx.fillStyle = coul; ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.fill(); };
+    const ligne = (x1, y1, x2, y2) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); };
+    // Le décor : l'intérieur d'une hotte à flux laminaire, vu de face. Le fond de l'enceinte va de (44,74) à (316,396).
+    function decor() {
+      quad([[0, 39], [W, 39], [316, 74], [44, 74]], "#F8F6FD");                   // plafond : le filtre absolu
+      quad([[0, 39], [44, 74], [44, 396], [0, 452]], "#D9D4EC");                  // paroi gauche
+      quad([[W, 39], [316, 74], [316, 396], [W, 452]], "#D9D4EC");                // paroi droite
+      ctx.fillStyle = "#E8E5F5"; ctx.fillRect(44, 74, 272, 322);                  // fond de l'enceinte
+      const sol = ctx.createLinearGradient(0, 396, 0, 452); sol.addColorStop(0, "#CCC7DF"); sol.addColorStop(1, "#E4E1F0");
+      quad([[44, 396], [316, 396], [W, 452], [0, 452]], sol);                     // plan de travail en inox
+      ctx.strokeStyle = "rgba(38,7,109,.13)"; ctx.lineWidth = 1.2;
+      for (let i = 0; i <= 8; i++) ligne(i * 45, 39, 44 + i * 34, 74);            // plis du filtre
+      ligne(15, 51, 345, 51); ligne(30, 63, 330, 63);
+      for (let i = 1; i < 8; i++) ligne(44 + i * 34, 396, i * 45, 452);           // rainures du plan de travail
+      ligne(33, 410, 327, 410); ligne(18, 429, 342, 429);
+      quad([[8, 60], [20, 70], [20, 410], [8, 428]], "rgba(255,251,242,.35)");    // reflets des vitres latérales
+      quad([[W - 8, 60], [W - 20, 70], [W - 20, 410], [W - 8, 428]], "rgba(255,251,242,.35)");
+      ctx.strokeStyle = "rgba(38,7,109,.3)"; ctx.lineWidth = 2; ctx.lineJoin = "round";
+      ctx.strokeRect(44, 74, 272, 322);
+      ligne(0, 39, 44, 74); ligne(W, 39, 316, 74); ligne(0, 452, 44, 396); ligne(W, 452, 316, 396);
+      // Au fond : la potence et sa poche, la plaque de classe, trois flacons en attente.
+      ctx.globalAlpha = 0.5;
+      trait(ctx, 2.2); ligne(78, 396, 78, 132); ligne(78, 132, 104, 132); ligne(104, 132, 104, 142);
+      ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(90, 142, 28, 42, 6); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = B; ctx.beginPath(); ctx.roundRect(90, 160, 28, 24, [0, 0, 6, 6]); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(104, 184); ctx.bezierCurveTo(104, 230, 130, 220, 128, 262); ctx.stroke();
+      ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(214, 92, 84, 26, 5); ctx.fill(); ctx.stroke();
+      texte(ctx, "ZAC · ISO 5", 256, 106, 11, N);
+      flacon(ctx, 236, 384, 0, P); flacon(ctx, 258, 386, 0, Y); flacon(ctx, 284, 384, 0, V);
+      ctx.globalAlpha = 1;
+      // Le flux laminaire : des filets d'air qui descendent du filtre.
+      ctx.strokeStyle = "rgba(38,7,109,.1)"; ctx.lineWidth = 2; ctx.lineCap = "round";
+      for (let i = 0; i < 12; i++) for (let j = 0; j < 2; j++) { const x = 15 + i * 30, y = 80 + ((calme ? 0 : tt * 46) + i * 67 + j * 170) % 340; ligne(x, y, x, y + 16); }
+    }
+    // Un texte en relief qui pivote autour de son axe vertical : les tranches du fond d'abord, la face ensuite.
+    function relief(t, px, a, face) {
+      const c = Math.max(0.05, Math.cos(a)), si = Math.sin(a);
+      for (let i = 7; i >= 0; i--) {
+        ctx.save(); ctx.translate(-si * i * 1.6, i * 0.7); ctx.transform(c, si * 0.1, 0, 1, 0, 0);
+        if (i) texte(ctx, t, 0, 0, px, N);
+        else { ctx.font = "800 " + px + "px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; trait(ctx, 5); ctx.strokeText(t, 0, 0); ctx.fillStyle = face; ctx.fillText(t, 0, 0); }
+        ctx.restore();
+      }
+    }
+    function orbite(k, devant) {
+      const t = combo.t, ray = 96 * Math.min(1, t / 0.4);
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4 + (calme ? 0 : t * 4.2), z = Math.sin(a);
+        if ((z > 0) !== devant) continue;
+        const e = (0.62 + 0.3 * z) * k;
+        ctx.save(); ctx.translate(Math.cos(a) * ray * k, z * 24 * k); ctx.scale(e, e); ctx.globalAlpha *= devant ? 1 : 0.55;
+        flacon(ctx, 0, 0, calme ? 0 : a * 2, [O, Y, P, V][i % 4]);
+        ctx.restore();
+      }
+    }
+    function animations() {
+      for (const g of gerbes) {                                                   // la gerbe : des gouttes projetées dans les trois dimensions
+        ctx.globalAlpha = Math.max(0, 1 - g.t / 0.9);
+        for (const p of g.pts) {
+          const z = p.vz * g.t, k = 260 / (260 + z), x = g.x + p.vx * g.t * k, y = g.y + (p.vy * g.t + 160 * g.t * g.t) * k;
+          ctx.fillStyle = p.c; trait(ctx, 1.6); ctx.beginPath(); ctx.arc(x, y, Math.max(1, 4.2 * k), 0, 6.3); ctx.fill(); ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+      if (!combo) return;
+      const t = combo.t, e = Math.min(1, t / 0.45), rebond = 1 + 2.7 * Math.pow(e - 1, 3) + 1.7 * Math.pow(e - 1, 2);
+      const a = calme ? 0 : (1 - rebond) * -1.45 + (t > 0.45 ? Math.sin((t - 0.45) * 6) * 0.22 : 0);
+      const sortie = Math.max(0, (t - 1.15) / 0.35), k = (0.4 + 0.6 * Math.min(1, t / 0.3)) * (1 + (calme ? 0 : sortie * 0.9));
+      ctx.save(); ctx.translate(180, 168); ctx.globalAlpha = Math.min(1, t / 0.12) * (1 - sortie);
+      orbite(k, false);
+      ctx.save(); ctx.scale(k, k); relief("×" + combo.n, 62, a, Y); ctx.restore();
+      orbite(k, true);
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(-88, 46 * k, 176, 28, 14); ctx.fill();
+      texte(ctx, combo.mot, 0, 46 * k + 15, 16, C);
+      ctx.restore();
+    }
     function dessiner() {
-      ctx.fillStyle = "#EDEAF6"; ctx.fillRect(0, 0, W, H);
-      ctx.strokeStyle = "rgba(38,7,109,.08)"; ctx.lineWidth = 2;                 // le flux laminaire
-      for (let x = 30; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x, 39); ctx.lineTo(x, 452); ctx.stroke(); }
-      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(0, 452, W, H - 452);              // le plan de travail
-      ctx.strokeStyle = N; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 452); ctx.lineTo(W, 452); ctx.stroke();
+      decor();
+      animations();
       for (const t of s.tirs) { ctx.fillStyle = B; trait(ctx, 2); ctx.beginPath(); ctx.moveTo(t.x, t.y - 8); ctx.quadraticCurveTo(t.x + 5, t.y, t.x, t.y + 4); ctx.quadraticCurveTo(t.x - 5, t.y, t.x, t.y - 8); ctx.fill(); ctx.stroke(); }
       for (const g of s.germes) germe(g);
       for (const e of s.eclats) { const k = e.t / 0.45; ctx.globalAlpha = 1 - k; ctx.strokeStyle = e.k < 0 ? R : Y; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y, 8 + k * 22, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
+      for (const p of pops) {                                                     // « ×N » qui s'élève de la particule touchée
+        const k = p.t / 0.7, g = 1 + 0.5 * Math.sin(Math.min(1, k * 3) * Math.PI);
+        ctx.save(); ctx.translate(Math.max(30, Math.min(W - 30, p.x)), p.y - 14 - k * 30); ctx.scale(g, g); ctx.globalAlpha = 1 - k * k;
+        ctx.font = "800 17px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; trait(ctx, 4); ctx.strokeText("×" + p.n, 0, 0); ctx.fillStyle = Y; ctx.fillText("×" + p.n, 0, 0);
+        ctx.restore();
+      }
+      // Le bandeau de commande de la hotte : voyant du flux à gauche, série en cours à droite.
+      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(0, 452, W, H - 452);
+      ctx.strokeStyle = N; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 452); ctx.lineTo(W, 452); ctx.stroke();
+      const rouge = alerte < 0.6;
+      trait(ctx, 2); ctx.fillStyle = rouge ? R : G; ctx.beginPath(); ctx.arc(18, 467, 6, 0, 6.3); ctx.fill(); ctx.stroke();
+      texte(ctx, rouge ? "Contamination !" : "Flux conforme", 31, 468, 12, N, "left");
+      if (s.serie >= 2) texte(ctx, "Série ×" + s.serie, W - 12, 468, 13, N, "right");
       // La seringue, pointe en l'air.
       ctx.save(); ctx.translate(s.x, 430); trait(ctx, 2.6);
       ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-9, -12, 18, 30, 3); ctx.fill(); ctx.stroke();
@@ -665,8 +781,10 @@
       if (!clos) {
         if (gauche) s.cible = Math.max(24, s.x - 60); if (droite) s.cible = Math.min(W - 24, s.x + 60);
         pasTir(s, dt, duree);
+        suivre();
         if (s.fini) { clos = true; setTimeout(() => { arret(); liberer(); opt.onFin(noteTir(s), s.touches + " particules neutralisées sur " + TOTAL + ".", s.touches); }, 1300); }
       }
+      animer(dt);
       dessiner();
     });
     cv.focus({ preventScroll: true });
