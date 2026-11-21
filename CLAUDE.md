@@ -24,7 +24,7 @@ et le **palmarès** (vote de chacun pour son jeu préféré, avec hall of fame).
 | `enigme.js`, `api/enigme.js` | Pharmacogames : 25 portes, une par jour du 1er au 25 décembre, ouvertes jusqu'à J+2. Le serveur décide de tout : dates (heure de Paris), chrono, tentatives, points, classement. |
 | `participants.js` | Fiche d'identification des Pharmacogames, chargée à la demande par `enigme.js` : pseudo, avatar (meeple à composer), brigade tirée par le serveur parmi cinq, devise et jeu emblème votés par brigade du 1er au 7 décembre. L'identification ouvre le 26 novembre (`FICHE_JOUR` dans `api/enigme.js`), avant le calendrier ; adresse directe `#pharmacomeeple`. Les longueurs de ses listes restent accordées avec `AVATAR`, `NB_BRIGADES` et `NB_DEVISES` de `api/enigme.js`. |
 | `api/_banque.js` | Les 25 portes, **chiffrées** : dix cases de cinq questions sur un thème (portes 2, 4, 7, 9, 12, 14, 17, 19, 22, 24) et quinze jeux d'adresse. Ne jamais écrire de question ni de réponse en clair dans le dépôt. |
-| `jeux.js` | Les quinze jeux d'adresse, chargés à la demande : bowling, tir (la hotte), flipper, tennis, labyrinthe, puis, chacun entre ses repères `Repère [nom]` / `Fin [nom]` : basket, penalty, volley, haies, etageres, pastilles, twirling, tour, seringue, minigolf. Cœur du jeu séparé du dessin. |
+| `jeux.js` | Les quinze jeux d'adresse, chargés à la demande : bowling, tir (la hotte), flipper, tennis, labyrinthe, puis, chacun entre ses repères `Repère [nom]` / `Fin [nom]` : basket, penalty, volley, haies, etageres, pastilles, twirling, tour, seringue, minigolf, et badminton, en réserve (aucune porte). Cœur du jeu séparé du dessin. |
 | `outils/` | Outils de développement, non publiés sur le site (voir `.vercelignore`). |
 
 Le stockage des votes et des parties est un magasin Vercel Blob privé. Les modules `vote.js` et `enigme.js` ne s'affichent que si leur serveur répond.
@@ -58,7 +58,7 @@ pour une demande qui en sort, elle indique la session concernée.
 | Jeu : Le flipper du préparatoire | La partie flipper de `jeux.js` et ses réglages | `claude/jeu-flipper` |
 | Jeu : Le tennis de paillasse | La partie tennis de `jeux.js`, `outils/essai-tennis.js`, `outils/etalon-tennis.js` | `claude/jeu-tennis` |
 | Jeu : Le labyrinthe de la ZAC | La partie labyrinthe de `jeux.js`, `outils/essai-labyrinthe.js`, `outils/etalon-labyrinthe.js` | `claude/jeu-labyrinthe` |
-| Jeu : un par nouveau jeu (basket, penalty, volley, haies, étagères, pastilles, twirling, tour, seringue, minigolf) | Le bloc du jeu entre ses repères dans `jeux.js`, `outils/essai-<nom>.js`, `outils/etalon-<nom>.js` | `claude/jeu-<nom>` |
+| Jeu : un par nouveau jeu (basket, penalty, volley, haies, étagères, pastilles, twirling, tour, seringue, minigolf, badminton) | Le bloc du jeu entre ses repères dans `jeux.js`, `outils/essai-<nom>.js`, `outils/etalon-<nom>.js` | `claude/jeu-<nom>` |
 | Quiz | Les cases de cinq questions (dans l'atelier) | `claude/quiz` |
 | Palmarès : hall of fame et résultats | Structure et contenu du hall of fame (`vote.js`) et du classement (`enigme.js`) | `claude/resultats` |
 | Participants | Identification, avatars, brigades : `participants.js`, partie identification de `enigme.js`, champs joueur de `api/enigme.js` | `claude/participants` |

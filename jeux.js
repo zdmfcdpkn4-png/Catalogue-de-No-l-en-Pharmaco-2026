@@ -4495,6 +4495,424 @@
   }
   /* ----- Fin [minigolf] ----- */
 
+  /* ----- Repère [badminton] : le badminton ----- */
+  // Le badminton des bouchons. Vue de côté, en salle blanche : le volant est un bouchon de flacon coiffé de quatre pétales. Freiné par
+  // l'air, il part vite, s'essouffle et retombe à pic. Le préparateur se place tout seul ; au joueur de choisir son coup (amorti au
+  // filet, dégagement au fond, smash) et de frapper au bon moment, face au bras d'un automate sur son rail.
+  // Tout le jeu vit dans ce bloc (cœur, dessin, inscription) : aucun nom ne déborde sur les jeux voisins.
+  {
+    /* --- Le cœur : règles et trajectoires, sans navigateur --- */
+    // Réglages étalonnés par simulation (node outils/etalon-badminton.js) : ils fixent la difficulté.
+    // g : pesanteur, k : frein de l'air (proportionnel au carré de la vitesse), rx, ry : demi-axes de la zone de frappe autour de la
+    // raquette, hn : hauteur de la raquette, hs et rys : hauteur et demi-hauteur de la zone de smash (frappe sautée),
+    // pas, robot, retour : vitesses du joueur, de l'automate, et de son retour vers le centre après une frappe, reflexe : temps de lecture de l'automate, erreur : son imprécision,
+    // fatigue : ce qu'il perd à chaque frappe de l'échange, course : ce qu'il perd pour 100 px de course, malice : son goût du smash,
+    // fond, pres : trop au fond ou trop près du filet, il ne smashe pas, lob : angle du dégagement, smash : vitesse du smash,
+    // asmash : part de cette vitesse pour le smash de l'automate,
+    // vide : raquette perdue après un geste dans le vide, geste : après une frappe, faute : qualité sous laquelle le coup est raté,
+    // parfait, bien : qualités des deux paliers, pts : points d'une frappe renvoyée (limite, bien, parfaite), gain : point gagné,
+    // tueur : prime du smash gagnant, sursis : temps laissé à l'échange en cours quand le chrono tombe.
+    const RBD = { g: 620, k: 0.0045, rx: 28, ry: 40, hn: 58, hs: 92, rys: 34, pas: 190, robot: 210, retour: 40, reflexe: 0.18, erreur: 0.12, fatigue: 0.03, course: 0.2, malice: 0.35, fond: 300, pres: 28, lob: 0.96, smash: 1050, asmash: 0.72, vide: 0.45, geste: 0.22, faute: 0.1, parfait: 0.62, bien: 0.3, pts: [5, 10, 15], gain: 100, tueur: 25, pause: 0.85, sursis: 3, plafond: 3000, seuils: [60, 150, 260, 380, 510, 650, 800, 960, 1130, 1320] };
+    const BD_PAS = 1 / 120, BD_H = 440, BD_SOL = 372, BD_G = 20, BD_D = 340, BD_FX = 180, BD_FH = 50, BD_J = 92, BD_A = 268, BD_MAIN = 10;
+    // Le vol libre du volant pendant dt : pesanteur, frein de l'air, filet (un trait vertical de BD_FH de haut).
+    function volVolant(b, dt) {
+      const f = RBD.k * Math.hypot(b.vx, b.vy), x0 = b.x, y0 = b.y;
+      b.vx -= f * b.vx * dt; b.vy += (RBD.g - f * b.vy) * dt;
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      if (!b.filet && x0 !== b.x && (x0 - BD_FX) * (b.x - BD_FX) <= 0) {
+        const y = y0 + (b.y - y0) * (BD_FX - x0) / (b.x - x0);
+        if (y > BD_SOL - BD_FH) { b.filet = true; b.x = BD_FX + (x0 < BD_FX ? -4 : 4); b.y = y; b.vx *= -0.06; b.vy = Math.max(0, b.vy) * 0.3; }
+        else b.yf = BD_SOL - BD_FH - y;                                                              // la marge au-dessus de la bande
+      }
+    }
+    // Où finit un volant lancé de (x, y) à la vitesse (vx, vy) ? Rend le point de chute, la marge au filet, et si le filet l'a arrêté.
+    function chuteVolant(x, y, vx, vy) {
+      const c = { x, y, vx, vy, filet: false, yf: null }; let t = 0;
+      while (c.y < BD_SOL && t < 4) { volVolant(c, BD_PAS); t += BD_PAS; }
+      return { x: c.x, t, filet: c.filet, yf: c.yf };
+    }
+    // Ce que le receveur doit savoir d'un volant en vol : où il redescendra à hauteur de raquette (xn, tn) et, s'il passe assez
+    // haut, à hauteur de smash (xs, ts) ; où il tombera (sol), et s'il s'arrête dans le filet.
+    function prevoirVolant(b) {
+      const c = { x: b.x, y: b.y, vx: b.vx, vy: b.vy, filet: !!b.filet }, cote = b.de ? -1 : 1, r = { xn: null, tn: 0, xs: null, ts: 0, sol: 0, t: 0, filet: false };
+      let t = 0;
+      while (c.y < BD_SOL && t < 4) {
+        const y0 = c.y; volVolant(c, BD_PAS); t += BD_PAS;
+        if ((c.x - BD_FX) * cote > 0 && c.vy > 0) {
+          if (r.xs === null && r.xn === null && y0 < BD_SOL - RBD.hs && c.y >= BD_SOL - RBD.hs) { r.xs = c.x; r.ts = t; }
+          if (r.xn === null && c.y >= BD_SOL - RBD.hn) { r.xn = c.x; r.tn = t; }
+        }
+      }
+      r.sol = c.x; r.t = t; r.filet = c.filet; return r;
+    }
+    // La vitesse de départ qui fait tomber le volant à xt, pour un angle donné (en radians au-dessus de l'horizontale).
+    function doserVolant(x, y, sens, angle, xt) {
+      let a = 30, b = 1500; const ca = Math.cos(angle) * sens, sa = -Math.sin(angle);
+      for (let i = 0; i < 13; i++) {
+        const v = (a + b) / 2, r = chuteVolant(x, y, ca * v, sa * v);
+        if ((r.x - xt) * sens < 0) a = v; else b = v;
+      }
+      return (a + b) / 2;
+    }
+    // La qualité d'une frappe : 1 au cœur de la zone (le tamis de la raquette, ou plus haut pour un smash), 0 au bord, négative au-delà.
+    const qualiteBadminton = (main, type, b) => 1 - Math.hypot((b.x - main) / RBD.rx, (b.y - (BD_SOL - (type === "smash" ? RBD.hs : RBD.hn))) / (type === "smash" ? RBD.rys : RBD.ry));
+    const gradeBadminton = q => q >= RBD.parfait ? 2 : q >= RBD.bien ? 1 : 0;
+    // Un coup : qui (0 le joueur, 1 l'automate) renvoie le volant d'où il est, avec la qualité q (de 0 à 1).
+    // amorti : juste derrière le filet, au ras de la bande. degage : haut, jusqu'au fond. smash : sec et plongeant.
+    // Moins la frappe est juste, plus l'amorti flotte, plus le dégagement est court, plus le smash est mou. Sous RBD.faute, c'est raté.
+    function coupBadminton(s, qui, type, q) {
+      const b = s.v, sens = qui ? -1 : 1, x = b.x, y = Math.min(b.y, BD_SOL - 6), dn = Math.abs(BD_FX - x), h0 = BD_SOL - y, rate = q < RBD.faute, hasard = s.h() - 0.5;
+      let vx, vy;
+      if (type === "smash") {
+        let v = RBD.smash * (qui ? RBD.asmash : 1) * (0.72 + 0.28 * q); const marge = 5 + 16 * (1 - q);
+        if (rate || h0 < BD_FH + 8) { const a = Math.atan2(h0 - BD_FH + 14, dn); vx = Math.cos(a) * v * sens; vy = Math.sin(a) * v; }       // trop bas : dans le filet
+        else {
+          // L'angle le plus plongeant qui passe encore la bande avec la marge voulue.
+          // Frappé de trop loin, il sortirait : il part alors moins fort.
+          let m = 0;
+          for (let n = 0; n < 8; n++, v *= 0.88) {
+            let a = -1.1, c = 0.35;
+            for (let i = 0; i < 11; i++) { const u = (a + c) / 2, r = chuteVolant(x, y, Math.cos(u) * v * sens, -Math.sin(u) * v); if (r.filet || r.yf === null || r.yf < marge) a = u; else c = u; }
+            m = c; const r = chuteVolant(x, y, Math.cos(m) * v * sens, -Math.sin(m) * v);
+            if ((r.x - BD_FX) * sens < BD_D - BD_FX - 12) break;
+          }
+          vx = Math.cos(m) * v * sens; vy = -Math.sin(m) * v;
+        }
+      } else if (type === "degage") {
+        const u = rate ? -16 : (BD_D - BD_FX) - 9 - 108 * Math.pow(1 - q, 1.4) + hasard * 8 * (1 - q), a = RBD.lob, v = doserVolant(x, y, sens, a, BD_FX + sens * u);
+        vx = Math.cos(a) * v * sens; vy = -Math.sin(a) * v;
+      } else {
+        const u = rate ? -14 : 17 + 82 * (1 - q) * (1 - q) + hasard * 6 * (1 - q), marge = 6 + 30 * (1 - q), xt = BD_FX + sens * u;
+        // L'angle le plus tendu qui passe la bande avec la marge voulue, en retombant à l'endroit visé.
+        let a = Math.max(0.2, Math.atan2(BD_FH + marge - h0, dn) + 0.12), v = 0;
+        for (let i = 0; i < 9; i++, a += 0.11) { v = doserVolant(x, y, sens, a, xt); if (rate) break; const r = chuteVolant(x, y, Math.cos(a) * v * sens, -Math.sin(a) * v); if (!r.filet && r.yf !== null && r.yf >= marge) break; }
+        vx = Math.cos(a) * v * sens; vy = -Math.sin(a) * v;
+      }
+      s.v = { x, y, vx, vy, de: qui, n: ++s.nv, type, q, filet: false, yf: null, tour: 0 };
+      s.echange++; s.impact = { x, y, t: s.t, qui, type, grade: gradeBadminton(q) };
+    }
+    // Une partie. x : le joueur, ax : l'automate (leurs pieds) ; phase : service (au joueur de servir), jeu, pause (entre deux échanges).
+    // Le hasard (les choix et l'imprécision de l'automate) vient de la graine.
+    function creerBadminton(graine) {
+      let a = graine || 20261224;
+      const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+      return { t: 0, acc: 0, x: BD_J, ax: BD_A, cible: BD_J, acible: BD_A, v: null, nv: 0, phase: "service", pause: 0, bloque: -9, vide: false, geste: null, ageste: null, avu: -1, aquand: 0, aplan: null, prevu: null, gage: null, echange: 0, pour: 0, contre: 0, points: 0, frappes: 0, parfaites: 0, smashs: 0, vides: 0, services: 0, record: 0, msg: "", msgT: -9, bon: false, impact: null, h, fini: false };
+    }
+    const direBadminton = (s, msg, bon) => { s.msg = msg; s.msgT = s.t; s.bon = !!bon; };
+    // La frappe du joueur est validée dès que l'automate la reprend ou qu'elle tombe bonne : elle rapporte alors ses points.
+    function validerBadminton(s) {
+      const g = s.gage; if (!g) return;
+      s.gage = null; s.frappes++; s.points += RBD.pts[g.grade]; if (g.grade === 2) s.parfaites++;
+    }
+    function finEchange(s, gagne, msg) {
+      const b = s.v;
+      if (gagne) { validerBadminton(s); s.pour++; s.points += RBD.gain; if (b && b.de === 0 && b.type === "smash" && !b.service) { s.smashs++; s.points += RBD.tueur; msg = "Smash gagnant !"; } }
+      else { s.gage = null; s.contre++; }
+      s.record = Math.max(s.record, s.echange);
+      direBadminton(s, msg, gagne);
+      if (b) { b.mort = true; b.vx = b.vy = 0; }
+      s.phase = "pause"; s.pause = RBD.pause; s.cible = BD_J; s.acible = BD_A; s.aretour = false; s.aplan = null; s.prevu = null;
+    }
+    // Le joueur demande un coup : "amorti", "degage" ou "smash". Au service, l'amorti sert court, les deux autres servent long.
+    // Rend vrai si le volant est parti. Un geste dans le vide coûte RBD.vide secondes de raquette, et taper encore pendant ce temps le prolonge.
+    function frapperBadminton(s, type, duree) {
+      if (s.fini || s.phase === "pause" || (duree !== undefined && s.t >= duree && s.phase !== "jeu")) return false;
+      if (s.t < s.bloque) { if (s.vide) s.bloque = s.t + RBD.vide; return false; }                  // marteler ne sert à rien : la raquette reste perdue
+      s.vide = false;
+      s.geste = { t: s.t, type, ok: false };
+      if (s.phase === "service") {
+        s.v = { x: s.x + BD_MAIN, y: BD_SOL - 42, vx: 0, vy: 0 }; s.echange = 0; s.gage = null;
+        coupBadminton(s, 0, type === "amorti" ? "amorti" : "degage", type === "amorti" ? 0.96 : 0.85);
+        s.v.service = true; s.echange = 0; s.impact.grade = -1; s.services++; s.phase = "jeu"; s.geste.ok = true; s.bloque = s.t + RBD.geste; s.cible = BD_J;
+        return true;
+      }
+      const b = s.v, q = b && b.de === 1 && !b.mort ? qualiteBadminton(s.x + BD_MAIN, type, b) : -1;
+      if (q <= 0) { s.bloque = s.t + RBD.vide; s.vide = true; s.vides++; direBadminton(s, "Dans le vide", false); return false; }
+      coupBadminton(s, 0, type, q);
+      s.gage = { grade: gradeBadminton(q) }; s.geste.ok = true; s.bloque = s.t + RBD.geste; s.cible = BD_J; s.prevu = null;
+      if (q < RBD.faute) s.gage = null;
+      return true;
+    }
+    const gaussBadminton = s => (s.h() + s.h() + s.h() + s.h() - 2) * 1.7;
+    // L'automate : à chaque frappe du joueur, il lit la trajectoire (après un temps de réflexion), choisit son coup (un smash si le
+    // volant passe assez haut et pas trop au fond, sinon amorti ou dégagement selon la place du joueur), va se placer et frappe au
+    // meilleur moment, puis revient sans hâte vers le centre. Plus il a dû courir et plus l'échange dure, moins son coup est juste.
+    function automateBadminton(s) {
+      const b = s.v;
+      if (b.n !== s.avu) { s.avu = b.n; s.aquand = s.t + RBD.reflexe; s.aplan = null; }
+      if (s.t < s.aquand) return;
+      let p = s.aplan;
+      if (!p) {
+        const r = prevoirVolant(b);
+        if (r.filet || r.sol < BD_FX || r.sol > BD_D + 5 || r.xn === null) { s.aplan = { type: "laisse" }; return; }
+        const haut = r.xs !== null && r.xs < RBD.fond && r.xs > BD_FX + RBD.pres;
+        const type = haut && s.h() < RBD.malice ? "smash" : s.h() < (s.x < 70 ? 0.7 : s.x > 115 ? 0.25 : 0.5) ? "amorti" : "degage";
+        s.acible = borne((type === "smash" ? r.xs : r.xn) + BD_MAIN, BD_FX + 16, BD_D - 6); s.aretour = false;
+        p = s.aplan = { type, bruit: Math.abs(gaussBadminton(s)) * RBD.erreur + RBD.fatigue * s.echange + RBD.course * Math.abs(s.acible - s.ax) / 100, qmax: 0, xn: r.xn };
+      }
+      if (p.type === "laisse") return;
+      // Smash manqué (le volant est déjà passé sous la zone) : il se rabat sur un coup ordinaire.
+      if (p.type === "smash" && b.vy > 0 && b.y > BD_SOL - RBD.hs + RBD.rys * 0.8) { p.type = s.x < 92 ? "amorti" : "degage"; p.qmax = 0; s.acible = borne(p.xn + BD_MAIN, BD_FX + 16, BD_D - 6); }
+      const q = qualiteBadminton(s.ax - BD_MAIN, p.type, b);
+      if (q > 0 && (q < p.qmax - 1e-9 || q > 0.93)) {
+        validerBadminton(s);
+        s.ageste = { t: s.t, type: p.type };
+        coupBadminton(s, 1, p.type, Math.max(0, Math.max(q, p.qmax) - p.bruit));
+        s.aplan = null; s.acible = BD_A; s.aretour = true;
+        // Le joueur se place tout seul, là où le volant redescendra à hauteur de raquette.
+        const r = s.prevu = prevoirVolant(s.v);
+        if (!r.filet && r.xn !== null) s.cible = borne(r.xn - BD_MAIN, BD_G + 6, BD_FX - 16);
+        return;
+      }
+      p.qmax = Math.max(p.qmax, q);
+    }
+    function unPasBadminton(s, duree) {
+      s.t += BD_PAS;
+      const va = (s.aretour ? RBD.retour : RBD.robot) * BD_PAS, vj = RBD.pas * BD_PAS;
+      s.x += borne(s.cible - s.x, -vj, vj);
+      if (s.phase !== "jeu" || s.t >= s.aquand || s.aretour) s.ax += borne(s.acible - s.ax, -va, va);
+      if (s.phase === "pause") { s.pause -= BD_PAS; if (s.pause <= 0) { s.phase = "service"; s.v = null; } }
+      else if (s.phase === "jeu") {
+        const b = s.v;
+        volVolant(b, BD_PAS); b.tour += BD_PAS;
+        if (b.de === 0 && !b.filet) automateBadminton(s);
+        if (s.phase === "jeu" && s.v === b && b.y >= BD_SOL) {
+          b.y = BD_SOL;
+          const chezLui = (b.x < BD_FX) === (b.de === 0), dehors = b.x < BD_G || b.x > BD_D, faute = b.filet || chezLui || dehors;
+          const joueur = b.de === 0, gagne = joueur ? !faute : faute;
+          finEchange(s, gagne, faute ? (b.filet ? (joueur ? "Dans le filet" : "Filet : point pour vous !") : dehors ? (joueur ? "Dehors" : "Dehors : point pour vous !") : (joueur ? "Trop court" : "Trop court : point pour vous !")) : (joueur ? "Point !" : "Point pour l'automate"));
+        }
+      }
+      if (s.t >= duree && (s.phase !== "jeu" || s.t >= duree + RBD.sursis)) s.fini = true;
+    }
+    // Pas fixe : la physique avance par tranches de 1/120 s quel que soit le rythme d'affichage.
+    const pasBadminton = (s, dt, duree) => { s.acc += dt; while (s.acc >= BD_PAS && !s.fini) { s.acc -= BD_PAS; unPasBadminton(s, duree); } };
+    // La note : le nombre de paliers atteints. Le score brut : les points, bornés par le plafond.
+    const noteBadminton = s => RBD.seuils.filter(p => s.points >= p).length;
+    const brutBadminton = s => Math.min(RBD.plafond, Math.round(s.points));
+
+    /* --- Dessin et commandes (navigateur seulement) --- */
+    const COUPS = ["amorti", "degage", "smash"], NOMS = ["AMORTI", "DÉGAGÉ", "SMASH"];
+    const badminton = (el, opt) => {
+      const duree = opt.duree || 55, { cv, ctx, xDe, liberer } = monter(el, BD_H);
+      cv.style.touchAction = "none";
+      cv.setAttribute("aria-label", "Le badminton des bouchons. Renvoyez le volant par-dessus le filet, face à l'automate : le préparateur se place tout seul, à vous de choisir le coup et de frapper quand le volant arrive sur la raquette. Trois coups : amorti (tiers gauche de l'écran, flèche gauche ou touche 1), dégagement au fond (tiers du milieu, flèche haut, Espace ou touche 2), smash quand le volant arrive haut (tiers droit, flèche droite ou touche 3). Le premier coup de chaque échange est votre service.");
+      const s = creerBadminton(opt.graine), mm = q => typeof matchMedia === "function" && matchMedia(q).matches;
+      const tactile = mm("(pointer: coarse)"), calme = mm("(prefers-reduced-motion: reduce)");
+      if (typeof opt.espion === "function") opt.espion(s);                                         // pour le banc d'essai seulement
+      const logo = new Image(); logo.src = opt.logo || api._logo;
+      let clos = false, minuterie = 0, pasJ = 0, xAvant = s.x;
+      const appuiT = [-9, -9, -9];
+      const trace = [];
+      const jouer = i => { if (clos) return; appuiT[i] = s.t; frapperBadminton(s, COUPS[i], duree); };
+      const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); jouer(borne(Math.floor(xDe(e) / (W / 3)), 0, 2)); };
+      const TOUCHES = { ArrowLeft: 0, "1": 0, "&": 0, ArrowUp: 1, " ": 1, Spacebar: 1, "2": 1, "é": 1, ArrowRight: 2, "3": 2, '"': 2 };
+      const enfonce = e => {
+        if (!(e.key in TOUCHES) || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(e.target && e.target.tagName || "")) return;
+        e.preventDefault(); if (!e.repeat) jouer(TOUCHES[e.key]);
+      };
+      const menu = e => e.preventDefault();
+      cv.addEventListener("pointerdown", appui); cv.addEventListener("contextmenu", menu); window.addEventListener("keydown", enfonce);
+      const retirer = () => { cv.removeEventListener("pointerdown", appui); cv.removeEventListener("contextmenu", menu); window.removeEventListener("keydown", enfonce); };
+      const MUR = "#EEF1FA", MUR2 = "#E2E6F4", SOLC = "#3E9B76", SOLF = "#2F7F62", ENCRE = "rgba(38,7,109,.5)", OMBRE = "rgba(38,7,109,.16)";
+      // Le volant : un bouchon de flacon (élastomère gris, capsule sertie) et sa jupe de quatre pétales aux couleurs du logo.
+      const volant = (x, y, a, k) => {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.scale(k, k);
+        const PET = [Y, O, P, V];
+        trait(ctx, 1.6);
+        for (let i = 0; i < 4; i++) {
+          const o = (i - 1.5) * 0.3;
+          ctx.fillStyle = PET[i]; ctx.beginPath(); ctx.moveTo(-3, o * 6); ctx.quadraticCurveTo(-11, o * 26 - 3.2, -17, o * 26); ctx.quadraticCurveTo(-11, o * 26 + 3.2, -3, o * 6 + 0.01); ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        ctx.fillStyle = "#8C8A9E"; ctx.beginPath(); ctx.roundRect(-4, -4.6, 9, 9.2, [1.5, 4.5, 4.5, 1.5]); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#D9DCE8"; ctx.fillRect(-4.6, -5.2, 3.4, 10.4); ctx.strokeRect(-4.6, -5.2, 3.4, 10.4);
+        ctx.restore();
+      };
+      // La raquette : un tamis de laboratoire au bout d'un manche de spatule. (x, y) : le centre du tamis, a : l'inclinaison du manche.
+      // vif : elle vient de frapper ; perdue : geste dans le vide, elle ne répond plus un instant.
+      const raquette = (x, y, a, vif, perdue) => {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(a); if (perdue) ctx.globalAlpha = 0.45;
+        trait(ctx, 3.2); ctx.beginPath(); ctx.moveTo(0, 9); ctx.lineTo(0, 27); ctx.stroke();
+        ctx.strokeStyle = O; ctx.lineWidth = 4.2; ctx.beginPath(); ctx.moveTo(0, 20); ctx.lineTo(0, 27); ctx.stroke();
+        ctx.fillStyle = vif ? "rgba(236,213,103,.85)" : "rgba(255,255,255,.7)"; ctx.beginPath(); ctx.ellipse(0, 0, 8.5, 10.5, 0, 0, 6.3); ctx.fill();
+        ctx.save(); ctx.clip(); ctx.strokeStyle = "rgba(38,7,109,.35)"; ctx.lineWidth = 0.8; ctx.beginPath();
+        for (let u = -8; u <= 8; u += 4) { ctx.moveTo(u, -11); ctx.lineTo(u, 11); ctx.moveTo(-9, u); ctx.lineTo(9, u); }
+        ctx.stroke(); ctx.restore();
+        trait(ctx, 2.2); ctx.beginPath(); ctx.ellipse(0, 0, 8.5, 10.5, 0, 0, 6.3); ctx.stroke();
+        ctx.restore();
+      };
+      // Le geste dure 0,3 s. elan rend son avancement de 0 à 1 (-1 au repos) ; angleGeste, l'inclinaison de la raquette, qui tourne
+      // autour de la main : elle fouette vers l'avant puis revient à sa garde (0,25 rad). L'amorti est un geste retenu.
+      const elan = g => g && s.t - g.t < 0.3 ? (s.t - g.t) / 0.3 : -1;
+      const angleGeste = (e, type) => { if (e < 0) return 0.25; const a0 = type === "amorti" ? -0.35 : -0.95, a1 = type === "amorti" ? 0.8 : 1.45; return e < 0.45 ? a0 + (a1 - a0) * (e / 0.45) : a1 + (0.25 - a1) * ((e - 0.45) / 0.55); };
+      // Le préparateur, de profil : sabots, pantalon, blouse, masque et charlotte. Il court, arme et saute pour smasher.
+      function preparateur() {
+        const x = s.x, e = elan(s.geste), saute = e >= 0 && s.geste.type === "smash" ? Math.sin(e * Math.PI) * 24 : 0, sol = BD_SOL - saute;
+        const court = Math.abs(s.x - xAvant) > 0.2, f = court ? Math.sin(pasJ) : 0, hanche = sol - 26, epaule = sol - 47;
+        ctx.fillStyle = OMBRE; ctx.beginPath(); ctx.ellipse(x, BD_SOL + 3, 15 - saute * 0.3, 3.5, 0, 0, 6.3); ctx.fill();
+        // Les jambes.
+        trait(ctx, 5.4); ctx.strokeStyle = B;
+        for (const k of [-1, 1]) { const px = x + k * (4 + f * 7 * k) * (court ? k : 1), py = sol - 2 - (court && k * f > 0 ? 3 : 0); ctx.beginPath(); ctx.moveTo(x, hanche); ctx.quadraticCurveTo(x + k * 3 + f * k * 3, hanche + 14, px, py); ctx.stroke(); ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(px - 3, py - 1, 9, 4.5, 2); ctx.fill(); }
+        // La blouse.
+        trait(ctx, 2.2); ctx.fillStyle = C; ctx.beginPath(); ctx.moveTo(x - 8, epaule - 2); ctx.quadraticCurveTo(x + 1, epaule - 6, x + 8, epaule - 1); ctx.lineTo(x + 9, hanche + 5); ctx.lineTo(x - 10, hanche + 5); ctx.closePath(); ctx.fill(); ctx.stroke();
+        if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, x - 5, epaule + 4, 10, 10);
+        // La tête : charlotte bleue, masque, un œil qui suit le volant.
+        const ty = epaule - 15, b = s.v, d = b ? Math.hypot(b.x - x, b.y - ty) || 1 : 1, ex = b ? (b.x - x) / d * 1.6 : 1.2, ey = b ? (b.y - ty) / d * 1.6 : 0;
+        ctx.fillStyle = "#F3D2B3"; ctx.beginPath(); ctx.arc(x + 1, ty, 9.5, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = B; ctx.beginPath(); ctx.arc(x + 1, ty, 9.5, Math.PI * 0.92, Math.PI * 1.98); ctx.quadraticCurveTo(x - 2, ty - 7, x - 9, ty + 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(x + 2, ty + 2, 9, 7, 3); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = N; ctx.beginPath(); ctx.arc(x + 5 + ex, ty - 1.5 + ey, 1.9, 0, 6.3); ctx.fill();
+        // Le bras et la raquette : au repos, le tamis attend le volant au cœur de la zone de frappe.
+        const smash = e >= 0 && s.geste.type === "smash", ra = angleGeste(e, e >= 0 ? s.geste.type : ""), leve = smash ? Math.sin(e * Math.PI) : 0;
+        const hx = x + BD_MAIN - 6, hy = BD_SOL - RBD.hn + 23 - leve * (RBD.hs - RBD.hn), rx = hx + Math.sin(ra) * 24, ry = hy - Math.cos(ra) * 24;
+        for (const [w, c] of [[6.6, N], [3.4, C]]) { ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x + 2, epaule + 2); ctx.quadraticCurveTo((x + hx) / 2 - 6, (epaule + hy) / 2 + 6, hx, hy); ctx.stroke(); }
+        raquette(rx, ry, ra, e >= 0 && s.geste.ok, e >= 0 && !s.geste.ok || s.t < s.bloque && s.vide);
+        ctx.fillStyle = P; trait(ctx, 1.6); ctx.beginPath(); ctx.arc(hx, hy, 3.4, 0, 6.3); ctx.fill(); ctx.stroke();
+      }
+      // L'automate : un chariot sur son rail, un œil de caméra, et un bras articulé qui tient le tamis.
+      function automate() {
+        const x = s.ax, e = elan(s.ageste), lit = s.phase === "jeu" && s.v && s.v.de === 0 && s.t < s.aquand;
+        ctx.fillStyle = OMBRE; ctx.beginPath(); ctx.ellipse(x + 4, BD_SOL + 3, 19, 3.5, 0, 0, 6.3); ctx.fill();
+        // Le chariot et ses galets.
+        trait(ctx, 2.2); ctx.fillStyle = V; ctx.beginPath(); ctx.roundRect(x - 10, BD_SOL - 24, 30, 19, 5); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = N; for (const u of [-4, 14]) { ctx.beginPath(); ctx.arc(x + u, BD_SOL - 4, 4, 0, 6.3); ctx.fill(); }
+        ctx.fillStyle = C; ctx.beginPath(); ctx.arc(x + 12, BD_SOL - 15, 5.5, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = lit ? O : G; ctx.beginPath(); ctx.arc(x + 12, BD_SOL - 15, 2.6, 0, 6.3); ctx.fill();
+        ctx.fillStyle = Y; ctx.fillRect(x - 6, BD_SOL - 20, 8, 3);
+        // Le bras : épaule sur le chariot, coude, poignet. La main vise le cœur de la zone de frappe.
+        const smash = e >= 0 && s.ageste.type === "smash", ra = -angleGeste(e, e >= 0 ? s.ageste.type : ""), leve = smash ? Math.sin(e * Math.PI) : 0;
+        const hx = x - BD_MAIN + 6, hy = BD_SOL - RBD.hn + 23 - leve * (RBD.hs - RBD.hn), rx = hx + Math.sin(ra) * 24, ry = hy - Math.cos(ra) * 24, ox = x + 4, oy = BD_SOL - 24;
+        // Le coude : à égale distance de l'épaule et de la main, déporté vers l'arrière.
+        const dx = hx - ox, dy = hy - oy, d = Math.hypot(dx, dy) || 1, l = Math.max(d / 2 + 1, 27), hc = Math.sqrt(l * l - d * d / 4), cx = (ox + hx) / 2 - dy / d * hc * -1, cy = (oy + hy) / 2 + dx / d * hc * -1;
+        for (const [w, c] of [[8, N], [4.6, "#C9CCDD"]]) { ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(cx, cy); ctx.lineTo(hx, hy); ctx.stroke(); }
+        trait(ctx, 1.8); ctx.fillStyle = O; for (const [u, w] of [[ox, oy], [cx, cy]]) { ctx.beginPath(); ctx.arc(u, w, 4, 0, 6.3); ctx.fill(); ctx.stroke(); }
+        raquette(rx, ry, ra, e >= 0 && e < 0.5, false);
+        ctx.fillStyle = N; ctx.beginPath(); ctx.arc(hx, hy, 3.2, 0, 6.3); ctx.fill();
+      }
+      // Le décor : une salle blanche. Plafond soufflant, cloisons, hublot du sas, affiche au logo de l'unité ; le terrain vert et ses lignes.
+      function decor() {
+        ctx.fillStyle = MUR; ctx.fillRect(0, 39, W, BD_SOL - 39);
+        ctx.fillStyle = MUR2; for (let x = 0; x < W; x += 90) ctx.fillRect(x + 88, 39, 2, BD_SOL - 39);
+        ctx.fillStyle = "#D5DAEC"; ctx.fillRect(0, 39, W, 15);
+        for (let x = 14; x < W; x += 86) {                                                         // les filtres du plafond et leur flux
+          ctx.fillStyle = "#F9FAFE"; ctx.beginPath(); ctx.roundRect(x, 42, 64, 9, 3); ctx.fill();
+          ctx.strokeStyle = "rgba(38,7,109,.25)"; ctx.lineWidth = 1; ctx.beginPath(); for (let u = x + 6; u < x + 62; u += 7) { ctx.moveTo(u, 43.5); ctx.lineTo(u, 49.5); } ctx.stroke();
+          ctx.strokeStyle = "rgba(143,199,232,.35)"; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.beginPath();
+          for (let u = x + 10, i = 0; u < x + 60; u += 16, i++) { const o = calme ? 0 : (s.t * 26 + i * 9) % 28; ctx.moveTo(u, 58 + o); ctx.lineTo(u, 68 + o); }
+          ctx.stroke();
+        }
+        // Le hublot du sas, côté joueur ; l'affiche de l'unité, côté automate.
+        trait(ctx, 2.4); ctx.fillStyle = "#CFE6F5"; ctx.beginPath(); ctx.roundRect(36, 118, 70, 54, 10); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(50, 158); ctx.lineTo(74, 130); ctx.moveTo(66, 162); ctx.lineTo(84, 141); ctx.stroke();
+        texte(ctx, "SAS", 71, 184, 10, ENCRE);
+        trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(250, 112, 64, 74, 6); ctx.fill(); ctx.stroke();
+        if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, 258, 117, 48, 48);
+        texte(ctx, "PHARMACO", 282, 175, 8, N);
+        // Au fond, la paillasse : des meubles bas, pâles pour ne pas gêner la lecture du volant, et quelques flacons.
+        ctx.fillStyle = "#DDE1F0"; ctx.fillRect(0, BD_SOL - 30, W, 30); ctx.fillStyle = "#F7F8FD"; ctx.fillRect(0, BD_SOL - 33, W, 4);
+        ctx.strokeStyle = "rgba(38,7,109,.1)"; ctx.lineWidth = 1.5; ctx.beginPath(); for (let x = 30; x < W; x += 60) { ctx.moveTo(x, BD_SOL - 27); ctx.lineTo(x, BD_SOL); ctx.moveTo(x - 8, BD_SOL - 16); ctx.lineTo(x - 8, BD_SOL - 10); } ctx.stroke();
+        [[18, P], [128, Y], [142, V], [226, B], [330, O]].forEach(([x, c], i) => { ctx.fillStyle = "#F7F8FD"; ctx.strokeStyle = "rgba(38,7,109,.22)"; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.roundRect(x - 5, BD_SOL - 47 + (i % 2) * 3, 10, 14 - (i % 2) * 3, 2.5); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 0.55; ctx.fillStyle = c; ctx.fillRect(x - 4, BD_SOL - 39, 8, 5); ctx.globalAlpha = 1; ctx.fillStyle = "rgba(38,7,109,.3)"; ctx.fillRect(x - 3.5, BD_SOL - 50 + (i % 2) * 3, 7, 3); });
+        // Le terrain.
+        ctx.fillStyle = SOLC; ctx.fillRect(0, BD_SOL, W, BD_H - BD_SOL); ctx.fillStyle = SOLF; ctx.fillRect(0, BD_SOL, W, 3);
+        ctx.fillStyle = C; ctx.fillRect(BD_G - 2, BD_SOL, BD_D - BD_G + 4, 3);
+        for (const x of [BD_G, BD_D]) { ctx.fillStyle = C; ctx.fillRect(x - 1.5, BD_SOL - 5, 3, 8); }
+        // Le filet : tendu sur un pied à perfusion, sa poche accrochée en haut.
+        ctx.fillStyle = OMBRE; ctx.beginPath(); ctx.ellipse(BD_FX, BD_SOL + 3, 16, 3, 0, 0, 6.3); ctx.fill();
+        trait(ctx, 3); ctx.beginPath(); ctx.moveTo(BD_FX - 13, BD_SOL - 1); ctx.lineTo(BD_FX + 13, BD_SOL - 1); ctx.stroke();
+        ctx.fillStyle = N; for (const u of [-13, 13]) { ctx.beginPath(); ctx.arc(BD_FX + u, BD_SOL - 1, 2.6, 0, 6.3); ctx.fill(); }
+        ctx.fillStyle = "rgba(255,251,242,.75)"; ctx.fillRect(BD_FX - 3, BD_SOL - BD_FH, 6, BD_FH - 6);
+        ctx.strokeStyle = "rgba(38,7,109,.35)"; ctx.lineWidth = 0.8; ctx.beginPath(); for (let y = BD_SOL - BD_FH + 5; y < BD_SOL - 6; y += 5) { ctx.moveTo(BD_FX - 3, y); ctx.lineTo(BD_FX + 3, y); } ctx.stroke();
+        trait(ctx, 2.6); ctx.beginPath(); ctx.moveTo(BD_FX, BD_SOL - 2); ctx.lineTo(BD_FX, BD_SOL - BD_FH - 26); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(BD_FX - 9, BD_SOL - BD_FH - 22); ctx.quadraticCurveTo(BD_FX - 9, BD_SOL - BD_FH - 28, BD_FX, BD_SOL - BD_FH - 26); ctx.quadraticCurveTo(BD_FX + 9, BD_SOL - BD_FH - 28, BD_FX + 9, BD_SOL - BD_FH - 22); ctx.stroke();
+        trait(ctx, 1.8); ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.beginPath(); ctx.roundRect(BD_FX + 4.5, BD_SOL - BD_FH - 22, 9, 14, 3); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = P; ctx.beginPath(); ctx.roundRect(BD_FX + 4.5, BD_SOL - BD_FH - 15, 9, 7, [0, 0, 3, 3]); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = O; ctx.fillRect(BD_FX - 4.5, BD_SOL - BD_FH - 2, 9, 4); trait(ctx, 1.6); ctx.strokeRect(BD_FX - 4.5, BD_SOL - BD_FH - 2, 9, 4);   // la bande du filet
+      }
+      // Les trois boutons : toute la colonne au-dessus de chacun répond aussi.
+      function boutons() {
+        const b = s.v, vient = s.phase === "jeu" && b && b.de === 1 && !b.mort, haut = vient && s.prevu && s.prevu.xs !== null, service = s.phase === "service" && s.t < duree;
+        for (let i = 0; i < 3; i++) {
+          const x = 6 + i * 117, vif = s.t - appuiT[i] < 0.14, actif = service || (i < 2 ? vient : haut);
+          ctx.fillStyle = "rgba(20,60,45,.35)"; ctx.beginPath(); ctx.roundRect(x, 383, 114, 52, 13); ctx.fill();
+          trait(ctx, 2.4); ctx.fillStyle = vif ? Y : i === 2 ? (actif ? O : "#F6D9C6") : C; ctx.globalAlpha = actif || vif ? 1 : 0.8;
+          ctx.beginPath(); ctx.roundRect(x, vif ? 382 : 380, 114, 52, 13); ctx.fill(); ctx.stroke();
+          const y = (vif ? 382 : 380) + 26, coul = i === 2 && actif && !vif ? C : N;
+          // Le pictogramme : la trajectoire du coup par-dessus le filet.
+          ctx.strokeStyle = coul; ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.beginPath();
+          const px = x + 22;
+          if (i === 0) { ctx.moveTo(px - 11, y + 2); ctx.quadraticCurveTo(px - 1, y - 12, px + 5, y + 7); }
+          else if (i === 1) { ctx.moveTo(px - 12, y + 6); ctx.quadraticCurveTo(px + 6, y - 26, px + 12, y + 7); }
+          else { ctx.moveTo(px - 12, y - 9); ctx.lineTo(px + 10, y + 7); ctx.moveTo(px + 10, y + 7); ctx.lineTo(px + 3, y + 6); ctx.moveTo(px + 10, y + 7); ctx.lineTo(px + 8, y); }
+          ctx.stroke(); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(px, y + 8); ctx.lineTo(px, y - 1); ctx.stroke();
+          texte(ctx, service ? (i ? "LONG" : "COURT") : NOMS[i], x + 70, y - (tactile ? 0 : 6), service ? 13 : 14, coul);
+          if (service) texte(ctx, "service", x + 70, y - (tactile ? 13 : 19), 8.5, coul);
+          if (!tactile) texte(ctx, ["←  ou 1", "↑  ou 2", "→  ou 3"][i], x + 70, y + 10, 9.5, coul);
+          ctx.globalAlpha = 1;
+        }
+      }
+      function dessiner() {
+        decor();
+        const b = s.v, vient = s.phase === "jeu" && b && b.de === 1 && !b.mort;
+        // Les deux zones de frappe du joueur : le tamis (frappe ordinaire) et, quand le volant arrive haut, la zone de smash au-dessus.
+        if (vient && !clos) {
+          const hx = s.cible + BD_MAIN, qn = qualiteBadminton(s.x + BD_MAIN, "amorti", b), qs = qualiteBadminton(s.x + BD_MAIN, "smash", b);
+          if (s.prevu && s.prevu.xs !== null) { ctx.strokeStyle = qs > 0 ? O : "rgba(236,119,57,.6)"; ctx.lineWidth = qs > 0 ? 3 : 2; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.arc(hx, BD_SOL - RBD.hs, 12, 0, 6.3); ctx.stroke(); ctx.setLineDash([]); texte(ctx, "SMASH", hx, BD_SOL - RBD.hs - 19, 8.5, O); }
+          ctx.strokeStyle = qn > 0 ? N : "rgba(38,7,109,.3)"; ctx.lineWidth = qn > 0 ? 3 : 2; ctx.beginPath(); ctx.arc(hx, BD_SOL - RBD.hn, 14, 0, 6.3); ctx.stroke();
+        }
+        automate(); preparateur();
+        // Le volant : son ombre au sol, sa traînée, puis lui, le bouchon en avant.
+        if (b) {
+          const k = Math.max(0.35, 1 - (BD_SOL - b.y) / 420);
+          ctx.fillStyle = OMBRE; ctx.beginPath(); ctx.ellipse(b.x, BD_SOL + 3, 8 * k, 2.6 * k, 0, 0, 6.3); ctx.fill();
+          if (!calme && !b.mort) for (let i = 0; i < trace.length; i++) { ctx.fillStyle = "rgba(38,7,109," + (0.05 + 0.03 * i) + ")"; ctx.beginPath(); ctx.arc(trace[i][0], trace[i][1], 2 + i * 0.4, 0, 6.3); ctx.fill(); }
+          volant(b.x, b.mort ? BD_SOL - 4 : b.y, b.mort ? (b.de ? Math.PI * 0.9 : 0.3) : Math.atan2(b.vy, b.vx), 1);
+        } else if (s.phase === "service" && !clos) volant(s.x + BD_MAIN + 13, BD_SOL - 30, -1.2, 1);
+        // L'éclat de la frappe et son appréciation.
+        const im = s.impact;
+        if (im && s.t - im.t < 0.5) {
+          const u = (s.t - im.t) / 0.5;
+          if (!calme) { ctx.globalAlpha = 1 - u; ctx.strokeStyle = im.type === "smash" ? O : im.grade === 2 ? Y : N; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(im.x, im.y, 8 + u * 20, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
+          if (!im.qui && im.grade >= 0) { const t = ["Limite", "Bien", "Parfait !"][im.grade], y = Math.max(60, im.y - 30 - (calme ? 0 : u * 10)); ctx.fillStyle = im.grade === 2 ? N : "rgba(38,7,109,.82)"; ctx.beginPath(); ctx.roundRect(borne(im.x, 40, W - 40) - 36, y - 10, 72, 20, 10); ctx.fill(); texte(ctx, t, borne(im.x, 40, W - 40), y + 0.5, 11.5, im.grade === 2 ? Y : C); }
+        }
+        // L'annonce du point, la consigne du service.
+        if (!clos && s.t - s.msgT < 1.1 && s.msg) {
+          ctx.font = "800 15px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; const l = Math.min(330, ctx.measureText(s.msg).width + 34);
+          ctx.fillStyle = s.bon ? N : "rgba(216,64,43,.94)"; ctx.beginPath(); ctx.roundRect(180 - l / 2, 222, l, 32, 16); ctx.fill();
+          texte(ctx, s.msg, 180, 238.5, 15, s.bon ? Y : C);
+        } else if (!clos && s.phase === "service" && s.t < duree) {
+          ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(30, 222, 300, s.services ? 32 : 50, 16); ctx.fill();
+          texte(ctx, "À vous de servir : choisissez un coup", 180, 238.5, 13.5, Y);
+          if (!s.services) texte(ctx, "Ensuite, frappez quand le volant arrive sur le tamis", 180, 258, 10.5, C);
+        }
+        bandeau(ctx, "Vous " + s.pour + " · Automate " + s.contre + " · " + s.points + " pts", duree - s.t, duree);
+        boutons();
+        if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(70, 196, 220, 44, 22); ctx.fill(); texte(ctx, "Fin de la séance !", 180, 219, 18, Y); }
+      }
+      const arret = boucle(dt => {
+        if (!clos) {
+          xAvant = s.x;
+          pasBadminton(s, dt, duree);
+          pasJ += Math.abs(s.x - xAvant) * 0.22;
+          const b = s.v; if (b && !b.mort && s.phase === "jeu") { trace.push([b.x, b.y]); if (trace.length > 5) trace.shift(); } else trace.length = 0;
+          if (s.fini) {
+            clos = true;
+            const n = noteBadminton(s), brut = brutBadminton(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un), joues = s.pour + s.contre;
+            const bilan = joues ? pl(s.pour, "échange gagné", "échanges gagnés") + " sur " + joues + ", " + pl(s.frappes, "frappe renvoyée", "frappes renvoyées") + (s.parfaites ? " dont " + pl(s.parfaites, "parfaite", "parfaites") : "") + (s.smashs ? ", " + pl(s.smashs, "smash gagnant", "smashs gagnants") : "") + "." : "Le volant n'a pas quitté la paillasse : pas de service, pas de point.";
+            // Les quatre chiffres du tableau final commun : points, échanges gagnés sur échanges joués, frappes parfaites, smashs gagnants.
+            const chiffres = [[brut, brut > 1 ? "points" : "point"], [s.pour + "/" + joues, s.pour > 1 ? "échanges gagnés" : "échange gagné"], [s.parfaites, s.parfaites > 1 ? "frappes parfaites" : "frappe parfaite"], [s.smashs, s.smashs > 1 ? "smashs gagnants" : "smash gagnant"]];
+            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, brut, chiffres); }, 1100);
+          }
+        }
+        dessiner();
+      });
+      cv.focus({ preventScroll: true });
+      return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
+    };
+    api.badminton = badminton;
+    Object.assign(api._coeur, { REGL_BADMINTON: RBD, BD: { PAS: BD_PAS, SOL: BD_SOL, G: BD_G, D: BD_D, FX: BD_FX, FH: BD_FH, MAIN: BD_MAIN }, creerBadminton, pasBadminton, frapperBadminton, noteBadminton, brutBadminton, qualiteBadminton, prevoirVolant, chuteVolant, volVolant });
+  }
+  /* ----- Fin [badminton] ----- */
+
   /* ----- Tableau final commun ----- */
   // À la fin de chaque jeu, avant de rendre la main : la note en grand au cœur du logo de l'unité, et les chiffres de la partie.
   // Le jeu appelle onFin(note, bilan, brut, chiffres) comme avant ; le tableau s'affiche par-dessus, puis onFin est transmis.
