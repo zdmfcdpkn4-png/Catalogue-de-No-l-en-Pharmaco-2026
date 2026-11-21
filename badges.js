@@ -2,7 +2,8 @@
    Propre au site Vercel, même fabrication que les jetons du menu (menu.js) : une face au trait de la charte, avec le
    nom de l'indication incurvé autour du dessin, une tranche et un dos en verre. Le jeton fait un tour sur lui-même
    au survol de la souris et au clic ; au clic, le filtre attend que le jeton montre son dos.
-   Sur téléphone : quatre badges par ligne, plus petits, avec le nom seul (la précision du bas est masquée).
+   Tailles : 120 px sur ordinateur, 96 px sur tablette (561 à 1100 px), 70 px au plus sur téléphone, proches des jetons du menu.
+   Sur téléphone : quatre badges par ligne, avec le nom seul (la précision du bas est masquée).
    Le bouton d'origine reste en place (classe, data-p, aria-pressed) : la page continue de le piloter.
    Sans ce fichier, les pastilles d'origine restent telles quelles. */
 (() => {
@@ -56,7 +57,9 @@
 .chip.bd.tourne .bd-o{animation:bdOmbre 1.6s linear both}
 @keyframes bdTour{0%{transform:rotateX(0) rotateY(0)}12%{transform:rotateX(14deg) rotateY(-24deg)}30%{transform:translateY(-5px) rotateX(10deg) rotateY(60deg)}40%{transform:translateY(-7px) rotateX(8deg) rotateY(90deg)}55%{transform:translateY(-7px) rotateX(8deg) rotateY(180deg)}68%{transform:translateY(-5px) rotateX(6deg) rotateY(270deg)}80%{transform:rotateX(2deg) rotateY(345deg)}90%{transform:rotateX(0) rotateY(367deg)}100%{transform:rotateX(0) rotateY(360deg)}}
 @keyframes bdOmbre{0%{transform:translate(4px,4px) scaleX(1)}12%{transform:translate(4px,5px) scaleX(.91)}30%{transform:translate(6px,8px) scaleX(.5)}40%{transform:translate(7px,9px) scaleX(.12)}55%{transform:translate(7px,9px) scaleX(1)}68%{transform:translate(6px,8px) scaleX(.12)}80%{transform:translate(4px,5px) scaleX(.97)}90%,100%{transform:translate(4px,4px) scaleX(1)}}
-@media(max-width:560px){#presets{gap:10px 8px}#presets .chip.bd{width:calc((100% - 24px)/4);max-width:96px;height:auto;aspect-ratio:1}.bd-f .bd-p{display:none}.bd-f .bd-n{font-size:12.6px}}
+@media(min-width:561px) and (max-width:1100px){#presets{gap:12px 10px}#presets .chip.bd{width:calc((100% - 70px)/8);max-width:96px;height:auto;aspect-ratio:1}.bd-f .bd-p{font-size:8.6px}.bd-f .bd-p.long{font-size:7.2px}}
+@media(min-width:561px) and (max-width:741px){#presets{gap:12px 14px;max-width:458px}#presets .chip.bd{width:96px}}
+@media(max-width:560px){#presets{gap:10px 14px}#presets .chip.bd{width:calc((100% - 42px)/4);max-width:70px;height:auto;aspect-ratio:1}.bd-f .bd-p{display:none}.bd-f .bd-n{font-size:13.2px}}
 @media(prefers-reduced-motion:reduce){#presets .chip.bd,.bd-o{transition:none}.chip.bd.tourne .bd-j,.chip.bd.tourne .bd-o{animation:none}}`;
   document.head.appendChild(st);
 
