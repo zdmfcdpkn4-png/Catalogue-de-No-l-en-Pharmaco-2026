@@ -998,7 +998,7 @@
     const vitesseBasket = s => Math.min(RBK.vmax, RBK.v0 + RBK.dv * s.paniers);                      // le pilulier accélère à chaque panier
     const demiBasket = s => Math.max(RBK.dmin, RBK.demi - RBK.dd * s.paniers);                       // et rétrécit
     const etageBasket = s => Math.floor(s.paniers / RBK.etage) % RBK.tops.length;                   // et change d'étagère tous les RBK.etage paniers
-    const creerBasket = () => ({ t: 0, acc: 0, px: 180, dir: 1, pvx: 0, pvy: 0, top: RBK.tops[0], balle: null, attente: 0.4, perdus: [], points: 0, paniers: 0, directs: 0, lances: 0, ev: null, evT: -9, choc: -9, fini: false });
+    const creerBasket = () => ({ t: 0, acc: 0, px: 180, dir: 1, pvx: 0, pvy: 0, top: RBK.tops[0], balle: null, attente: 0.4, perdus: [], points: 0, paniers: 0, directs: 0, lances: 0, serie: 0, record: 0, ev: null, evT: -9, choc: -9, fini: false });
     // Un lancer : vitesse en px/s, vy négatif = vers le haut. Refusé tant que le comprimé précédent vole, ou une fois le temps écoulé.
     const lancerBasket = (s, vx, vy, duree) => {
       if (s.balle || s.attente > 0 || s.fini || s.t >= duree) return false;
@@ -1040,11 +1040,11 @@
         if (Math.abs(b.x - s.px) < D - RBK.ep && b.y > s.top + 9 && b.y < bas) {
           // Dans le pilulier : 3 points sans avoir touché le bord, 2 sinon.
           const pts = b.touche ? 2 : 3;
-          s.paniers++; s.points += pts; if (!b.touche) s.directs++;
+          s.paniers++; s.points += pts; if (!b.touche) s.directs++; s.record = Math.max(s.record, ++s.serie);
           s.ev = { pts, x: s.px, y: s.top }; s.evT = s.t; s.balle = null; s.attente = RBK.pause;
         } else if ((b.vy > 0 && b.y > bas + 30) || b.x < -20 || b.x > W + 20 || b.age > RBK.vie) {
           // Plus aucune chance : le comprimé finit sa chute pour le décor, et le suivant arrive.
-          s.perdus.push(b); s.ev = { pts: 0, x: b.x, y: b.y }; s.evT = s.t; s.balle = null; s.attente = RBK.pause;
+          s.perdus.push(b); s.serie = 0; s.ev = { pts: 0, x: b.x, y: b.y }; s.evT = s.t; s.balle = null; s.attente = RBK.pause;
         }
       }
       // Fin : le temps est écoulé et le dernier comprimé lancé a fini sa course.
@@ -1169,7 +1169,7 @@
             clos = true; lache(); annule();
             const n = noteBasket(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
             const bilan = pl(s.paniers, "panier", "paniers") + " sur " + pl(s.lances, "lancer", "lancers") + ", dont " + pl(s.directs, "direct", "directs") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (2 points le panier, 3 sans toucher le bord ; barème progressif, 10 sur 10 à partir de " + RBK.seuils[9] + " points).";
-            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.points); }, 1300);
+            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.points, [[s.points, s.points > 1 ? "points" : "point"], [s.paniers + "/" + s.lances, "paniers"], [s.directs, s.directs > 1 ? "paniers directs" : "panier direct"], [s.record, "à la suite"]]); }, 1300);
           }
         }
         dessiner();
