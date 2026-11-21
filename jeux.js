@@ -81,7 +81,7 @@
   function creerTennis(graine) {
     let a = graine || 20261213;
     const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-    return { t: 0, acc: 0, x: 180, cible: 180, ax: 180, avise: 180, balle: null, attente: 1.2, vers: 1, pour: 0, contre: 0, echange: 0, record: 0, tape: [-9, -9], msg: "", msgT: -9, h, fini: false };
+    return { t: 0, acc: 0, x: 180, cible: 180, ax: 180, avise: 180, balle: null, attente: 1.2, vers: 1, pour: 0, contre: 0, echange: 0, record: 0, renvois: 0, serie: 0, suite: 0, tape: [-9, -9], msg: "", msgT: -9, h, fini: false };
   }
   // L'automate choisit où attendre la balle qui monte vers lui : le bon endroit, à une erreur près qui grandit avec la vitesse.
   function automateVise(s, b) {
@@ -94,7 +94,7 @@
     b.vx = Math.sin(a) * v; b.vy = sens * Math.cos(a) * v;
     b.y = sens < 0 ? T_YJ - T_EP - T_RB : T_YA + T_EP + T_RB;
     s.echange++; s.record = Math.max(s.record, s.echange); s.tape[sens < 0 ? 0 : 1] = s.t;
-    if (sens < 0) automateVise(s, b);
+    if (sens < 0) { s.renvois++; s.suite = Math.max(s.suite, ++s.serie); automateVise(s, b); }
   }
   function unPasTennis(s, duree) {
     const dt = T_PAS;
@@ -109,7 +109,7 @@
       s.attente -= dt;
       if (s.attente <= 0) {
         const a = (s.h() * 2 - 1) * RT.service * Math.PI / 180;
-        s.balle = { x: 180, y: 261, vx: Math.sin(a) * RT.v0, vy: s.vers * Math.cos(a) * RT.v0, tour: 0 }; s.echange = 0;
+        s.balle = { x: 180, y: 261, vx: Math.sin(a) * RT.v0, vy: s.vers * Math.cos(a) * RT.v0, tour: 0 }; s.echange = 0; s.serie = 0;
         if (s.vers < 0) automateVise(s, s.balle);
       }
       return;
@@ -613,7 +613,9 @@
           clos = true; lache();
           const n = noteTennis(s), joues = s.pour + s.contre, pl = (k, un, des) => k + " " + (k > 1 ? des : un);
           const bilan = pl(s.pour, "point gagné", "points gagnés") + " sur " + pl(joues, "joué", "joués") + " contre l'automate : " + n + " sur 10 (la note est la part des points gagnés).";
-          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, joues ? Math.round(100 * s.pour / joues) * 100 + Math.min(99, s.pour) : 0); }, 1300);
+          // Les quatre chiffres du tableau final : points gagnés, points encaissés, renvois réussis, meilleure série de renvois dans un échange.
+          const chiffres = [[s.pour, s.pour > 1 ? "points gagnés" : "point gagné"], [s.contre, s.contre > 1 ? "encaissés" : "encaissé"], [s.renvois, s.renvois > 1 ? "renvois réussis" : "renvoi réussi"], [s.suite, s.suite > 1 ? "renvois d'affilée" : "renvoi d'affilée"]];
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, joues ? Math.round(100 * s.pour / joues) * 100 + Math.min(99, s.pour) : 0, chiffres); }, 1300);
         }
       }
       dessiner();
