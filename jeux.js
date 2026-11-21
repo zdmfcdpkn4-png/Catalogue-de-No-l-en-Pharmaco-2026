@@ -2672,7 +2672,8 @@
             clos = true; perdu();
             const n = notePastilles(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
             const bilan = pl(s.dissous, "carton dissous", "cartons dissous") + ", " + pl(s.ramasses, "flacon récupéré", "flacons récupérés") + ", " + pl(s.neutralises, "germe neutralisé", "germes neutralisés") + ", " + pl(s.savons, "glissade", "glissades") + " dans la mousse, " + pl(s.prises, "contamination", "contaminations") + " : " + pl(s.score, "point", "points") + ", soit " + n + " sur 10 (1 point de note par tranche de " + RE.palier + " points).";
-            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, Math.round(s.score))); }, 1300);
+            const chiffres = [[s.score, s.score > 1 ? "points" : "point"], [s.dissous, s.dissous > 1 ? "cartons" : "carton"], [s.ramasses, s.ramasses > 1 ? "flacons" : "flacon"], [s.neutralises, s.neutralises > 1 ? "germes" : "germe"]];   // pour le tableau final commun
+            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, Math.round(s.score)), chiffres); }, 1300);
           }
         }
         dessiner();
