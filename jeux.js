@@ -1222,7 +1222,7 @@
   {
     /* --- Le cœur : règles et trajectoires, sans navigateur --- */
     // Réglages étalonnés par simulation (node outils/etalon-basket.js) : ils fixent la difficulté.
-    const RBK = { g: 900, x0: 180, y0: 432, r: 11, demi: 42, dmin: 27, dd: 1.2, haut: 34, ep: 3, v0: 70, dv: 6, vmax: 130, xmin: 62, xmax: 298, rebond: 0.5, pause: 0.3, vol: 3, lot: 0.8, k: 5.5, vmin: 380, vlim: 960, vxlim: 460, seuils: [3, 7, 11, 16, 21, 27, 35, 45, 60, 75], tops: [184, 156, 206], etage: 4, monte: 70, vie: 4 };
+    const RBK = { g: 900, x0: 180, y0: 432, r: 11, demi: 42, dmin: 27, dd: 1.2, haut: 34, ep: 3, v0: 70, dv: 6, vmax: 130, xmin: 62, xmax: 298, rebond: 0.5, pause: 0.3, vol: 3, lot: 0.8, combo: 3, k: 5.5, vmin: 380, vlim: 960, vxlim: 460, seuils: [3, 7, 11, 16, 21, 27, 36, 50, 85, 115], tops: [184, 156, 206], etage: 4, monte: 70, vie: 4 };
     const BK_PAS = 1 / 240;
     const vitesseBasket = s => Math.min(RBK.vmax, RBK.v0 + RBK.dv * s.paniers);                      // le pilulier accélère à chaque panier
     const demiBasket = s => Math.max(RBK.dmin, RBK.demi - RBK.dd * s.paniers);                       // et rétrécit
@@ -1269,10 +1269,12 @@
           if (vn < 0) { b.vx -= (1 + RBK.rebond) * vn * nx; b.vy -= (1 + RBK.rebond) * vn * ny; b.touche = true; s.choc = s.t; }
         }
         if (Math.abs(b.x - s.px) < D - RBK.ep && b.y > s.top + 9 && b.y < bas) {
-          // Dans le pilulier : 3 points sans avoir touché le bord, 2 sinon.
-          const pts = b.touche ? 2 : 3;
-          s.paniers++; s.points += pts; if (!b.touche) s.directs++; s.record = Math.max(s.record, ++s.serie);
-          b.ok = true; s.ev = { pts, x: s.px, y: s.top }; s.evT = s.t; s.balles.splice(s.balles.indexOf(b), 1);
+          // Dans le pilulier : 3 points sans avoir touché le bord, 2 sinon. Combo : chaque panier enchaîné sans en manquer un
+          // rapporte 1 point de plus que le précédent, jusqu'à RBK.combo points de bonus. Un comprimé perdu remet le combo à zéro.
+          s.record = Math.max(s.record, ++s.serie);
+          const direct = !b.touche, bonus = Math.min(RBK.combo, s.serie - 1), pts = (direct ? 3 : 2) + bonus;
+          s.paniers++; s.points += pts; if (direct) s.directs++;
+          b.ok = true; s.ev = { pts, direct, combo: s.serie, x: s.px, y: s.top }; s.evT = s.t; s.balles.splice(s.balles.indexOf(b), 1);
         } else if ((b.vy > 0 && b.y > bas + 30) || b.x < -20 || b.x > W + 20 || b.age > RBK.vie) {
           // Plus aucune chance : le comprimé finit sa chute pour le décor, et le suivant arrive.
           s.perdus.push(b); s.serie = 0; if (!s.ev || !s.ev.pts || s.t - s.evT > 0.6) { s.ev = { pts: 0, x: b.x, y: b.y }; s.evT = s.t; } s.balles.splice(s.balles.indexOf(b), 1);
@@ -1343,7 +1345,7 @@
         if (petales.length > 180) petales.splice(0, petales.length - 150);
       };
       const animer = dt => {
-        if (s.paniers > vus && s.ev && s.ev.pts && !calme) gerbe(s.px, s.top + 4, s.ev.pts === 3 ? 44 : 30);
+        if (s.paniers > vus && s.ev && s.ev.pts && !calme) gerbe(s.px, s.top + 4, (s.ev.direct ? 40 : 28) + 10 * Math.min(RBK.combo, s.ev.combo - 1));
         vus = s.paniers;
         for (const q of petales) { q.t += dt; q.vy += 520 * dt; q.vx *= 1 - 1.2 * dt; q.x += q.vx * dt; q.y += q.vy * dt; }
         for (let i = petales.length - 1; i >= 0; i--) if (petales[i].t > petales[i].vie) petales.splice(i, 1);
@@ -1406,6 +1408,14 @@
         for (let i = 1; i < libres; i++) comprime(RBK.x0 - 16 - i * 25, 441, 0, 1);                  // la réserve : les comprimés encore disponibles
         if (pret) comprime(RBK.x0, RBK.y0 - 8, 0, 1);
         texte(ctx, "lot : " + reste, RBK.x0 + 52, 441, 13, reste <= 5 ? R : N, "left");
+        // Le témoin de combo : il grossit à chaque panier enchaîné, et disparaît au premier comprimé perdu.
+        if (s.serie > 1 && !clos) {
+          const k = calme ? 1 : 1 + 0.25 * Math.max(0, 1 - (s.t - s.evT) * 4), plein = s.serie > RBK.combo;
+          ctx.save(); ctx.translate(52, 420); ctx.scale(k, k);
+          trait(ctx, 2.5); ctx.fillStyle = plein ? O : Y; ctx.beginPath(); ctx.roundRect(-40, -17, 80, 34, 12); ctx.fill(); ctx.stroke();
+          texte(ctx, "COMBO", 0, -8, 9, N); texte(ctx, "×" + s.serie, 0, 5, 15, N);
+          ctx.restore();
+        }
         // La visée : le début de la trajectoire seulement, le reste se juge à l'œil.
         if (vise && !clos) {
           ctx.fillStyle = pret ? N : "rgba(38,7,109,.3)";
@@ -1420,10 +1430,10 @@
         const dtE = s.t - s.evT;
         if (s.ev && dtE < 1 && !clos) {
           if (s.ev.pts) {
-            if (!calme) { ctx.globalAlpha = 1 - dtE; ctx.strokeStyle = s.ev.pts === 3 ? O : G; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.ev.x, s.ev.y + 10, 20 + dtE * 46, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
+            if (!calme) { ctx.globalAlpha = 1 - dtE; ctx.strokeStyle = s.ev.direct ? O : G; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.ev.x, s.ev.y + 10, 20 + dtE * 46, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
             const y = Math.max(62, s.ev.y - 30 - (calme ? 0 : dtE * 16));
             ctx.fillStyle = "rgba(38,7,109,.88)"; ctx.beginPath(); ctx.roundRect(borne(s.ev.x, 96, W - 96) - 92, y - 15, 184, 30, 15); ctx.fill();
-            texte(ctx, s.ev.pts === 3 ? "+3 · Dose parfaite !" : "+2 · Dans le pilulier !", borne(s.ev.x, 96, W - 96), y + 1, 14, s.ev.pts === 3 ? Y : C);
+            texte(ctx, "+" + s.ev.pts + " · " + (s.ev.combo > 1 ? "Combo ×" + s.ev.combo + " !" : s.ev.direct ? "Dose parfaite !" : "Dans le pilulier !"), borne(s.ev.x, 96, W - 96), y + 1, 14, s.ev.direct || s.ev.combo > 1 ? Y : C);
           } else if (dtE < 0.7) texte(ctx, "Hors pilulier…", 180, 384, 13, "rgba(38,7,109,.6)");
         }
         if (s.t < 5 && !clos && !s.lances) {
@@ -1448,8 +1458,8 @@
           if (s.fini) {
             clos = true; lache(); annule();
             const n = noteBasket(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
-            const bilan = pl(s.paniers, "panier", "paniers") + " sur " + pl(s.lances, "lancer", "lancers") + ", dont " + pl(s.directs, "direct", "directs") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (2 points le panier, 3 sans toucher le bord ; barème progressif, 10 sur 10 à partir de " + RBK.seuils[9] + " points).";
-            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.points, [[s.points, s.points > 1 ? "points" : "point"], [s.paniers + "/" + s.lances, "paniers"], [s.directs, s.directs > 1 ? "paniers directs" : "panier direct"], [s.record, "à la suite"]]); }, 1300);
+            const bilan = pl(s.paniers, "panier", "paniers") + " sur " + pl(s.lances, "lancer", "lancers") + ", dont " + pl(s.directs, "direct", "directs") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (2 points le panier, 3 sans toucher le bord, jusqu'à " + RBK.combo + " de bonus en combo ; barème progressif, 10 sur 10 à partir de " + RBK.seuils[9] + " points).";
+            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.points, [[s.points, s.points > 1 ? "points" : "point"], [s.paniers + "/" + s.lances, "paniers"], [s.directs, s.directs > 1 ? "paniers directs" : "panier direct"], [s.record, "combo max"]]); }, 1300);
           }
         }
         dessiner();
