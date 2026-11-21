@@ -621,7 +621,7 @@ function card(g){
 function pass(g){
   if(S.rx)return RX.has(g.n);
   if(S.preset){const P=PRESETS.find(p=>p[0]===S.preset);if(P&&!P[2](g))return false}
-  else if(S.cat!=="T"&&g.c!==S.cat)return false;
+  else if(!S.q.trim()&&S.cat!=="T"&&g.c!==S.cat)return false;
   const q=norm(S.q.trim());
   if(q&&!norm(g.n+" "+g.e+" "+g.m+" "+g.t+" "+g.nt+" "+(g.aw||"")).includes(q))return false;
   const bud=+S.budget,pl=+S.players;
@@ -655,8 +655,10 @@ function render(){
       h+=card(g)});h+="</div>";
   }else h='<div class="grid" style="margin-top:20px">'+L.map(card).join("")+'</div>';
   $("#list").innerHTML=h;
-  $("#count").textContent=(S.rx?"Mon ordonnance : ":"")+L.length+(L.length>1?" préparations affichées":" préparation affichée");
-  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-pressed",!S.preset&&!S.rx&&t.dataset.c===S.cat));
+  /* Une recherche porte sur tout le catalogue, quel que soit l'onglet : le compteur le dit et « Toute la pharmaco » s'allume le temps de la recherche. */
+  const tout=!!S.q.trim()&&!S.rx&&!S.preset&&S.cat!=="T";
+  $("#count").textContent=(S.rx?"Mon ordonnance : ":"")+L.length+(tout?(L.length>1?" préparations trouvées":" préparation trouvée")+" dans tout le catalogue":L.length>1?" préparations affichées":" préparation affichée");
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-pressed",!S.preset&&!S.rx&&t.dataset.c===(tout?"T":S.cat)));
   document.querySelectorAll("#presets .chip").forEach(t=>t.setAttribute("aria-pressed",!S.rx&&t.dataset.p===S.preset));
   ["q","budget","players","profil","dispo","sort"].forEach(id=>{if($("#"+id).value!==S[id])$("#"+id).value=S[id]});
   $("#rxSee").textContent=S.rx?"Revenir au catalogue":"Voir mon ordonnance";
@@ -881,7 +883,7 @@ function rxText(){
 function start(saved){
   if(saved&&saved.S){Object.assign(S,saved.S);(saved.rx||[]).forEach(n=>RX.add(n))}
   build();if(!(saved&&saved.S))fromHash();render();rxBar();
-  $("#tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;S.cat=b.dataset.c;S.preset="";S.rx=false;try{location.hash=S.cat==="T"?"tous":CATS[S.cat].k}catch(_){ }render();rxBar()});
+  $("#tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;S.cat=b.dataset.c;S.q="";S.preset="";S.rx=false;try{location.hash=S.cat==="T"?"tous":CATS[S.cat].k}catch(_){ }render();rxBar()});
   $("#presets").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;const on=S.preset===b.dataset.p&&!S.rx;Object.assign(S,DEF,{cat:S.cat,preset:on?"":b.dataset.p});render();rxBar();if(!on)$(".bar").scrollIntoView({block:"start"})});
   ["q","budget","players","profil","dispo","sort"].forEach(id=>$("#"+id).addEventListener("input",e=>{S[id]=e.target.value;render()}));
   $("#reset").addEventListener("click",()=>{Object.assign(S,DEF,{cat:"T"});render();rxBar()});
