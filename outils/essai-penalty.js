@@ -20,10 +20,11 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   const lancer = (p, duree, graine) => p.evaluate(([d, g]) => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.penalty(document.querySelector('#z'), { duree: d, graine: g, onFin: (n, t, brut) => { window.fois++; window.fin = [n, t, brut]; } }); }, [duree, graine]);
   const fin = async p => { await p.waitForFunction(() => window.fin, null, { timeout: 90000 }); return p.evaluate(() => window.fin); };
   // Un geste : glisser depuis le bas du canevas d'un vecteur (dx, dy) exprimé dans le repère logique (360 de large), puis lâcher.
-  const geste = async (p, dx, dy, pause) => {
+  // ventre : le tracé s'écarte d'autant (en px logiques, positif vers la droite) à mi-chemin, ce qui donne de l'effet.
+  const geste = async (p, dx, dy, pause, ventre) => {
     const r = await p.locator('.pj-cv').boundingBox(), k = r.width / 360, x0 = r.x + 180 * k, y0 = r.y + 440 * k;
     await p.mouse.move(x0, y0); await p.mouse.down();
-    for (let i = 1; i <= 6; i++) await p.mouse.move(x0 + dx * k * i / 6, y0 + dy * k * i / 6);
+    for (let i = 1; i <= 12; i++) await p.mouse.move(x0 + (dx * i / 12 + (ventre || 0) * Math.sin(Math.PI * i / 12)) * k, y0 + dy * k * i / 12);
     if (pause) await pause();
     await p.mouse.up();
   };
@@ -32,8 +33,13 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await lancer(p, 50, 7);
   await p.waitForTimeout(500); await p.screenshot({ path: dir + '/penalty-1-depart.png' });
   const tirs = [[-55, -120], [58, -125], [0, -100], [-20, -18], [40, -185], [150, -110], [-60, -128], [62, -130], [-50, -90], [56, -122]];
+  const choisir = async (p, i) => { const r = await p.locator('.pj-cv').boundingBox(), k = r.width / 360; await p.mouse.click(r.x + (66 + i * 114) * k, r.y + 461 * k); };
   for (const [i, [dx, dy]] of tirs.entries()) {
-    await geste(p, dx, dy, i === 1 ? () => p.screenshot({ path: dir + '/penalty-2-visee.png' }) : null);
+    // Tirs 7 et 8 : brossés, geste courbe (effet vers la gauche puis vers la droite). Tirs 9 et 10 : boulets.
+    if (i === 6) await choisir(p, 1); if (i === 8) await choisir(p, 2);
+    const ventre = i === 6 ? 30 : i === 7 ? -30 : 0;
+    await geste(p, dx + (i === 6 ? 45 : i === 7 ? -45 : 0), dy, i === 1 ? () => p.screenshot({ path: dir + '/penalty-2-visee.png' }) : i === 6 ? () => p.screenshot({ path: dir + '/penalty-2-visee-brosse.png' }) : null, ventre);
+    if (i === 6) { await p.waitForTimeout(420); await p.screenshot({ path: dir + '/penalty-3-vol-brosse.png' }); await p.waitForTimeout(1330); continue; }
     if (i === 1) { await p.waitForTimeout(300); await p.screenshot({ path: dir + '/penalty-3-vol.png' }); await p.waitForTimeout(500); await p.screenshot({ path: dir + '/penalty-4-bilan.png' }); await p.waitForTimeout(800); }
     else if (i === 3 || i === 4 || i === 5) { await p.waitForTimeout(1050); await p.screenshot({ path: dir + '/penalty-5-rate-' + i + '.png' }); await p.waitForTimeout(600); }
     else await p.waitForTimeout(1750);
@@ -43,6 +49,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await lancer(p, 9, 7); await p.mouse.move(2, 2);
   await p.keyboard.down('ArrowRight'); await p.waitForTimeout(550); await p.keyboard.up('ArrowRight');
   await p.keyboard.down('ArrowUp'); await p.waitForTimeout(350); await p.keyboard.up('ArrowUp');
+  await p.keyboard.press('Digit2'); await p.keyboard.down('Shift'); await p.keyboard.down('ArrowLeft'); await p.waitForTimeout(500); await p.keyboard.up('ArrowLeft'); await p.keyboard.up('Shift');
   await p.screenshot({ path: dir + '/penalty-7-clavier.png' });
   await p.keyboard.press('Space'); await p.waitForTimeout(1200); await p.screenshot({ path: dir + '/penalty-8-clavier-tir.png' });
   const clavier = await fin(p);
