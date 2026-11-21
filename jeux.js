@@ -1677,7 +1677,7 @@
      un seul bouton pour sauter (appui bref : petit saut, appui maintenu : grand saut). Une chute fait perdre du temps et l'élan,
      pas la partie. Le score brut est la distance parcourue, en décimètres. */
   // Le cœur. Distances en px (HA_M px pour un mètre), hauteurs comptées depuis le sol.
-  const RH = { v0: 190, vmax: 285, acc: 7, g: 1800, saut: 420, seuil: 0.14, tenue: 0.34, gTenu: 150, chute: 0.8, tampon: 0.08, salto: 0.42, saltoMin: 0.22, ecart: 270, serre: 60, flou: 120, double: 175, plein: 9000, base: 4.7, palier: 0.6 };
+  const RH = { v0: 190, vmax: 285, acc: 7, g: 1800, saut: 420, seuil: 0.14, tenue: 0.34, gTenu: 150, chute: 0.8, tampon: 0.08, salto: 0.28, gain: 12, sur: 30, ecart: 270, serre: 60, flou: 120, double: 175, plein: 9000, base: 4.7, palier: 0.6 };
   const HA_PAS = 1 / 120, HA_M = 25, HA_DEMI = 7, HA_TAILLE = 44;
   // w : longueur, h : hauteur à franchir ; grand : demande un grand saut ; sol : ne gêne que les pieds posés ; bas : hauteur libre sous un portique.
   const HA_TYPES = { carton: { w: 26, h: 24 }, bidon: { w: 22, h: 28 }, chariot: { w: 54, h: 38, grand: 1 }, flaque: { w: 84, h: 1, sol: 1, grand: 1 }, portique: { w: 26, h: 24, bas: 100 } };
@@ -1699,25 +1699,25 @@
     return L;
   }
   function creerHaies(graine, duree) {
-    return { t: 0, x: 0, y: 0, vy: 0, v: RH.v0, elan: 0, sol: true, tenu: false, lache: true, grand: false, demande: -1, tSaut: -9, arret: 0, tChute: -9, dernier: null,
-      file: parcoursHaies(graine, RH.vmax * (duree || 50) + 500), suivant: 0, francs: 0, chutes: 0, sauts: 0, salto: null, saltos: 0, fini: false };
+    return { t: 0, x: 0, y: 0, vy: 0, v: RH.v0, elan: 0, sol: true, tenu: false, lache: true, grand: false, demande: -1, tSaut: -9, tSalto: -9, arret: 0, tChute: -9, dernier: null,
+      file: parcoursHaies(graine, (RH.vmax + RH.sur) * (duree || 50) + 500), suivant: 0, francs: 0, chutes: 0, sauts: 0, salto: null, saltos: 0, fini: false };
   }
   // Le bouton : enfoncé (true) ou relâché (false). Un appui juste avant de toucher le sol est gardé en mémoire un instant.
-  // Un second appui en plein saut lance un salto, s'il reste assez de temps de vol pour le boucler : c'est une figure, pour le
-  // panache, qui ne change ni la trajectoire ni le score.
+  // Un second appui en plein saut lance un salto, s'il reste assez de temps de vol pour le boucler (RH.salto). La trajectoire ne
+  // change pas ; à la réception, le salto donne de l'élan (RH.gain), jusqu'à RH.sur au-delà de la vitesse de croisière.
   function appuiHaies(s, on) {
     s.tenu = !!on; if (!on) return;
     s.demande = s.t;
     if (!s.sol && !s.salto && s.arret <= 0) {
       const reste = (s.vy + Math.sqrt(s.vy * s.vy + 2 * RH.g * s.y)) / RH.g;
-      if (reste >= RH.saltoMin) { s.salto = { t0: s.t, d: Math.min(RH.salto, reste) }; s.saltos++; }
+      if (reste >= RH.salto) s.salto = { t0: s.t, d: RH.salto };
     }
   }
   function unPasHaies(s, duree) {
     s.t += HA_PAS;
     if (s.t >= duree) { s.fini = true; return; }
     if (s.arret > 0) { s.arret -= HA_PAS; s.demande = -1; return; }             // à terre : le temps de se relever
-    s.elan = Math.min(RH.vmax - RH.v0, s.elan + RH.acc * HA_PAS); s.v = RH.v0 + s.elan;
+    s.elan = Math.max(s.elan, Math.min(RH.vmax - RH.v0, s.elan + RH.acc * HA_PAS)); s.v = RH.v0 + s.elan;
     s.x += s.v * HA_PAS;
     if (s.sol && s.demande >= 0 && s.t - s.demande <= RH.tampon) { s.sol = false; s.vy = RH.saut; s.tSaut = s.t; s.demande = -1; s.lache = false; s.grand = false; s.sauts++; }
     if (!s.sol) {
@@ -1726,7 +1726,7 @@
       const plane = !s.lache && ts >= RH.seuil && ts < RH.tenue;                // bouton tenu : le saut s'allonge
       if (plane) s.grand = true;
       s.vy -= (plane ? RH.gTenu : RH.g) * HA_PAS; s.y += s.vy * HA_PAS;
-      if (s.y <= 0) { s.y = 0; s.vy = 0; s.sol = true; s.salto = null; }
+      if (s.y <= 0) { s.y = 0; s.vy = 0; s.sol = true; if (s.salto) { s.saltos++; s.tSalto = s.t; s.elan = Math.min(RH.vmax - RH.v0 + RH.sur, s.elan + RH.gain); } s.salto = null; }
     }
     let o = s.file[s.suivant];
     while (o && o.x + o.w < s.x - HA_DEMI) { if (!o.touche) s.francs++; o = s.file[++s.suivant]; }
@@ -1750,7 +1750,7 @@
   function haies(el, opt) {
     const duree = opt.duree || 50, { cv, ctx, liberer } = monter(el, HA_H);
     cv.style.touchAction = "none";
-    cv.setAttribute("aria-label", "Le sprint du couloir. Le préparateur court tout seul : touchez, cliquez ou appuyez sur Espace pour sauter les obstacles. Appui bref : petit saut. Appui maintenu : grand saut. Un second appui en plein saut : un salto, pour le panache.");
+    cv.setAttribute("aria-label", "Le sprint du couloir. Le préparateur court tout seul : touchez, cliquez ou appuyez sur Espace pour sauter les obstacles. Appui bref : petit saut. Appui maintenu : grand saut. Un second appui en plein saut : un salto, qui donne de l'élan à la réception.");
     const media = q => typeof matchMedia === "function" && matchMedia(q).matches, tactile = media("(pointer: coarse)"), calme = media("(prefers-reduced-motion: reduce)");
     const s = creerHaies(0, duree);
     if (opt.essai) opt.essai(s);                                                                       // pour le banc d'essai : l'état du jeu
@@ -1862,8 +1862,8 @@
       ctx.fillStyle = N; ctx.beginPath(); ctx.arc(4.4, -40, 1.1, 0, 6.3); ctx.fill();
       ctx.restore();
       if (tombe && !calme) for (let i = 0; i < 3; i++) { const a = s.t * 7 + i * 2.1; texte(ctx, "✦", HA_XJ + 38 + Math.cos(a) * 13, HA_SOL - 34 + Math.sin(a) * 6, 12, O); }
-      if (!calme && !tombe && s.elan > 55) {                                                           // les traits de vitesse
-        ctx.strokeStyle = "rgba(38,7,109," + (0.1 + 0.25 * (s.elan - 55) / 40) + ")"; ctx.lineWidth = 2;
+      if (!calme && !tombe && !s.salto && s.elan > 55) {                                                           // les traits de vitesse
+        ctx.strokeStyle = "rgba(38,7,109," + Math.min(0.5, 0.1 + 0.25 * (s.elan - 55) / 40) + ")"; ctx.lineWidth = 2;
         for (let i = 0; i < 3; i++) { const y = HA_SOL - s.y - 12 - i * 11, l = 10 + ((s.t * 9 + i * 1.7) % 1) * 14; ctx.beginPath(); ctx.moveTo(HA_XJ - 16 - l, y); ctx.lineTo(HA_XJ - 16, y); ctx.stroke(); }
       }
     }
@@ -1880,7 +1880,9 @@
       coureur();
       ctx.fillStyle = "rgba(38,7,109,.5)"; texte(ctx, "ÉLAN", 10, HA_H - 12, 9, "rgba(38,7,109,.6)", "left");   // la jauge d'élan
       ctx.fillStyle = "rgba(38,7,109,.15)"; ctx.beginPath(); ctx.roundRect(40, HA_H - 16, 70, 8, 4); ctx.fill();
-      ctx.fillStyle = s.arret > 0 ? R : G; ctx.beginPath(); ctx.roundRect(40, HA_H - 16, 4 + 66 * s.elan / (RH.vmax - RH.v0), 8, 4); ctx.fill();
+      const plein = RH.vmax - RH.v0;
+      if (s.elan > plein) { ctx.fillStyle = O; ctx.beginPath(); ctx.roundRect(40, HA_H - 16, 70 + 24 * (s.elan - plein) / RH.sur, 8, 4); ctx.fill(); }   // le surplus gagné aux saltos
+      ctx.fillStyle = s.arret > 0 ? R : G; ctx.beginPath(); ctx.roundRect(40, HA_H - 16, 4 + 66 * Math.min(1, s.elan / plein), 8, 4); ctx.fill();
       if (s.t < 5.5 && !clos) {
         ctx.globalAlpha = Math.min(1, 5.5 - s.t) * 0.92;
         ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(14, 282, 332, 26, 13); ctx.fill();
@@ -1890,7 +1892,7 @@
       bandeau(ctx, m + " m · " + s.chutes + (s.chutes > 1 ? " chutes" : " chute") + " · " + n + "/10", duree - s.t, duree);
       const cent = Math.floor(m / 100);
       if (!clos && s.arret > 0 && s.dernier) pastilleGrande(s.dernier.tete ? "Attention la tête !" : HA_MOTS[s.dernier.k], P);
-      else if (!clos && s.salto) pastilleGrande("Salto !", Y);
+      else if (!clos && (s.salto || s.t - s.tSalto < 0.5)) pastilleGrande(s.salto ? "Salto !" : "Salto : élan gagné !", Y);
       else if (!clos && cent > 0 && metresHaies(s) - cent * 100 < 9) pastilleGrande(cent * 100 + " m !", Y);
       if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 96, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 136, 40, Y); texte(ctx, m + " m · " + s.francs + " obstacles franchis", 180, 178, 16, C); }
     }

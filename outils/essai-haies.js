@@ -51,11 +51,12 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   await p.waitForTimeout(500); await p.keyboard.down('ArrowUp'); await p.waitForTimeout(450); const grand = await etat(p); await p.keyboard.up('ArrowUp');
   await p.waitForFunction(() => window.etat.arret > 0.5, null, { timeout: 20000, polling: 'raf' }); await p.screenshot({ path: dir + '/haies-7-chute.png' });
   const clavier = { petit, grand, fin: await fin(p) };
-  // 2 bis. Double appui : le second, en plein saut, lance un salto (un seul par saut) ; la trajectoire ne change pas.
+  // 2 bis. Double appui : le second, en plein saut, lance un salto (un seul par saut), qui donne de l'élan à la réception.
   await lancer(p, 6);
   await p.keyboard.down(' '); await p.waitForTimeout(40); await p.keyboard.up(' '); await p.waitForTimeout(60); await p.keyboard.down(' '); await p.waitForTimeout(40); await p.keyboard.up(' ');
   await p.waitForTimeout(150); await p.screenshot({ path: dir + '/haies-7b-salto.png' });
-  const salto = await p.evaluate(() => ({ saltos: window.etat.saltos, sauts: window.etat.sauts, grand: window.etat.grand })); await fin(p);
+  await p.waitForTimeout(450);   // après la réception : le salto compte et l'élan a pris RH.gain d'un coup
+  const salto = await p.evaluate(() => ({ saltos: window.etat.saltos, sauts: window.etat.sauts, grand: window.etat.grand, elan: Math.round(window.etat.elan) })); await fin(p);
   // 3. Arrêt en cours de partie, puis pendant le panneau de fin : plus rien ne doit arriver ensuite.
   await lancer(p, 10); await p.waitForTimeout(500); await p.evaluate(() => window.stop()); await p.waitForTimeout(12500);
   const apresArret = await p.evaluate(() => window.fois);
