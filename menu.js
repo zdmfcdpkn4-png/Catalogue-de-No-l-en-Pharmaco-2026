@@ -1,5 +1,5 @@
 /* Menu des quatre pages : catalogue, sapin de l'Avent, Pharmacogames, palmarès, et pastille « Pharmacomeeple »
-   (la fiche du joueur) posée à part, en haut à gauche de l'en-tête.
+   (la fiche du joueur) posée à part, en haut à droite de l'en-tête.
    Propre au site Vercel. Quatre boutons ronds remplacent les boutons d'accès de l'en-tête : chacun reprend le logo
    de la pharmacotechnie (le P et sa fleur de gouttes), recoloré selon la page et coiffé d'un accessoire.
    Les images img/menu-*.webp sont tirées de img/logo-p-verre.png : seul le P garde sa couleur.
@@ -42,7 +42,7 @@
     { id: "sapin", href: "#sapin", t: "Sapin de l'Avent", s: "Une dose par jour", sel: "#avent", img: "menu-sapin.webp", fond: "#BFE3C9", bientot: "lot en quarantaine", ouvre: "2026-12-01" },
     { id: "pharmacogames", href: "#pharmacogames", t: "Pharmacogames", s: "Le concours à points", sel: "#pharmacogames", img: "menu-pharmacogames.webp", fond: "#B9A6F0", bientot: "libération en cours", ouvre: "2026-12-01" },
     { id: "vote", href: "#vote", t: "Palmarès", s: "Votez pour votre jeu", sel: "#vote", img: "menu-palmares.webp", fond: "#F2E39A" },
-    // haut : pastille à part, en haut à gauche de l'en-tête, au-dessus du titre. Elle mène à la fiche d'identification du joueur.
+    // haut : pastille à part, en haut à droite de l'en-tête (dans le coin libre sur ordinateur, au-dessus du titre sur téléphone). Elle mène à la fiche d'identification du joueur.
     { id: "pharmacomeeple", href: "#pharmacomeeple", t: "Pharmacomeeple", s: "Votre fiche et votre brigade", sel: "#pharmacogames", img: "menu-pharmacomeeple.webp", fond: "#BFE3F2", bientot: "lot en quarantaine", ouvre: "2026-11-26", haut: true },
   ];
   // ouvre : jour d'ouverture de la page, à l'heure de Paris. L'étiquette « Bientôt disponible » tombe d'elle-même ce jour-là ;
@@ -86,19 +86,22 @@
 .pm a[aria-current="page"] .pm-o{opacity:0}
 .pm a[aria-current="page"] b{background:var(--pressed);color:var(--pressed-on)}
 .pm a.att{visibility:hidden}
-.pm.pm-haut{display:block;max-width:none;margin:0 0 14px}
+.pm.pm-haut{display:block;max-width:none;margin:0 0 14px;text-align:right}
 .pm.pm-haut[hidden]{display:none}
-.pm-haut a{display:inline-grid;grid-template-columns:auto auto;column-gap:12px;row-gap:3px;justify-items:start;align-content:center;text-align:left}
-.pm-haut .pm-d{grid-row:1/4;align-self:center;width:58px;height:58px}
-.pm-haut b{padding-left:0}
-.pm-haut a[aria-current="page"] b{padding-left:8px}
+.pm-haut a{display:inline-grid;grid-template-columns:auto auto;column-gap:12px;row-gap:3px;justify-items:end;align-content:center;text-align:right}
+.pm-haut .pm-d{grid-column:2;grid-row:1/4;align-self:center;width:58px;height:58px}
+.pm-haut b,.pm-haut small,.pm-haut .pm-s{grid-column:1}
+.pm-haut b{padding-right:0}
+.pm-haut a[aria-current="page"] b{padding-right:8px}
 .pm-haut .pm-s{margin-top:2px}
+@media(min-width:861px){.pm.pm-haut{position:absolute;z-index:2;top:30px;right:22px;margin:0}}
+@media(min-width:861px) and (max-width:1100px){.pm:not(.pm-haut) b{padding:2px 3px;font-size:.68rem}.pm:not(.pm-haut) small,.pm:not(.pm-haut) .pm-s i{display:none}.pm:not(.pm-haut) .pm-s{max-width:74px;padding:2px 4px 3px;font-size:.56rem}}
 .pm a[hidden]{display:none}
 @media(max-width:720px){.pm{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 10px;max-width:420px}}
 @media(max-width:360px){.pm b{font-size:.86rem;padding:2px 6px}}
 /* Téléphone : haut de page resserré, les quatre jetons sur une ligne, sans sous-titre ni motif sous « Bientôt disponible ». */
 @media(max-width:560px){.hero .hero-in{padding-top:18px;padding-bottom:18px;gap:10px 34px}.hero .lead{margin-top:14px}.hero .pensee{margin-top:12px}.pm{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 6px;max-width:none;margin-top:18px}.pm a{gap:5px}.pm-d{width:62px;height:62px}.pm b{padding:1px 4px;font-size:.66rem;line-height:1.15}.pm small{display:none}.pm-s{max-width:66px;margin-top:1px;padding:2px 4px 3px;font-size:.5rem;letter-spacing:0;border-width:1.5px;border-radius:6px}.pm-s i{display:none}.ind{padding-top:14px}.pm.pm-haut{margin:0 0 12px}.pm-haut a{column-gap:10px}.pm-haut .pm-d{width:50px;height:50px}.pm-haut b{font-size:.84rem}.pm-haut .pm-s{max-width:none}}
-@media(max-width:350px){.pm{gap:8px 3px}.pm-d{width:56px;height:56px}.pm b{font-size:.56rem;padding:1px 2px}.pm-haut .pm-d{width:50px;height:50px}.pm-haut b{font-size:.84rem;padding:1px 4px 1px 0}}
+@media(max-width:350px){.pm{gap:8px 3px}.pm-d{width:56px;height:56px}.pm b{font-size:.56rem;padding:1px 2px}.pm-haut .pm-d{width:50px;height:50px}.pm-haut b{font-size:.84rem;padding:1px 0 1px 4px}}
 @media(prefers-reduced-motion:reduce){.pm-d,.pm-o{transition:none}.pm a.tourne .pm-j,.pm a.tourne .pm-o,.pm-s{animation:none}}`;
   document.head.appendChild(st);
 
