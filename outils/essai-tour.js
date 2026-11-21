@@ -73,6 +73,10 @@ const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content
   await lancer(tel, 24); await tel.waitForTimeout(500); await tel.screenshot({ path: dir + '/tour-5-telephone-320-depart.png' });
   await joueur(tel, 0);
   await tel.waitForTimeout(14000); await tel.screenshot({ path: dir + '/tour-6-telephone-320.png' });
+  // Le tableau final commun (hors de ce bloc) affiche les quatre chiffres fournis par le jeu : on les relit dans la page.
+  await tel.waitForSelector('.pj-fin-ch', { timeout: 60000 }); await tel.waitForTimeout(700);
+  const chiffres = await tel.evaluate(() => [...document.querySelectorAll('.pj-fin-ch span')].map(e => [e.querySelector('b').textContent, e.querySelector('small').textContent]));
+  await tel.screenshot({ path: dir + '/tour-7-telephone-320-tableau.png' });
   const telephone = [await fin(tel), await tel.evaluate(() => document.documentElement.scrollWidth), await etat(tel)];
   await tel.screenshot({ path: dir + '/tour-7-telephone-320-fin.png' });
   // 4. Largeur PC, à la souris.
@@ -84,6 +88,6 @@ const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content
   // 5. Sans jouer : note 0 et score brut 0.
   await lancer(pc, 5); await pc.waitForTimeout(2500); await pc.screenshot({ path: dir + '/tour-9-immobile.png' });
   const immobile = await fin(pc);
-  console.log(JSON.stringify({ clavier, avantPenche, etatClavier, bascule, lachersAuxAutresTouches: touches, telephone, souris, immobile, appelsApresArret: apresArret, appelsApresArretPendantLaFin: apresArretFin, erreurs: errs }, null, 1));
+  console.log(JSON.stringify({ chiffres, clavier, avantPenche, etatClavier, bascule, lachersAuxAutresTouches: touches, telephone, souris, immobile, appelsApresArret: apresArret, appelsApresArretPendantLaFin: apresArretFin, erreurs: errs }, null, 1));
   await b.close();
 })();

@@ -25,9 +25,12 @@ const PRENOM = /^\p{L}+(?:[-']\p{L}+)*$/u;
 // chacun sous le nombre de choix de sa liste (les listes sont dessinées dans participants.js : garder les longueurs accordées).
 const NB_BRIGADES = 5;
 const AVATAR = [8, 8, 8];
-// Devise et jeu emblème d'une brigade : chaque membre vote du 1er au 7 décembre, puis le choix est figé.
+// Devise et jeu emblème d'une brigade : chaque membre vote du 26 novembre au 7 décembre, puis le choix est figé.
 // La devise est un numéro de la liste DEVISES de participants.js ; le jeu emblème, le nom d'un jeu du catalogue
 // (même contrôle que le vote du palmarès : la page ne montre que les noms qu'elle connaît).
+// L'identification (fiche, avatar, tirage de la brigade, changement de pseudo) ouvre le 26 novembre, avant le calendrier :
+// c'est le jour -4 (le jour 1 est le 1er décembre). Le vote de la devise et du jeu emblème ouvre le même jour.
+const FICHE_JOUR = -4;
 const NB_DEVISES = 20;
 const CHOIX_FIN = 7;
 const avatarOk = a => Array.isArray(a) && a.length === AVATAR.length && a.every((v, i) => Number.isInteger(v) && v >= 0 && v < AVATAR[i]);
@@ -149,7 +152,8 @@ function classement(B, joueurs, jour) {
     const j = joueurs[cle];
     let pts = 0;
     for (const [q, M] of closes) pts += M ? (M[cle] ? M[cle].pts : 0) : points(q, j.r[q.n]);
-    return { p: j.p, pts, rep: Object.keys(j.r).length, a: j.a, b: j.b };
+    // cl : nombre de portes closes que le joueur a jouées (une porte lancée compte), pour la moyenne de sa brigade.
+    return { p: j.p, pts, rep: Object.keys(j.r).length, cl: closes.filter(([q]) => j.r[q.n]).length, a: j.a, b: j.b };
   }).sort((a, b) => b.pts - a.pts || a.p.localeCompare(b.p, 'fr'));
   let rang = 0;
   L.forEach((x, i) => { if (!i || x.pts !== L[i - 1].pts) rang = i + 1; x.rang = rang; });
@@ -168,14 +172,15 @@ function classementSuivi(B, joueurs, jour) {
   return L;
 }
 
-// Classement des brigades, tiré du classement individuel (donc des seules portes closes) : la moyenne par membre,
-// pour qu'une brigade plus nombreuse ne soit pas avantagée. Les ex aequo partagent le rang.
+// Classement des brigades, tiré du classement individuel (donc des seules portes closes) : la moyenne par membre actif,
+// pour qu'une brigade plus nombreuse ne soit pas avantagée. Est actif (`actifs`) le membre qui a joué au moins une porte
+// close : un inscrit qui ne joue pas ne pèse pas sur sa brigade. `n` reste l'effectif. Les ex aequo partagent le rang.
 // Devise et jeu emblème : l'option la plus soutenue par les membres ; à égalité, la première de la liste (devise)
 // ou de l'alphabet (jeux). `voix` donne le détail des voix à la brigade `mienne` seulement.
 function brigades(L, joueurs, mienne) {
-  const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, pts: 0, moy: 0 }));
-  for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; }
-  for (const t of T) t.moy = t.n ? Math.round(t.pts / t.n * 10) / 10 : 0;
+  const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, actifs: 0, pts: 0, moy: 0 }));
+  for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; if (x.cl) T[x.b].actifs++; }
+  for (const t of T) t.moy = t.actifs ? Math.round(t.pts / t.actifs * 10) / 10 : 0;
   const V = T.map(() => ({ d: {}, g: {} }));
   for (const cle of Object.keys(joueurs)) {
     const j = joueurs[cle], v = V[j.b];
@@ -271,7 +276,8 @@ function etat(B, joueurs, cle, jour, maintenant) {
     jour,
     prenom: j ? j.p : undefined,
     profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b, d: j.d, g: j.g } : undefined,
-    choix: { etat: jour < 1 ? 'avenir' : jour <= CHOIX_FIN ? 'ouvert' : 'fige', ferme: dateDe(CHOIX_FIN) },
+    fiche: { etat: jour < FICHE_JOUR ? 'avenir' : 'ouvert', ouvre: dateDe(FICHE_JOUR) },
+    choix: { etat: jour < FICHE_JOUR ? 'avenir' : jour <= CHOIX_FIN ? 'ouvert' : 'fige', ferme: dateDe(CHOIX_FIN) },
     portes,
     total: portes.reduce((s, p) => s + (p.pts || 0), 0),
     classement: L,
@@ -321,8 +327,8 @@ async function handler(req, res) {
     const cle = norm(prenom);
     // Fiche d'identification : l'avatar choisi par le joueur (liste fermée), la brigade tirée par le serveur, une fois pour toutes.
     if (b.action === 'profil') {
-      // Sous scellé jusqu'à l'ouverture du calendrier, le 1er décembre : ni fiche ni tirage avant.
-      if (jour < 1) return res.status(403).json({ error: 'scellee' });
+      // Sous scellé jusqu'au 26 novembre : ni fiche ni tirage avant.
+      if (jour < FICHE_JOUR) return res.status(403).json({ error: 'scellee' });
       if (!avatarOk(b.avatar)) return res.status(400).json({ error: 'avatar' });
       const s = await modifier(joueurs => {
         if (!joueurs[cle]) {
@@ -336,9 +342,27 @@ async function handler(req, res) {
       });
       return res.status(s.code).json(s.corps);
     }
-    // Voix d'un membre pour la devise et le jeu emblème de sa brigade : ouvert du 1er au 7 décembre, modifiable d'ici là.
+    // Changement de pseudo : la fiche entière (réponses, avatar, brigade, voix) suit le joueur sous son nouveau nom.
+    // Refusé si un autre joueur porte déjà ce nom. Le prénom envoyé reste l'ancien : c'est lui qui désigne la fiche.
+    if (b.action === 'renommer') {
+      if (jour < FICHE_JOUR) return res.status(403).json({ error: 'scellee' });
+      const neuf = typeof b.pseudo === 'string' ? b.pseudo.trim().replace(/’/g, "'") : '';
+      if (neuf.length < 2 || neuf.length > 24 || !PRENOM.test(neuf)) return res.status(400).json({ error: 'pseudo' });
+      const cle2 = norm(neuf);
+      const s = await modifier(joueurs => {
+        const j = joueurs[cle];
+        if (!j) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
+        if (cle2 !== cle && joueurs[cle2]) return { fin: () => ({ code: 409, corps: { error: 'pris' } }) };
+        delete joueurs[cle];
+        j.p = neuf;
+        joueurs[cle2] = j;
+        return { ok: J => ({ code: 200, corps: { ok: true, ...etat(B, J, cle2, jour, maintenant) } }) };
+      });
+      return res.status(s.code).json(s.corps);
+    }
+    // Voix d'un membre pour la devise et le jeu emblème de sa brigade : ouvert du 26 novembre au 7 décembre, modifiable d'ici là.
     if (b.action === 'brigade') {
-      if (jour < 1 || jour > CHOIX_FIN) return res.status(403).json({ error: jour < 1 ? 'scellee' : 'fige' });
+      if (jour < FICHE_JOUR || jour > CHOIX_FIN) return res.status(403).json({ error: jour < FICHE_JOUR ? 'scellee' : 'fige' });
       const d = b.devise, g = typeof b.jeu === 'string' ? b.jeu.trim() : b.jeu;
       if (d === undefined && g === undefined) return res.status(400).json({ error: 'choix' });
       if (d !== undefined && !(Number.isInteger(d) && d >= 0 && d < NB_DEVISES)) return res.status(400).json({ error: 'devise' });
