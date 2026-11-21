@@ -621,7 +621,7 @@ function card(g){
 function pass(g){
   if(S.rx)return RX.has(g.n);
   if(S.preset){const P=PRESETS.find(p=>p[0]===S.preset);if(P&&!P[2](g))return false}
-  else if(S.cat!=="T"&&g.c!==S.cat)return false;
+  else if(!S.q.trim()&&S.cat!=="T"&&g.c!==S.cat)return false;
   const q=norm(S.q.trim());
   if(q&&!norm(g.n+" "+g.e+" "+g.m+" "+g.t+" "+g.nt+" "+(g.aw||"")).includes(q))return false;
   const bud=+S.budget,pl=+S.players;
@@ -655,8 +655,10 @@ function render(){
       h+=card(g)});h+="</div>";
   }else h='<div class="grid" style="margin-top:20px">'+L.map(card).join("")+'</div>';
   $("#list").innerHTML=h;
-  $("#count").textContent=(S.rx?"Mon ordonnance : ":"")+L.length+(L.length>1?" préparations affichées":" préparation affichée");
-  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-pressed",!S.preset&&!S.rx&&t.dataset.c===S.cat));
+  /* Une recherche porte sur tout le catalogue, quel que soit l'onglet : le compteur le dit et « Toute la pharmaco » s'allume le temps de la recherche. */
+  const tout=!!S.q.trim()&&!S.rx&&!S.preset&&S.cat!=="T";
+  $("#count").textContent=(S.rx?"Mon ordonnance : ":"")+L.length+(tout?(L.length>1?" préparations trouvées":" préparation trouvée")+" dans tout le catalogue":L.length>1?" préparations affichées":" préparation affichée");
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-pressed",!S.preset&&!S.rx&&t.dataset.c===(tout?"T":S.cat)));
   document.querySelectorAll("#presets .chip").forEach(t=>t.setAttribute("aria-pressed",!S.rx&&t.dataset.p===S.preset));
   ["q","budget","players","profil","dispo","sort"].forEach(id=>{if($("#"+id).value!==S[id])$("#"+id).value=S[id]});
   $("#rxSee").textContent=S.rx?"Revenir au catalogue":"Voir mon ordonnance";
@@ -681,7 +683,7 @@ function pensee(){
 /* ---------- Sapin de l'Avent ----------
    Une goutte par jour du 1er au 25 décembre 2026, déverrouillée selon la date de l'appareil ;
    les gouttes ouvertes sont mémorisées dans le navigateur. Contenu : outils/calendrier_avent.json. */
-const AVENT=[{"jour": 1, "type": "chanson", "titre": "Noël en Pharmaco", "audio": "audio/noel-en-pharmaco.mp3", "pochette": "img/logo-pharmacotechnie.webp"}, {"jour": 2, "type": "origami", "texte": "Pliée en poche, dépliée en fleur."}, {"jour": 3, "type": "bd", "titre": "Les joueurs pénibles du préparatoire", "image": "img/bd-joueurs-penibles.svg", "alt": "Bande dessinée en quatre cases. Le Double Contrôle, un flacon à la loupe : « Attends, je recompte tes points. Puis les miens. Deux fois. » La Péremption courte, un sablier pressé : « Vite, joue ! Mon tour périme dans 30 secondes ! » Le Hors-Protocole, une goutte à lunettes, règle en main : « Page 12, alinéa 3 : ton coup n'est pas conforme. » Et pourtant, les trois réunis : « On refait une partie ? » « Lot conforme. Libéré ! »", "credit": "Planche maison, unité de pharmacotechnie"}, {"jour": 4}, {"jour": 5}, {"jour": 6}, {"jour": 7}, {"jour": 8}, {"jour": 9}, {"jour": 10}, {"jour": 11}, {"jour": 12}, {"jour": 13}, {"jour": 14}, {"jour": 15}, {"jour": 16}, {"jour": 17}, {"jour": 18}, {"jour": 19}, {"jour": 20}, {"jour": 21}, {"jour": 22}, {"jour": 23}, {"jour": 24}, {"jour": 25}];
+const AVENT=[{"jour": 1, "type": "chanson", "titre": "Noël en Pharmaco", "audio": "audio/noel-en-pharmaco.mp3", "pochette": "img/logo-pharmacotechnie.webp"}, {"jour": 2, "type": "origami", "texte": "Pliée en poche, dépliée en fleur."}, {"jour": 3, "type": "bd", "titre": "Clandestin en ZAC", "image": "img/bd-clandestin-en-zac.svg", "alt": "Bande dessinée en six cases. Alerte en ZAC : un flacon surprend une particule clandestine, « Choisis ton supplice : une partie contre… » La Perfusion lente : « Je réfléchis… Mon tour dure 45 minutes. » Le Rappel de lot : « Attends, je rappelle mon coup. Et le précédent. Et celui d'avant. » Le Prescripteur : « Toi, tu joues ça. Toi, ça. Laissez, je joue pour tout le monde. » Le Double Contrôle : « Je recompte les points. Deux fois. Par joueur. Par manche. » Le verdict, la particule saute dans le fût DASRI : « Tout bien pesé… je choisis l'incinération ! »", "credit": "Librement inspiré d'une planche de Martin Vidberg (Philimag, octobre 2026)"}, {"jour": 4}, {"jour": 5}, {"jour": 6}, {"jour": 7}, {"jour": 8}, {"jour": 9}, {"jour": 10}, {"jour": 11}, {"jour": 12}, {"jour": 13}, {"jour": 14}, {"jour": 15}, {"jour": 16}, {"jour": 17}, {"jour": 18}, {"jour": 19}, {"jour": 20}, {"jour": 21}, {"jour": 22}, {"jour": 23}, {"jour": 24}, {"jour": 25}];
 const AV_ROWS=[[12,3,19],[7,22,1,15,10],[17,5,24,8,13,2,20],[11,23,4,16,6,21,9,14,18]],AV_Y=[186,268,350,432],AV_KEY="pharmacotechnie-avent-2026";
 const AV_T={chanson:"Chanson",image:"Image",citation:"Citation",origami:"Origami",bd:"Bande dessinée"};
 const AV_C={lock:"#D9CEF5",ready:"#F59A62",today:"#ECD567",open:"#E5B4D9"};
@@ -881,7 +883,7 @@ function rxText(){
 function start(saved){
   if(saved&&saved.S){Object.assign(S,saved.S);(saved.rx||[]).forEach(n=>RX.add(n))}
   build();if(!(saved&&saved.S))fromHash();render();rxBar();
-  $("#tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;S.cat=b.dataset.c;S.preset="";S.rx=false;try{location.hash=S.cat==="T"?"tous":CATS[S.cat].k}catch(_){ }render();rxBar()});
+  $("#tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;S.cat=b.dataset.c;S.q="";S.preset="";S.rx=false;try{location.hash=S.cat==="T"?"tous":CATS[S.cat].k}catch(_){ }render();rxBar()});
   $("#presets").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;const on=S.preset===b.dataset.p&&!S.rx;Object.assign(S,DEF,{cat:S.cat,preset:on?"":b.dataset.p});render();rxBar();if(!on)$(".bar").scrollIntoView({block:"start"})});
   ["q","budget","players","profil","dispo","sort"].forEach(id=>$("#"+id).addEventListener("input",e=>{S[id]=e.target.value;render()}));
   $("#reset").addEventListener("click",()=>{Object.assign(S,DEF,{cat:"T"});render();rxBar()});

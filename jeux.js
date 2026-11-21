@@ -167,18 +167,22 @@
 
   /* ================= Le flipper du préparatoire : le cœur ================= */
   // Réglages étalonnés par simulation (node outils/etalon.js) : ils fixent la difficulté.
-  const RF = { g: 820, vmax: 960, monte: 20, descend: 14, repos: 0.5, leve: -0.5, long: 62, kick: 400, bouchon: 10, etiquette: 25, deja: 5, lot: 150, relance: 2, perte: 30, palier: 100, delai: 1.2 };
+  const RF = { g: 820, vmax: 960, monte: 20, descend: 14, repos: 0.5, leve: -0.5, long: 62, kick: 400, bouchon: 10, etiquette: 25, deja: 5, lot: 150, relance: 2, perte: 40, palier: 80, delai: 1.2, fronde: 5, tilts: 3, tiltPause: 2 };
   const F_PAS = 1 / 240, F_RB = 8, F_EP = 5;
-  const F_MURS = [[10, 330, 10, 110], [10, 110, 70, 49], [70, 49, 290, 49], [290, 49, 350, 110], [350, 110, 350, 330], [10, 330, 104, 408], [350, 330, 256, 408], [104, 408, 120, 480], [256, 408, 240, 480]];
-  const F_BOUCHONS = [{ x: 112, y: 160, r: 19 }, { x: 248, y: 160, r: 19 }, { x: 180, y: 238, r: 19 }];
+  const F_H = 560, F_BAS = 410;   // plateau plus long que les autres jeux ; F_BAS : là où les parois deviennent les guides
+  const F_MURS = [[10, F_BAS, 10, 110], [10, 110, 70, 49], [70, 49, 290, 49], [290, 49, 350, 110], [350, 110, 350, F_BAS], [10, F_BAS, 104, 488], [350, F_BAS, 256, 488], [104, 488, 120, F_H], [256, 488, 240, F_H]];
+  // Les frondes : deux triangles au-dessus des batteurs, dont le grand côté renvoie la bille. Derrière chacune, un couloir mène au batteur.
+  const F_FRONDES = [{ a: [44, 322], b: [44, 398], c: [86, 432], n: [0.934, -0.357] }, { a: [316, 322], b: [316, 398], c: [274, 432], n: [-0.934, -0.357] }];
+  const F_PLOTS = [{ x: 118, y: 292, r: 6 }, { x: 242, y: 292, r: 6 }];
+  const F_BOUCHONS = [{ x: 112, y: 160, r: 19 }, { x: 248, y: 160, r: 19 }, { x: 180, y: 238, r: 19 }, { x: 180, y: 348, r: 14 }];
   const F_ETIQ = [[17, 165, 17, 197], [17, 232, 17, 264], [164, 57, 196, 57], [343, 165, 343, 197], [343, 232, 343, 264]];
-  const F_PIVOTS = [{ x: 108, y: 414, sens: 1 }, { x: 252, y: 414, sens: -1 }];
+  const F_PIVOTS = [{ x: 108, y: 494, sens: 1 }, { x: 252, y: 494, sens: -1 }];
   const boutBatteur = (i, ang) => { const p = F_PIVOTS[i]; return [p.x + p.sens * Math.cos(ang) * RF.long, p.y + Math.sin(ang) * RF.long]; };
   // Une partie : g et d disent si les batteurs gauche et droit sont tenus levés.
   function creerFlipper(graine) {
     let a = graine || 20261207;
     const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-    return { t: 0, acc: 0, score: 0, pertes: 0, lots: 0, coups: 0, lancers: 0, lot: F_ETIQ.map(() => false), tape: F_BOUCHONS.map(() => -9), bille: null, attente: 0.9, g: false, d: false, ang: [RF.repos, RF.repos], vit: [0, 0], calme: 0, msg: "", msgT: -9, serie: 0, serieT: -9, choc: null, h, fini: false };
+    return { t: 0, acc: 0, score: 0, pertes: 0, lots: 0, coups: 0, lancers: 0, lot: F_ETIQ.map(() => false), tape: F_BOUCHONS.map(() => -9), bille: null, attente: 0.9, g: false, d: false, ang: [RF.repos, RF.repos], vit: [0, 0], calme: 0, msg: "", msgT: -9, serie: 0, serieT: -9, choc: null, tilts: 0, tiltT: -9, frondeT: [-9, -9], h, fini: false };
   }
   // La bille touche-t-elle le segment (épaisseur ep) ? Si oui, elle est repoussée dehors et on rend la normale.
   function contact(b, x1, y1, x2, y2, ep) {
@@ -195,7 +199,7 @@
     return -vn;
   }
   // Une série : des touches qui s'enchaînent à moins de RF.delai secondes. Elle ne rapporte rien, elle sert au spectacle.
-  function marquer(s, x, y) { s.serie = s.t - s.serieT < RF.delai ? s.serie + 1 : 1; s.serieT = s.t; s.choc = { x, y, n: s.serie }; }
+  function marquer(s, x, y) { s.serie = s.t - s.serieT < RF.delai ? s.serie + 1 : 1; s.serieT = s.t; s.serieMax = Math.max(s.serieMax || 0, s.serie); s.choc = { x, y, n: s.serie }; }
   function unPasFlipper(s, duree) {
     const dt = F_PAS;
     s.t += dt;
@@ -207,7 +211,7 @@
     }
     if (!s.bille) {
       s.attente -= dt;
-      if (s.attente <= 0) { const k = s.lancers++ % 2 ? -1 : 1; s.bille = { x: 180 - k * (136 + s.h() * 10), y: 104, vx: k * (12 + s.h() * 40), vy: 0 }; s.calme = 0; }
+      if (s.attente <= 0) { const k = s.lancers++ % 2 ? -1 : 1; s.bille = { x: 180 - k * (151 + s.h() * 4), y: 104, vx: k * (1 + s.h() * 5), vy: 0 }; s.calme = 0; }
       return;
     }
     const b = s.bille;
@@ -221,6 +225,18 @@
       if ((i ? s.d : s.g)) tenue = true;
     }
     for (const m of F_MURS) { const c = contact(b, m[0], m[1], m[2], m[3], 0); if (c) rebond(b, c, 0.45, 0, 0); }
+    F_FRONDES.forEach((f, i) => {
+      for (const [p, q] of [[f.a, f.b], [f.b, f.c]]) { const c = contact(b, p[0], p[1], q[0], q[1], 0); if (c) rebond(b, c, 0.45, 0, 0); }
+      const c = contact(b, f.a[0], f.a[1], f.c[0], f.c[1], 0);
+      if (!c) return;
+      const vn = b.vx * f.n[0] + b.vy * f.n[1];
+      if (c.nx * f.n[0] + c.ny * f.n[1] > 0.3 && vn < -50) { const sortie = Math.max(-vn, RF.kick * 0.9); b.vx += (sortie - vn) * f.n[0]; b.vy += (sortie - vn) * f.n[1]; s.score += RF.fronde; s.frondeT[i] = s.t; marquer(s, c.cx, c.cy); }
+      else rebond(b, c, 0.45, 0, 0);
+    });
+    for (const o of F_PLOTS) {
+      const nx = b.x - o.x, ny = b.y - o.y, d = Math.hypot(nx, ny), R = o.r + F_RB;
+      if (d < R && d > 0) { b.x = o.x + nx / d * R; b.y = o.y + ny / d * R; rebond(b, { nx: nx / d, ny: ny / d }, 0.6, 0, 0); }
+    }
     F_ETIQ.forEach((m, i) => {
       const c = contact(b, m[0], m[1], m[2], m[3], 3);
       if (!c || rebond(b, c, 0.5, 0, 0) < 40) return;
@@ -237,17 +253,27 @@
       b.vx += (sortie - vn) * ux; b.vy += (sortie - vn) * uy;
       s.score += RF.bouchon; s.tape[i] = s.t; marquer(s, o.x + ux * o.r, o.y + uy * o.r);
     });
-    if (b.y < 330) b.x = Math.max(10 + F_RB, Math.min(350 - F_RB, b.x));   // filet de sécurité : jamais hors des parois
+    if (b.y < F_BAS) b.x = Math.max(10 + F_RB, Math.min(350 - F_RB, b.x));   // filet de sécurité : jamais hors des parois
     if (b.y < 49 + F_RB) { b.y = 49 + F_RB; if (b.vy < 0) b.vy = -b.vy * 0.45; }
     const v = Math.hypot(b.vx, b.vy);
     if (v > RF.vmax) { b.vx *= RF.vmax / v; b.vy *= RF.vmax / v; }
     // Déblocage : une bille immobile ailleurs que sur un batteur tenu levé reçoit un coup de pouce.
     s.calme = v < 30 && !tenue ? s.calme + dt : 0;
     if (s.calme > 1.2) { b.vx = (s.h() - 0.5) * 300; b.vy = -330; s.calme = 0; s.coups++; }
-    if (b.y > 496) { s.bille = null; s.pertes++; s.attente = RF.relance; s.score = Math.max(0, s.score - RF.perte); s.lot = s.lot.map(() => false); s.serie = 0; s.msg = "Bille perdue : -" + RF.perte; s.msgT = s.t; }
+    if (b.y > F_H + 16) { s.bille = null; s.pertes++; s.attente = RF.relance; s.score = Math.max(0, s.score - RF.perte); s.lot = s.lot.map(() => false); s.serie = 0; s.msg = "Bille perdue : -" + RF.perte; s.msgT = s.t; }
     else if (!(b.x > -20 && b.x < W + 20 && b.y > 0)) { s.bille = null; s.attente = 0.3; }                   // ne devrait pas arriver
   }
   // Pas fixe : quel que soit le rythme d'affichage, la physique avance par tranches de 1/240 s.
+  // Secouer la table (« tilt ») : les batteurs reviennent au repos et la bille reçoit une bourrade. Trois fois par partie,
+  // et sans effet sur une bille déjà passée sous les batteurs : ce n'est pas un sauvetage.
+  function secouerFlipper(s) {
+    if (s.fini || s.tilts >= RF.tilts || s.t - s.tiltT < RF.tiltPause) return false;
+    s.tilts++; s.tiltT = s.t; s.g = s.d = false; s.ang = [RF.repos, RF.repos]; s.vit = [0, 0]; s.calme = 0;
+    const b = s.bille;
+    if (b && b.y < F_PIVOTS[0].y + 6) { b.vx += (s.h() - 0.5) * 320; b.vy = Math.min(b.vy, 0) - 300; }
+    s.msg = "Tilt ! Reste " + (RF.tilts - s.tilts); s.msgT = s.t;
+    return true;
+  }
   function pasFlipper(s, dt, duree) { s.acc += dt; while (s.acc >= F_PAS && !s.fini) { s.acc -= F_PAS; unPasFlipper(s, duree); } }
   const noteFlipper = s => Math.min(10, Math.floor(s.score / RF.palier));
 
@@ -572,20 +598,38 @@
     }
     function dessiner() {
       ctx.fillStyle = N; ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(T_G, T_HAUT, T_D - T_G, H - T_HAUT);                          // la paillasse
-      ctx.fillStyle = "rgba(143,199,232,.35)"; ctx.fillRect(T_G, T_HAUT, T_D - T_G, 22);                     // derrière l'automate : la libération
-      ctx.fillStyle = "rgba(216,64,43,.16)"; ctx.fillRect(T_G, H - 20, T_D - T_G, 20);                       // derrière le joueur : la quarantaine
-      texte(ctx, "LIBÉRATION", 180, T_HAUT + 12, 10, "rgba(38,7,109,.5)"); texte(ctx, "QUARANTAINE", 180, H - 9, 10, "rgba(38,7,109,.5)");
-      ctx.strokeStyle = "rgba(38,7,109,.09)"; ctx.lineWidth = 2;
-      for (let x = T_G + 41.5; x < T_D - 10; x += 41.5) { ctx.beginPath(); ctx.moveTo(x, T_HAUT + 22); ctx.lineTo(x, H - 20); ctx.stroke(); }
+      // Le terrain : un court vert bloc opératoire, lignes crème, tracé comme un vrai (couloirs, carrés de service).
+      ctx.fillStyle = "#A9D9BE"; ctx.fillRect(T_G, T_HAUT, T_D - T_G, H - T_HAUT);                          // les dégagements
+      ctx.fillStyle = "#A8D4EA"; ctx.fillRect(T_G, T_HAUT, T_D - T_G, 22);                     // derrière l'automate : la libération
+      ctx.fillStyle = "#F3C5A5"; ctx.fillRect(T_G, H - 20, T_D - T_G, 20);                       // derrière le joueur : la quarantaine
+      texte(ctx, "LIBÉRATION", 180, T_HAUT + 12, 10, "rgba(38,7,109,.6)"); texte(ctx, "QUARANTAINE", 180, H - 9, 10, "rgba(38,7,109,.6)");
+      ctx.fillStyle = "#63B892"; ctx.fillRect(34, 100, 292, 322);                                           // le court
+      ctx.fillStyle = "#57AD87"; ctx.fillRect(64, 180, 232, 162);                                           // les carrés de service, un ton plus soutenu
+      // En filigrane dans les carrés de service : croix de pharmacie, gélule, comprimé sécable, flacon.
+      ctx.save(); ctx.strokeStyle = "rgba(255,251,242,.32)"; ctx.fillStyle = "rgba(255,251,242,.32)"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.fillRect(115, 204, 14, 38); ctx.fillRect(103, 216, 38, 14);                                       // croix
+      ctx.save(); ctx.translate(238, 223); ctx.rotate(-0.6); ctx.beginPath(); ctx.roundRect(-22, -9, 44, 18, 9); ctx.moveTo(0, -9); ctx.lineTo(0, 9); ctx.stroke(); ctx.restore();   // gélule
+      ctx.beginPath(); ctx.arc(122, 304, 17, 0, 6.3); ctx.moveTo(112, 304); ctx.lineTo(132, 304); ctx.stroke();                                                                  // comprimé
+      ctx.beginPath(); ctx.roundRect(224, 296, 28, 30, 5); ctx.rect(231, 284, 14, 12); ctx.moveTo(224, 310); ctx.lineTo(252, 310); ctx.stroke();                                    // flacon
+      ctx.restore();
+      ctx.strokeStyle = C; ctx.lineWidth = 3; ctx.lineJoin = "miter"; ctx.lineCap = "butt"; ctx.beginPath();
+      ctx.rect(34, 100, 292, 322);                                                                          // lignes de fond et de côté
+      ctx.moveTo(64, 100); ctx.lineTo(64, 422); ctx.moveTo(296, 100); ctx.lineTo(296, 422);                   // couloirs
+      ctx.moveTo(64, 180); ctx.lineTo(296, 180); ctx.moveTo(64, 342); ctx.lineTo(296, 342);                   // lignes de service
+      ctx.moveTo(180, 180); ctx.lineTo(180, 342);                                                           // ligne médiane
+      ctx.moveTo(180, 100); ctx.lineTo(180, 108); ctx.moveTo(180, 414); ctx.lineTo(180, 422);                 // marques centrales
+      ctx.stroke();
+      // Dans les couloirs, le marquage du lot, comme un panneau de bord de court.
+      for (const [x, y, t] of [[311, 165, "LOT 2026-12"], [49, 357, "PÉR. 25/12/2026"]]) { ctx.save(); ctx.translate(x, y); ctx.rotate(-Math.PI / 2); texte(ctx, t, 0, 0, 9, "rgba(255,251,242,.75)"); ctx.restore(); }
       // Le filet : une réglette graduée posée en travers.
       trait(ctx, 2); ctx.fillStyle = C; ctx.beginPath(); ctx.rect(T_G, 255, T_D - T_G, 12); ctx.fill(); ctx.stroke();
       ctx.lineWidth = 1.5; ctx.beginPath();
       for (let i = 1; i * 8 < T_D - T_G; i++) { ctx.moveTo(T_G + i * 8, 255); ctx.lineTo(T_G + i * 8, i % 5 ? 259 : 263); }
       ctx.stroke();
+      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(T_G + 4, 261, 5, 0, 6.3); ctx.arc(T_D - 4, 261, 5, 0, 6.3); ctx.fill();   // les poteaux
       // Le score, sur le côté du terrain : celui de l'automate au-dessus de la réglette, le vôtre en dessous.
-      texte(ctx, "AUTOMATE", T_G + 8, 222, 9, "rgba(38,7,109,.5)", "left"); texte(ctx, String(s.contre), T_G + 8, 239, 22, "rgba(38,7,109,.75)", "left");
-      texte(ctx, String(s.pour), T_G + 8, 284, 22, "rgba(38,7,109,.75)", "left"); texte(ctx, "VOUS", T_G + 8, 301, 9, "rgba(38,7,109,.5)", "left");
+      texte(ctx, "AUTOMATE", T_G + 8, 222, 9, "rgba(38,7,109,.7)", "left"); texte(ctx, String(s.contre), T_G + 8, 239, 22, N, "left");
+      texte(ctx, String(s.pour), T_G + 8, 284, 22, N, "left"); texte(ctx, "VOUS", T_G + 8, 301, 9, "rgba(38,7,109,.7)", "left");
       // L'automate : un chariot sur son rail, qui tient sa spatule.
       trait(ctx, 3); ctx.beginPath(); ctx.moveTo(T_G, T_YA - 24); ctx.lineTo(T_D, T_YA - 24); ctx.stroke();
       const vifA = s.t - s.tape[1] < 0.12, vifJ = s.t - s.tape[0] < 0.12;
@@ -815,29 +859,30 @@
     ctx.fill(); ctx.restore();
   }
   function flipper(el, opt) {
-    const duree = opt.duree || 60, { cv, ctx, xDe, liberer } = monter(el, H);
+    const duree = opt.duree || 60, { cv, ctx, xDe, liberer } = monter(el, F_H);
     cv.style.touchAction = "none";
-    cv.setAttribute("aria-label", "Le flipper du préparatoire. Batteur gauche : flèche gauche, touche S ou moitié gauche de l'écran. Batteur droit : flèche droite, touche L ou moitié droite.");
+    cv.setAttribute("aria-label", "Le flipper du préparatoire. Batteur gauche : flèche gauche, touche S ou moitié gauche de l'écran. Batteur droit : flèche droite, touche L ou moitié droite. Secouer la table, trois fois par partie : barre d'espace, ou toucher l'afficheur en haut.");
     const s = creerFlipper(), media = q => typeof matchMedia === "function" && matchMedia(q).matches, tactile = media("(pointer: coarse)"), calme = media("(prefers-reduced-motion: reduce)");
     const logo = new Image(); logo.src = api._logo;
     let clos = false, minuterie = 0, tFin = 0, affiche = 0, vu = null, secousse = 0, eclair = 0;
     const etincelles = [], bulles = [];
     const doigts = new Map(), touches = { g: false, d: false };
     const maj = () => { let g = touches.g, d = touches.d; doigts.forEach(c => { if (c === "g") g = true; else d = true; }); s.g = g; s.d = d; };
-    const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } doigts.set(e.pointerId, xDe(e) < W / 2 ? "g" : "d"); maj(); };
+    const secouer = () => { if (secouerFlipper(s)) { doigts.clear(); touches.g = touches.d = false; eclair = 0.3; if (!calme) secousse = 0.3; } };
+    const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); const r = cv.getBoundingClientRect(); if ((e.clientY - r.top) / r.height * F_H < 47) { secouer(); return; } try { cv.setPointerCapture(e.pointerId); } catch (_) { } doigts.set(e.pointerId, xDe(e) < W / 2 ? "g" : "d"); maj(); };
     const relache = e => { doigts.delete(e.pointerId); maj(); };
     const cote = e => { const k = e.key; return k === "ArrowLeft" || k === "s" || k === "S" ? "g" : k === "ArrowRight" || k === "l" || k === "L" ? "d" : null; };
-    const enfonce = e => { const c = cote(e); if (!c || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target && e.target.tagName || "")) return; e.preventDefault(); touches[c] = true; maj(); };
+    const enfonce = e => { if ((e.key === " " || e.key === "ArrowUp") && !e.repeat && !/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(e.target && e.target.tagName || "")) { e.preventDefault(); secouer(); return; } const c = cote(e); if (!c || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target && e.target.tagName || "")) return; e.preventDefault(); touches[c] = true; maj(); };
     const leve = e => { const c = cote(e); if (c) { touches[c] = false; maj(); } };
     const lache = () => { doigts.clear(); touches.g = touches.d = false; maj(); };
     const menu = e => e.preventDefault();
-    cv.addEventListener("pointerdown", appui); cv.addEventListener("pointerup", relache); cv.addEventListener("pointercancel", relache); cv.addEventListener("contextmenu", menu);
+    cv.addEventListener("pointerdown", appui); cv.addEventListener("pointerup", relache); cv.addEventListener("pointercancel", relache); cv.addEventListener("lostpointercapture", relache); cv.addEventListener("contextmenu", menu);
     window.addEventListener("keydown", enfonce); window.addEventListener("keyup", leve); window.addEventListener("blur", lache);
     const retirer = () => {
-      cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointerup", relache); cv.removeEventListener("pointercancel", relache); cv.removeEventListener("contextmenu", menu);
+      cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointerup", relache); cv.removeEventListener("pointercancel", relache); cv.removeEventListener("lostpointercapture", relache); cv.removeEventListener("contextmenu", menu);
       window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
     };
-    const COUL = [O, P, V], FETE = [O, Y, P, V, C];
+    const COUL = [O, P, V, G], FETE = [O, Y, P, V, C];
     // Les effets : chaque touche lance des gouttelettes, et une série qui s'allonge fait monter le spectacle.
     function effets(dt) {
       if (s.choc && s.choc !== vu) {
@@ -868,10 +913,10 @@
       // Le message : un événement, une série en cours, ou sinon un tour d'horizon qui défile.
       let msg, coul = Y, dx = 0, clign = false;
       if (clos) { msg = "LOT CONTRÔLÉ"; clign = true; }
-      else if (s.t - s.msgT < 1.5) { msg = s.msg.toUpperCase(); coul = s.msg.indexOf("perdue") > 0 ? O : G; clign = true; }
+      else if (s.t - s.msgT < 1.5) { msg = s.msg.toUpperCase(); coul = s.msg.indexOf("perdue") > 0 || s.msg.indexOf("Tilt") === 0 ? O : "#7BE0B0"; clign = true; }
       else if (enSerie()) { msg = (s.serie >= 8 ? "CADENCE DE PROD ×" : s.serie >= 5 ? "BELLE SÉRIE ×" : "COMBO ×") + s.serie; coul = FETE[s.serie % 4]; dx = calme ? 0 : Math.sin(s.t * 30) * 1.5; }
       else {
-        const tour = ["NOTE " + noteFlipper(s) + "/10", "LOT " + s.lot.filter(Boolean).length + "/5", "PHARMACOGAMES"], k = s.t / 2.6, f = k % 1;
+        const tour = ["NOTE " + noteFlipper(s) + "/10", "LOT " + s.lot.filter(Boolean).length + "/5", "PHARMACOGAMES", s.tilts < RF.tilts ? (tactile ? "SECOUER : ICI" : "SECOUER : ESPACE") : "TILT ÉPUISÉ"], k = s.t / 2.6, f = k % 1;
         msg = tour[Math.floor(k) % tour.length]; dx = calme ? 0 : f < 0.14 ? (1 - f / 0.14) * 190 : f > 0.9 ? -(f - 0.9) / 0.1 * 190 : 0;
       }
       ctx.save(); ctx.beginPath(); ctx.rect(114, 5, 194, 30); ctx.clip();
@@ -887,8 +932,8 @@
     }
     // Le score final, au cœur d'une fleur de gouttes qui s'ouvre.
     function fleur() {
-      const n = noteFlipper(s), cx = 180, cy = 252, tons = [N, Y, O, P, N, Y, P, O, N, O, Y, P];
-      ctx.fillStyle = "rgba(38,7,109,.55)"; ctx.fillRect(0, 47, W, H - 47);
+      const n = noteFlipper(s), cx = 180, cy = 292, tons = [N, Y, O, P, N, Y, P, O, N, O, Y, P];
+      ctx.fillStyle = "rgba(38,7,109,.55)"; ctx.fillRect(0, 47, W, F_H - 47);
       const fond = Math.min(1, tFin / 0.25);
       trait(ctx, 3); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(cx, cy, 122 * fond, 0, 6.3); ctx.fill(); ctx.stroke();
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(calme ? 0 : tFin * 0.25);
@@ -900,73 +945,128 @@
       ctx.restore();
       trait(ctx, 3); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(cx, cy, 40, 0, 6.3); ctx.fill(); ctx.stroke();
       texte(ctx, String(n), cx, cy - 5, 38, N); texte(ctx, "sur 10", cx, cy + 22, 12, N);
-      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(90, 392, 180, 30, 15); ctx.fill();
-      texte(ctx, s.score + (s.score > 1 ? " points" : " point") + " au compteur", 180, 408, 14, Y);
+      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(90, 432, 180, 30, 15); ctx.fill();
+      texte(ctx, s.score + (s.score > 1 ? " points" : " point") + " au compteur", 180, 448, 14, Y);
     }
+    // Le décor ne bouge pas : il est peint une fois, puis recopié à chaque image.
+    const fond = document.createElement("canvas"); fond.width = W * 2; fond.height = F_H * 2;
+    const PLATEAU = [[10, 110], [70, 49], [290, 49], [350, 110], [350, F_BAS], [256, 488], [240, F_H], [120, F_H], [104, 488], [10, F_BAS]];
+    function decor() {
+      const g = fond.getContext("2d"); g.setTransform(2, 0, 0, 2, 0, 0);
+      const tracer = () => { g.beginPath(); PLATEAU.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); };
+      // La caisse, avec son tablier rayé en bas.
+      g.fillStyle = "#1A0550"; g.fillRect(0, 0, W, F_H);
+      g.save(); g.beginPath(); g.rect(0, F_BAS, W, F_H - F_BAS); g.clip();
+      g.strokeStyle = "rgba(236,119,57,.5)"; g.lineWidth = 7; for (let x = -F_H; x < W; x += 22) { g.beginPath(); g.moveTo(x, F_H); g.lineTo(x + 170, F_BAS); g.stroke(); }
+      g.restore();
+      // Le plateau : un dégradé de nuit, des rayons, et la fleur de gouttes du logo autour du bouchon central.
+      const d = g.createLinearGradient(0, 49, 0, F_H); d.addColorStop(0, "#5B37C4"); d.addColorStop(0.55, "#3A1B92"); d.addColorStop(1, "#28106C");
+      tracer(); g.fillStyle = d; g.fill();
+      g.save(); tracer(); g.clip();
+      g.translate(180, 238);
+      for (let i = 0; i < 18; i++) { g.fillStyle = i % 2 ? "rgba(255,251,242,.055)" : "rgba(38,7,109,.12)"; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 420, i * Math.PI / 9, (i + 1) * Math.PI / 9); g.fill(); }
+      g.globalAlpha = 0.5; const tons = [O, Y, P, V, Y, O, P, V];
+      for (let i = 0; i < 24; i++) goutte(g, i * 6.283 / 24 + (i % 3) * 0.06, 30, 62 + (i * 37 % 5) * 11, 8 + (i * 53 % 4) * 3, tons[i % tons.length]);
+      g.globalAlpha = 1; g.setTransform(2, 0, 0, 2, 0, 0);
+      // Des noyaux aromatiques, un flacon, une seringue et une gélule, comme sérigraphiés sur le bois.
+      g.strokeStyle = "rgba(255,251,242,.2)"; g.lineWidth = 1.6; g.lineJoin = "round";
+      for (const [x, y, r] of [[62, 96, 15], [88, 111, 15], [298, 96, 15], [272, 111, 15], [58, 470, 12], [302, 470, 12]]) { g.beginPath(); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3 + Math.PI / 6; k ? g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : g.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); g.stroke(); g.beginPath(); g.arc(x, y, r * 0.55, 0, 6.3); g.stroke(); }
+      g.strokeStyle = "rgba(255,251,242,.3)"; g.lineWidth = 2;
+      g.save(); g.translate(70, 228); g.rotate(-0.2); g.beginPath(); g.roundRect(-13, -12, 26, 34, 5); g.roundRect(-7, -20, 14, 8, 2); g.moveTo(-13, 2); g.lineTo(13, 2); g.moveTo(-13, 14); g.lineTo(13, 14); g.stroke(); g.restore();
+      g.save(); g.translate(292, 232); g.rotate(0.55); g.beginPath(); g.roundRect(-8, -22, 16, 40, 3); g.moveTo(0, 18); g.lineTo(0, 34); g.moveTo(-12, -22); g.lineTo(12, -22); g.moveTo(0, -22); g.lineTo(0, -34); g.moveTo(-8, -34); g.lineTo(8, -34); g.moveTo(-8, -6); g.lineTo(-2, -6); g.moveTo(-8, 4); g.lineTo(-2, 4); g.stroke(); g.restore();
+      g.save(); g.translate(180, 440); g.rotate(-0.5); g.beginPath(); g.roundRect(-20, -8, 40, 16, 8); g.moveTo(0, -8); g.lineTo(0, 8); g.stroke(); g.restore();
+      // Les halos sous les bouchons, les logements des témoins du lot.
+      for (const o of F_BOUCHONS) { const h = g.createRadialGradient(o.x, o.y, o.r, o.x, o.y, o.r + 16); h.addColorStop(0, "rgba(236,213,103,.45)"); h.addColorStop(1, "rgba(236,213,103,0)"); g.fillStyle = h; g.beginPath(); g.arc(o.x, o.y, o.r + 16, 0, 6.3); g.fill(); }
+      g.fillStyle = "rgba(18,3,58,.55)"; g.beginPath(); g.roundRect(128, 80, 104, 42, 12); g.fill();
+      texte(g, "LOT", 180, 92, 12, "rgba(255,251,242,.75)");
+      // Le bac des DASRI, bordé de jaune et de violet.
+      g.fillStyle = "#12033A"; g.fillRect(104, 528, 152, 32);
+      for (let x = 100; x < 260; x += 16) { g.fillStyle = Y; g.beginPath(); g.moveTo(x, 528); g.lineTo(x + 8, 528); g.lineTo(x + 2, 536); g.lineTo(x - 6, 536); g.fill(); }
+      texte(g, "DASRI", 180, 549, 11, "rgba(255,251,242,.6)");
+      g.restore();
+      // Les rails chromés.
+      g.lineCap = "round"; g.lineJoin = "round";
+      for (const [coul, larg] of [["#12033A", 8], ["#BEB7D6", 4.5], ["rgba(255,255,255,.85)", 1.3]]) { g.strokeStyle = coul; g.lineWidth = larg; g.beginPath(); F_MURS.forEach(m => { g.moveTo(m[0], m[1]); g.lineTo(m[2], m[3]); }); g.stroke(); }
+      // Les deux distributeurs de billes et les cartons du tablier.
+      g.fillStyle = "#BEB7D6"; g.strokeStyle = "#12033A"; g.lineWidth = 2; g.beginPath(); g.roundRect(15, 84, 26, 9, 3); g.roundRect(319, 84, 26, 9, 3); g.fill(); g.stroke();
+      for (const [x, mot] of [[14, "TILT ×" + RF.tilts], [282, "LOT ×5"]]) { g.fillStyle = C; g.beginPath(); g.roundRect(x, 522, 64, 26, 6); g.fill(); g.stroke(); texte(g, mot, x + 32, 536, 12, N); }
+      for (const [x, y] of [[22, 62], [42, 52], [338, 62], [318, 52]]) { g.fillStyle = Y; g.beginPath(); g.arc(x, y, 2.5, 0, 6.3); g.fill(); }
+    }
+    decor();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!clos) decor(); });
     function dessiner() {
-      ctx.fillStyle = N; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#1A0550"; ctx.fillRect(0, 0, W, F_H);
       ctx.save();
-      if (secousse > 0) ctx.translate((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4);
-      // Le plateau : une paillasse, avec le bac de rebut en bas.
-      ctx.fillStyle = "#F7E7B8"; ctx.beginPath();
-      [[10, 110], [70, 49], [290, 49], [350, 110], [350, 330], [256, 408], [240, H], [120, H], [104, 408], [10, 330]].forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "rgba(38,7,109,.09)"; ctx.lineWidth = 2;
-      for (let y = 90; y < 400; y += 40) { ctx.beginPath(); ctx.moveTo(14, y); ctx.lineTo(346, y); ctx.stroke(); }
-      ctx.fillStyle = "rgba(38,7,109,.16)"; ctx.fillRect(120, 462, 120, 18);
-      texte(ctx, "REBUT", 180, 472, 11, "rgba(38,7,109,.55)");
-      texte(ctx, "LOT", 180, 92, 13, "rgba(38,7,109,.4)");
-      s.lot.forEach((v, i) => { ctx.fillStyle = v ? G : "rgba(38,7,109,.18)"; ctx.beginPath(); ctx.arc(148 + i * 16, 110, 5, 0, 6.3); ctx.fill(); });
-      // Les deux distributeurs de billes.
-      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(28, 84, 26, 9, 3); ctx.roundRect(306, 84, 26, 9, 3); ctx.fill();
-      trait(ctx, 5); if (eclair > 0) ctx.strokeStyle = FETE[Math.floor(s.t * 14) % 4]; ctx.beginPath();
-      F_MURS.forEach(m => { ctx.moveTo(m[0], m[1]); ctx.lineTo(m[2], m[3]); }); ctx.stroke();
+      if (secousse > 0) ctx.translate((Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5);
+      ctx.drawImage(fond, 0, 0, W, F_H);
+      if (eclair > 0) { ctx.strokeStyle = FETE[Math.floor(s.t * 14) % 4]; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.beginPath(); F_MURS.forEach(m => { ctx.moveTo(m[0], m[1]); ctx.lineTo(m[2], m[3]); }); ctx.stroke(); }
+      // Les témoins du lot et les flèches qui désignent les étiquettes encore à coller.
+      s.lot.forEach((v, i) => { ctx.fillStyle = v ? "#7BE0B0" : "rgba(255,251,242,.16)"; ctx.beginPath(); ctx.arc(148 + i * 16, 108, 5, 0, 6.3); ctx.fill(); if (v) { ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.beginPath(); ctx.arc(146.5 + i * 16, 106.5, 1.6, 0, 6.3); ctx.fill(); } });
+      const bat = Math.floor(s.t * 3) % 2;
+      [[34, 181, -1], [34, 248, -1], [326, 181, 1], [326, 248, 1]].forEach((f, k) => {
+        const i = k < 2 ? k : k + 1; ctx.fillStyle = s.lot[i] ? "rgba(255,251,242,.1)" : bat ? Y : "rgba(236,213,103,.45)";
+        ctx.beginPath(); ctx.moveTo(f[0] + f[2] * 6, f[1]); ctx.lineTo(f[0] - f[2] * 5, f[1] - 7); ctx.lineTo(f[0] - f[2] * 5, f[1] + 7); ctx.fill();
+      });
+      ctx.fillStyle = s.lot[2] ? "rgba(255,251,242,.1)" : bat ? Y : "rgba(236,213,103,.45)"; ctx.beginPath(); ctx.moveTo(180, 66); ctx.lineTo(173, 76); ctx.lineTo(187, 76); ctx.fill();
       // Les étiquettes : blanches, puis vertes une fois collées.
       F_ETIQ.forEach((m, i) => {
         const hz = m[1] === m[3];
-        trait(ctx, 2); ctx.fillStyle = s.lot[i] ? G : C; ctx.beginPath();
+        trait(ctx, 2); ctx.fillStyle = s.lot[i] ? "#7BE0B0" : C; ctx.beginPath();
         if (hz) ctx.roundRect(m[0] - 3, m[1] - 4, m[2] - m[0] + 6, 8, 3); else ctx.roundRect(m[0] - 4, m[1] - 3, 8, m[3] - m[1] + 6, 3);
         ctx.fill(); ctx.stroke();
       });
+      // Les frondes : un triangle de plastique et son élastique, qui claque quand la bille le touche.
+      F_FRONDES.forEach((f, i) => {
+        const k = Math.max(0, 1 - (s.t - s.frondeT[i]) / 0.18);
+        trait(ctx, 2.6); ctx.fillStyle = k > 0 ? Y : O; ctx.beginPath(); ctx.moveTo(f.a[0], f.a[1]); ctx.lineTo(f.b[0], f.b[1]); ctx.lineTo(f.c[0], f.c[1]); ctx.closePath(); ctx.fill(); ctx.stroke();
+        const mx = (f.a[0] + f.c[0]) / 2 + f.n[0] * (2 + k * 7), my = (f.a[1] + f.c[1]) / 2 + f.n[1] * (2 + k * 7);
+        ctx.strokeStyle = C; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(f.a[0], f.a[1]); ctx.quadraticCurveTo(mx, my, f.c[0], f.c[1]); ctx.stroke();
+        for (const p of [f.a, f.b, f.c]) { ctx.fillStyle = "#BEB7D6"; ctx.strokeStyle = N; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(p[0], p[1], 3.4, 0, 6.3); ctx.fill(); ctx.stroke(); }
+      });
+      for (const o of F_PLOTS) { trait(ctx, 2); ctx.fillStyle = P; ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, 6.3); ctx.fill(); ctx.stroke(); ctx.fillStyle = "#BEB7D6"; ctx.beginPath(); ctx.arc(o.x, o.y, 2.6, 0, 6.3); ctx.fill(); }
       // Les bouchons : ils renvoient la bille, et portent le logo de la pharmacotechnie.
       F_BOUCHONS.forEach((o, i) => {
         const k = Math.max(0, 1 - (s.t - s.tape[i]) / 0.3), r = o.r + k * 3, ri = r - 4;
-        trait(ctx, 3); ctx.fillStyle = k > 0 ? Y : COUL[i]; ctx.beginPath(); ctx.arc(o.x, o.y, r, 0, 6.3); ctx.fill(); ctx.stroke();
+        if (k > 0) { ctx.fillStyle = "rgba(236,213,103," + (0.5 * k) + ")"; ctx.beginPath(); ctx.arc(o.x, o.y, r + 12, 0, 6.3); ctx.fill(); }
+        trait(ctx, 3); ctx.fillStyle = k > 0 ? Y : COUL[i % COUL.length]; ctx.beginPath(); ctx.arc(o.x, o.y, r, 0, 6.3); ctx.fill(); ctx.stroke();
         ctx.fillStyle = C; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(o.x, o.y, ri, 0, 6.3); ctx.fill(); ctx.stroke();
         if (logo.complete && logo.naturalWidth) {
           ctx.save(); ctx.translate(o.x, o.y); if (!calme) ctx.rotate(k * k * (i % 2 ? -1.6 : 1.6));
           ctx.beginPath(); ctx.arc(0, 0, ri - 1, 0, 6.3); ctx.clip(); ctx.drawImage(logo, -ri + 0.5, -ri + 0.5, ri * 2 - 1, ri * 2 - 1); ctx.restore();
-        } else texte(ctx, "P", o.x, o.y + 1, 20, N);
+        } else texte(ctx, "P", o.x, o.y + 1, o.r, N);
       });
       // Les batteurs.
       for (let i = 0; i < 2; i++) {
         const p = F_PIVOTS[i], bout = boutBatteur(i, s.ang[i]);
-        ctx.lineCap = "round"; ctx.strokeStyle = N; ctx.lineWidth = F_EP * 2 + 4; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(bout[0], bout[1]); ctx.stroke();
+        ctx.lineCap = "round"; ctx.strokeStyle = "#12033A"; ctx.lineWidth = F_EP * 2 + 4; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(bout[0], bout[1]); ctx.stroke();
         ctx.strokeStyle = O; ctx.lineWidth = F_EP * 2 - 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(bout[0], bout[1]); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,251,242,.55)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(p.x, p.y - 2.2); ctx.lineTo(bout[0], bout[1] - 2.2); ctx.stroke();
         ctx.fillStyle = Y; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, 6.3); ctx.fill();
       }
-      for (const e of etincelles) { ctx.globalAlpha = 1 - e.t / 0.55; ctx.fillStyle = e.c; ctx.strokeStyle = N; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(e.x, e.y, 3.2 - e.t * 3, 0, 6.3); ctx.fill(); ctx.stroke(); }
+      for (const e of etincelles) { ctx.globalAlpha = 1 - e.t / 0.55; ctx.fillStyle = e.c; ctx.beginPath(); ctx.arc(e.x, e.y, 3.2 - e.t * 3, 0, 6.3); ctx.fill(); }
       ctx.globalAlpha = 1;
       for (const b of bulles) {
         const u = b.t / 0.9, px = Math.min(30, 15 + b.n * 1.6) * (u < 0.15 ? 0.6 + u / 0.15 * 0.6 : 1.2 - Math.min(0.2, (u - 0.15) * 0.8));
         if (b.onde) { ctx.globalAlpha = 1 - u; ctx.strokeStyle = FETE[b.n % 4]; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(b.x, b.y, 12 + u * 70, 0, 6.3); ctx.stroke(); }
         ctx.globalAlpha = u > 0.7 ? (1 - u) / 0.3 : 1;
         ctx.font = "800 " + px + "px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
-        ctx.strokeStyle = N; ctx.lineWidth = 5; ctx.strokeText("×" + b.n, b.x, b.y - 18 - u * 26); ctx.fillStyle = FETE[b.n % 4]; ctx.fillText("×" + b.n, b.x, b.y - 18 - u * 26);
+        ctx.strokeStyle = "#12033A"; ctx.lineWidth = 5; ctx.strokeText("×" + b.n, b.x, b.y - 18 - u * 26); ctx.fillStyle = FETE[b.n % 4]; ctx.fillText("×" + b.n, b.x, b.y - 18 - u * 26);
       }
       ctx.globalAlpha = 1;
       if (s.bille) {
-        const b = s.bille;
-        trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(b.x, b.y, F_RB, 0, 6.3); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = B; ctx.beginPath(); ctx.arc(b.x - 2.5, b.y - 2.5, 2.6, 0, 6.3); ctx.fill();
-      } else if (!clos) texte(ctx, "Nouvelle bille…", 180, 330, 14, "rgba(38,7,109,.6)");
+        const b = s.bille, r = ctx.createRadialGradient(b.x - 2.5, b.y - 3, 1, b.x, b.y, F_RB);
+        r.addColorStop(0, "#FFFFFF"); r.addColorStop(0.55, "#D9D4E8"); r.addColorStop(1, "#8F86B4");
+        ctx.fillStyle = "rgba(18,3,58,.35)"; ctx.beginPath(); ctx.arc(b.x + 2, b.y + 3, F_RB, 0, 6.3); ctx.fill();
+        ctx.fillStyle = r; ctx.strokeStyle = "#12033A"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(b.x, b.y, F_RB, 0, 6.3); ctx.fill(); ctx.stroke();
+      } else if (!clos) texte(ctx, "Nouvelle bille…", 180, 406, 14, "rgba(255,251,242,.8)");
       if (s.t < 5 && !clos) {
-        ctx.globalAlpha = Math.min(1, 5 - s.t) * 0.9;
-        ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(16, 286, 150, 28, 14); ctx.roundRect(194, 286, 150, 28, 14); ctx.fill();
+        ctx.globalAlpha = Math.min(1, 5 - s.t) * 0.92;
+        ctx.fillStyle = "#12033A"; ctx.beginPath(); ctx.roundRect(16, 286, 150, 28, 14); ctx.roundRect(194, 286, 150, 28, 14); ctx.roundRect(70, 320, 220, 26, 13); ctx.fill();
         texte(ctx, tactile ? "Touchez à gauche" : "Gauche : ◀ ou S", 91, 301, 13, Y); texte(ctx, tactile ? "Touchez à droite" : "Droite : ▶ ou L", 269, 301, 13, Y);
+        texte(ctx, tactile ? "Bloqué ? Touchez l'afficheur" : "Bloqué ? Espace pour secouer", 180, 334, 12, C);
         ctx.globalAlpha = 1;
       }
-      if (!clos && s.t - s.msgT < 1) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(70, 340, 220, 40, 14); ctx.fill(); texte(ctx, s.msg, 180, 361, 17, Y); }
+      if (!clos && !s.bille && s.t - s.msgT < 1) { ctx.fillStyle = "rgba(18,3,58,.88)"; ctx.beginPath(); ctx.roundRect(70, 430, 220, 36, 14); ctx.fill(); texte(ctx, s.msg, 180, 449, 16, Y); }
       ctx.restore();
       if (clos) fleur();
       afficheur();
@@ -978,7 +1078,8 @@
           clos = true; lache();
           const n = noteFlipper(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
           const bilan = pl(s.score, "point", "points") + " : " + n + " sur 10 (1 point de note par tranche de " + RF.palier + " points). " + pl(s.lots, "lot libéré", "lots libérés") + ", " + pl(s.pertes, "bille perdue", "billes perdues") + ".";
-          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, Math.round(s.score))); }, 2200);
+          const chiffres = [[s.score, s.score > 1 ? "points" : "point"], [s.lots, s.lots > 1 ? "lots libérés" : "lot libéré"], ["×" + (s.serieMax || 0), "meilleure série"], [s.pertes, s.pertes > 1 ? "billes perdues" : "bille perdue"]];
+          minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, Math.max(0, Math.round(s.score)), chiffres); }, 2200);
         }
       } else tFin += dt;
       effets(dt);
@@ -1109,29 +1210,33 @@
     return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
   }
 
-  const api = { bowling, tir, flipper, tennis, labyrinthe, _logo: ICI + "img/logo-p-verre.png", _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, DEPART, xSeringue, SERIES, noteBowling, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, F_PIVOTS, boutBatteur, REGL_LABY: RL, creerLaby, pasLaby, noteLaby, L_PLAN, L_DIRS, L_GERMES, L_DEPART, lOuvert, lDistances, REGL_TENNIS: RT, creerTennis, pasTennis, noteTennis, viseTennis, T_YJ } };
+  const api = { bowling, tir, flipper, tennis, labyrinthe, _logo: ICI + "img/logo-p-verre.png", _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, DEPART, xSeringue, SERIES, noteBowling, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, secouerFlipper, F_PIVOTS, boutBatteur, REGL_LABY: RL, creerLaby, pasLaby, noteLaby, L_PLAN, L_DIRS, L_GERMES, L_DEPART, lOuvert, lDistances, REGL_TENNIS: RT, creerTennis, pasTennis, noteTennis, viseTennis, T_YJ } };
 
   /* ===== Nouveaux jeux : chacun vit en entier sous son repère (cœur, dessin, inscription), sans toucher au reste du fichier.
      Inscription : api.<nom> = <fonction> ; Object.assign(api._coeur, { … }) pour ce que les outils doivent voir. ===== */
 
   /* ----- Repère [basket] : le basket ----- */
   // Le basket du pilulier : on lance des comprimés, d'un geste glissé-lâché, dans un pilulier qui va et vient sur ses étagères.
+  // Jusqu'à RBK.vol comprimés peuvent voler en même temps : inutile d'attendre la chute du premier pour lancer le suivant.
   // Tout le jeu vit dans ce bloc (cœur, dessin, inscription) : aucun nom ne déborde sur les jeux voisins.
   {
     /* --- Le cœur : règles et trajectoires, sans navigateur --- */
     // Réglages étalonnés par simulation (node outils/etalon-basket.js) : ils fixent la difficulté.
-    const RBK = { g: 900, x0: 180, y0: 432, r: 9, demi: 40, dmin: 24, dd: 1.2, haut: 34, ep: 3, v0: 70, dv: 6, vmax: 130, xmin: 62, xmax: 298, rebond: 0.5, pause: 0.3, k: 5.5, vmin: 380, vlim: 960, vxlim: 460, seuils: [2, 5, 8, 11, 14, 18, 23, 29, 38, 48], tops: [184, 156, 206], etage: 4, monte: 70, vie: 4 };
+    const RBK = { g: 900, x0: 180, y0: 432, r: 11, demi: 42, dmin: 27, dd: 1.2, haut: 34, ep: 3, v0: 70, dv: 6, vmax: 130, xmin: 62, xmax: 298, rebond: 0.5, pause: 0.3, vol: 3, lot: 0.8, combo: 3, k: 5.5, vmin: 380, vlim: 960, vxlim: 460, seuils: [3, 7, 11, 16, 21, 27, 36, 50, 85, 115], tops: [184, 156, 206], etage: 4, monte: 70, vie: 4 };
     const BK_PAS = 1 / 240;
     const vitesseBasket = s => Math.min(RBK.vmax, RBK.v0 + RBK.dv * s.paniers);                      // le pilulier accélère à chaque panier
     const demiBasket = s => Math.max(RBK.dmin, RBK.demi - RBK.dd * s.paniers);                       // et rétrécit
     const etageBasket = s => Math.floor(s.paniers / RBK.etage) % RBK.tops.length;                   // et change d'étagère tous les RBK.etage paniers
-    const creerBasket = () => ({ t: 0, acc: 0, px: 180, dir: 1, pvx: 0, pvy: 0, top: RBK.tops[0], balle: null, attente: 0.4, perdus: [], points: 0, paniers: 0, directs: 0, lances: 0, serie: 0, record: 0, ev: null, evT: -9, choc: -9, fini: false });
-    // Un lancer : vitesse en px/s, vy négatif = vers le haut. Refusé tant que le comprimé précédent vole, ou une fois le temps écoulé.
+    // Le lot : RBK.lot comprimés par seconde de partie (40 pour 50 s), pas un de plus. Mitrailler sans viser vide le lot pour rien.
+    const lotBasket = duree => Math.round(RBK.lot * duree);
+    const creerBasket = () => ({ t: 0, acc: 0, px: 180, dir: 1, pvx: 0, pvy: 0, top: RBK.tops[0], balles: [], attente: 0.4, perdus: [], points: 0, paniers: 0, directs: 0, lances: 0, serie: 0, record: 0, ev: null, evT: -9, choc: -9, fini: false });
+    // Un lancer : vitesse en px/s, vy négatif = vers le haut. Refusé s'il y a déjà RBK.vol comprimés en vol, pendant la courte
+    // recharge du godet (RBK.pause), une fois le lot épuisé ou le temps écoulé.
     const lancerBasket = (s, vx, vy, duree) => {
-      if (s.balle || s.attente > 0 || s.fini || s.t >= duree) return false;
+      if (s.balles.length >= RBK.vol || s.attente > 0 || s.fini || s.t >= duree || s.lances >= lotBasket(duree)) return false;
       vy = borne(vy, -RBK.vlim, -RBK.vmin); vx = borne(vx, -RBK.vxlim, RBK.vxlim);
       const v = Math.hypot(vx, vy), f = v > RBK.vlim ? RBK.vlim / v : 1;
-      s.balle = { x: RBK.x0, y: RBK.y0, vx: vx * f, vy: vy * f, tour: 0, touche: false, age: 0 }; s.lances++;
+      s.balles.push({ x: RBK.x0, y: RBK.y0, vx: vx * f, vy: vy * f, tour: 0, touche: false, age: 0, ok: false }); s.lances++; s.attente = RBK.pause;
       return true;
     };
     // Pour une vitesse verticale donnée, la vitesse horizontale qui amène le comprimé là où sera le pilulier à sa descente.
@@ -1151,10 +1256,9 @@
       if (s.attente > 0) s.attente -= dt;
       for (const q of s.perdus) { q.vy += RBK.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.tour += dt * q.vx / 40; }
       if (s.perdus.length && s.perdus[0].y > H + 30) s.perdus.shift();
-      const b = s.balle;
-      if (b) {
+      const bas = s.top + RBK.haut;
+      for (const b of s.balles.slice()) {
         b.age += dt; b.vy += RBK.g * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.tour += dt * b.vx / 40;
-        const bas = s.top + RBK.haut;
         // Les parois du pilulier (deux côtés et le fond) : des traits épais, plus épais que le plus grand pas du comprimé.
         for (const [x1, y1, x2, y2] of [[s.px - D, s.top, s.px - D, bas], [s.px + D, s.top, s.px + D, bas], [s.px - D, bas, s.px + D, bas]]) {
           const ux = x2 - x1, uy = y2 - y1, k = borne(((b.x - x1) * ux + (b.y - y1) * uy) / (ux * ux + uy * uy), 0, 1);
@@ -1165,17 +1269,19 @@
           if (vn < 0) { b.vx -= (1 + RBK.rebond) * vn * nx; b.vy -= (1 + RBK.rebond) * vn * ny; b.touche = true; s.choc = s.t; }
         }
         if (Math.abs(b.x - s.px) < D - RBK.ep && b.y > s.top + 9 && b.y < bas) {
-          // Dans le pilulier : 3 points sans avoir touché le bord, 2 sinon.
-          const pts = b.touche ? 2 : 3;
-          s.paniers++; s.points += pts; if (!b.touche) s.directs++; s.record = Math.max(s.record, ++s.serie);
-          s.ev = { pts, x: s.px, y: s.top }; s.evT = s.t; s.balle = null; s.attente = RBK.pause;
+          // Dans le pilulier : 3 points sans avoir touché le bord, 2 sinon. Combo : chaque panier enchaîné sans en manquer un
+          // rapporte 1 point de plus que le précédent, jusqu'à RBK.combo points de bonus. Un comprimé perdu remet le combo à zéro.
+          s.record = Math.max(s.record, ++s.serie);
+          const direct = !b.touche, bonus = Math.min(RBK.combo, s.serie - 1), pts = (direct ? 3 : 2) + bonus;
+          s.paniers++; s.points += pts; if (direct) s.directs++;
+          b.ok = true; s.ev = { pts, direct, combo: s.serie, x: s.px, y: s.top }; s.evT = s.t; s.balles.splice(s.balles.indexOf(b), 1);
         } else if ((b.vy > 0 && b.y > bas + 30) || b.x < -20 || b.x > W + 20 || b.age > RBK.vie) {
           // Plus aucune chance : le comprimé finit sa chute pour le décor, et le suivant arrive.
-          s.perdus.push(b); s.serie = 0; s.ev = { pts: 0, x: b.x, y: b.y }; s.evT = s.t; s.balle = null; s.attente = RBK.pause;
+          s.perdus.push(b); s.serie = 0; if (!s.ev || !s.ev.pts || s.t - s.evT > 0.6) { s.ev = { pts: 0, x: b.x, y: b.y }; s.evT = s.t; } s.balles.splice(s.balles.indexOf(b), 1);
         }
       }
-      // Fin : le temps est écoulé et le dernier comprimé lancé a fini sa course.
-      if (s.t >= duree && !s.balle) s.fini = true;
+      // Fin : le temps est écoulé ou le lot épuisé, et les derniers comprimés lancés ont fini leur course.
+      if ((s.t >= duree || s.lances >= lotBasket(duree)) && !s.balles.length) s.fini = true;
     };
     // Pas fixe, comme le flipper : la physique avance par tranches de 1/240 s quel que soit le rythme d'affichage.
     const pasBasket = (s, dt, duree) => { s.acc += dt; while (s.acc >= BK_PAS && !s.fini) { s.acc -= BK_PAS; unPasBasket(s, duree); } };
@@ -1186,11 +1292,13 @@
     const basket = (el, opt) => {
       const duree = opt.duree || 50, { cv, ctx, liberer } = monter(el, H);
       cv.style.touchAction = "none";
-      cv.setAttribute("aria-label", "Le basket du pilulier. Glissez vers le haut puis lâchez pour lancer un comprimé dans le pilulier qui se déplace. Au clavier : flèches gauche et droite pour l'angle, haut et bas pour la force, Espace pour lancer.");
+      cv.setAttribute("aria-label", "Le basket du pilulier. Glissez vers le haut puis lâchez pour lancer un comprimé dans le pilulier qui se déplace, jusqu'à trois comprimés en vol à la fois. Au clavier : flèches gauche et droite pour l'angle, haut et bas pour la force, Espace pour lancer.");
       const s = creerBasket(), mm = q => typeof matchMedia === "function" && matchMedia(q).matches;
       const tactile = mm("(pointer: coarse)"), calme = mm("(prefers-reduced-motion: reduce)");
       if (typeof opt.espion === "function") opt.espion(s);                                         // pour le banc d'essai seulement
-      let clos = false, minuterie = 0, depart = null, vise = null, clavier = false, angle = 0, force = 780;
+      let clos = false, minuterie = 0, depart = null, vise = null, clavier = false, angle = 0, force = 780, vus = 0;
+      const logo = new Image(); logo.src = opt.logo || ICI + "img/logo-pharmacotechnie.webp";      // le comprimé porte le logo de l'unité
+      const petales = [], COULEURS = [N, Y, O, P, Y, O];                                          // la gerbe qui sort du pilulier à chaque panier, aux couleurs du logo
       const touches = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false };
       const posDe = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.width * W]; };
       // Le geste : un glissé vers le pilulier. Sa direction donne l'angle, sa longueur la force.
@@ -1220,29 +1328,72 @@
         cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointermove", glisse); cv.removeEventListener("pointerup", lacher); cv.removeEventListener("pointercancel", annule); cv.removeEventListener("contextmenu", menu);
         window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
       };
-      // Un comprimé sécable.
+      // Un comprimé au logo de la pharmacotechnie ; sécable tant que l'image n'est pas là (ou si elle manque).
       const comprime = (x, y, tour, alpha) => {
         ctx.save(); ctx.translate(x, y); ctx.rotate(tour); ctx.globalAlpha = alpha;
-        trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, RBK.r, 0, 6.3); ctx.fill(); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(-RBK.r + 3, 0); ctx.lineTo(RBK.r - 3, 0); ctx.stroke();
+        trait(ctx, 2.2); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, RBK.r, 0, 6.3); ctx.fill(); ctx.stroke();
+        if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, -RBK.r + 1.5, -RBK.r + 1.5, RBK.r * 2 - 3, RBK.r * 2 - 3);
+        else { ctx.beginPath(); ctx.moveTo(-RBK.r + 3, 0); ctx.lineTo(RBK.r - 3, 0); ctx.stroke(); }
         ctx.restore();
       };
+      // La gerbe : des pétales en goutte, comme ceux du logo, qui jaillissent de l'ouverture du pilulier puis retombent.
+      const gerbe = (x, y, n) => {
+        for (let i = 0; i < n; i++) {
+          const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.5, v = 170 + Math.random() * 330;
+          petales.push({ x: x + (Math.random() - 0.5) * 30, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, vie: 0.9 + Math.random() * 0.7, l: 13 + Math.random() * 15, c: COULEURS[i % COULEURS.length] });
+        }
+        if (petales.length > 180) petales.splice(0, petales.length - 150);
+      };
+      const animer = dt => {
+        if (s.paniers > vus && s.ev && s.ev.pts && !calme) gerbe(s.px, s.top + 4, (s.ev.direct ? 40 : 28) + 10 * Math.min(RBK.combo, s.ev.combo - 1));
+        vus = s.paniers;
+        for (const q of petales) { q.t += dt; q.vy += 520 * dt; q.vx *= 1 - 1.2 * dt; q.x += q.vx * dt; q.y += q.vy * dt; }
+        for (let i = petales.length - 1; i >= 0; i--) if (petales[i].t > petales[i].vie) petales.splice(i, 1);
+      };
+      // Le décor : un gymnase vu des tribunes du préparatoire. Mur, panneau à la croix verte, flacons spectateurs, parquet et raquette.
+      const SOL = 398;
+      function decor() {
+        ctx.fillStyle = "#EDEAF6"; ctx.fillRect(0, 0, W, SOL);
+        ctx.fillStyle = "rgba(185,166,240,.28)"; ctx.fillRect(0, 300, W, SOL - 300);                 // le soubassement du mur
+        ctx.fillStyle = "rgba(38,7,109,.12)"; ctx.fillRect(0, 298, W, 3);
+        // Le panneau, fixé au mur : son carré de visée est une croix de pharmacie.
+        ctx.strokeStyle = "rgba(38,7,109,.2)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(180, 39); ctx.lineTo(180, 66); ctx.stroke();
+        ctx.fillStyle = "rgba(255,251,242,.85)"; ctx.strokeStyle = "rgba(38,7,109,.28)"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.roundRect(96, 64, 168, 104, 8); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "rgba(62,155,118,.3)"; ctx.fillRect(169, 88, 22, 58); ctx.fillRect(151, 106, 58, 22);
+        // Les tribunes : des flacons venus encourager, de part et d'autre.
+        ctx.globalAlpha = 0.5;
+        for (let r = 0; r < 2; r++) {
+          const y = 344 + r * 30;
+          ctx.fillStyle = "rgba(38,7,109,.2)"; ctx.fillRect(0, y + 13, 92 - r * 18, 5); ctx.fillRect(W - 92 + r * 18, y + 13, 92 - r * 18, 5);
+          for (let i = 0; i < 3 - r; i++) { flacon(ctx, 16 + i * 26 + r * 6, y, 0, [O, Y, P, V, B][(i + r * 2) % 5]); flacon(ctx, W - 16 - i * 26 - r * 6, y, 0, [B, P, O, Y, V][(i + r) % 5]); }
+        }
+        ctx.globalAlpha = 1;
+        // Le parquet, en perspective, et la raquette tracée devant le lanceur.
+        ctx.fillStyle = "#E8B56D"; ctx.fillRect(0, SOL, W, H - SOL);
+        ctx.strokeStyle = "rgba(38,7,109,.13)"; ctx.lineWidth = 1.5; ctx.beginPath();
+        for (let i = -12; i <= 12; i++) { ctx.moveTo(180 + i * 22, SOL); ctx.lineTo(180 + i * 64, H); }
+        for (const y of [414, 438, 468]) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255,251,242,.9)"; ctx.lineWidth = 3; ctx.lineJoin = "round";
+        ctx.beginPath(); ctx.moveTo(132, SOL); ctx.lineTo(84, H); ctx.moveTo(228, SOL); ctx.lineTo(276, H); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(180, 458, 82, 20, 0, 0, 6.3); ctx.stroke();
+        trait(ctx, 3); ctx.beginPath(); ctx.moveTo(0, SOL); ctx.lineTo(W, SOL); ctx.stroke();
+      }
       const MOMENTS = ["MATIN", "MIDI", "SOIR"], TEINTES = [Y, B, P];
       function dessiner() {
         const D = demiBasket(s) + RBK.ep, e = etageBasket(s);
-        ctx.fillStyle = "#EDEAF6"; ctx.fillRect(0, 0, W, H);                                         // le mur du préparatoire
-        ctx.fillStyle = "#F7E7B8"; ctx.fillRect(0, 452, W, H - 452);                                 // la paillasse
-        trait(ctx, 3); ctx.beginPath(); ctx.moveTo(0, 452); ctx.lineTo(W, 452); ctx.stroke();
+        decor();
         // Les trois étagères, au mur : celle où roule le pilulier est plus marquée.
         RBK.tops.forEach((t, i) => {
           const y = t + RBK.haut + RBK.ep + 2;
-          ctx.fillStyle = i === e ? "rgba(38,7,109,.3)" : "rgba(38,7,109,.1)"; ctx.fillRect(20, y, W - 40, 4);
+          ctx.fillStyle = i === e ? "rgba(38,7,109,.38)" : "rgba(38,7,109,.14)"; ctx.fillRect(20, y, W - 40, 4);
           texte(ctx, MOMENTS[i], 24, y + 12, 9, i === e ? "rgba(38,7,109,.55)" : "rgba(38,7,109,.25)", "left");
         });
         // Le fond du pilulier, puis le comprimé, puis la façade : le comprimé qui entre passe derrière l'étiquette.
         ctx.fillStyle = "#fff"; ctx.fillRect(s.px - D, s.top, 2 * D, RBK.haut);
         for (const q of s.perdus) comprime(q.x, q.y, q.tour, 0.45);
-        if (s.balle) comprime(s.balle.x, s.balle.y, s.balle.tour, 1);
+        for (const q of s.balles) comprime(q.x, q.y, q.tour, 1);
         ctx.save(); ctx.translate(s.px, s.top);
         const vif = !clos && s.t - s.evT < 0.25 && s.ev && s.ev.pts;
         ctx.fillStyle = vif ? C : TEINTES[e]; ctx.fillRect(-D, 7, 2 * D, RBK.haut - 7);
@@ -1253,26 +1404,37 @@
         ctx.restore();
         // Le lanceur : un godet posé sur la paillasse, avec le comprimé prêt à partir.
         trait(ctx, 3); ctx.fillStyle = V; ctx.beginPath(); ctx.moveTo(RBK.x0 - 17, RBK.y0 + 4); ctx.lineTo(RBK.x0 + 17, RBK.y0 + 4); ctx.lineTo(RBK.x0 + 11, 452); ctx.lineTo(RBK.x0 - 11, 452); ctx.closePath(); ctx.fill(); ctx.stroke();
-        const pret = !s.balle && s.attente <= 0 && s.t < duree;
-        if (pret) comprime(RBK.x0, RBK.y0 - 6, 0, 1);
+        const reste = lotBasket(duree) - s.lances, libres = s.t < duree ? Math.min(reste, RBK.vol - s.balles.length) : 0, pret = libres > 0 && s.attente <= 0;
+        for (let i = 1; i < libres; i++) comprime(RBK.x0 - 16 - i * 25, 441, 0, 1);                  // la réserve : les comprimés encore disponibles
+        if (pret) comprime(RBK.x0, RBK.y0 - 8, 0, 1);
+        texte(ctx, "lot : " + reste, RBK.x0 + 52, 441, 13, reste <= 5 ? R : N, "left");
+        // Le témoin de combo : il grossit à chaque panier enchaîné, et disparaît au premier comprimé perdu.
+        if (s.serie > 1 && !clos) {
+          const k = calme ? 1 : 1 + 0.25 * Math.max(0, 1 - (s.t - s.evT) * 4), plein = s.serie > RBK.combo;
+          ctx.save(); ctx.translate(52, 420); ctx.scale(k, k);
+          trait(ctx, 2.5); ctx.fillStyle = plein ? O : Y; ctx.beginPath(); ctx.roundRect(-40, -17, 80, 34, 12); ctx.fill(); ctx.stroke();
+          texte(ctx, "COMBO", 0, -8, 9, N); texte(ctx, "×" + s.serie, 0, 5, 15, N);
+          ctx.restore();
+        }
         // La visée : le début de la trajectoire seulement, le reste se juge à l'œil.
         if (vise && !clos) {
           ctx.fillStyle = pret ? N : "rgba(38,7,109,.3)";
-          for (let i = 1; i <= 7; i++) { const t = i * 0.065; ctx.beginPath(); ctx.arc(RBK.x0 + vise.vx * t, RBK.y0 - 6 + vise.vy * t + RBK.g * t * t / 2, 3.4 - i * 0.25, 0, 6.3); ctx.fill(); }
+          for (let i = 1; i <= 7; i++) { const t = i * 0.065; ctx.beginPath(); ctx.arc(RBK.x0 + vise.vx * t, RBK.y0 - 8 + vise.vy * t + RBK.g * t * t / 2, 3.4 - i * 0.25, 0, 6.3); ctx.fill(); }
           const f = Math.hypot(vise.vx, vise.vy) / RBK.vlim;                                         // la jauge de force
           trait(ctx, 2); ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(RBK.x0 + 30, 400, 10, 48, 5); ctx.fill(); ctx.stroke();
           ctx.fillStyle = f > 0.97 ? O : G; ctx.beginPath(); ctx.roundRect(RBK.x0 + 32, 446 - 44 * f, 6, 44 * f, 3); ctx.fill();
         }
         if (depart && !clos) { ctx.strokeStyle = "rgba(38,7,109,.25)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(depart[0], depart[1], 12, 0, 6.3); ctx.stroke(); }
+        for (const q of petales) { ctx.save(); ctx.translate(q.x, q.y); ctx.globalAlpha = Math.min(1, (q.vie - q.t) * 3); goutte(ctx, Math.atan2(q.vy, q.vx), -q.l * 0.6, q.l * 0.4, q.l * 0.5, q.c); ctx.restore(); }
         // Le résultat du dernier lancer.
         const dtE = s.t - s.evT;
         if (s.ev && dtE < 1 && !clos) {
           if (s.ev.pts) {
-            if (!calme) { ctx.globalAlpha = 1 - dtE; ctx.strokeStyle = s.ev.pts === 3 ? O : G; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.ev.x, s.ev.y + 10, 20 + dtE * 46, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
+            if (!calme) { ctx.globalAlpha = 1 - dtE; ctx.strokeStyle = s.ev.direct ? O : G; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.ev.x, s.ev.y + 10, 20 + dtE * 46, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
             const y = Math.max(62, s.ev.y - 30 - (calme ? 0 : dtE * 16));
             ctx.fillStyle = "rgba(38,7,109,.88)"; ctx.beginPath(); ctx.roundRect(borne(s.ev.x, 96, W - 96) - 92, y - 15, 184, 30, 15); ctx.fill();
-            texte(ctx, s.ev.pts === 3 ? "+3 · Dose parfaite !" : "+2 · Dans le pilulier !", borne(s.ev.x, 96, W - 96), y + 1, 14, s.ev.pts === 3 ? Y : C);
-          } else if (dtE < 0.7) texte(ctx, "Hors pilulier…", 180, 386, 13, "rgba(38,7,109,.55)");
+            texte(ctx, "+" + s.ev.pts + " · " + (s.ev.combo > 1 ? "Combo ×" + s.ev.combo + " !" : s.ev.direct ? "Dose parfaite !" : "Dans le pilulier !"), borne(s.ev.x, 96, W - 96), y + 1, 14, s.ev.direct || s.ev.combo > 1 ? Y : C);
+          } else if (dtE < 0.7) texte(ctx, "Hors pilulier…", 180, 384, 13, "rgba(38,7,109,.6)");
         }
         if (s.t < 5 && !clos && !s.lances) {
           ctx.globalAlpha = Math.min(1, 5 - s.t) * 0.92;
@@ -1292,11 +1454,12 @@
             viseClavier();
           }
           pasBasket(s, dt, duree);
+          animer(dt);
           if (s.fini) {
             clos = true; lache(); annule();
             const n = noteBasket(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
-            const bilan = pl(s.paniers, "panier", "paniers") + " sur " + pl(s.lances, "lancer", "lancers") + ", dont " + pl(s.directs, "direct", "directs") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (2 points le panier, 3 sans toucher le bord ; barème progressif, 10 sur 10 à partir de " + RBK.seuils[9] + " points).";
-            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.points, [[s.points, s.points > 1 ? "points" : "point"], [s.paniers + "/" + s.lances, "paniers"], [s.directs, s.directs > 1 ? "paniers directs" : "panier direct"], [s.record, "à la suite"]]); }, 1300);
+            const bilan = pl(s.paniers, "panier", "paniers") + " sur " + pl(s.lances, "lancer", "lancers") + ", dont " + pl(s.directs, "direct", "directs") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (2 points le panier, 3 sans toucher le bord, jusqu'à " + RBK.combo + " de bonus en combo ; barème progressif, 10 sur 10 à partir de " + RBK.seuils[9] + " points).";
+            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.points, [[s.points, s.points > 1 ? "points" : "point"], [s.paniers + "/" + s.lances, "paniers"], [s.directs, s.directs > 1 ? "paniers directs" : "panier direct"], [s.record, "combo max"]]); }, 1300);
           }
         }
         dessiner();
@@ -1305,7 +1468,7 @@
       return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
     };
     api.basket = basket;
-    Object.assign(api._coeur, { REGL_BASKET: RBK, creerBasket, pasBasket, noteBasket, lancerBasket, viseBasket, vitesseBasket, etageBasket, demiBasket });
+    Object.assign(api._coeur, { REGL_BASKET: RBK, creerBasket, pasBasket, noteBasket, lancerBasket, viseBasket, vitesseBasket, etageBasket, demiBasket, lotBasket });
   }
   /* ----- Fin [basket] ----- */
 
@@ -1773,29 +1936,69 @@
       if (logo.complete && logo.naturalWidth) { ctx.save(); ctx.beginPath(); ctx.arc(0, -1, 6.6, 0, 6.3); ctx.clip(); ctx.drawImage(logo, -6.6, -7.6, 13.2, 13.2); ctx.restore(); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(0, -1, 6.6, 0, 6.3); ctx.stroke(); }
       ctx.restore();
     }
-    // Le fond : le mur carrelé de la salle, un hublot de sas et une étagère de flacons de chaque côté, et au milieu le tableau
-    // d'affichage du score, en chiffres à segments (ceux du flipper).
+    // Le fond : une salle de sport. Sous les projecteurs, une tribune de cinq gradins de collègues (certains ont gardé leur
+    // charlotte), qui se lèvent quand vous marquez ; devant, les panneaux du bord de terrain, puis le sol du terrain. Au milieu,
+    // le tableau d'affichage du score, en chiffres à segments (ceux du flipper). Le public est tiré une fois pour toutes.
+    const foule = [], PEAUX = ["#F3D2B3", "#E0B48C", "#B98458", "#8A5A3A"], TENUES = [O, P, V, G, B, Y, C, R, "#5B4AA8", "#2F7F86"], CHEVEUX = ["#2B1B12", "#5A3A1E", "#B9772E", "#D9D2C4", "#1A1030"];
+    { let gr = 20261219; const al = () => (gr = gr * 16807 % 2147483647) / 2147483647, un = t => t[Math.floor(al() * t.length)];
+      for (let r = 0; r < 5; r++) { const e = 0.72 + r * 0.1, pas = 16.5 * e; for (let x = VO_G + 3 + (r % 2) * pas / 2; x < VO_D + 4; x += pas) foule.push({ r, x: x + (al() - 0.5) * 3, e, tenue: un(TENUES), peau: un(PEAUX), cheveux: al() < 0.35 ? B : un(CHEVEUX), ph: al() * 6.3, vif: al() }); } }
+    const GRADIN = r => 158 + r * 31 + r * r * 1.2;        // la ligne des épaules du rang r
     function decor() {
-      ctx.strokeStyle = "rgba(38,7,109,.07)"; ctx.lineWidth = 2; ctx.beginPath();
-      for (let y = VO_HAUT + 73; y < VO_SOL; y += 73) { ctx.moveTo(VO_G, y); ctx.lineTo(VO_D, y); }
-      for (let x = VO_G + 83; x < VO_D - 10; x += 83) { ctx.moveTo(x, VO_HAUT); ctx.lineTo(x, VO_SOL); }
-      ctx.stroke();
-      ctx.fillStyle = "rgba(38,7,109,.1)"; ctx.fillRect(VO_G, VO_SOL - 16, VO_D - VO_G, 16);                         // la plinthe
-      for (const [x, coul] of [[56, B], [304, P]]) {                                                                 // les hublots
-        ctx.strokeStyle = "rgba(38,7,109,.28)"; ctx.lineWidth = 4; ctx.fillStyle = "rgba(255,251,242,.55)";
-        ctx.beginPath(); ctx.arc(x, 182, 22, 0, 6.3); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = coul; ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.arc(x, 182, 22, 0.35, Math.PI - 0.35); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
-        ctx.strokeStyle = "rgba(255,251,242,.9)"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, 182, 15, 3.5, 4.4); ctx.stroke();
+      const g0 = VO_G, l = VO_D - VO_G, joie = !clos && s.msg.endsWith("!") && s.t - s.msgT < 1.1 ? Math.sin((s.t - s.msgT) / 1.1 * Math.PI) : 0;
+      // La salle : le haut dans l'ombre, deux projecteurs et leur halo.
+      let d = ctx.createLinearGradient(0, VO_HAUT, 0, 320); d.addColorStop(0, "#120338"); d.addColorStop(0.45, "#2A1568"); d.addColorStop(1, "#3B2784");
+      ctx.fillStyle = d; ctx.fillRect(g0, VO_HAUT, l, VO_SOL - VO_HAUT);
+      ctx.strokeStyle = "rgba(255,251,242,.07)"; ctx.lineWidth = 3; ctx.beginPath();                                   // la charpente
+      for (let x = g0 - 20; x < VO_D; x += 46) { ctx.moveTo(x, VO_HAUT + 34); ctx.lineTo(x + 23, VO_HAUT + 4); ctx.lineTo(x + 46, VO_HAUT + 34); }
+      ctx.moveTo(g0, VO_HAUT + 34); ctx.lineTo(VO_D, VO_HAUT + 34); ctx.stroke();
+      for (const x of [46, 314]) {
+        d = ctx.createRadialGradient(x, 62, 2, x, 62, 150); d.addColorStop(0, "rgba(255,244,200,.5)"); d.addColorStop(0.25, "rgba(255,244,200,.14)"); d.addColorStop(1, "rgba(255,244,200,0)");
+        ctx.fillStyle = d; ctx.fillRect(g0, VO_HAUT, l, 280);
+        ctx.fillStyle = "#0D0228"; ctx.beginPath(); ctx.roundRect(x - 13, 50, 26, 12, 3); ctx.fill();
+        ctx.fillStyle = "#FFF6D0"; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(x - 8 + i * 8, 58, 2.6, 0, 6.3); ctx.fill(); }
       }
-      ctx.globalAlpha = 0.45;                                                                                         // les étagères
-      for (const x0 of [28, 276]) {
-        [G, O, V].forEach((c, i) => flacon(ctx, x0 + 10 + i * 18, 262, 0, c));
-        ctx.fillStyle = N; ctx.fillRect(x0, 274, 56, 4);
+      // La tribune, du fond vers l'avant : le gradin, puis ses spectateurs (épaules, tête, cheveux ou charlotte).
+      for (let r = 0; r < 5; r++) {
+        const y = GRADIN(r), e = 0.72 + r * 0.1;
+        d = ctx.createLinearGradient(0, y - 4, 0, y + 34); d.addColorStop(0, r % 2 ? "#3A2880" : "#33217A"); d.addColorStop(1, "#1C0B4E");
+        ctx.fillStyle = d; ctx.fillRect(g0, y - 4 * e, l, 40);
+        ctx.fillStyle = "rgba(255,251,242,.16)"; ctx.fillRect(g0, y + 9 * e, l, 1.5);                                 // le nez de marche, éclairé
+        for (const p of foule) {
+          if (p.r !== r) continue;
+          const leve = joie * (0.4 + 0.6 * p.vif), dy = calme ? 0 : -leve * 7 * e + Math.sin(s.t * 1.3 + p.ph) * 0.5, x = p.x, t = y + dy;
+          ctx.fillStyle = p.tenue; ctx.beginPath(); ctx.roundRect(x - 6.5 * e, t - 1 * e, 13 * e, 16 * e, [5 * e, 5 * e, 0, 0]); ctx.fill();
+          ctx.fillStyle = "rgba(18,3,56,.28)"; ctx.fillRect(x - 6.5 * e, t + 7 * e, 13 * e, 8 * e);                    // l'ombre du rang de devant
+          if (leve > 0.35 && !calme) { ctx.strokeStyle = p.tenue; ctx.lineWidth = 2.6 * e; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x - 5 * e, t + 2 * e); ctx.lineTo(x - 8 * e, t - 9 * e * leve); ctx.moveTo(x + 5 * e, t + 2 * e); ctx.lineTo(x + 8 * e, t - 9 * e * leve); ctx.stroke(); }
+          ctx.fillStyle = p.peau; ctx.beginPath(); ctx.arc(x, t - 5.5 * e, 4.6 * e, 0, 6.3); ctx.fill();
+          ctx.fillStyle = p.cheveux; ctx.beginPath(); ctx.arc(x, t - 6.3 * e, 4.8 * e, Math.PI * 1.02, Math.PI * 1.98); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,.22)"; ctx.beginPath(); ctx.arc(x - 1.6 * e, t - 7 * e, 1.5 * e, 0, 6.3); ctx.fill();   // le reflet des projecteurs
+        }
       }
-      ctx.globalAlpha = 1;
+      // Le voile : la tribune recule dans la pénombre, pour que la poche et les joueurs se détachent.
+      d = ctx.createLinearGradient(0, 130, 0, 326); d.addColorStop(0, "rgba(18,3,56,.5)"); d.addColorStop(1, "rgba(18,3,56,.2)");
+      ctx.fillStyle = d; ctx.fillRect(g0, 130, l, 196);
+      // Les panneaux du bord de terrain.
+      const PANNEAUX = [["PHARMACOTECHNIE", C], ["ZÉRO POCHE À TERRE", Y], ["LOT LIBÉRÉ", B]];
+      ctx.fillStyle = "#0D0228"; ctx.fillRect(g0, 322, l, 34);
+      PANNEAUX.forEach(([mot, coul], i) => {
+        const x = g0 + 2 + i * (l - 4) / 3, w = (l - 4) / 3 - 2;
+        d = ctx.createLinearGradient(0, 325, 0, 353); d.addColorStop(0, coul); d.addColorStop(1, "rgba(38,7,109,.35)");
+        ctx.fillStyle = coul; ctx.fillRect(x, 325, w, 28); ctx.fillStyle = d; ctx.fillRect(x, 339, w, 14);
+        texte(ctx, mot, x + w / 2, 339.5, 8.5, N);
+      });
+      ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fillRect(g0, 322, l, 1.5);
+      // Le sol du terrain, vu de trois quarts : il fuit vers le fond, avec le reflet des projecteurs.
+      d = ctx.createLinearGradient(0, 356, 0, VO_H); d.addColorStop(0, "#2C6E96"); d.addColorStop(0.3, "#3F8FB8"); d.addColorStop(1, "#63AFD6");
+      ctx.fillStyle = d; ctx.fillRect(g0, 356, l, VO_H - 356);
+      d = ctx.createLinearGradient(0, 356, 0, 372); d.addColorStop(0, "rgba(13,2,40,.45)"); d.addColorStop(1, "rgba(13,2,40,0)");
+      ctx.fillStyle = d; ctx.fillRect(g0, 356, l, 16);                                                                // l'ombre des panneaux
+      for (const x of [70, 290]) { d = ctx.createRadialGradient(x, 400, 2, x, 400, 70); d.addColorStop(0, "rgba(255,255,255,.22)"); d.addColorStop(1, "rgba(255,255,255,0)"); ctx.fillStyle = d; ctx.save(); ctx.translate(0, 400); ctx.scale(1, 0.35); ctx.translate(0, -400); ctx.fillRect(g0, 200, l, 400); ctx.restore(); }
+      ctx.fillStyle = "rgba(255,251,242,.85)"; ctx.fillRect(g0, 366, l, 2); ctx.fillRect(g0, VO_SOL, l, 3);           // les lignes du terrain
+      ctx.fillStyle = "rgba(255,251,242,.5)"; ctx.beginPath(); ctx.moveTo(VO_FX - 1.5, 367); ctx.lineTo(VO_FX + 1.5, 367); ctx.lineTo(VO_FX + 2.5, VO_SOL); ctx.lineTo(VO_FX - 2.5, VO_SOL); ctx.fill();
+      texte(ctx, "LE SOL N'EST PAS UNE ÉTAGÈRE", 180, VO_SOL + 31, 11, "rgba(255,251,242,.6)");
       // Le tableau d'affichage, pendu au plafond.
-      trait(ctx, 2.4); ctx.beginPath(); ctx.moveTo(122, VO_HAUT); ctx.lineTo(122, 56); ctx.moveTo(238, VO_HAUT); ctx.lineTo(238, 56); ctx.stroke();
-      ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(84, 54, 192, 66, 10); ctx.fill();
+      ctx.strokeStyle = "#0D0228"; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(122, VO_HAUT); ctx.lineTo(122, 56); ctx.moveTo(238, VO_HAUT); ctx.lineTo(238, 56); ctx.stroke();
+      ctx.fillStyle = "#0D0228"; ctx.beginPath(); ctx.roundRect(84, 54, 192, 66, 10); ctx.fill();
       ctx.strokeStyle = Y; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(88.5, 58.5, 183, 57, 7); ctx.stroke();
       texte(ctx, "VOUS", 133, 69, 9, C); texte(ctx, "AUTOMATE", 227, 69, 9, C);
       const deux = (x, n, coul) => { const m = Math.min(99, n); chiffre(ctx, x - 18, 79, 15, 28, m > 9 ? Math.floor(m / 10) : -1, coul); chiffre(ctx, x + 3, 79, 15, 28, m % 10, coul); };
@@ -1804,20 +2007,14 @@
     }
     function dessiner() {
       ctx.fillStyle = N; ctx.fillRect(0, 0, W, VO_H);
-      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(VO_G, VO_HAUT, VO_D - VO_G, VO_SOL - VO_HAUT);                    // le mur de la salle
-      ctx.fillStyle = "rgba(143,199,232,.3)"; ctx.fillRect(VO_FX, VO_HAUT, VO_D - VO_FX, VO_SOL - VO_HAUT);     // le camp de l'automate
       decor();
-      // Le sol : c'est aussi là que se pose le doigt.
-      ctx.fillStyle = V; ctx.fillRect(VO_G, VO_SOL, VO_D - VO_G, VO_H - VO_SOL);
-      trait(ctx, 3); ctx.beginPath(); ctx.moveTo(VO_G, VO_SOL); ctx.lineTo(VO_D, VO_SOL); ctx.stroke();
-      texte(ctx, "LE SOL N'EST PAS UNE ÉTAGÈRE", 180, VO_SOL + 30, 11, PALE);
       // L'ombre de la poche aide à juger où elle retombe.
       const b = s.balle;
-      if (b) { const k = 1 - (VO_SOL - b.y) / (VO_SOL - VO_HAUT) * 0.6; ctx.fillStyle = "rgba(38,7,109,.22)"; ctx.beginPath(); ctx.ellipse(b.x, VO_SOL + 5, 13 * k, 3.5 * k, 0, 0, 6.3); ctx.fill(); }
+      if (b) { const k = 1 - (VO_SOL - b.y) / (VO_SOL - VO_HAUT) * 0.6; ctx.fillStyle = "rgba(13,2,40,.35)"; ctx.beginPath(); ctx.ellipse(b.x, VO_SOL + 6, 13 * k, 3.5 * k, 0, 0, 6.3); ctx.fill(); }
       // Le filet : un pied à perfusion.
       trait(ctx, 2.4); ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(VO_FX - 17, VO_SOL - 5, 34, 6, 3); ctx.fill();
       ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(VO_FX - VO_FE, VO_SOL - VO_FH - VO_FE, VO_FE * 2, VO_FH + VO_FE, VO_FE); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.arc(VO_FX - 9, VO_SOL - VO_FH + 5, 5, 0.2, Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(VO_FX + 9, VO_SOL - VO_FH + 5, 5, 0, Math.PI - 0.2); ctx.stroke();
+      ctx.strokeStyle = C; ctx.beginPath(); ctx.arc(VO_FX - 9, VO_SOL - VO_FH + 5, 5, 0.2, Math.PI); ctx.stroke(); ctx.beginPath(); ctx.arc(VO_FX + 9, VO_SOL - VO_FH + 5, 5, 0, Math.PI - 0.2); ctx.stroke();
       const vifJ = s.t - s.tape[0] < 0.12, vifA = s.t - s.tape[1] < 0.12;
       automate(s.ax, vifA);
       preparateur(s.x, VO_SOL - s.y, vifJ);
@@ -1833,7 +2030,7 @@
         const u = (s.t - s.impact.t) / 0.7;
         poche({ x: s.impact.x, y: VO_SOL - 9, tour: 1.57 });
         if (!calme) { ctx.strokeStyle = "rgba(38,7,109," + (0.5 * (1 - u)).toFixed(2) + ")"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(s.impact.x, VO_SOL + 4, 14 + 26 * u, 4 + 5 * u, 0, 0, 6.3); ctx.stroke(); }
-      } else if (!clos && s.t - s.msgT >= 1) texte(ctx, "Nouvelle poche…", 180, 150, 14, "rgba(38,7,109,.6)");
+      } else if (!clos && s.t - s.msgT >= 1) texte(ctx, "Nouvelle poche…", 180, 140, 14, "rgba(255,251,242,.85)");
       if (s.t < 5 && !clos) {
         ctx.globalAlpha = Math.min(1, 5 - s.t) * 0.92;
         ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(42, 196, 276, 48, 14); ctx.fill();
@@ -3537,11 +3734,11 @@
     const RSG = { series: 6, par: 3, recharge: 0.45, releve: 0.9, fin: 0.7, cx: 180, cy: 185, coeur: 0.2, septum: 0.62, capsule: 15, x0: 180, y0: 436, xmin: 16, xmax: 344, ymin: 48, ymax: 340, decal: 64,
       // Trois séquences, des seringues de plus en plus grosses : la petite file vite mais le flux l'emporte, la grosse tient tête au flux mais prend son temps (il faut viser plus en avance).
       // vol : durée du vol (s) ; cran : dérive latérale d'un cran de flux (px/s) ; k : échelle du dessin.
-      tailles: [{ nom: "1 mL", vol: 0.34, cran: 48, k: 0.78 }, { nom: "10 mL", vol: 0.42, cran: 34, k: 1 }, { nom: "50 mL", vol: 0.55, cran: 18, k: 1.3 }],
-      niv: [{ ser: 0, r: 34, ax: 60, ay: 0, wx: 0.75, wy: 0, vent: 1, raf: 0, wraf: 0 }, { ser: 0, r: 31, ax: 80, ay: 0, wx: 0.9, wy: 0, vent: -2, raf: 0, wraf: 0 },
-        { ser: 1, r: 30, ax: 85, ay: 25, wx: 0.9, wy: 1.4, vent: 2.5, raf: 0, wraf: 0 }, { ser: 1, r: 27, ax: 80, ay: 38, wx: 1, wy: 1.7, vent: -3, raf: 0, wraf: 0 },
-        { ser: 2, r: 27, ax: 85, ay: 40, wx: 1, wy: 1.7, vent: 3, raf: 0, wraf: 0 }, { ser: 2, r: 24, ax: 90, ay: 45, wx: 1.1, wy: 1.9, vent: -2, raf: 1.5, wraf: 1.6 }],
-      seuils: [100, 280, 450, 620, 790, 960, 1130, 1300, 1480, 1650] };
+      tailles: [{ nom: "1 mL", vol: 0.34, cran: 30, k: 0.78 }, { nom: "10 mL", vol: 0.42, cran: 22, k: 1 }, { nom: "50 mL", vol: 0.5, cran: 12, k: 1.3 }],
+      niv: [{ ser: 0, r: 34, ax: 60, ay: 0, wx: 0.75, wy: 0, vent: 1, raf: 0, wraf: 0 }, { ser: 0, r: 31, ax: 75, ay: 0, wx: 0.85, wy: 0, vent: -2, raf: 0, wraf: 0 },
+        { ser: 1, r: 30, ax: 80, ay: 22, wx: 0.8, wy: 1.2, vent: 2, raf: 0, wraf: 0 }, { ser: 1, r: 27, ax: 80, ay: 32, wx: 0.85, wy: 1.4, vent: -2.5, raf: 0, wraf: 0 },
+        { ser: 2, r: 27, ax: 75, ay: 34, wx: 0.8, wy: 1.3, vent: 3, raf: 0, wraf: 0 }, { ser: 2, r: 24, ax: 80, ay: 38, wx: 0.9, wy: 1.5, vent: -2, raf: 1, wraf: 1.6 }],
+      seuils: [120, 340, 540, 740, 940, 1140, 1320, 1480, 1630, 1730] };
     const SG_PAS = 1 / 240;
     const totalSeringue = () => RSG.series * RSG.par;
     const tailleSeringue = s => RSG.tailles[RSG.niv[s.serie].ser];
@@ -3670,8 +3867,9 @@
         window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
       };
       // La seringue vue de profil, embout vers la droite : poussoir, corps gradué à moitié plein, embout Luer et son bouchon. Pas d'aiguille.
-      const profil = (x, y, a, k, alpha) => {
-        ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.scale(k, k); ctx.globalAlpha = alpha;
+      // pointe : (x, y) désigne le bout de l'embout, et non le milieu du corps (en vol, c'est la pointe qui arrive au point d'impact).
+      const profil = (x, y, a, k, alpha, pointe) => {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.scale(k, k); if (pointe) ctx.translate(-28, 0); ctx.globalAlpha = alpha;
         trait(ctx, 3.2); ctx.beginPath(); ctx.moveTo(-34, 0); ctx.lineTo(-17, 0); ctx.stroke();
         trait(ctx, 2.2); ctx.fillStyle = V; ctx.beginPath(); ctx.roundRect(-38, -7, 5, 14, 2); ctx.fill(); ctx.stroke();
         ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-17, -7, 33, 14, 3); ctx.fill();
@@ -3696,7 +3894,7 @@
       const flaconCible = (x, y, r, serie, alpha) => {
         ctx.globalAlpha = alpha;
         ctx.strokeStyle = "rgba(38,7,109,.45)"; ctx.lineWidth = 6; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(x, 47); ctx.lineTo(x, y - r - 9); ctx.stroke();
-        trait(ctx, 2.4); ctx.fillStyle = V; ctx.beginPath(); ctx.roundRect(x - r - 9, y - r - 9, 2 * r + 18, 2 * r + 18, 12); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = "rgba(38,7,109,.45)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x, y, r + 6, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();   // la pince de l'automate : tout le disque du flacon rapporte
         trait(ctx, 3); ctx.fillStyle = B; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.3); ctx.fill(); ctx.stroke();
         trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(x, y, r * RSG.septum, 0, 6.3); ctx.fill(); ctx.stroke();
         ctx.strokeStyle = "rgba(38,7,109,.22)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r * (RSG.septum + RSG.coeur) / 2, 0, 6.3); ctx.stroke();
@@ -3735,8 +3933,8 @@
         } else {
           if (combo) {                                                                               // le flacon s'auréole tant que la série tient
             const b = calme ? 0 : Math.sin(s.t * 9) * 2.5;
-            ctx.globalAlpha = 0.85; ctx.strokeStyle = TEINTE; ctx.lineWidth = 4; ctx.beginPath(); ctx.roundRect(s.cx - s.r - 15 - b, s.cy - s.r - 15 - b, 2 * (s.r + 15 + b), 2 * (s.r + 15 + b), 17); ctx.stroke();
-            if (s.suite >= 4) { ctx.globalAlpha = 0.45; ctx.beginPath(); ctx.roundRect(s.cx - s.r - 22 - 2 * b, s.cy - s.r - 22 - 2 * b, 2 * (s.r + 22 + 2 * b), 2 * (s.r + 22 + 2 * b), 22); ctx.stroke(); }
+            ctx.globalAlpha = 0.85; ctx.strokeStyle = TEINTE; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(s.cx, s.cy, s.r + 13 + b, 0, 6.3); ctx.stroke();
+            if (s.suite >= 4) { ctx.globalAlpha = 0.45; ctx.beginPath(); ctx.arc(s.cx, s.cy, s.r + 20 + 2 * b, 0, 6.3); ctx.stroke(); }
             ctx.globalAlpha = 1;
           }
           flaconCible(s.cx, s.cy, s.r, s.serie, 1);
@@ -3794,7 +3992,7 @@
             ctx.globalAlpha = 0.6 - i * 0.12; ctx.fillStyle = TEINTE; ctx.beginPath(); ctx.arc(RSG.x0 + (v.ax - RSG.x0) * w + v.dx * w / u, RSG.y0 + (v.ay - RSG.y0) * w - Math.sin(w * Math.PI) * 16, (7 - i) * tl.k * (1 - 0.55 * w), 0, 6.3); ctx.fill();
           }
           ctx.globalAlpha = 1;
-          profil(RSG.x0 + (v.ax - RSG.x0) * u + v.dx, RSG.y0 + (v.ay - RSG.y0) * u - (calme ? 0 : Math.sin(u * Math.PI) * 16), Math.atan2(v.ay - RSG.y0, v.ax - RSG.x0), tl.k * (1 - 0.55 * u), 1);
+          profil(RSG.x0 + (v.ax - RSG.x0) * u + v.dx, RSG.y0 + (v.ay - RSG.y0) * u - (calme ? 0 : Math.sin(u * Math.PI) * 16), Math.atan2(v.ay - RSG.y0, v.ax - RSG.x0), tl.k * (1 - 0.55 * u), 1, true);
         }
         // La mire.
         if (!clos) {
@@ -3838,7 +4036,7 @@
             clos = true; lache(); annule();
             const n = noteSeringue(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
             const bilan = pl(s.septums, "seringue", "seringues") + " dans le septum sur " + pl(s.lances, "lancée", "lancées") + ", dont " + s.centres + " en plein centre : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (jusqu'à 100 points par seringue selon la précision ; 10 sur 10 à partir de " + RSG.seuils[9] + " points).";
-            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.points); }, 1300);
+            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.points, [[s.points, s.points > 1 ? "points" : "point"], [s.septums + "/" + s.lances, s.septums > 1 ? "septums piqués" : "septum piqué"], [s.centres, s.centres > 1 ? "pleins centres" : "plein centre"], ["×" + s.suiteMax, "meilleur combo"]]); }, 1300);
           }
         }
         dessiner();
@@ -3853,7 +4051,7 @@
 
   /* ----- Repère [minigolf] : le minigolf ----- */
   // Le minigolf de la paillasse : un parcours de cinq trous sur le green de l'unité de production. D'un coup de piston, on fait
-  // rouler un comprimé jusqu'au trou, entre portoirs, flacons, isolateur, flux laminaire, tapis collant, agitateur et bac jaune.
+  // rouler un comprimé jusqu'au trou, entre portoirs, flacons, isolateur, flux laminaire, tapis collant, agitateur et collecteur DASRI.
   // Tout le jeu vit dans ce bloc (cœur, dessin, inscription) : aucun nom ne déborde sur les jeux voisins.
   {
     /* --- Le cœur : règles et trajectoires, sans navigateur --- */
@@ -3861,14 +4059,14 @@
     // r : comprimé, rt : trou, ep : demi-épaisseur d'un portoir, fa et fb : frottement (constant et proportionnel), colle : frein du tapis,
     // vcap : au-delà, le comprimé saute le trou, k : px/s par px de piston tiré, gains : points d'un trou selon le nombre de coups (1, 2, 3...),
     // temps : points par seconde restante une fois le parcours bouclé, approche : points au plus pour un trou entamé mais pas fini.
-    const RM = { r: 7, rt: 13, ep: 4, x0: 12, x1: 348, y0: 50, y1: 470, vmax: 620, vmin: 70, fa: 120, fb: 1, colle: 4, rebond: 0.72, vcap: 300, arret: 10, pause: 1.1, k: 5.6, gains: [300, 230, 170, 120, 80, 50, 30, 20], temps: 1, approche: 40, sursis: 3, plafond: 2000, seuils: [120, 300, 470, 580, 660, 730, 800, 870, 960, 1060] };
+    const RM = { r: 7, rt: 13, ep: 4, x0: 12, x1: 348, y0: 50, y1: 470, vmax: 620, vmin: 70, fa: 120, fb: 1, colle: 4, rebond: 0.72, vcap: 300, arret: 10, pause: 1.1, k: 5.6, gains: [300, 230, 170, 120, 80, 50, 30, 20], temps: 1, approche: 40, sursis: 3, plafond: 2000, seuils: [100, 260, 420, 520, 590, 650, 710, 780, 860, 960] };
     const MG_PAS = 1 / 120;
     // Le parcours. d : départ, t : trou, par : nombre de coups de référence, murs : portoirs [x1, y1, x2, y2], flacons : [x, y, rayon],
     // blocs : isolateurs [x, y, largeur, hauteur], flux : flux laminaires [x, y, largeur, hauteur, ax, ay] (poussée en px/s²),
-    // tapis : tapis collants [x, y, largeur, hauteur], bacs : bacs jaunes à déchets [x, y, rayon] (comprimé perdu : un coup de pénalité),
+    // tapis : tapis collants [x, y, largeur, hauteur], bacs : collecteurs jaunes DASRI [x, y, rayon] (comprimé perdu : un coup de pénalité),
     // barre : agitateur magnétique [x, y, demi-longueur, vitesse en rad/s].
     const PLANS = [
-      { nom: "Le sas d'entrée", par: 2, d: [180, 432], t: [180, 105], murs: [[12, 285, 146, 285], [214, 285, 348, 285]], flacons: [[112, 150, 12], [248, 150, 12]], blocs: [], flux: [], tapis: [[60, 345, 70, 60], [230, 345, 70, 60]], bacs: [] },
+      { nom: "Le sas d'entrée", par: 2, d: [180, 432], t: [262, 108], murs: [[12, 285, 92, 285], [150, 285, 348, 285]], flacons: [[225, 200, 12], [305, 160, 12], [90, 150, 12]], blocs: [], flux: [], tapis: [[30, 345, 60, 55], [215, 345, 85, 60]], bacs: [] },
       { nom: "La chicane des portoirs", par: 3, d: [295, 430], t: [70, 105], murs: [[112, 345, 348, 345], [12, 215, 248, 215]], flacons: [[205, 282, 12], [150, 140, 12]], blocs: [], flux: [], tapis: [], bacs: [[322, 250, 15]] },
       { nom: "Sous le flux laminaire", par: 3, d: [300, 430], t: [70, 100], murs: [[180, 50, 180, 165]], flacons: [[120, 345, 12], [240, 345, 12]], blocs: [], flux: [[12, 215, 336, 80, 270, 0]], tapis: [], bacs: [[316, 110, 16]] },
       { nom: "Le tour de l'isolateur", par: 3, d: [180, 432], t: [180, 100], murs: [], flacons: [[70, 120, 12], [290, 120, 12]], blocs: [[112, 195, 136, 130]], flux: [], tapis: [[12, 215, 100, 90]], bacs: [], barre: [298, 260, 38, 1.7] },
@@ -3879,7 +4077,7 @@
       const p = PLANS[n];
       s.n = n; s.plan = p; s.b = { x: p.d[0], y: p.d[1], vx: 0, vy: 0, tour: 0 }; s.avant = { x: p.d[0], y: p.d[1] }; s.coups = 0; s.dedans = false; s.pause = 0;
     };
-    // carte : les coups joués sur chaque trou fini (la carte de score), penalites : les passages au bac jaune.
+    // carte : les coups joués sur chaque trou fini (la carte de score), penalites : les passages au DASRI.
     const creerMinigolf = () => { const s = { t: 0, acc: 0, points: 0, trous: 0, premiers: 0, coupsT: 0, penalites: 0, carte: [], approche: 0, bonus: 0, boucle: false, ev: null, evT: -9, choc: -9, saut: -9, bac: null, bacT: -9, fini: false }; installer(s, 0); return s; };
     const roule = s => s.b.vx !== 0 || s.b.vy !== 0;
     const pretMinigolf = (s, duree) => !s.fini && s.pause <= 0 && !roule(s) && s.t < duree;
@@ -3981,7 +4179,7 @@
           const v = Math.hypot(b.vx, b.vy), d = Math.hypot(b.x - p.t[0], b.y - p.t[1]);
           const bac = p.bacs.find(([x, y, r]) => Math.hypot(b.x - x, b.y - y) < r - 1);
           if (bac) {
-            // Dans le bac jaune : comprimé perdu. Un autre repart d'où le coup avait été joué, avec un coup de pénalité.
+            // Dans le DASRI : comprimé perdu. Un autre repart d'où le coup avait été joué, avec un coup de pénalité.
             s.bac = { x: bac[0], y: bac[1] }; s.bacT = s.t; s.coups++; s.coupsT++; s.penalites++;
             b.x = s.avant.x; b.y = s.avant.y; b.vx = b.vy = 0;
           } else if (d < RM.rt - 2 && v < RM.vcap) {
@@ -4025,7 +4223,7 @@
     const minigolf = (el, opt) => {
       const duree = opt.duree || 150, { cv, ctx, liberer } = monter(el, H);
       cv.style.touchAction = "none";
-      cv.setAttribute("aria-label", "Le minigolf de la paillasse. Un parcours de cinq trous : faites rouler le comprimé jusqu'au trou en le moins de coups possible, en évitant le bac jaune. Au doigt ou à la souris : appuyez, tirez en arrière comme un piston de seringue, puis lâchez. Au clavier : flèches gauche et droite pour la direction, haut et bas pour la force, Espace pour jouer.");
+      cv.setAttribute("aria-label", "Le minigolf de la paillasse. Un parcours de cinq trous : faites rouler le comprimé jusqu'au trou en le moins de coups possible, en évitant le collecteur DASRI. Au doigt ou à la souris : appuyez, tirez en arrière comme un piston de seringue, puis lâchez. Au clavier : flèches gauche et droite pour la direction, haut et bas pour la force, Espace pour jouer.");
       const s = creerMinigolf(), mm = q => typeof matchMedia === "function" && matchMedia(q).matches;
       const tactile = mm("(pointer: coarse)"), calme = mm("(prefers-reduced-motion: reduce)");
       if (typeof opt.espion === "function") opt.espion(s);                                         // pour le banc d'essai seulement
@@ -4107,13 +4305,13 @@
           ctx.strokeStyle = "rgba(255,251,242,.8)"; ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]); ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); ctx.setLineDash([]);
           etiquette("FLUX LAMINAIRE", x + w / 2, y + h - 10);
         }
-        // Le bac jaune à déchets : un comprimé qui y tombe est perdu.
+        // Le collecteur jaune DASRI : un comprimé qui y tombe est perdu.
         for (const [x, y, r] of p.bacs) {
           ctx.fillStyle = OMBRE; ctx.beginPath(); ctx.roundRect(x - r - 2, y - r, 2 * r + 8, 2 * r + 8, 7); ctx.fill();
           trait(ctx, 2.2); ctx.fillStyle = Y; ctx.beginPath(); ctx.roundRect(x - r - 4, y - r - 4, 2 * r + 8, 2 * r + 8, 7); ctx.fill(); ctx.stroke();
           ctx.fillStyle = "#3A2A10"; ctx.beginPath(); ctx.arc(x, y, r - 1, 0, 6.3); ctx.fill(); ctx.stroke();
           ctx.fillStyle = R; ctx.beginPath(); ctx.roundRect(x - r - 1, y - r - 1, 9, 5, 2); ctx.fill();
-          etiquette("BAC JAUNE", x, y + r + 14, R);
+          etiquette("DASRI", x, y + r + 14, R);
         }
         // Le trou, cerclé de blanc.
         const [tx, ty] = p.t;
@@ -4199,7 +4397,7 @@
           texte(ctx, "+" + s.ev.pts + " · " + motMinigolf(s.ev.coups, s.ev.par), x, y + 1, 14, bon ? Y : C);
         } else if (s.t - s.bacT < 1.3 && !clos) {
           ctx.fillStyle = "rgba(216,64,43,.94)"; ctx.beginPath(); ctx.roundRect(180 - 116, 62, 232, 28, 14); ctx.fill();
-          texte(ctx, "Dans le bac jaune : +1 coup", 180, 77, 13, C);
+          texte(ctx, "Dans le DASRI : +1 coup", 180, 77, 13, C);
         } else if (s.t - s.saut < 0.7 && !s.dedans && !clos) etiquette("Trop fort : il saute le trou", borne(tx, 80, W - 80), ty + 30);
         // Le nom du trou et son par, à l'arrivée sur le trou.
         if (!clos && !s.dedans && s.coups === 0 && s.coupsT > 0) {
@@ -4247,7 +4445,7 @@
           if (s.fini) {
             clos = true; lache(); annule();
             const n = noteMinigolf(s), pl = (k, un, des) => k + " " + (k > 1 ? des : un);
-            const bilan = (s.boucle ? "Parcours bouclé" : pl(s.trous, "trou fini", "trous finis") + " sur " + PLANS.length) + " en " + pl(s.coupsT, "coup", "coups") + (s.carte.length ? " (carte : " + s.carte.join(", ") + ")" : "") + (s.penalites ? ", dont " + pl(s.penalites, "pénalité", "pénalités") + " au bac jaune" : "") + (s.bonus ? ", " + pl(s.bonus, "point", "points") + " de temps" : "") + (s.approche ? ", " + pl(s.approche, "point", "points") + " d'approche" : "") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (par trou : " + RM.gains[0] + " points en un coup, " + RM.gains[1] + " en deux, " + RM.gains[2] + " en trois, puis de moins en moins).";
+            const bilan = (s.boucle ? "Parcours bouclé" : pl(s.trous, "trou fini", "trous finis") + " sur " + PLANS.length) + " en " + pl(s.coupsT, "coup", "coups") + (s.carte.length ? " (carte : " + s.carte.join(", ") + ")" : "") + (s.penalites ? ", dont " + pl(s.penalites, "pénalité", "pénalités") + " au DASRI" : "") + (s.bonus ? ", " + pl(s.bonus, "point", "points") + " de temps" : "") + (s.approche ? ", " + pl(s.approche, "point", "points") + " d'approche" : "") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (par trou : " + RM.gains[0] + " points en un coup, " + RM.gains[1] + " en deux, " + RM.gains[2] + " en trois, puis de moins en moins).";
             // Les quatre chiffres du tableau final commun : points, trous finis, coups joués sur le par de ces trous, temps restant.
             const fait = s.carte.reduce((a, c) => a + c, 0), ref = PLANS.slice(0, s.carte.length).reduce((a, q) => a + q.par, 0), reste = Math.max(0, Math.round(duree - s.t));
             const chiffres = [[s.points, s.points > 1 ? "points" : "point"], [s.trous + "/" + PLANS.length, s.trous > 1 ? "trous finis" : "trou fini"], s.carte.length ? [fait + "/" + ref, "coups/par"] : [s.coupsT, s.coupsT > 1 ? "coups" : "coup"], [reste + " s", reste > 1 ? "restantes" : "restante"]];

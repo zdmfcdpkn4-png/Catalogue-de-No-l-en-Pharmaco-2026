@@ -64,7 +64,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   const chiffres = await p.waitForSelector('.pj-fin-ch', { timeout: 6000 }).then(async h => { await p.waitForTimeout(500); await p.screenshot({ path: dir + '/minigolf-4-tableau.png' }); return h.evaluate(d => [...d.children].map(c => c.innerText.replace(/\s+/g, ' '))); }).catch(() => null);
   const souris = await fin(p); await p.screenshot({ path: dir + '/minigolf-4-fin.png' });
   const etatSouris = await etat(p); await p.evaluate(() => clearInterval(window.auto));
-  // 2. Au clavier : la visée part vers l'alvéole ; forcer, jouer : le comprimé doit partir (un coup compté) et, sur le premier trou, rentrer en un coup.
+  // 2. Au clavier : la visée part vers l'alvéole ; forcer, jouer : le comprimé doit partir (un coup compté).
   await lancer(p, 9); await p.mouse.move(2, 2);
   await p.keyboard.down('ArrowRight'); await p.waitForTimeout(300); await p.keyboard.up('ArrowRight');
   await p.screenshot({ path: dir + '/minigolf-5-clavier-visee.png' });

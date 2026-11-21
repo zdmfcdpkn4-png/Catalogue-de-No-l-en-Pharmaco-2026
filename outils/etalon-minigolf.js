@@ -7,7 +7,7 @@ const D = +(process.argv[3] || 150), K = +(process.argv[4] || 120);
 let g = 7; const alea = () => { g = (g * 1103515245 + 12345) & 0x7fffffff; return g / 0x7fffffff; };
 const gauss = () => (alea() + alea() + alea() + alea() - 2) * 1.7;
 // Le coup que le joueur voudrait jouer : il passe en revue des directions (tous les « pas » degrés) et des forces, imagine où
-// chaque coup finirait (rejoué sur une copie de la partie), et retient celui qui laisse le moins de chemin jusqu'au trou (le bac jaune est fui).
+// chaque coup finirait (rejoué sur une copie de la partie), et retient celui qui laisse le moins de chemin jusqu'au trou (le DASRI est fui).
 // Chaque coup est jugé avec ses deux voisins de direction : un coup qui ne passe qu'au degré près ne tente pas le joueur.
 const FORCES = [0.2, 0.3, 0.4, 0.5, 0.62, 0.75, 0.88, 1];
 const memo = new Map();
