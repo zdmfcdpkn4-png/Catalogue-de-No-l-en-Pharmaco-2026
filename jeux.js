@@ -2070,9 +2070,9 @@
      faire, on finit à sa hauteur, donc à 0. */
   // Le cœur. Distances en px (HA_M px pour un mètre), hauteurs comptées depuis le sol.
   const RH = { v0: 190, vmax: 285, acc: 7, g: 1800, saut: 420, seuil: 0.14, tenue: 0.34, gTenu: 150, chute: 0.8, tampon: 0.08, salto: 0.28, gain: 12, sur: 30, ecart: 270, serre: 60, flou: 120, double: 175, plein: 9000, palier: 0.55 };
-  const HA_PAS = 1 / 120, HA_M = 25, HA_DEMI = 7, HA_TAILLE = 44;
+  const HA_PAS = 1 / 120, HA_M = 25, HA_DEMI = 7, HA_TAILLE = 78;
   // w : longueur, h : hauteur à franchir ; grand : demande un grand saut ; sol : ne gêne que les pieds posés ; bas : hauteur libre sous un portique.
-  const HA_TYPES = { carton: { w: 26, h: 24 }, bidon: { w: 22, h: 28 }, chariot: { w: 54, h: 38, grand: 1 }, flaque: { w: 84, h: 1, sol: 1, grand: 1 }, portique: { w: 26, h: 24, bas: 100 } };
+  const HA_TYPES = { carton: { w: 26, h: 24 }, bidon: { w: 22, h: 28 }, chariot: { w: 54, h: 38, grand: 1 }, flaque: { w: 84, h: 1, sol: 1, grand: 1 }, portique: { w: 26, h: 24, bas: 134 } };
   // Même couloir pour tout le monde : le hasard est tiré d'une graine fixe. Les obstacles se resserrent avec la distance.
   function parcoursHaies(graine, longueur) {
     let a = graine || 20261224;
@@ -2267,34 +2267,67 @@
       }
       ctx.restore();
     }
-    // Le préparateur en blouse (charlotte, masque), son colis au logo de l'unité à bout de bras.
+    // Le préparateur en blouse (charlotte, masque, pyjama de bloc, sabots), son colis au logo de l'unité tenu devant lui.
+    // Repère local : les pieds à l'origine, la hanche à 34, le sommet de la charlotte à HA_TAILLE. Une jambe = cuisse + tibia.
+    let auSol = true, tPose = -9;
+    function jambe(a, pli, fond) {
+      const kx = Math.sin(a) * 17, ky = -34 + Math.cos(a) * 17, fx = kx + Math.sin(a - pli) * 17, fy = ky + Math.cos(a - pli) * 17;
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      for (const [coul, w] of [[N, 8.5], [fond, 4.5]]) { ctx.strokeStyle = coul; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(0, -34); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke(); }
+      ctx.save(); ctx.translate(fx, fy); ctx.rotate(-(a - pli) * 0.6); trait(ctx, 2); ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-4, -3.5, 12, 7, [3, 4, 2, 3]); ctx.fill(); ctx.stroke(); ctx.restore();   // le sabot
+    }
     function coureur() {
-      const tombe = s.arret > 0, k = tombe ? (calme ? 1 : Math.min(1, (s.t - s.tChute) / 0.16)) : 0, ph = s.x / 13, vif = s.sol && !tombe && !calme;
-      ctx.fillStyle = "rgba(38,7,109,.16)"; ctx.beginPath(); ctx.ellipse(HA_XJ + (tombe ? 20 * k : 0), HA_SOL + 3, 13 - Math.min(6, s.y / 14), 3.5, 0, 0, 6.3); ctx.fill();
-      ctx.save(); ctx.translate(HA_XJ, HA_SOL - s.y); ctx.rotate(1.3 * k);
-      if (s.salto && !calme) { ctx.translate(0, -22); ctx.rotate(6.2832 * Math.min(1, (s.t - s.salto.t0) / s.salto.d)); ctx.translate(0, 22); }   // le salto : un tour complet avant de retomber
-      ctx.strokeStyle = N; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.lineJoin = "round";
-      for (let i = 0; i < 2; i++) {                                                                    // les jambes
-        const a = ph + i * Math.PI, fx = !s.sol ? (i ? 9 : -8) : vif ? Math.sin(a) * 9 : (i ? 6 : -6), fy = !s.sol ? (i ? -9 : -5) : vif ? -Math.max(0, Math.cos(a)) * 6 : 0;
-        ctx.beginPath(); ctx.moveTo(0, -17); ctx.lineTo(fx, fy - 2.5); ctx.lineTo(fx + 4, fy - 2.5); ctx.stroke();
-      }
-      ctx.translate(0, vif ? -Math.abs(Math.sin(ph)) * 2 : 0);
+      const tombe = s.arret > 0, vif = s.sol && !tombe && !calme, ph = s.x / 16, tour = s.salto && !calme;
+      if (s.sol && !auSol) tPose = s.t; auSol = s.sol;
+      // À terre : il bascule en avant, puis se relève juste avant de repartir.
+      const k = tombe ? (calme ? 1 : Math.min(1, (s.t - s.tChute) / 0.16) * Math.min(1, s.arret / 0.22)) : 0;
+      const pose = vif ? Math.max(0, 1 - (s.t - tPose) / 0.13) : 0;                                      // l'amorti de la réception
+      ctx.fillStyle = "rgba(38,7,109,.16)"; ctx.beginPath(); ctx.ellipse(HA_XJ + 2 + 34 * k, HA_SOL + 3, Math.max(8, 20 - s.y / 8) + 14 * k, 4, 0, 0, 6.3); ctx.fill();
+      // Les deux jambes : [angle de la cuisse, pli du genou], l'avant du corps vers la droite.
+      let J1, J2;
+      if (tombe) { J1 = [0.25, 0.5]; J2 = [-0.3, 0.2]; }
+      else if (tour) { J1 = [1.25, 1.9]; J2 = [1.05, 1.9]; }                                             // groupé pendant le salto
+      else if (!s.sol) {
+        const m = borne(s.vy / RH.saut, -1, 1);                                                          // 1 à l'appel, -1 à la réception
+        J1 = [0.95 + 0.25 * m, 0.75 + 0.75 * m]; J2 = [-0.55 - 0.3 * m, 0.55 - 0.3 * m];                 // le genou d'attaque monte, la jambe d'appel traîne
+      } else if (vif) {
+        const f = i => { const p = ph + i * Math.PI; return [0.78 * Math.sin(p), 0.22 + 1.15 * Math.max(0, Math.cos(p)) + 0.5 * pose]; };
+        J1 = f(0); J2 = f(1);
+      } else { J1 = [0.4, 0.25]; J2 = [-0.4, 0.3]; }
+      const bas = j => -34 + Math.cos(j[0]) * 17 + Math.cos(j[0] - j[1]) * 17, leve = s.sol && !tombe ? -Math.max(bas(J1), bas(J2)) - 3.5 : 0;   // le pied le plus bas touche le sol
+      ctx.save(); ctx.translate(HA_XJ, HA_SOL - s.y + leve); ctx.rotate(1.35 * k);
+      if (tour) { ctx.translate(0, -40); ctx.rotate(6.2832 * Math.min(1, (s.t - s.salto.t0) / s.salto.d)); ctx.translate(0, 40); }   // le salto : un tour complet avant de retomber
+      jambe(J2[0], J2[1], V);
+      jambe(J1[0], J1[1], B);
+      // Le buste penche avec l'élan ; à l'appel il se redresse, à la réception il plonge un peu.
+      const penche = calme ? 0.1 : tombe ? 0.1 : !s.sol ? 0.16 - 0.1 * borne(s.vy / RH.saut, -1, 1) : 0.1 + 0.13 * Math.min(1, s.elan / (RH.vmax - RH.v0)) + 0.1 * pose;
+      ctx.translate(0, -34); ctx.rotate(penche); ctx.translate(0, 34);
+      const pan = vif ? 4 + 3 * Math.sin(ph * 2) : !s.sol ? 6 : 2, hop = vif ? Math.sin(ph * 2) * 1.2 : 0;
       trait(ctx, 2.4);
-      ctx.fillStyle = C; ctx.beginPath(); ctx.moveTo(-8, -28); ctx.quadraticCurveTo(-8, -33, -3, -33); ctx.lineTo(3, -33); ctx.quadraticCurveTo(8, -33, 8, -28); ctx.lineTo(9, -10); ctx.lineTo(-10, -10); ctx.closePath(); ctx.fill(); ctx.stroke();   // la blouse, pans ouverts
-      ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(4, -32); ctx.lineTo(1, -26); ctx.lineTo(2, -10); ctx.moveTo(-6, -18); ctx.lineTo(-2, -18); ctx.stroke();   // le revers, la fermeture, la poche
-      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-1, -28); ctx.lineTo(9, -22); ctx.stroke();
-      trait(ctx, 2); boite(6, -33, 19, 17, 3, C);                                                      // le colis
-      if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, 7.5, -32.5, 16, 16);
-      else { ctx.fillStyle = O; ctx.fillRect(13.5, -29, 4, 9); ctx.fillRect(11, -26.5, 9, 4); }
-      trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(1, -38.5, 6, 0, 6.3); ctx.fill(); ctx.stroke();                  // la tête
-      ctx.fillStyle = V; ctx.beginPath(); ctx.arc(0.5, -40, 7.2, Math.PI * 0.95, Math.PI * 2.05); ctx.closePath(); ctx.fill(); ctx.stroke();  // la charlotte
-      trait(ctx, 1.6); boite(3, -38.5, 5, 5, 1.5, B);                                                  // le masque
-      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(4.4, -40, 1.1, 0, 6.3); ctx.fill();
+      ctx.fillStyle = C; ctx.beginPath();                                                                // la blouse, dont le pan vole à l'arrière
+      ctx.moveTo(-9, -52); ctx.quadraticCurveTo(-9, -59, -2, -59); ctx.lineTo(5, -59); ctx.quadraticCurveTo(11, -59, 11, -52); ctx.lineTo(11, -27); ctx.lineTo(-6, -25);
+      ctx.quadraticCurveTo(-10 - pan, -22, -14 - pan, -27 + pan * 0.4); ctx.quadraticCurveTo(-11, -38, -9, -52); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(7, -58); ctx.lineTo(3, -49); ctx.lineTo(4, -27); ctx.moveTo(-6, -40); ctx.lineTo(0, -40); ctx.lineTo(0, -34); ctx.stroke();   // le revers, la fermeture, la poche
+      ctx.fillStyle = O; ctx.fillRect(-4.5, -44, 2, 5);                                                  // le stylo de la poche
+      ctx.fillStyle = C; trait(ctx, 2.2); ctx.beginPath(); ctx.roundRect(-1, -64, 7, 7, 2); ctx.fill(); ctx.stroke();   // le cou
+      trait(ctx, 2); boite(9, -61 + hop, 25, 23, 3, C);                                                  // le colis, serré contre lui
+      if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, 11, -60 + hop, 21, 21);
+      else { ctx.fillStyle = O; ctx.fillRect(19.5, -56 + hop, 4, 13); ctx.fillRect(15, -51.5 + hop, 13, 4); }
+      for (const [coul, w] of [[N, 8], [C, 4.2]]) { ctx.strokeStyle = coul; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(1, -54); ctx.lineTo(6, -43 + hop * 0.5); ctx.lineTo(17, -44 + hop); ctx.stroke(); }   // le bras, coude plié
+      trait(ctx, 2); ctx.fillStyle = B; ctx.beginPath(); ctx.arc(18, -44 + hop, 3.6, 0, 6.3); ctx.fill(); ctx.stroke();           // le gant
+      trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(3, -67, 8.5, 0, 6.3); ctx.fill(); ctx.stroke();                  // la tête
+      ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-4, -65); ctx.lineTo(6, -66); ctx.stroke();                                 // l'élastique du masque
+      trait(ctx, 1.8); boite(5.5, -68.5, 7.5, 8, 2.5, B);                                                // le masque
+      trait(ctx, 2.4); ctx.fillStyle = V; ctx.beginPath(); ctx.ellipse(1, -70.5, 11, 7.5, -0.12, Math.PI * 0.93, Math.PI * 2.07); ctx.closePath(); ctx.fill(); ctx.stroke();   // la charlotte, bouffante
+      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(7.2, -70.3, 1.4, 0, 6.3); ctx.fill();
+      ctx.lineWidth = 1.5; ctx.beginPath();
+      if (tombe) { ctx.moveTo(5, -73.5); ctx.lineTo(9.5, -72); } else { ctx.moveTo(5, -72.2); ctx.lineTo(9.5, -73.4); }   // le sourcil : décidé en course, penaud à terre
+      ctx.stroke();
       ctx.restore();
-      if (tombe && !calme) for (let i = 0; i < 3; i++) { const a = s.t * 7 + i * 2.1; texte(ctx, "✦", HA_XJ + 38 + Math.cos(a) * 13, HA_SOL - 34 + Math.sin(a) * 6, 12, O); }
-      if (!calme && !tombe && !s.salto && s.elan > 55) {                                                           // les traits de vitesse
+      if (tombe && !calme) for (let i = 0; i < 3; i++) { const a = s.t * 7 + i * 2.1; texte(ctx, "✦", HA_XJ + 70 + Math.cos(a) * 14, HA_SOL - 46 + Math.sin(a) * 7, 13, O); }
+      if (!calme && !tombe && !s.salto && s.elan > 55) {                                                 // les traits de vitesse
         ctx.strokeStyle = "rgba(38,7,109," + Math.min(0.5, 0.1 + 0.25 * (s.elan - 55) / 40) + ")"; ctx.lineWidth = 2;
-        for (let i = 0; i < 3; i++) { const y = HA_SOL - s.y - 12 - i * 11, l = 10 + ((s.t * 9 + i * 1.7) % 1) * 14; ctx.beginPath(); ctx.moveTo(HA_XJ - 16 - l, y); ctx.lineTo(HA_XJ - 16, y); ctx.stroke(); }
+        for (let i = 0; i < 3; i++) { const y = HA_SOL - s.y - 20 - i * 18, l = 12 + ((s.t * 9 + i * 1.7) % 1) * 16; ctx.beginPath(); ctx.moveTo(HA_XJ - 26 - l, y); ctx.lineTo(HA_XJ - 26, y); ctx.stroke(); }
       }
     }
     function dessiner() {
@@ -2305,7 +2338,7 @@
         if (x > W + 30) break;
         if (o.touche && o.quand === undefined) o.quand = s.t;
         obstacle(o, x);
-        if (o.aide && !o.touche && x + o.w > HA_XJ) pastille(o.bas ? "SAUT BREF" : "MAINTENIR", x + o.w / 2, o.bas ? HA_SOL - o.bas - 40 : HA_SOL - 104);
+        if (o.aide && !o.touche && x + o.w > HA_XJ) pastille(o.bas ? "SAUT BREF" : "MAINTENIR", x + o.w / 2, o.bas ? HA_SOL - o.bas - 40 : HA_SOL - 150);
       }
       coureur();
       ctx.fillStyle = "rgba(38,7,109,.5)"; texte(ctx, "ÉLAN", 10, HA_H - 12, 9, "rgba(38,7,109,.6)", "left");   // la jauge d'élan
