@@ -459,10 +459,15 @@
     const surTouche = e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); agir(); } };
     cv.addEventListener("pointerdown", surClic);
     cv.addEventListener("keydown", surTouche);
+    // Les quatre chiffres de la partie pour le tableau final : flacons, strikes, spares, meilleure série.
+    function chiffres() {
+      const sommes = feuille.map(f => f[0] + (f[1] || 0)), x = feuille.filter(f => f[0] === 10).length, sp = feuille.filter(f => f.length === 2 && f[0] + f[1] === 10).length;
+      return [[total, total > 1 ? "flacons renversés" : "flacon renversé"], [x, x > 1 ? "strikes" : "strike"], [sp, sp > 1 ? "spares" : "spare"], [Math.max(0, ...sommes) + "/10", "meilleure série"]];
+    }
     function finir() {
       if (clos) return;
       clos = true; phase = "fin";
-      setTimeout(() => { arret(); liberer(); opt.onFin(noteBowling(total), total === 10 * SERIES ? "Lot parfait : les " + total + " flacons sont tombés." : total + (total > 1 ? " flacons renversés" : " flacon renversé") + " sur " + 10 * SERIES + ".", total); }, 1100);
+      setTimeout(() => { arret(); liberer(); opt.onFin(noteBowling(total), total === 10 * SERIES ? "Lot parfait : les " + total + " flacons sont tombés." : total + (total > 1 ? " flacons renversés" : " flacon renversé") + " sur " + 10 * SERIES + ".", total, chiffres()); }, 1100);
     }
     function dessiner() {
       ctx.fillStyle = "#F4F2F8"; ctx.fillRect(0, 0, W, HB);
