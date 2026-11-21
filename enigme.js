@@ -427,6 +427,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       enregistrer: async a => {
         let r;
         try { r = await call({ code: mem.code, prenom: mem.prenom, action: "profil", avatar: a }); } catch (e) { r = { status: 0, j: {} }; }
+        if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "La fiche d'identification reste sous scellé jusqu'à l'ouverture du calendrier, le 1er décembre." };
         if (r.status === 403 && r.j.error === "complet") return { ok: false, message: "Le calendrier affiche complet : plus de place pour un nouveau joueur." };
         if (r.status !== 200 || !r.j.profil) return { ok: false };
         E = r.j;

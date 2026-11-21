@@ -297,6 +297,8 @@ async function handler(req, res) {
     const cle = norm(prenom);
     // Fiche d'identification : l'avatar choisi par le joueur (liste fermée), la brigade tirée par le serveur, une fois pour toutes.
     if (b.action === 'profil') {
+      // Sous scellé jusqu'à l'ouverture du calendrier, le 1er décembre : ni fiche ni tirage avant.
+      if (jour < 1) return res.status(403).json({ error: 'scellee' });
       if (!avatarOk(b.avatar)) return res.status(400).json({ error: 'avatar' });
       const s = await modifier(joueurs => {
         if (!joueurs[cle]) {
