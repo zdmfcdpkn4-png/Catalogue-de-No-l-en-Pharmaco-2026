@@ -1951,6 +1951,9 @@
   // (mur et sol unis), le coureur ne s'agite pas et seuls les obstacles avancent.
   const HA_H = 330, HA_SOL = 262, HA_XJ = 78, HA_HAUT = 66;
   const HA_PORTES = ["ONCO", "HÉMATO", "GASTRO", "PNEUMO"];   // les services à livrer, sur les pancartes des portes
+  // Les affiches du couloir : un jeu de société, une consigne de bonnes pratiques. [dessin, couleur du fond, trois lignes]
+  const HA_AFFICHES = [["de", O, "ON NE JOUE", "PAS LES DOSES", "AUX DÉS"], ["meeple", B, "MEEPLE", "EN CHARLOTTE,", "MEEPLE ADMIS"], ["cartes", P, "PAS DE BLUFF", "À LA", "LIBÉRATION"],
+    ["pion", G, "ÉCHEC ET MAT", "AUX GERMES", "EN 3 COUPS"], ["sablier", Y, "LE SABLIER", "N'EST PAS UN", "CHRONO VALIDÉ"], ["domino", V, "DOUBLE SIX ?", "DOUBLE", "CONTRÔLE !"]];
   const HA_MOTS = { carton: "Carton renversé !", bidon: "Aïe, le bidon !", chariot: "Chariot percuté !", flaque: "Ça glisse !", portique: "Carton renversé !" };
   function haies(el, opt) {
     const duree = opt.duree || 50, { cv, ctx, liberer } = monter(el, HA_H);
@@ -1995,6 +1998,7 @@
           boite(x + 20, HA_SOL - 98, 24, 24, 12, C); ctx.fillStyle = N; ctx.fillRect(x + 52, HA_SOL - 62, 5, 14);
           trait(ctx, 2.4); boite(x - 6, HA_SOL - 146, 76, 20, 5, C); texte(ctx, HA_PORTES[i % HA_PORTES.length], x + 32, HA_SOL - 135.5, 12, N);   // la pancarte du service
         }
+        for (let i = Math.max(0, Math.floor((cam - 100) / 560)); i * 560 + 20 < cam + W; i++) affiche(HA_AFFICHES[i % HA_AFFICHES.length], i * 560 + 14 - cam, 94);
         for (let i = Math.max(1, Math.floor(cam / (50 * HA_M))); i * 50 * HA_M < cam + W + 40; i++) {   // un repère tous les 50 m
           const x = i * 50 * HA_M - cam;
           ctx.strokeStyle = "rgba(38,7,109,.35)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, HA_SOL + 4); ctx.lineTo(x - 22, HA_H - 6); ctx.stroke();
@@ -2003,6 +2007,30 @@
       }
       ctx.strokeStyle = "rgba(38,7,109,.25)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, HA_SOL - 44); ctx.lineTo(W, HA_SOL - 44); ctx.moveTo(0, HA_HAUT); ctx.lineTo(W, HA_HAUT); ctx.stroke();
       trait(ctx, 3); ctx.beginPath(); ctx.moveTo(0, HA_SOL); ctx.lineTo(W, HA_SOL); ctx.stroke();
+    }
+    function affiche(a, x, y) {
+      trait(ctx, 2.2); boite(x, y, 76, 76, 3, C);
+      ctx.fillStyle = a[1]; ctx.fillRect(x + 4, y + 4, 68, 36);
+      const cx = x + 38, cy = y + 22;
+      trait(ctx, 2);
+      if (a[0] === "de") { boite(cx - 11, cy - 11, 22, 22, 5, C); ctx.fillStyle = N; for (const [dx, dy] of [[-5, -5], [5, 5], [0, 0], [-5, 5], [5, -5]]) { ctx.beginPath(); ctx.arc(cx + dx, cy + dy, 1.9, 0, 6.3); ctx.fill(); } }
+      else if (a[0] === "meeple") {
+        ctx.fillStyle = O; ctx.beginPath(); ctx.moveTo(cx - 12, cy + 14); ctx.lineTo(cx - 6, cy + 2); ctx.lineTo(cx - 14, cy - 1); ctx.lineTo(cx - 12, cy - 6); ctx.lineTo(cx - 4, cy - 5); ctx.arc(cx, cy - 8, 5, Math.PI * 0.8, Math.PI * 0.2); ctx.lineTo(cx + 12, cy - 6); ctx.lineTo(cx + 14, cy - 1); ctx.lineTo(cx + 6, cy + 2); ctx.lineTo(cx + 12, cy + 14); ctx.lineTo(cx + 3, cy + 14); ctx.lineTo(cx, cy + 8); ctx.lineTo(cx - 3, cy + 14); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = C; ctx.beginPath(); ctx.arc(cx, cy - 9.5, 6.5, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();                 // sa charlotte
+      } else if (a[0] === "cartes") {
+        for (const [r, dx, coul] of [[-0.3, -6, C], [0.25, 6, Y]]) { ctx.save(); ctx.translate(cx + dx, cy); ctx.rotate(r); boite(-8, -12, 16, 24, 3, coul); ctx.fillStyle = R; ctx.beginPath(); ctx.roundRect(-5, -2, 10, 5, 2.5); ctx.fill(); ctx.restore(); }
+      } else if (a[0] === "pion") {
+        ctx.fillStyle = C; ctx.beginPath(); ctx.moveTo(cx - 9, cy + 13); ctx.lineTo(cx - 4, cy - 2); ctx.lineTo(cx + 4, cy - 2); ctx.lineTo(cx + 9, cy + 13); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy - 7, 6, 0, 6.3); ctx.fill(); ctx.stroke();
+      } else if (a[0] === "sablier") {
+        ctx.fillStyle = C; ctx.beginPath(); ctx.moveTo(cx - 9, cy - 13); ctx.lineTo(cx + 9, cy - 13); ctx.lineTo(cx + 1.5, cy); ctx.lineTo(cx + 9, cy + 13); ctx.lineTo(cx - 9, cy + 13); ctx.lineTo(cx - 1.5, cy); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = O; ctx.beginPath(); ctx.moveTo(cx - 6, cy + 12); ctx.lineTo(cx, cy + 5); ctx.lineTo(cx + 6, cy + 12); ctx.closePath(); ctx.fill();
+      } else {
+        ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.2); boite(-17, -9, 34, 18, 3, C); ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(0, 9); ctx.stroke();
+        ctx.fillStyle = N; for (const sx of [-8.5, 8.5]) for (const dx of [-4, 0, 4]) for (const dy of [-4, 4]) { ctx.beginPath(); ctx.arc(sx + dx, dy, 1.4, 0, 6.3); ctx.fill(); }
+        ctx.restore();
+      }
+      for (let i = 0; i < 3; i++) texte(ctx, a[2 + i], cx, y + 48 + i * 9, 7.5, N);
     }
     function carton(x, w, h) {
       boite(x, HA_SOL - h, w, h, 2, "#E0B77A");
