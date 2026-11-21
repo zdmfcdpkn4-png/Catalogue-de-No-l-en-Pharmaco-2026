@@ -408,6 +408,11 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     const P = !relecture && E && E.profil, bouton = q("#egAvatar");
     bouton.hidden = !(P && P.a);
     q("#egBrigade").hidden = !(P && P.a && P.b !== undefined);
+    // Avant l'ouverture du calendrier : la rubrique est annoncée, sous scellé comme les portes, sans rien d'actif.
+    const scelle = !relecture && E && E.choix && E.choix.etat === "avenir";
+    q("#egBrig").className = scelle ? "eg-hint" : "pp-brig";
+    q("#egBrig").style.margin = scelle ? "6px 0 10px" : "";
+    if (scelle) { q("#egBrig").innerHTML = CADENAS + " Fiche d'identification, avatar et brigades : sous scellé jusqu'au " + jour(dt(E.portes[0].ouvre)) + "."; q("#egBrig").hidden = false; return; }
     if (!P) { q("#egBrig").hidden = true; return; }
     chargerParticipants().then(() => {
       if (!E || E.profil !== P) return;
