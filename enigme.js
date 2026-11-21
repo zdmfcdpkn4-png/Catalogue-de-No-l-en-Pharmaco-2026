@@ -218,7 +218,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 .eg-nm{min-width:0;font-weight:800;overflow-wrap:anywhere}
 .eg-pt{font:600 .78rem var(--mono);white-space:nowrap}
 .eg-list .eg-row.me{background:var(--tI);box-shadow:inset 5px 0 0 var(--line)}
-.eg-vous{display:inline-block;white-space:nowrap;margin-left:8px;padding:1px 7px;background:var(--pressed);color:var(--pressed-on);border-radius:999px;font:600 .66rem var(--mono);letter-spacing:.05em;text-transform:uppercase}
+.eg-vous{display:inline-block;white-space:nowrap;margin-left:8px;padding:1px 7px;background:var(--pressed);color:var(--pressed-on);border-radius:999px;font:600 .68rem var(--mono);letter-spacing:.05em;text-transform:uppercase}
 .eg-gap{padding:2px 12px;background:var(--foil-a);text-align:center;font:600 .72rem var(--mono);color:var(--muted)}
 .eg-more{margin:0;text-align:center}
 @media(min-width:861px){.eg-rules{grid-template-columns:1fr 1fr;gap:11px 30px}.eg-rbody.duo{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}}

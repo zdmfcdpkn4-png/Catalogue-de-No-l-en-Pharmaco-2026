@@ -60,7 +60,7 @@
 .vt-sub{margin:20px 0 0;font:600 .72rem var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .vt-formes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 0;padding:0;list-style:none}
 .vt-formes li{min-width:0;padding:8px 10px;background:#fff;border:2.5px solid var(--line);border-radius:12px}
-.vt-formes small{display:block;font:600 .66rem var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.vt-formes small{display:block;font:600 .68rem var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .vt-formes b{display:block;margin-top:2px;font-weight:800;line-height:1.15;overflow-wrap:anywhere}
 .vt-formes span{font:600 .74rem var(--mono)}
 .vt-formes li.vide b{font-weight:600;color:var(--muted)}
