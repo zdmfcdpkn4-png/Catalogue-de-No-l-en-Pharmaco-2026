@@ -116,7 +116,7 @@ function profil(nom, p) {
 console.log('pastilles, ' + DUREE + ' s, ' + K + ' parties :', JSON.stringify(RE));
 // reflexion : pause avant chaque nouveau projet ; retard : hésitation entre la pose et la fuite ; marge : avance gardée sur la mousse ;
 // bevue : fuite du mauvais côté ; erreur : déplacement ou pose pour rien ; prudent : attend la fin de la mousse avant de repartir.
-profil('adroit', { reflexion: 0.15, retard: 0.1, marge: 0.25, bevue: 0.02, erreur: 0.02, vue: 2, tube: 2, prudent: false });
+profil('adroit', { reflexion: 0.15, retard: 0.1, marge: 0.25, bevue: 0.02, erreur: 0.02, vue: 2, tube: 3, prudent: false });
 profil('moyen', { reflexion: 0.55, retard: 0.3, marge: 0.15, bevue: 0.1, erreur: 0.1, vue: 1, tube: 1, prudent: true });
 profil('maladroit', { reflexion: 1.1, retard: 0.5, marge: 0.05, bevue: 0.22, erreur: 0.2, vue: 0, tube: 1, prudent: true });
 profil('immobile', null);
