@@ -875,7 +875,13 @@ function openBag(){
   setTimeout(()=>{[b,col].forEach(e=>e.classList.remove("rolling"));rolling=false},1500);
   setTimeout(()=>{if(!rolling)bu.innerHTML=""},1960);
 }
-function goTo(id){const el=document.getElementById("jeu-"+String(id).padStart(3,"0"));if(!el)return;el.querySelector("details").open=true;el.scrollIntoView({block:"start"});el.classList.remove("hit");void el.offsetWidth;el.classList.add("hit")}
+/* « Voir la plaquette » montre toujours la fiche : si une autre page est ouverte (sapin, palmarès, Pharmacogames), on revient d'abord
+   au catalogue en vidant l'ancre ; si la fiche n'est pas dans la liste affichée, on ouvre son onglet, filtres remis à zéro. */
+function goTo(id){
+  const g=G.find(x=>x.id===id),ref="jeu-"+String(id).padStart(3,"0");if(!g)return;
+  const aller=()=>{let el=document.getElementById(ref);if(!el){Object.assign(S,DEF,{cat:g.c});render();rxBar();el=document.getElementById(ref)}if(!el)return;el.querySelector("details").open=true;el.scrollIntoView({block:"start"});el.classList.remove("hit");void el.offsetWidth;el.classList.add("hit")};
+  if($("main").hidden){window.addEventListener("hashchange",()=>setTimeout(aller,0),{once:true});location.hash=""}else aller();
+}
 function rxText(){
   const it=G.filter(g=>RX.has(g.n)),tot=it.reduce((a,g)=>a+(g.p||0),0);
   return "ORDONNANCE DE NOËL 2026\nPharmacotechnie ludique\nPrescripteur : le Père Noël\n\n"+it.map((g,i)=>(i+1)+". "+g.n+" ("+g.e+") : "+(g.p==null?"prix à venir":euro(g.p))+"\n   "+players(g)+", "+g.d+". Une boîte, à renouveler à volonté.").join("\n")+"\n\nTotal : "+euro(tot)+"\nNon remboursable. À conserver hors de portée des mauvais perdants.";
