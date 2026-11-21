@@ -2450,7 +2450,7 @@
     const notePastilles = s => Math.min(10, Math.floor(s.score / RE.palier));
 
     /* ----- Les pastilles effervescentes : dessin et commandes ----- */
-    const HP = 540, T = 32, X0 = 4, Y0 = 46, BAS = Y0 + NR * T + 6, KRAFT = "#CC9A5E", RUBAN = "#EBCB97", SOL = "#F3EFE3";
+    const HP = 540, T = 32, X0 = 4, Y0 = 54, BAS = Y0 + NR * T + 6, HE = 12, HC = 8, KRAFT = "#C08A4E", RUBAN = "#EBCB97";   // HE, HC : hauteur des étagères et des cartons
     const PAD = { x: 92, y: 472, pas: 43, t: 40 }, BTN = { x: 272, y: 474, r: 46 };
     const pastilles = (el, opt) => {
       const duree = opt.duree || 60, { cv, ctx, liberer } = monter(el, HP);
@@ -2494,118 +2494,162 @@
         cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointermove", bouge); cv.removeEventListener("pointerup", relache); cv.removeEventListener("pointercancel", relache); cv.removeEventListener("contextmenu", menu);
         window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", perdu);
       };
+      // Vue en volume : chaque objet a un dessus et une face avant, une ombre portée au sol, et tout est dessiné rangée par
+      // rangée, du fond vers l'avant, pour que ce qui est devant cache ce qui est derrière.
       const rond = (x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 6.3); };
-      const bulles = (x, y, k, t, coul) => {                                     // un paquet de mousse : quelques bulles autour d'un point
+      const ombre = (x, y, rx, ry, a) => { ctx.fillStyle = "rgba(38,7,109," + (a || 0.2) + ")"; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 6.3); ctx.fill(); };
+      const bloc = (x, y, h, dessus, face) => {                            // un pavé posé sur la case : face avant, puis dessus décalé de sa hauteur
+        trait(ctx, 2);
+        ctx.fillStyle = face; ctx.beginPath(); ctx.roundRect(x - 14, y - 13 - h, 28, 27 + h, 4); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = dessus; ctx.beginPath(); ctx.roundRect(x - 14, y - 13 - h, 28, 27, 4); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.beginPath(); ctx.roundRect(x - 11, y - 10.5 - h, 22, 3, 1.5); ctx.fill();   // le reflet de l'arête
+      };
+      const bulles = (x, y, k, t, coul) => {                               // un paquet de mousse : quelques bulles rondes, avec leur reflet
+        ombre(x + 2, y + 10, 13 * t, 4 * t, 0.12);
         for (let i = 0; i < 6; i++) {
-          const a = i * 1.05 + k, d = i ? 8.5 : 0, r = (i ? 5.5 + (i * 7 + k) % 3 : 8) * t;
+          const a = i * 1.05 + k, d = i ? 8.5 : 0, r = (i ? 5.5 + (i * 7 + k) % 3 : 8) * t, bx = x + Math.cos(a) * d, by = y - 3 + Math.sin(a) * d * 0.8;
           ctx.fillStyle = i % 2 ? "#fff" : coul ? coul[(i + k) % 4] : "#E4F3FB"; ctx.strokeStyle = coul ? N : B; ctx.lineWidth = coul ? 1.2 : 1.4;
-          rond(x + Math.cos(a) * d, y + Math.sin(a) * d, r); ctx.fill(); ctx.stroke();
+          rond(bx, by, r); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = "rgba(255,255,255,.85)"; rond(bx - r * 0.32, by - r * 0.36, r * 0.24); ctx.fill();
         }
       };
       // Les éclaboussures : des gouttes aux couleurs du logo, lancées de la pastille vers le bout de chaque bras de mousse.
       const eclabousser = (m, u) => {
-        const x0 = cx(m.c), y0 = cy(m.r);
+        const x0 = cx(m.c), y0 = cy(m.r) - 3;
         m.cases.forEach((k, i) => {
-          const dx = kx(k) - x0, dy = ky(k) - y0, loin = Math.hypot(dx, dy), n = i ? 3 : 8;
+          const dx = kx(k) - x0, dy = ky(k) - 3 - y0, loin = Math.hypot(dx, dy), n = i ? 3 : 8;
           for (let g = 0; g < n; g++) {
             const a = i ? Math.atan2(dy, dx) + (g - 1) * 0.5 : g * Math.PI / 4 + 0.39, r0 = i ? loin - 14 + u * 12 : 8 + u * 6, long = (i ? 15 : 11) + (k + g) % 3 * 3;
-            ctx.save(); ctx.translate(x0, y0); ctx.globalAlpha = Math.min(1, 4 * (1 - u)); goutte(ctx, a, r0, r0 + long * Math.min(1, 0.4 + u * 2), 7, TEINTES[(k + g + i) % 4]); ctx.restore();
+            ctx.save(); ctx.translate(x0, y0 - Math.sin(Math.PI * u) * 5); ctx.globalAlpha = Math.min(1, 4 * (1 - u)); goutte(ctx, a, r0, r0 + long * Math.min(1, 0.4 + u * 2), 7, TEINTES[(k + g + i) % 4]); ctx.restore();
           }
         });
       };
       const etagere = (x, y) => {
-        trait(ctx, 2); ctx.fillStyle = V; ctx.beginPath(); ctx.roundRect(x - 14, y - 14, 28, 28, 4); ctx.fill(); ctx.stroke();
-        ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 14, y - 4); ctx.lineTo(x + 14, y - 4); ctx.moveTo(x - 14, y + 6); ctx.lineTo(x + 14, y + 6); ctx.stroke();
-        ctx.fillStyle = N; ctx.fillRect(x - 9, y - 10, 4, 6); ctx.fillRect(x + 2, y, 4, 6); ctx.fillStyle = C; ctx.fillRect(x - 2, y - 10, 4, 6); ctx.fillRect(x - 8, y, 4, 6);
+        bloc(x, y, HE, "#D3C6F7", V);
+        ctx.strokeStyle = N; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(x - 14, y + 14 - HE + 6); ctx.lineTo(x + 14, y + 14 - HE + 6); ctx.stroke();   // la tablette de la face avant
+        ctx.fillStyle = N; ctx.fillRect(x - 9, y + 15 - HE, 4, 4.5); ctx.fillRect(x + 4, y + 8, 4, 4.5); ctx.fillStyle = C; ctx.fillRect(x - 3, y + 15 - HE, 4, 4.5); ctx.fillRect(x - 7, y + 8, 4, 4.5);
+        ctx.fillStyle = Y; ctx.fillRect(x + 4, y + 15 - HE, 4, 4.5);
+        ctx.fillStyle = "rgba(38,7,109,.5)"; ctx.fillRect(x - 9, y - 9 - HE + 6, 7, 9); ctx.fillStyle = C; ctx.fillRect(x + 1, y - 9 - HE + 4, 8, 6); ctx.fillStyle = O; ctx.fillRect(x + 2, y - HE + 4, 6, 6);   // ce qui traîne sur le dessus
       };
       const carton = (x, y, k) => {
-        ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-        trait(ctx, 2); ctx.fillStyle = KRAFT; ctx.beginPath(); ctx.roundRect(-13, -12, 26, 25, 3); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = RUBAN; ctx.fillRect(-3.5, -11, 7, 23);
-        ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-13, -4); ctx.lineTo(13, -4); ctx.stroke();
+        const haut = (1 - k) * 34;                                         // à la livraison, il tombe du haut
+        ctx.save(); ctx.translate(x, y - haut); ctx.globalAlpha = Math.min(1, 0.3 + k);
+        bloc(0, 0, HC, "#DDB077", KRAFT);
+        ctx.fillStyle = RUBAN; ctx.fillRect(-3.5, -12 - HC, 7, 25 + HC);
+        ctx.strokeStyle = N; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-14, 14 - HC); ctx.lineTo(14, 14 - HC); ctx.moveTo(-13, -HC); ctx.lineTo(-3.5, -HC); ctx.moveTo(3.5, -HC); ctx.lineTo(13, -HC); ctx.stroke();   // l'arête et les rabats
         ctx.restore();
       };
       const pastille = q => {
-        const x = cx(q.c), y = cy(q.r), f = 1 - q.t / RE.delai, chute = calme ? 0 : Math.max(0, 1 - (RE.delai - q.t) / 0.14), k = calme ? 1 : 1 + Math.sin(s.t * (8 + 22 * f)) * 0.1 + chute * 0.7;
-        if (!calme) for (let i = 0; i < 4; i++) { const u = (s.t * 1.6 + i * 0.25 + q.k * 0.13) % 1; ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.strokeStyle = B; ctx.lineWidth = 1; rond(x + Math.sin(i * 2.4 + q.k) * 9, y - 4 - u * 14, 1.5 + f * 2 * (1 - u)); ctx.fill(); ctx.stroke(); }
-        ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-        ctx.globalAlpha = 1 - chute * 0.5;
-        trait(ctx, 2); ctx.fillStyle = "#fff"; rond(0, 0, 10.5); ctx.fill();
-        if (logo.complete && logo.naturalWidth) { ctx.save(); ctx.clip(); ctx.drawImage(logo, -10.5, -10.5, 21, 21); ctx.restore(); rond(0, 0, 10.5); }
-        else { ctx.lineWidth = 1.5; ctx.moveTo(-6, 0); ctx.lineTo(6, 0); }
+        const x = cx(q.c), y = cy(q.r), f = 1 - q.t / RE.delai, chute = calme ? 0 : Math.max(0, 1 - (RE.delai - q.t) / 0.16), k = calme ? 1 : 1 + Math.sin(s.t * (8 + 22 * f)) * 0.08;
+        ombre(x + 2, y + 7, 12 - chute * 5, 4.5 - chute * 2, 0.22);
+        ctx.strokeStyle = O; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.beginPath(); ctx.ellipse(x, y + 4, 15, 9.5, 0, -Math.PI / 2, -Math.PI / 2 + 6.283 * f); ctx.stroke();   // le délai qui s'écoule, tracé au sol
+        if (!calme) for (let i = 0; i < 4; i++) { const u = (s.t * 1.6 + i * 0.25 + q.k * 0.13) % 1; ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.strokeStyle = B; ctx.lineWidth = 1; rond(x + Math.sin(i * 2.4 + q.k) * 9, y - 8 - u * 14, 1.5 + f * 2 * (1 - u)); ctx.fill(); ctx.stroke(); }
+        ctx.save(); ctx.translate(x, y - chute * 26); ctx.scale(k, k);
+        trait(ctx, 2); ctx.fillStyle = "#CFC8E6"; rond(0, 2, 10.5); ctx.fill(); ctx.stroke();                              // la tranche du comprimé
+        ctx.fillStyle = "#fff"; rond(0, -2, 10.5); ctx.fill();
+        if (logo.complete && logo.naturalWidth) { ctx.save(); ctx.clip(); ctx.drawImage(logo, -10.5, -12.5, 21, 21); ctx.restore(); rond(0, -2, 10.5); }
+        else { ctx.lineWidth = 1.5; ctx.moveTo(-6, -2); ctx.lineTo(6, -2); }
         ctx.stroke();
-        ctx.strokeStyle = O; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 14, -Math.PI / 2, -Math.PI / 2 + 6.283 * f); ctx.stroke();   // le délai qui s'écoule
         ctx.restore();
       };
       const germe = g => {
-        const q = posDe(g), eclot = g.attente > 0, r = eclot ? 5.5 : 8.5;
-        ctx.save(); ctx.translate(cx(q[0]), cy(q[1]));
+        const q = posDe(g), eclot = g.attente > 0, r = eclot ? 5.5 : 8.5, x = cx(q[0]), y = cy(q[1]), saut = eclot || calme ? 0 : Math.abs(Math.sin(s.t * 6 + g.c)) * 3;
+        ombre(x + 1, y + 9, r * (1 - saut * 0.06), 3, eclot ? 0.1 : 0.2);
+        ctx.save(); ctx.translate(x, y - 2 - saut);
         if (eclot) ctx.globalAlpha = 0.55;
         trait(ctx, 2); ctx.fillStyle = g.neuf ? P : G; ctx.beginPath();
         for (let i = 0; i <= 24; i++) { const a = i * Math.PI / 12, rr = r + Math.sin(a * 3 + (calme ? 0 : s.t * 5) + g.c) * 1.7; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
         ctx.closePath(); ctx.fill(); ctx.stroke();
-        if (!eclot) { ctx.fillStyle = "#fff"; rond(-3, -1.5, 2.6); ctx.fill(); rond(3, -1.5, 2.6); ctx.fill(); ctx.fillStyle = N; rond(-3, -1.5, 1.2); ctx.fill(); rond(3, -1.5, 1.2); ctx.fill(); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(0, 2, 3, 0.3, 2.84); ctx.stroke(); }
+        ctx.fillStyle = "rgba(255,255,255,.45)"; ctx.beginPath(); ctx.ellipse(-r * 0.35, -r * 0.5, r * 0.3, r * 0.17, -0.5, 0, 6.3); ctx.fill();   // le reflet : il a du volume
+        if (!eclot) { ctx.fillStyle = "#fff"; rond(-3, -1, 2.6); ctx.fill(); rond(3, -1, 2.6); ctx.fill(); ctx.fillStyle = N; rond(-3, -1, 1.2); ctx.fill(); rond(3, -1, 1.2); ctx.fill(); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(0, 2.5, 3, 0.3, 2.84); ctx.stroke(); }
         ctx.restore();
       };
       const preparateur = () => {
-        const j = s.j, q = posDe(j), x = cx(q[0]), y = cy(q[1]), glisse = s.arret > 0 && !clos;
+        const j = s.j, q = posDe(j), x = cx(q[0]), y = cy(q[1]), glisse = s.arret > 0 && !clos, marche = j.d >= 0 && !calme && !clos ? Math.abs(Math.sin(j.p * Math.PI)) * 2 : 0;
+        ombre(x + 1, y + 11, 10, 3.5, 0.22);
         if (s.abri > 0 && !glisse && !clos && Math.floor(s.t * 8) % 2) return;   // il clignote tant qu'il est à l'abri
-        ctx.save(); ctx.translate(x, y);
-        ctx.fillStyle = "rgba(38,7,109,.16)"; ctx.beginPath(); ctx.ellipse(0, 12, 10, 3.5, 0, 0, 6.3); ctx.fill();
+        ctx.save(); ctx.translate(x, y - 5 - marche);
         if (glisse) ctx.rotate(calme ? 0.5 : Math.sin(s.t * 14) * 0.6);
         trait(ctx, 2);
-        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.roundRect(-8, -1, 16, 14, [5, 5, 3, 3]); ctx.fill(); ctx.stroke();        // la blouse
-        ctx.fillStyle = "#F2D3B8"; rond(0, -5, 7.5); ctx.fill(); ctx.stroke();                                              // la tête
-        ctx.fillStyle = B; ctx.beginPath(); ctx.arc(0, -6.5, 8.5, Math.PI * 0.95, Math.PI * 2.05); ctx.closePath(); ctx.fill(); ctx.stroke();   // la charlotte
+        ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(-6, 11, 5, 5, 2); ctx.roundRect(1, 11, 5, 5, 2); ctx.fill();          // les sabots
+        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.roundRect(-8, -1, 16, 15, [5, 5, 3, 3]); ctx.fill(); ctx.stroke();        // la blouse
+        ctx.fillStyle = "rgba(38,7,109,.12)"; ctx.fillRect(2, 1, 5, 12);
+        ctx.fillStyle = "#F2D3B8"; rond(0, -6, 8); ctx.fill(); ctx.stroke();                                                // la tête
+        ctx.fillStyle = B; ctx.beginPath(); ctx.arc(0, -7.5, 9, Math.PI * 0.95, Math.PI * 2.05); ctx.closePath(); ctx.fill(); ctx.stroke();   // la charlotte
+        ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.beginPath(); ctx.ellipse(-3.5, -12.5, 3, 1.5, -0.4, 0, 6.3); ctx.fill();
         const ox = j.vu === 1 ? 1.8 : j.vu === 3 ? -1.8 : 0;
-        if (j.vu !== 0) { ctx.fillStyle = N; rond(ox - 2.6, -4.5, 1.2); ctx.fill(); rond(ox + 2.6, -4.5, 1.2); ctx.fill(); ctx.fillStyle = "#fff"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.roundRect(ox - 4, -2.5, 8, 4.5, 1.5); ctx.fill(); ctx.stroke(); }   // les yeux et le masque (de dos : rien)
+        if (j.vu !== 0) { ctx.fillStyle = N; rond(ox - 2.8, -5.5, 1.3); ctx.fill(); rond(ox + 2.8, -5.5, 1.3); ctx.fill(); ctx.fillStyle = "#fff"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.roundRect(ox - 4.5, -3.2, 9, 5, 1.5); ctx.fill(); ctx.stroke(); }   // les yeux et le masque (de dos : rien)
         ctx.restore();
         if (glisse) bulles(x, y + 6, 1, 0.5);
       };
-      const fleche = (d, actif) => {
-        const x = PAD.x + DIRS[d][0] * PAD.pas, y = PAD.y + DIRS[d][1] * PAD.pas, h = PAD.t / 2;
-        ctx.fillStyle = actif ? Y : V; ctx.beginPath(); ctx.roundRect(x - h, y - h, PAD.t, PAD.t, 10); ctx.fill();
-        ctx.save(); ctx.translate(x, y); ctx.rotate(d * Math.PI / 2); ctx.fillStyle = N; ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(9, 7); ctx.lineTo(-9, 7); ctx.closePath(); ctx.fill(); ctx.restore();
+      const fleche = (d, actif) => {                                       // une touche en relief, qui s'enfonce quand on la tient
+        const x = PAD.x + DIRS[d][0] * PAD.pas, y = PAD.y + DIRS[d][1] * PAD.pas, h = PAD.t / 2, e = actif ? 3 : 0;
+        ctx.fillStyle = "#7C68C4"; ctx.beginPath(); ctx.roundRect(x - h, y - h + 4, PAD.t, PAD.t, 10); ctx.fill();
+        ctx.fillStyle = actif ? Y : V; ctx.beginPath(); ctx.roundRect(x - h, y - h + e, PAD.t, PAD.t, 10); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,.3)"; ctx.beginPath(); ctx.roundRect(x - h + 5, y - h + e + 4, PAD.t - 10, 4, 2); ctx.fill();
+        ctx.save(); ctx.translate(x, y + e + 1); ctx.rotate(d * Math.PI / 2); ctx.fillStyle = N; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(8.5, 6.5); ctx.lineTo(-8.5, 6.5); ctx.closePath(); ctx.fill(); ctx.restore();
       };
+      // Le sol du sas, dessiné une fois : un damier de dalles à joints, plus clair au centre, avec la plinthe du mur du fond.
+      const sol = document.createElement("canvas"), ECH = 2;
+      sol.width = NC * T * ECH; sol.height = NR * T * ECH;
+      (() => {
+        const g = sol.getContext("2d"); g.scale(ECH, ECH);
+        for (let r = 0; r < NR; r++) for (let c = 0; c < NC; c++) {
+          g.fillStyle = (c + r) % 2 ? "#E9E3D3" : "#F6F2E7"; g.fillRect(c * T, r * T, T, T);
+          g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(c * T + 1, r * T + 1, T - 2, 1.5); g.fillRect(c * T + 1, r * T + 1, 1.5, T - 2);   // l'arête éclairée de la dalle
+          g.fillStyle = "rgba(38,7,109,.09)"; g.fillRect(c * T, (r + 1) * T - 1.5, T, 1.5); g.fillRect((c + 1) * T - 1.5, r * T, 1.5, T);     // le joint dans l'ombre
+        }
+        const l = g.createRadialGradient(NC * T / 2, NR * T * 0.45, 30, NC * T / 2, NR * T / 2, NC * T * 0.75);
+        l.addColorStop(0, "rgba(255,255,255,.3)"); l.addColorStop(0.6, "rgba(255,255,255,0)"); l.addColorStop(1, "rgba(38,7,109,.16)");
+        g.fillStyle = l; g.fillRect(0, 0, NC * T, NR * T);
+        const m = g.createLinearGradient(0, 0, 0, 9); m.addColorStop(0, "rgba(38,7,109,.28)"); m.addColorStop(1, "rgba(38,7,109,0)");
+        g.fillStyle = m; g.fillRect(0, 0, NC * T, 9);                      // l'ombre du mur du fond
+      })();
       const dessiner = () => {
         ctx.fillStyle = N; ctx.fillRect(0, 0, W, HP);
-        ctx.fillStyle = SOL; ctx.fillRect(X0, Y0, NC * T, NR * T);
-        ctx.strokeStyle = "rgba(38,7,109,.08)"; ctx.lineWidth = 1; ctx.beginPath();
-        for (let c = 1; c < NC; c++) { ctx.moveTo(X0 + c * T, Y0); ctx.lineTo(X0 + c * T, Y0 + NR * T); }
-        for (let r = 1; r < NR; r++) { ctx.moveTo(X0, Y0 + r * T); ctx.lineTo(X0 + NC * T, Y0 + r * T); }
-        ctx.stroke();
+        ctx.drawImage(sol, X0, Y0, NC * T, NR * T);
         ctx.strokeStyle = O; ctx.lineWidth = 2; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.roundRect(cx(DEPART[0]) - 13, cy(DEPART[1]) - 13, 26, 26, 6); ctx.stroke(); ctx.setLineDash([]);   // la porte du sas
         // La zone que chaque pastille va mouiller : de plus en plus marquée à mesure que le délai s'écoule.
-        for (const q of s.pastilles) { ctx.fillStyle = "rgba(143,199,232," + (0.22 + 0.4 * (1 - q.t / RE.delai)).toFixed(2) + ")"; for (const k of croix(s, q.c, q.r)) { ctx.beginPath(); ctx.roundRect(kx(k) - 14, ky(k) - 14, 28, 28, 6); ctx.fill(); } }
-        const arrive = calme ? 1 : Math.min(1, (s.t - s.livreT) / 0.3);
-        for (let k = 0; k < NC * NR; k++) {
-          const x = kx(k), y = ky(k);
-          if (s.sol[k] === 1) etagere(x, y);
-          else if (s.sol[k] === 2) carton(x, y, arrive);
-          else if (s.flacons[k]) { ctx.save(); ctx.translate(x, y + 2 + (calme ? 0 : Math.sin(s.t * 5 + k) * 1.2)); ctx.scale(0.8, 0.8); flacon(ctx, 0, 0, 0, G); ctx.restore(); }
+        for (const q of s.pastilles) { ctx.fillStyle = "rgba(143,199,232," + (0.25 + 0.4 * (1 - q.t / RE.delai)).toFixed(2) + ")"; for (const k of croix(s, q.c, q.r)) { ctx.beginPath(); ctx.roundRect(kx(k) - 14, ky(k) - 14, 28, 28, 6); ctx.fill(); } }
+        const arrive = calme ? 1 : Math.min(1, (s.t - s.livreT) / 0.35);
+        for (let k = 0; k < NC * NR; k++) if (s.sol[k]) { ctx.fillStyle = "rgba(38,7,109," + (s.sol[k] === 1 ? 0.2 : 0.17 * arrive).toFixed(2) + ")"; ctx.beginPath(); ctx.roundRect(kx(k) - 11, ky(k) - 8, 31, 27, 5); ctx.fill(); }   // les ombres portées, vers la droite
+        // Rangée par rangée : les pavés de la rangée, puis ce qui s'y tient debout.
+        const rang = e => Math.max(0, Math.min(NR - 1, Math.round(posDe(e)[1])));
+        for (let r = 0; r < NR; r++) {
+          for (let c = 0; c < NC; c++) {
+            const k = c + r * NC, x = cx(c), y = cy(r);
+            if (s.sol[k] === 1) etagere(x, y);
+            else if (s.sol[k] === 2) carton(x, y, arrive);
+            else if (s.flacons[k]) { const v = calme ? 0 : Math.sin(s.t * 5 + k) * 1.5; ombre(x + 1, y + 11, 7 - v, 2.5); ctx.save(); ctx.translate(x, y - 1 + v); ctx.scale(0.8, 0.8); flacon(ctx, 0, 0, 0, G); ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.fillRect(-5.5, -6, 2, 12); ctx.restore(); }
+          }
+          for (const q of s.pastilles) if (q.r === r) pastille(q);
+          for (const g of s.germes) if (rang(g) === r) germe(g);
+          if (rang(s.j) === r) preparateur();
         }
-        for (const q of s.pastilles) pastille(q);
-        for (const g of s.germes) germe(g);
-        preparateur();
         for (const m of s.mousses) { const f = m.t / RE.mousse, t = calme ? 1 : Math.min(1, Math.sin(Math.PI * Math.min(1, 1.15 - f)) * 1.25); for (const k of m.cases) bulles(kx(k), ky(k), k, t, MOUSSE); eclabousser(m, calme ? 0.6 : 1 - f); }
         for (const e of s.evts) {                                          // les points gagnés ou perdus s'envolent de leur case
           const u = (s.t - e.t) / 0.9; if (u >= 1 || clos) continue;
-          const x = Math.max(22, Math.min(W - 22, kx(e.k))), y = ky(e.k) - 8 - (calme ? 8 : u * 16), t = (e.pts > 0 ? "+" : "−") + Math.abs(e.pts);
+          const x = Math.max(22, Math.min(W - 22, kx(e.k))), y = ky(e.k) - 12 - (calme ? 8 : u * 16), t = (e.pts > 0 ? "+" : "−") + Math.abs(e.pts);
           ctx.globalAlpha = 1 - u * u; ctx.lineWidth = 3.5; ctx.strokeStyle = "#fff"; ctx.lineJoin = "round"; ctx.font = "800 14px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.strokeText(t, x, y);
           texte(ctx, t, x, y, 14, e.pts > 0 ? N : R); ctx.globalAlpha = 1;
         }
+        ctx.strokeStyle = V; ctx.lineWidth = 3; ctx.strokeRect(X0 - 1.5, Y0 - 1.5, NC * T + 3, NR * T + 3);              // les murs du sas
         // Le bas : annonces et rappel des commandes, la croix de direction, le bouton de pose avec le tube de pastilles.
+        ctx.fillStyle = N; ctx.fillRect(0, Y0 + NR * T + 2, W, HP);
         const annonce = !clos && s.t - s.msgT < 1.4;
-        texte(ctx, annonce ? s.msg : tactile ? "Croix : avancer · bouton : pastille" : "Flèches ou Z Q S D · Espace : pastille", 180, BAS + 14, 13, annonce ? Y : V);
+        texte(ctx, annonce ? s.msg : tactile ? "Croix : avancer · bouton : pastille" : "Flèches ou Z Q S D · Espace : pastille", 180, BAS + 12, 13, annonce ? Y : V);
         for (let d = 0; d < 4; d++) fleche(d, !clos && s.j.veut === d);
-        ctx.fillStyle = "rgba(185,166,240,.35)"; rond(PAD.x, PAD.y, 7); ctx.fill();
-        const dispo = RE.tube - s.pastilles.length, vif = s.t - eclat < 0.12;
-        ctx.fillStyle = vif ? Y : dispo ? O : "#8E7FB5"; rond(BTN.x, BTN.y, BTN.r); ctx.fill(); ctx.strokeStyle = C; ctx.lineWidth = 3; ctx.stroke();
-        trait(ctx, 2.2); ctx.fillStyle = "#fff"; rond(BTN.x, BTN.y - 8, 14); ctx.fill();
-        if (logo.complete && logo.naturalWidth) { ctx.save(); ctx.clip(); ctx.drawImage(logo, BTN.x - 14, BTN.y - 22, 28, 28); ctx.restore(); rond(BTN.x, BTN.y - 8, 14); } else { ctx.moveTo(BTN.x - 9, BTN.y - 8); ctx.lineTo(BTN.x + 9, BTN.y - 8); }
+        ctx.fillStyle = "rgba(185,166,240,.35)"; rond(PAD.x, PAD.y + 2, 7); ctx.fill();
+        const dispo = RE.tube - s.pastilles.length, vif = s.t - eclat < 0.12, e = vif ? 4 : 0;
+        ctx.fillStyle = "#B4501F"; rond(BTN.x, BTN.y + 5, BTN.r); ctx.fill();                                              // l'épaisseur du bouton
+        ctx.fillStyle = vif ? Y : dispo ? O : "#8E7FB5"; rond(BTN.x, BTN.y + e, BTN.r); ctx.fill(); ctx.strokeStyle = C; ctx.lineWidth = 3; ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.beginPath(); ctx.arc(BTN.x, BTN.y + e, BTN.r - 8, Math.PI * 1.15, Math.PI * 1.6); ctx.stroke();
+        trait(ctx, 2.2); ctx.fillStyle = "#CFC8E6"; rond(BTN.x, BTN.y - 5 + e, 14); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#fff"; rond(BTN.x, BTN.y - 9 + e, 14); ctx.fill();
+        if (logo.complete && logo.naturalWidth) { ctx.save(); ctx.clip(); ctx.drawImage(logo, BTN.x - 14, BTN.y - 23 + e, 28, 28); ctx.restore(); rond(BTN.x, BTN.y - 9 + e, 14); } else { ctx.moveTo(BTN.x - 9, BTN.y - 9 + e); ctx.lineTo(BTN.x + 9, BTN.y - 9 + e); }
         ctx.stroke();
-        texte(ctx, "Pastille", BTN.x, BTN.y + 20, 13, N);
-        for (let i = 0; i < RE.tube; i++) { ctx.fillStyle = i < dispo ? "#fff" : "rgba(255,251,242,.2)"; rond(BTN.x + 62, BTN.y - 18 + i * 18, 6); ctx.fill(); }
+        texte(ctx, "Pastille", BTN.x, BTN.y + 22 + e, 13, N);
+        for (let i = 0; i < RE.tube; i++) { ctx.fillStyle = i < dispo ? "#CFC8E6" : "rgba(255,251,242,.12)"; rond(BTN.x + 62, BTN.y - 16 + i * 18, 6); ctx.fill(); ctx.fillStyle = i < dispo ? "#fff" : "rgba(255,251,242,.2)"; rond(BTN.x + 62, BTN.y - 18 + i * 18, 6); ctx.fill(); }
         const n = notePastilles(s);
         bandeau(ctx, s.score + " points · " + n + "/10", duree - s.t, duree);
         if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 150, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 190, 40, Y); texte(ctx, s.score + " points au compteur", 180, 232, 16, C); }
