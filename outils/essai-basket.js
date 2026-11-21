@@ -18,7 +18,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
     return p;
   };
   // espion : le jeu confie son état au banc, qui s'en sert pour viser comme un joueur appliqué.
-  const lancer = (p, duree) => p.evaluate(d => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.basket(document.querySelector('#z'), { duree: d, espion: s => { window.etat = s; }, onFin: (n, t, brut) => { window.fois++; window.fin = [n, t, brut]; } }); }, duree);
+  const lancer = (p, duree) => p.evaluate(d => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.basket(document.querySelector('#z'), { duree: d, espion: s => { window.etat = s; }, onFin: (n, t, brut, chiffres) => { window.fois++; window.fin = [n, t, brut, chiffres]; } }); }, duree);
   const fin = async p => { await p.waitForFunction(() => window.fin, null, { timeout: 90000 }); return p.evaluate(() => window.fin); };
   // Un joueur automatique : dès que le comprimé est prêt, il fait le geste glissé-lâché qui vise le pilulier (type = mouse ou touch).
   const joueur = (p, type) => p.evaluate(type => {
