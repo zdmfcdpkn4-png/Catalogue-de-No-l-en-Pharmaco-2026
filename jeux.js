@@ -139,7 +139,7 @@
     return L;
   }
   function creerTir() {
-    return { t: 0, x: 180, cible: 180, tirs: [], germes: [], file: pluie(), suivant: 0, recharge: 0, touches: 0, rates: 0, serie: 0, record: 0, eclats: [], fini: false };
+    return { t: 0, x: 180, cible: 180, tirs: [], germes: [], file: pluie(), suivant: 0, recharge: 0, touches: 0, rates: 0, serie: 0, record: 0, gouttes: 0, eclats: [], fini: false };
   }
   // serie : particules neutralisées d'affilée, sans en laisser passer une. Elle ne rapporte rien, elle sert au spectacle.
   function pasTir(s, dt, duree) {
@@ -147,7 +147,7 @@
     const dx = s.cible - s.x, vmax = REGL.vitesse * dt;
     s.x += Math.max(-vmax, Math.min(vmax, dx));
     s.recharge -= dt;
-    if (s.recharge <= 0) { s.tirs.push({ x: s.x, y: 408 }); s.recharge = REGL.cadence; }
+    if (s.recharge <= 0) { s.tirs.push({ x: s.x, y: 408 }); s.gouttes++; s.recharge = REGL.cadence; }
     while (s.suivant < s.file.length && s.file[s.suivant].t <= s.t) { const g = s.file[s.suivant++]; s.germes.push({ x0: g.x, x: g.x, y: -20, r: g.r, amp: g.amp, ph: g.ph, k: g.k, v: REGL.chute + s.t * REGL.acc }); }
     for (const t of s.tirs) t.y -= 520 * dt;
     s.tirs = s.tirs.filter(t => t.y > -10);
@@ -791,7 +791,7 @@
         if (gauche) s.cible = Math.max(24, s.x - 60); if (droite) s.cible = Math.min(W - 24, s.x + 60);
         pasTir(s, dt, duree);
         suivre();
-        if (s.fini) { clos = true; setTimeout(() => { arret(); liberer(); opt.onFin(noteTir(s), s.touches + " particules neutralisées sur " + TOTAL + ".", s.touches); }, 1300); }
+        if (s.fini) { clos = true; setTimeout(() => { arret(); liberer(); opt.onFin(noteTir(s), s.touches + " particules neutralisées sur " + TOTAL + ".", s.touches, [[s.touches + "/" + TOTAL, s.touches > 1 ? "neutralisées" : "neutralisée"], [s.rates, s.rates > 1 ? "passées" : "passée"], [(s.gouttes ? Math.round(100 * s.touches / s.gouttes) : 0) + " %", "de précision"], [s.record, "d'affilée"]]); }, 1300); }
       }
       animer(dt);
       dessiner();
