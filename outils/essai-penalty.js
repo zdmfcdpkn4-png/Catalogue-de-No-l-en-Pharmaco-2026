@@ -17,7 +17,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
     await p.evaluate(l => { if (l) document.querySelector('#z').style.width = l + 'px'; return document.fonts.ready; }, largeur);
     return p;
   };
-  const lancer = (p, duree, graine) => p.evaluate(([d, g]) => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.penalty(document.querySelector('#z'), { duree: d, graine: g, onFin: (n, t, brut) => { window.fois++; window.fin = [n, t, brut]; } }); }, [duree, graine]);
+  const lancer = (p, duree, graine) => p.evaluate(([d, g]) => { window.fin = null; window.fois = 0; window.stop = PharmacoJeux.penalty(document.querySelector('#z'), { duree: d, graine: g, onFin: (n, t, brut, chiffres) => { window.fois++; window.fin = [n, t, brut, chiffres]; } }); }, [duree, graine]);
   const fin = async p => { await p.waitForFunction(() => window.fin, null, { timeout: 90000 }); return p.evaluate(() => window.fin); };
   // Un geste : glisser depuis le bas du canevas d'un vecteur (dx, dy) exprimé dans le repère logique (360 de large), puis lâcher.
   // ventre : le tracé s'écarte d'autant (en px logiques, positif vers la droite) à mi-chemin, ce qui donne de l'effet.

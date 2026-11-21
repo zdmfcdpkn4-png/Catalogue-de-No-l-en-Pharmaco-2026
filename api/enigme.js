@@ -18,9 +18,29 @@ const DELAI = 2; // jours d'ouverture après le jour de la porte
 const GRACE = 4; // secondes tolérées après la fin du chrono d'une question, pour le trajet réseau
 const JEU_MIN = 3, JEU_MARGE = 45; // une note de jeu n'est acceptée ni trop tôt ni trop longtemps après le départ
 // Score brut le plus haut qu'un jeu puisse rendre : au-delà, la note est refusée.
-const PLAFOND = { bowling: 50, tir: 40, flipper: 20000, tennis: 10099, labyrinthe: 1000, pastilles: 3000, penalty: 1500, etageres: 600, basket: 200, volley: 10099, haies: 7560 };
+const PLAFOND = { bowling: 50, tir: 40, flipper: 20000, tennis: 10099, labyrinthe: 1000, pastilles: 3000, penalty: 1500, etageres: 600, basket: 200, volley: 10099, haies: 4400, twirling: 600, tour: 6500, seringue: 1800, minigolf: 2000 };
 const JOUR1 = Date.UTC(2026, 11, 1);
 const PRENOM = /^\p{L}+(?:[-']\p{L}+)*$/u;
+// Participants : cinq brigades, tirées par le serveur ; un avatar est trois numéros [couleur, coiffe, accessoire],
+// chacun sous le nombre de choix de sa liste (les listes sont dessinées dans participants.js : garder les longueurs accordées).
+const NB_BRIGADES = 5;
+const AVATAR = [8, 8, 8];
+// Devise et jeu emblème d'une brigade : chaque membre vote du 26 novembre au 7 décembre, puis le choix est figé.
+// La devise est un numéro de la liste DEVISES de participants.js ; le jeu emblème, le nom d'un jeu du catalogue
+// (même contrôle que le vote du palmarès : la page ne montre que les noms qu'elle connaît).
+// L'identification (fiche, avatar, tirage de la brigade, changement de pseudo) ouvre le 26 novembre, avant le calendrier :
+// c'est le jour -4 (le jour 1 est le 1er décembre). Le vote de la devise et du jeu emblème ouvre le même jour.
+const FICHE_JOUR = -4;
+const NB_DEVISES = 20;
+const CHOIX_FIN = 7;
+const avatarOk = a => Array.isArray(a) && a.length === AVATAR.length && a.every((v, i) => Number.isInteger(v) && v >= 0 && v < AVATAR[i]);
+// Tirage équilibré : la brigade la moins fournie, au hasard entre les ex aequo. Les effectifs ne diffèrent jamais de plus d'un.
+function tirer(joueurs) {
+  const n = new Array(NB_BRIGADES).fill(0);
+  for (const cle of Object.keys(joueurs)) if (Number.isInteger(joueurs[cle].b) && joueurs[cle].b >= 0 && joueurs[cle].b < NB_BRIGADES) n[joueurs[cle].b]++;
+  const min = Math.min(...n), L = n.map((x, i) => (x === min ? i : -1)).filter(i => i >= 0);
+  return L[crypto.randomInt(L.length)];
+}
 
 const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const digest = s => crypto.createHash('sha256').update(s).digest();
@@ -53,6 +73,9 @@ const rangDe = iso => { const [a, m, j] = iso.split('-').map(Number); return Mat
 const dateDe = n => new Date(JOUR1 + (n - 1) * 864e5).toISOString().slice(0, 10);
 const etatDe = (n, jour) => (jour < n ? 'avenir' : jour <= n + DELAI ? 'ouverte' : 'close');
 
+// Ce que le serveur garde par joueur : { p: nom affiché, t: heure d'inscription, r: { porte: réponses },
+//   a: avatar [couleur, coiffe, accessoire], b: brigade de 0 à 4, d: sa voix pour la devise, g: sa voix pour le jeu emblème }. `a` et `b` manquent chez un joueur d'avant les brigades :
+//   la brigade lui est tirée à sa prochaine ouverture de porte, l'avatar quand il remplit sa fiche.
 // Ce que le serveur garde par joueur et par porte.
 //   question : { d: départ du chrono, v: réponse, t: heure de la réponse }   (v absent : chrono lancé, pas de réponse)
 //   jeu      : { e: [ { d: départ, k: jeton de la tentative, s: note de 0 à 10, b: score brut, t: heure de la note } ] }
@@ -129,11 +152,55 @@ function classement(B, joueurs, jour) {
     const j = joueurs[cle];
     let pts = 0;
     for (const [q, M] of closes) pts += M ? (M[cle] ? M[cle].pts : 0) : points(q, j.r[q.n]);
-    return { p: j.p, pts, rep: Object.keys(j.r).length };
+    // cl : nombre de portes closes que le joueur a jouées (une porte lancée compte), pour la moyenne de sa brigade.
+    return { p: j.p, pts, rep: Object.keys(j.r).length, cl: closes.filter(([q]) => j.r[q.n]).length, a: j.a, b: j.b };
   }).sort((a, b) => b.pts - a.pts || a.p.localeCompare(b.p, 'fr'));
   let rang = 0;
   L.forEach((x, i) => { if (!i || x.pts !== L[i - 1].pts) rang = i + 1; x.rang = rang; });
   return L;
+}
+
+// Le classement du jour, avec pour chacun son rang d'avant la dernière clôture (`av`) quand une porte vient de clore :
+// la page en tire les flèches de progression. Rien ne fuit : le classement de la veille ne compte que des portes déjà closes.
+function classementSuivi(B, joueurs, jour) {
+  const L = classement(B, joueurs, jour);
+  const n = j => B.portes.filter(q => etatDe(q.n, j) === 'close').length;
+  if (n(jour - 1) && n(jour) > n(jour - 1)) {
+    const hier = new Map(classement(B, joueurs, jour - 1).map(x => [x.p, x.rang]));
+    L.forEach(x => { x.av = hier.get(x.p); });
+  }
+  return L;
+}
+
+// Classement des brigades, tiré du classement individuel (donc des seules portes closes) : la moyenne par membre actif,
+// pour qu'une brigade plus nombreuse ne soit pas avantagée. Est actif (`actifs`) le membre qui a joué au moins une porte
+// close : un inscrit qui ne joue pas ne pèse pas sur sa brigade. `n` reste l'effectif. Les ex aequo partagent le rang.
+// Devise et jeu emblème : l'option la plus soutenue par les membres ; à égalité, la première de la liste (devise)
+// ou de l'alphabet (jeux). `voix` donne le détail des voix à la brigade `mienne` seulement.
+function brigades(L, joueurs, mienne) {
+  const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, actifs: 0, pts: 0, moy: 0 }));
+  for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; if (x.cl) T[x.b].actifs++; }
+  for (const t of T) t.moy = t.actifs ? Math.round(t.pts / t.actifs * 10) / 10 : 0;
+  const V = T.map(() => ({ d: {}, g: {} }));
+  for (const cle of Object.keys(joueurs)) {
+    const j = joueurs[cle], v = V[j.b];
+    if (!v) continue;
+    if (j.d !== undefined) v.d[j.d] = (v.d[j.d] || 0) + 1;
+    if (j.g !== undefined) v.g[j.g] = (v.g[j.g] || 0) + 1;
+  }
+  const tries = (o, tri) => Object.keys(o).sort((x, y) => o[y] - o[x] || tri(x, y));
+  for (const t of T) {
+    const v = V[t.b], d = tries(v.d, (x, y) => x - y)[0];
+    if (d !== undefined) t.devise = Number(d);
+    // Les cinq jeux les plus soutenus, dans l'ordre : la page retient le premier qui est au catalogue,
+    // si bien qu'un nom inconnu (appel direct, jeu retiré ou renommé) ne prive pas la brigade de son emblème.
+    t.jeux = tries(v.g, (x, y) => (x < y ? -1 : x > y ? 1 : 0)).slice(0, 5);
+    if (t.b === mienne) t.voix = v;
+  }
+  T.sort((x, y) => y.moy - x.moy || x.b - y.b);
+  let rang = 0;
+  T.forEach((t, i) => { if (!i || t.moy !== T[i - 1].moy) rang = i + 1; t.rang = rang; });
+  return T;
 }
 
 // Ce que le joueur a le droit de voir d'une porte : rien avant son jour ; l'énoncé d'une question seulement une fois
@@ -204,12 +271,17 @@ function etat(B, joueurs, cle, jour, maintenant) {
     const e = etatDe(q.n, jour);
     return vue(q, e, j && j.r[q.n], false, maintenant, j && q.type === 'jeu' && e === 'close' ? rangs(q, joueurs)[cle] : undefined);
   });
+  const L = classementSuivi(B, joueurs, jour);
   return {
     jour,
     prenom: j ? j.p : undefined,
+    profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b, d: j.d, g: j.g } : undefined,
+    fiche: { etat: jour < FICHE_JOUR ? 'avenir' : 'ouvert', ouvre: dateDe(FICHE_JOUR) },
+    choix: { etat: jour < FICHE_JOUR ? 'avenir' : jour <= CHOIX_FIN ? 'ouvert' : 'fige', ferme: dateDe(CHOIX_FIN) },
     portes,
     total: portes.reduce((s, p) => s + (p.pts || 0), 0),
-    classement: classement(B, joueurs, jour),
+    classement: L,
+    brigades: brigades(L, joueurs, j ? j.b : undefined),
   };
 }
 
@@ -253,6 +325,57 @@ async function handler(req, res) {
     const prenom = typeof b.prenom === 'string' ? b.prenom.trim().replace(/’/g, "'") : '';
     if (prenom.length < 2 || prenom.length > 24 || !PRENOM.test(prenom)) return res.status(400).json({ error: 'prenom' });
     const cle = norm(prenom);
+    // Fiche d'identification : l'avatar choisi par le joueur (liste fermée), la brigade tirée par le serveur, une fois pour toutes.
+    if (b.action === 'profil') {
+      // Sous scellé jusqu'au 26 novembre : ni fiche ni tirage avant.
+      if (jour < FICHE_JOUR) return res.status(403).json({ error: 'scellee' });
+      if (!avatarOk(b.avatar)) return res.status(400).json({ error: 'avatar' });
+      const s = await modifier(joueurs => {
+        if (!joueurs[cle]) {
+          if (Object.keys(joueurs).length >= MAX_JOUEURS) return { fin: () => ({ code: 403, corps: { error: 'complet' } }) };
+          joueurs[cle] = { p: prenom, t: maintenant, r: {} };
+        }
+        const j = joueurs[cle];
+        j.a = b.avatar.slice();
+        if (j.b === undefined) j.b = tirer(joueurs);
+        return { ok: J => ({ code: 200, corps: { ok: true, ...etat(B, J, cle, jour, maintenant) } }) };
+      });
+      return res.status(s.code).json(s.corps);
+    }
+    // Changement de pseudo : la fiche entière (réponses, avatar, brigade, voix) suit le joueur sous son nouveau nom.
+    // Refusé si un autre joueur porte déjà ce nom. Le prénom envoyé reste l'ancien : c'est lui qui désigne la fiche.
+    if (b.action === 'renommer') {
+      if (jour < FICHE_JOUR) return res.status(403).json({ error: 'scellee' });
+      const neuf = typeof b.pseudo === 'string' ? b.pseudo.trim().replace(/’/g, "'") : '';
+      if (neuf.length < 2 || neuf.length > 24 || !PRENOM.test(neuf)) return res.status(400).json({ error: 'pseudo' });
+      const cle2 = norm(neuf);
+      const s = await modifier(joueurs => {
+        const j = joueurs[cle];
+        if (!j) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
+        if (cle2 !== cle && joueurs[cle2]) return { fin: () => ({ code: 409, corps: { error: 'pris' } }) };
+        delete joueurs[cle];
+        j.p = neuf;
+        joueurs[cle2] = j;
+        return { ok: J => ({ code: 200, corps: { ok: true, ...etat(B, J, cle2, jour, maintenant) } }) };
+      });
+      return res.status(s.code).json(s.corps);
+    }
+    // Voix d'un membre pour la devise et le jeu emblème de sa brigade : ouvert du 26 novembre au 7 décembre, modifiable d'ici là.
+    if (b.action === 'brigade') {
+      if (jour < FICHE_JOUR || jour > CHOIX_FIN) return res.status(403).json({ error: jour < FICHE_JOUR ? 'scellee' : 'fige' });
+      const d = b.devise, g = typeof b.jeu === 'string' ? b.jeu.trim() : b.jeu;
+      if (d === undefined && g === undefined) return res.status(400).json({ error: 'choix' });
+      if (d !== undefined && !(Number.isInteger(d) && d >= 0 && d < NB_DEVISES)) return res.status(400).json({ error: 'devise' });
+      if (g !== undefined && (typeof g !== 'string' || !g || g.length > 80 || /[\u0000-\u001f<>]/.test(g))) return res.status(400).json({ error: 'jeu' });
+      const s = await modifier(joueurs => {
+        const j = joueurs[cle];
+        if (!j || j.b === undefined) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
+        if (d !== undefined) j.d = d;
+        if (g !== undefined) j.g = g;
+        return { ok: J => ({ code: 200, corps: { ok: true, ...etat(B, J, cle, jour, maintenant) } }) };
+      });
+      return res.status(s.code).json(s.corps);
+    }
     if (b.n === undefined) return res.status(200).json(etat(B, (await lire()).joueurs, cle, jour, maintenant));
 
     // Action sur une porte ouverte.
@@ -273,6 +396,7 @@ async function handler(req, res) {
           joueurs[cle] = { p: prenom, t: maintenant, r: {} };
         }
         const j = joueurs[cle];
+        if (j.b === undefined) j.b = tirer(joueurs); // inscrit sans passer par la fiche, ou d'avant les brigades
         if (q.type === 'jeu') {
           const r = j.r[q.n] || (j.r[q.n] = { e: [] });
           if (r.e.length >= q.essais) return refus(409, 'essais');

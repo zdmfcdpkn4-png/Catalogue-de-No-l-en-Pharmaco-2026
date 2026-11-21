@@ -27,9 +27,10 @@ function fenetre(o, v, grand) {
 // (confond : petit au lieu de grand et inversement) et laisse parfois passer un obstacle sans réagir (oubli). Il tente un salto
 // sur une part de ses sauts (salto) : second appui en plein saut, au prix d'un tempo moins sûr sur ce saut-là (sigma × 1,3).
 function partie(p, graine, duree) {
-  const s = J.creerHaies(graine, duree); let cible = null, plan = null, lacher = -1, etroit = 9, file = [];
+  const s = J.creerHaies(graine, duree); let cible = null, plan = null, lacher = -1, etroit = 9, file = [], prochain = 0;
   while (!s.fini) {
-    if (!p.immobile) {
+    if (p.hasard) { if (s.t >= prochain) { J.appuiHaies(s, true); file = [[s.t + (alea() < 0.5 ? 0.06 : 0.4), false]]; prochain = s.t + p.hasard * (0.4 + 1.2 * alea()); } while (file.length && s.t >= file[0][0]) J.appuiHaies(s, file.shift()[1]); }
+    else if (!p.immobile) {
       const o = s.file.slice(s.suivant, s.suivant + 3).find(o => !o.touche && o.x + o.w > s.x);
       if (o && s.arret <= 0 && (o !== cible || Math.abs(plan.v - s.v) > 6) && o.x - s.x < 330) {
         const tente = cible === o ? plan.salto : alea() < (p.salto || 0), veut = !!o.grand, fait = cible === o ? plan.fait : (alea() < p.confond ? !veut : veut), f = fenetre(o, s.v, fait) || fenetre(o, s.v, veut) || [40, 40];
@@ -47,16 +48,16 @@ function partie(p, graine, duree) {
   return s;
 }
 function profil(nom, p) {
-  const h = Array(11).fill(0), K = p.immobile || !p.sigma && !p.oubli ? 1 : 300; let m = 0, mm = 0, dist = 0, ch = 0, fr = 0, max = 0, et = 9, sa = 0;
+  const h = Array(11).fill(0), K = p.immobile || !p.sigma && !p.oubli ? 1 : 300; let m = 0, mm = 0, dist = 0, ch = 0, fr = 0, max = 0, et = 9, sa = 0, av = 0;
   for (let i = 0; i < K; i++) {
     const a = partie(p, 0, D), b = partie(p, 0, D), na = J.noteHaies(a, D), nb = J.noteHaies(b, D);
-    sa += a.saltos; h[na]++; m += na; mm += Math.max(na, nb); dist += J.metresHaies(a); ch += a.chutes; fr += a.francs; max = Math.max(max, J.brutHaies(a), J.brutHaies(b)); et = Math.min(et, a.etroit);
+    sa += a.saltos; av += J.avanceHaies(a); h[na]++; m += na; mm += Math.max(na, nb); dist += J.metresHaies(a); ch += a.chutes; fr += a.francs; max = Math.max(max, J.brutHaies(a), J.brutHaies(b)); et = Math.min(et, a.etroit);
   }
-  console.log(nom.padEnd(10), 'une partie :', (m / K).toFixed(1), '| meilleure de deux :', (mm / K).toFixed(1), '| mètres', (dist / K).toFixed(0), '| franchis', (fr / K).toFixed(1), '| chutes', (ch / K).toFixed(1), '| saltos', (sa / K).toFixed(1), '| brut max', max, p.immobile ? '' : '| fenêtre la plus étroite ' + Math.round(et * 1000) + ' ms', '| répartition', h.map(x => Math.round(100 * x / K)).join(' '));
+  console.log(nom.padEnd(10), 'une partie :', (m / K).toFixed(1), '| meilleure de deux :', (mm / K).toFixed(1), '| mètres', (dist / K).toFixed(0), '| avance', (av / K).toFixed(0), '| franchis', (fr / K).toFixed(1), '| chutes', (ch / K).toFixed(1), '| saltos', (sa / K).toFixed(1), '| brut max', max, p.immobile ? '' : '| fenêtre la plus étroite ' + Math.round(et * 1000) + ' ms', '| répartition', h.map(x => Math.round(100 * x / K)).join(' '));
 }
 const P = J.parcoursHaies(0, (RH.vmax + RH.sur) * D + 500), parType = {}; P.forEach(o => parType[o.k] = (parType[o.k] || 0) + 1);
 console.log('haies, ' + D + ' s :', JSON.stringify(RH));
-console.log('parcours :', P.length, 'obstacles', JSON.stringify(parType), '| écart mini', Math.round(Math.min(...P.slice(1).map((o, i) => o.x - P[i].x - P[i].w))), 'px | plafond théorique du brut (vitesse maxi tout du long) :', Math.round((RH.vmax + RH.sur) * D / J.HA_M * 10));
+console.log('parcours :', P.length, 'obstacles', JSON.stringify(parType), '| écart mini', Math.round(Math.min(...P.slice(1).map((o, i) => o.x - P[i].x - P[i].w))), 'px | plafond théorique du brut (vitesse maxi tout du long, moins le témoin) :', Math.round(((RH.vmax + RH.sur) * D - J.creerHaies(0, D).temoin.at(-1)) / J.HA_M * 10));
 console.log('vols : petit', (VOLS[0].length * PAS).toFixed(2), 's, haut de', Math.round(Math.max(...VOLS[0])), 'px | grand', (VOLS[1].length * PAS).toFixed(2), 's, haut de', Math.round(Math.max(...VOLS[1])), 'px');
 profil('parfait', { sigma: 0, confond: 0, oubli: 0 });
 profil('parfait+', { sigma: 0, confond: 0, oubli: 0, salto: 1 });
@@ -64,3 +65,7 @@ profil('adroit', { sigma: 0.045, confond: 0.03, oubli: 0.015, salto: 0.5 });
 profil('moyen', { sigma: 0.07, confond: 0.08, oubli: 0.03, salto: 0.2 });
 profil('maladroit', { sigma: 0.1, confond: 0.2, oubli: 0.08, salto: 0.05 });
 profil('immobile', { immobile: true });
+// Appuis au hasard, sans regarder : un appui toutes les 0,4 à 1,6 fois l'intervalle donné, bref ou maintenu à pile ou face.
+profil('hasard 1 s', { hasard: 1, sigma: 1 });
+profil('hasard 0,5 s', { hasard: 0.5, sigma: 1 });
+profil('hasard 0,25 s', { hasard: 0.25, sigma: 1 });
