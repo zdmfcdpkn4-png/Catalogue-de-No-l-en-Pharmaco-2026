@@ -1188,9 +1188,9 @@
   // reac, alea : temps de réaction de l'automate et son aléa ; vit, dvit : vitesse de plongeon et son gain par tir ; rg : rayon de la pince ;
   // amp, w, dw : va-et-vient de l'automate avant le tir ; mou, fort : durée du vol du tir le plus mou et du plus fort ;
   // pmin, pmax : en dessous le bouchon n'arrive pas, au-dessus il passe la barre ; but, prime : points bruts d'un but et prime de placement.
-  const RP = { tirs: 10, reac: 0.2, alea: 0.03, vit: 30, dvit: 34, rg: 20, amp: 45, w: 2.1, dw: 0.14, mou: 0.8, fort: 0.45, pmin: 0.15, pmax: 0.85, pause: 0.95, but: 100, prime: 50 };
+  const RP = { tirs: 10, reac: 0.2, alea: 0.03, vit: 30, dvit: 32, rg: 18, amp: 45, w: 2.1, dw: 0.14, mou: 0.8, fort: 0.45, pmin: 0.15, pmax: 0.85, pause: 0.95, but: 100, prime: 50 };
   // La cage est vue de face : montants en PN_G et PN_D, sol en PN_SOL, barre PN_HAUT plus haut. Le bouchon part de (PN_X0, PN_Y0).
-  const PN = { PAS: 1 / 240, G: 60, D: 300, SOL: 190, HAUT: 110, RB: 9, X0: 180, Y0: 410, KZ: 30, AMAX: 0.62, TIRE: 190 };
+  const PN = { PAS: 1 / 240, G: 60, D: 300, SOL: 190, HAUT: 110, RB: 13, RD: 24, X0: 180, Y0: 410, KZ: 30, AMAX: 0.62, TIRE: 190 };
   function creerPenalty(graine) {
     let a = graine || 20261224;
     const h = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -1281,19 +1281,21 @@
     // Où dessiner le bouchon : il rapetisse en s'éloignant, monte vers sa hauteur d'arrivée, et son ombre reste au sol.
     function bouchonEn(v) {
       const u = Math.min(1, v.t / v.T) * v.portee, sol = PN.Y0 - (PN.Y0 - PN.SOL) * u;
-      return { x: PN.X0 + (v.ax - PN.X0) * u, sol, y: sol - v.z * u - Math.sin(Math.PI * Math.min(1, v.t / v.T)) * 16 * v.p * (v.portee < 1 ? 0 : 1), r: 15 - (15 - PN.RB) * u };
+      return { x: PN.X0 + (v.ax - PN.X0) * u, sol, y: sol - v.z * u - Math.sin(Math.PI * Math.min(1, v.t / v.T)) * 16 * v.p * (v.portee < 1 ? 0 : 1), r: PN.RD - (PN.RD - PN.RB) * u };
     }
+    // Le bouchon porte le logo de l'unité ; tant que l'image n'est pas là (ou si elle manque), c'est une capsule orange.
+    const logo = new Image(); logo.src = opt.logo || ICI + "img/logo-pharmacotechnie.webp";
     function bouchon(x, y, r, tour) {
       ctx.save(); ctx.translate(x, y); ctx.rotate(tour);
-      trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.3); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = O; ctx.beginPath(); ctx.arc(0, 0, r * 0.58, 0, 6.3); ctx.fill(); ctx.lineWidth = 1.6; ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-r * 0.3, 0); ctx.lineTo(r * 0.3, 0); ctx.stroke();
+      trait(ctx, 2.6); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.3); ctx.fill();
+      if (logo.complete && logo.naturalWidth) { ctx.save(); ctx.clip(); ctx.drawImage(logo, -r + 1, -r + 1, 2 * r - 2, 2 * r - 2); ctx.restore(); ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.3); ctx.stroke(); }
+      else { ctx.stroke(); ctx.fillStyle = O; ctx.beginPath(); ctx.arc(0, 0, r * 0.58, 0, 6.3); ctx.fill(); ctx.lineWidth = 1.6; ctx.stroke(); ctx.beginPath(); ctx.moveTo(-r * 0.3, 0); ctx.lineTo(r * 0.3, 0); ctx.stroke(); }
       ctx.restore();
     }
     function fleche(a, p) {
-      const l = 34 + p * 150, x = PN.X0 + Math.sin(a) * l, y = PN.Y0 - Math.cos(a) * l, coul = p < RP.pmin ? "#B56AA0" : p > RP.pmax ? R : N;
+      const l = 46 + p * 150, x = PN.X0 + Math.sin(a) * l, y = PN.Y0 - Math.cos(a) * l, coul = p < RP.pmin ? "#B56AA0" : p > RP.pmax ? R : N;
       ctx.strokeStyle = coul; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.setLineDash([2, 11]);
-      ctx.beginPath(); ctx.moveTo(PN.X0 + Math.sin(a) * 22, PN.Y0 - Math.cos(a) * 22); ctx.lineTo(x, y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(PN.X0 + Math.sin(a) * (PN.RD + 9), PN.Y0 - Math.cos(a) * (PN.RD + 9)); ctx.lineTo(x, y); ctx.stroke(); ctx.setLineDash([]);
       ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.fillStyle = coul; ctx.beginPath(); ctx.moveTo(0, -13); ctx.lineTo(9, 4); ctx.lineTo(-9, 4); ctx.closePath(); ctx.fill(); ctx.restore();
       // La jauge de force : rose trop mou, verte dans le cadre, rouge au-dessus de la barre.
       const jx = 328, jy = 300, jh = 124, yDe = q => jy + jh * (1 - q);
@@ -1322,7 +1324,7 @@
       for (let i = -5; i <= 5; i++) { ctx.beginPath(); ctx.moveTo(180 + i * 36, PN.SOL); ctx.lineTo(180 + i * 92, H); ctx.stroke(); }
       for (let k = 1; k < 6; k++) { const y = PN.SOL + k * k * 11.6; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
       ctx.strokeStyle = "rgba(38,7,109,.22)"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(36, PN.SOL); ctx.lineTo(8, 262); ctx.lineTo(352, 262); ctx.lineTo(324, PN.SOL); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(PN.X0, PN.Y0 + 4, 20, 7, 0, 0, 6.3); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(PN.X0, PN.Y0 + 8, 30, 10, 0, 0, 6.3); ctx.stroke();
       // Les spectateurs : quatre flacons, qui sautent de joie sur un but.
       for (const [i, x] of [16, 38, 322, 344].entries()) flacon(ctx, x, PN.SOL - 13 - (fete ? Math.abs(Math.sin(horloge * 11 + i)) * 9 : 0), 0, [P, B, Y, P][i]);
       // La cage : le filet, puis les montants et la barre.
@@ -1348,8 +1350,8 @@
         if (s.phase === "vol" && !calme) for (let k = 3; k > 0; k--) { const q = bouchonEn({ ...v, t: Math.max(0, v.t - k * 0.035) }); ctx.globalAlpha = 0.12 * (4 - k); ctx.fillStyle = O; ctx.beginPath(); ctx.arc(q.x, q.y, q.r * 0.8, 0, 6.3); ctx.fill(); ctx.globalAlpha = 1; }
         bouchon(b.x, b.y, b.r, calme ? 0 : v.t * 9 * (v.a < 0 ? -1 : 1));
       } else if (!clos) {
-        ctx.fillStyle = "rgba(38,7,109,.18)"; ctx.beginPath(); ctx.ellipse(PN.X0, PN.Y0 + 11, 15, 5, 0, 0, 6.3); ctx.fill();
-        bouchon(PN.X0, PN.Y0, 15, 0);
+        ctx.fillStyle = "rgba(38,7,109,.18)"; ctx.beginPath(); ctx.ellipse(PN.X0, PN.Y0 + PN.RD * 0.75, PN.RD, PN.RD * 0.33, 0, 0, 6.3); ctx.fill();
+        bouchon(PN.X0, PN.Y0, PN.RD, 0);
         if (visee) fleche(visee.a, visee.p); else if (auClavier) fleche(ka, kp);
       }
       for (const e of eclats) { const k = e.t / e.d; ctx.globalAlpha = 1 - k; ctx.fillStyle = e.c; ctx.beginPath(); ctx.arc(e.x + e.vx * e.t, e.y + e.vy * e.t + 260 * e.t * e.t, 3.5, 0, 6.3); ctx.fill(); ctx.globalAlpha = 1; }
