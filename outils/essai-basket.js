@@ -26,7 +26,8 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
     const ev = (t, x, y, btn) => { const r = c().getBoundingClientRect(); c().dispatchEvent(new PointerEvent(t, { pointerId: 5, pointerType: type, buttons: btn, pressure: btn ? 0.5 : 0, clientX: r.left + x / 360 * r.width, clientY: r.top + y / 360 * r.width, bubbles: true, cancelable: true })); };
     clearInterval(window.auto); window.gestes = 0;
     window.auto = setInterval(() => {
-      const s = window.etat; if (!s || s.fini || s.balle || s.attente > 0 || window.enGeste) return;
+      const s = window.etat; if (!s || s.fini || s.balles.length >= R.vol || s.attente > 0 || window.enGeste) return;
+      window.enVol = Math.max(window.enVol || 0, s.balles.length + 1);
       const v = J.viseBasket(s, -780); if (!v) return;
       window.enGeste = true; window.gestes++;
       const x0 = 180, y0 = 440, x1 = x0 + v.vx / R.k, y1 = y0 - 780 / R.k;
