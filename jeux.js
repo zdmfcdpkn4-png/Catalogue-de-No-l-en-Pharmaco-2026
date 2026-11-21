@@ -2674,5 +2674,252 @@
   }
   /* ----- Fin [pastilles] ----- */
 
+  /* ----- Repère [tour] : la tour de boîtes ----- */
+  // La tour de garde : un palan fait aller et venir des boîtes au-dessus d'une palette de la réserve. On lâche chaque boîte
+  // au bon moment pour monter la pile la plus haute et la plus droite possible. Une boîte posée de travers fait pencher la
+  // tour ; quand le poids du dessus sort de son appui, tout ce qui est au-dessus bascule. Seules comptent les boîtes encore
+  // debout à la fin. Tout le jeu vit dans ce bloc (cœur, dessin, inscription) : aucun nom ne déborde sur les jeux voisins.
+  {
+    /* --- Le cœur : règles et équilibre, sans navigateur --- */
+    // Réglages étalonnés par simulation (node outils/etalon-tour.js) : ils fixent la difficulté.
+    //  chute : hauteur de chute d'une boîte ; amp, w0, dw, wmax : va-et-vient du palan (il accélère avec la hauteur) ;
+    //  marge : part de l'appui qui porte vraiment (1 = équilibre parfait de physicien, moins = plus sévère) ;
+    //  parfait : écart (px) en dessous duquel la pose est parfaite ; tol : écart au-delà duquel la boîte ne vaut plus que « base » ;
+    //  bal0, bal1, balMax, wb : balancement de la tour, plus ample quand elle penche.
+    const RTR = { g: 2400, chute: 150, amp: 116, w0: 2.2, dw: 0.035, wmax: 3.4, palette: 150, pause: 0.45, bascule: 0.6, marge: 0.75, parfait: 4, tol: 26, base: 40, prime: 55, bal0: 1.3, bal1: 5.4, balMax: 26, wb: 2.1, retrait: 0.5, wmin: 46, metre: 140,
+      seuils: [150, 300, 450, 600, 780, 980, 1250, 1600, 2100, 2700] };
+    const TR_PAS = 1 / 240;
+    // Les gabarits : largeur et hauteur des boîtes, dans un ordre fixe (le même pour tous les joueurs). Elles rétrécissent peu à peu.
+    const TR_GAB = [[74, 30], [62, 26], [80, 28], [58, 32], [68, 26], [56, 30], [76, 28], [64, 32]];
+    const gabaritTour = i => { const g = TR_GAB[i % TR_GAB.length]; return { w: Math.max(RTR.wmin, Math.round(g[0] - RTR.retrait * i)), h: g[1], lot: i + 1 }; };
+    const creerTour = () => ({ t: 0, acc: 0, pile: [], phase: -Math.PI / 2, souple: 0, penche: 0, servis: 0, attente: 0.5, tombe: null, bascule: null, debris: [], points: 0, poses: 0, parfaites: 0, effondrements: 0, tombees: 0, rates: 0, record: 0, ev: null, evT: -9, fini: false });
+    // Centres des boîtes au repos (sans le balancement) : chaque boîte retient son décalage d par rapport à celle du dessous.
+    const centresTour = s => { let x = 180; return s.pile.map(b => (x += b.d)); };
+    const hauteurTour = s => s.pile.reduce((a, b) => a + b.h, 0);
+    const allureTour = s => Math.min(RTR.wmax, RTR.w0 + RTR.dw * s.pile.length);
+    // Où est (ou sera, dans « avance » secondes) la boîte portée par le palan.
+    const pinceTour = (s, avance) => 180 + RTR.amp * Math.sin(s.phase + allureTour(s) * (avance || 0));
+    // Le balancement : la boîte k (1 = celle du bas) s'écarte d'autant plus qu'elle est haute et que la tour penche.
+    const deversTour = (s, k, avance) => s.souple * Math.pow(k, 1.5) / 30 * Math.sin(RTR.wb * (s.t + (avance || 0)));
+    // Le centre du sommet (là où il faut viser), dans « avance » secondes. Sans boîte : le milieu de la palette.
+    const cibleTour = (s, avance) => { const n = s.pile.length; return n ? centresTour(s)[n - 1] + deversTour(s, n, avance) : 180; };
+    const chuteTour = () => Math.sqrt(2 * RTR.chute / RTR.g);                                        // durée de la chute d'une boîte
+    // L'équilibre : pour chaque boîte, le centre de gravité de tout ce qu'elle porte (elle comprise) doit tomber dans son
+    // appui (la partie commune avec la boîte du dessous, réduite par la marge). cede = la plus basse qui ne tient pas (-1 : tout tient).
+    const equilibreTour = s => {
+      const xs = centresTour(s); let m = 0, mx = 0, cede = -1, cote = 0, pire = 0;
+      for (let j = xs.length - 1; j >= 0; j--) {
+        const b = s.pile[j], x0 = j ? xs[j - 1] : 180, w0 = j ? s.pile[j - 1].w : RTR.palette;
+        m += b.w * b.h; mx += b.w * b.h * xs[j];
+        const g = Math.max(xs[j] - b.w / 2, x0 - w0 / 2), d = Math.min(xs[j] + b.w / 2, x0 + w0 / 2);
+        const r = (mx / m - (g + d) / 2) / Math.max(1, (d - g) / 2 * RTR.marge);
+        if (Math.abs(r) > 1) { cede = j; cote = r > 0 ? 1 : -1; pire = 0; } else if (Math.abs(r) > Math.abs(pire)) pire = r;
+      }
+      return { cede, cote, penche: pire };
+    };
+    const compterTour = s => { s.points = s.pile.reduce((a, b) => a + b.pts, 0); s.record = Math.max(s.record, s.pile.length); };
+    const jugerTour = s => {
+      const e = equilibreTour(s);
+      if (e.cede >= 0) { s.bascule = { j: e.cede, cote: e.cote, t: 0 }; s.penche = e.cote; } else s.penche = e.penche;
+      return e.cede >= 0;
+    };
+    // Lâcher la boîte. Refusé tant que la précédente tombe, que la tour bascule, que la suivante n'est pas arrivée, ou une fois le temps écoulé.
+    const lacherTour = (s, duree) => {
+      if (s.fini || s.t >= duree || s.attente > 0 || s.tombe || s.bascule) return false;
+      s.tombe = Object.assign(gabaritTour(s.servis), { x: pinceTour(s), d: 0, v: 0 }); s.servis++;
+      return true;
+    };
+    const poserTour = s => {
+      const b = s.tombe, n = s.pile.length, demi = (n ? s.pile[n - 1].w : RTR.palette) / 2, haut = hauteurTour(s);
+      let dx = b.x - cibleTour(s);
+      s.tombe = null; s.attente = RTR.pause; s.evT = s.t;
+      if (Math.abs(dx) > demi) {                                                                     // le milieu de la boîte est dans le vide : elle file par terre
+        const c = dx > 0 ? 1 : -1;
+        s.rates++; s.debris.push({ x: b.x, y: haut, w: b.w, h: b.h, lot: b.lot, vx: c * 70, vy: 0, rot: 0, vr: c * 5, age: 0 });
+        s.ev = { type: "rate", x: b.x, y: haut }; return;
+      }
+      const parfait = Math.abs(dx) <= RTR.parfait; if (parfait) dx = 0;                              // pose parfaite : la boîte se cale pile dans l'axe
+      const pts = parfait ? 100 : RTR.base + Math.round(RTR.prime * Math.max(0, 1 - (Math.abs(dx) - RTR.parfait) / RTR.tol));
+      s.pile.push({ d: dx, w: b.w, h: b.h, lot: b.lot, pts }); s.poses++; if (parfait) s.parfaites++;
+      const x = centresTour(s)[n];
+      if (jugerTour(s)) s.ev = { type: "bascule", x, y: haut + b.h }; else { compterTour(s); s.ev = { type: parfait ? "parfait" : "pose", pts, x, y: haut + b.h, h: b.h }; }
+    };
+    // La bascule est finie : tout ce qui était au-dessus de la boîte qui a cédé part en vrac.
+    const effondrerTour = s => {
+      const { j, cote } = s.bascule, xs = centresTour(s); let y = 0;
+      for (let k = 0; k < j; k++) y += s.pile[k].h;
+      const partis = s.pile.splice(j); s.bascule = null;
+      partis.forEach((b, k) => { s.debris.push({ x: xs[j + k] + cote * (6 + 5 * k), y, w: b.w, h: b.h, lot: b.lot, vx: cote * (70 + 22 * k), vy: 40 + 12 * k, rot: cote * 0.45, vr: cote * (2.5 + 0.5 * k), age: 0 }); y += b.h; });
+      if (partis.length > 1) { s.effondrements++; s.tombees += partis.length; } else s.rates++;
+      s.attente = RTR.pause; s.evT = s.t; s.ev = { type: "chute", n: partis.length, x: xs[j], y };
+      if (!jugerTour(s)) compterTour(s);
+    };
+    const unPasTour = (s, duree) => {
+      const dt = TR_PAS, n = s.pile.length;
+      s.t += dt; s.phase += allureTour(s) * dt;
+      if (s.attente > 0) s.attente -= dt;
+      const visee = Math.min(RTR.bal0 + RTR.bal1 * Math.abs(s.penche), n ? RTR.balMax * 30 / Math.pow(n, 1.5) : 0);
+      s.souple += (visee - s.souple) * Math.min(1, 3 * dt);
+      for (const q of s.debris) { q.age += dt; q.vy -= 1500 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.rot += q.vr * dt; }
+      if (s.debris.length && s.debris[0].age > 1.6) s.debris.shift();
+      if (s.bascule) { s.bascule.t += dt; if (s.bascule.t >= RTR.bascule) effondrerTour(s); }
+      const b = s.tombe;
+      if (b) { b.v += RTR.g * dt; b.d += b.v * dt; if (b.d >= RTR.chute) poserTour(s); }
+      // Fin : le temps est écoulé, la dernière boîte lâchée est posée et la tour a fini de bouger.
+      if (s.t >= duree && !s.tombe && !s.bascule) s.fini = true;
+    };
+    // Pas fixe : la simulation avance par tranches de 1/240 s quel que soit le rythme d'affichage.
+    const pasTour = (s, dt, duree) => { s.acc += dt; while (s.acc >= TR_PAS && !s.fini) { s.acc -= TR_PAS; unPasTour(s, duree); } };
+    // La note : le nombre de paliers atteints. Barème progressif : les premiers points de note viennent vite, les derniers se méritent.
+    const noteTour = s => RTR.seuils.filter(p => s.points >= p).length;
+
+    /* --- Dessin et commandes (navigateur seulement) --- */
+    const tour = (el, opt) => {
+      const duree = opt.duree || 50, { cv, ctx, liberer } = monter(el, H);
+      cv.style.touchAction = "none";
+      cv.setAttribute("aria-label", "La tour de garde. Un palan promène une boîte au-dessus de la palette : touchez l'écran, cliquez ou tapez Espace pour la lâcher au bon moment. Empilez haut et droit : une tour qui penche trop s'effondre en partie, et seules comptent les boîtes encore debout à la fin.");
+      const s = creerTour(), mm = q => typeof matchMedia === "function" && matchMedia(q).matches;
+      const tactile = mm("(pointer: coarse)"), calme = mm("(prefers-reduced-motion: reduce)");
+      if (typeof opt.espion === "function") opt.espion(s);                                         // pour le banc d'essai seulement
+      const logo = new Image(); logo.src = opt.logo || api._logo;                                  // le logo de l'unité, sur une boîte sur quatre
+      const SOL = 426, RAIL = 52, TEINTES = [Y, O, P, V, B, G];
+      let clos = false, minuterie = 0, cam = 0, hautVu = 0;
+      const lacher = () => { if (!clos) lacherTour(s, duree); };
+      const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); lacher(); };
+      const enfonce = e => {
+        if (e.key !== " " && e.key !== "Spacebar" && e.key !== "Enter" && e.key !== "ArrowDown") return;
+        if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(e.target && e.target.tagName || "")) return;
+        e.preventDefault(); if (!e.repeat) lacher();
+      };
+      const menu = e => e.preventDefault();
+      cv.addEventListener("pointerdown", appui); cv.addEventListener("contextmenu", menu); window.addEventListener("keydown", enfonce);
+      const retirer = () => { cv.removeEventListener("pointerdown", appui); cv.removeEventListener("contextmenu", menu); window.removeEventListener("keydown", enfonce); };
+      // Une boîte de médicament : étui crème, bandeau de couleur, numéro de lot ; une sur quatre porte le logo de l'unité.
+      const boite = (x, y, b, alpha) => {                                                            // x : centre, y : dessous de la boîte (écran)
+        const c = TEINTES[b.lot % TEINTES.length], g = -b.w / 2;
+        ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha;
+        trait(ctx, 2.4); ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(g, -b.h, b.w, b.h, 4); ctx.fill();
+        ctx.save(); ctx.clip(); ctx.fillStyle = c; ctx.fillRect(g, -b.h, 18, b.h); ctx.fillStyle = "rgba(38,7,109,.1)"; ctx.fillRect(g, -5, b.w, 5); ctx.restore();
+        ctx.beginPath(); ctx.roundRect(g, -b.h, b.w, b.h, 4); ctx.stroke();
+        ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(g + 18, -b.h); ctx.lineTo(g + 18, 0); ctx.stroke();
+        if (b.lot % 4 === 0 && logo.complete && logo.naturalWidth) ctx.drawImage(logo, g + 2.5, -b.h / 2 - 6.5, 13, 13);
+        else { ctx.fillStyle = N; ctx.fillRect(g + 7.5, -b.h / 2 - 5, 3, 10); ctx.fillRect(g + 4, -b.h / 2 - 1.5, 10, 3); }       // la croix
+        texte(ctx, (b.w >= 64 ? "LOT " : b.w >= 54 ? "N°" : "") + (b.lot < 10 ? "0" : "") + b.lot, g + 23, -b.h / 2 - 3, 9, N, "left");   // l'étiquette se raccourcit avec la boîte
+        ctx.fillStyle = "rgba(38,7,109,.28)"; ctx.fillRect(g + 23, -b.h / 2 + 4, Math.max(8, b.w - 34), 2.5);
+        ctx.restore();
+      };
+      function dessiner(dt) {
+        const n = s.pile.length, haut = hauteurTour(s), xs = centresTour(s);
+        hautVu += (haut - hautVu) * Math.min(1, 10 * dt);
+        cam += (Math.max(0, hautVu - 150) - cam) * Math.min(1, (calme ? 9 : 5) * dt);
+        const yE = y => SOL - y + cam;                                                               // hauteur dans la réserve -> écran
+        ctx.fillStyle = "#EDEAF6"; ctx.fillRect(0, 0, W, H);                                         // le mur de la réserve
+        // Les rayonnages du fond défilent moins vite que la tour.
+        for (let k = 0; k < 9; k++) {
+          const y = ((SOL - 60 - k * 84 + cam * 0.5) % 756 + 756) % 756 - 150;
+          ctx.fillStyle = "rgba(38,7,109,.08)"; ctx.fillRect(0, y, W, 5);
+          for (let i = 0; i < 4; i++) { const lx = 222 + i * 34 + (k * 13) % 9, lh = 14 + (k * 7 + i * 11) % 15; ctx.fillRect(lx, y - lh, 26, lh); if ((k + i) % 3 === 0) ctx.fillRect(20 + i * 30, y - 12, 22, 12); }
+        }
+        // La toise : un trait tous les 20 cm, un chiffre tous les mètres.
+        ctx.fillStyle = "rgba(38,7,109,.4)";
+        for (let m = Math.max(0, Math.floor((cam - 60) / 28)); m * 28 < cam + SOL; m++) {
+          const y = yE(m * 28), long = m % 5 ? 6 : 12; ctx.fillRect(4, y - 0.75, long, 1.5);
+          if (m && m % 5 === 0) texte(ctx, m / 5 + " m", 19, y, 10, "rgba(38,7,109,.5)", "left");
+        }
+        // Le sol et la palette.
+        const ys = yE(0);
+        if (ys < H) {
+          ctx.fillStyle = "#F7E7B8"; ctx.fillRect(0, ys + 17, W, H - ys); trait(ctx, 3); ctx.beginPath(); ctx.moveTo(0, ys + 17); ctx.lineTo(W, ys + 17); ctx.stroke();
+          const g = 180 - RTR.palette / 2;
+          trait(ctx, 2.4); ctx.fillStyle = "#D9A866";
+          for (const x of [g + 4, 180 - 9, g + RTR.palette - 22]) { ctx.beginPath(); ctx.rect(x, ys + 6, 18, 11); ctx.fill(); ctx.stroke(); }
+          ctx.beginPath(); ctx.roundRect(g, ys, RTR.palette, 7, 2); ctx.fill(); ctx.stroke();
+          if (!n) { ctx.strokeStyle = "rgba(38,7,109,.35)"; ctx.lineWidth = 2; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.moveTo(180, ys - 4); ctx.lineTo(180, ys - 40); ctx.stroke(); ctx.setLineDash([]); }
+        }
+        // Les boîtes par terre ou en train de tomber.
+        for (const q of s.debris) { ctx.save(); ctx.translate(q.x, yE(q.y) - q.h / 2); ctx.rotate(q.rot); boite(0, q.h / 2, q, Math.max(0, Math.min(1, 1.6 - q.age) * 0.75)); ctx.restore(); }
+        // La tour. Pendant une bascule, tout ce qui est au-dessus de la boîte qui cède pivote sur son arête.
+        let y = 0;
+        for (let k = 0; k < n; k++) {
+          const b = s.pile[k], bs = s.bascule;
+          if (bs && k === bs.j) {
+            const px = xs[k] + deversTour(s, k + 1) + bs.cote * b.w / 2 * 0.6, u = bs.t / RTR.bascule;
+            ctx.save(); ctx.translate(px, yE(y)); ctx.rotate(bs.cote * u * u * 0.45); ctx.translate(-px, -yE(y));
+          }
+          boite(xs[k] + deversTour(s, k + 1), yE(y), b, 1); y += b.h;
+        }
+        if (s.bascule) ctx.restore();
+        // Le palan : un rail au plafond, un chariot, deux câbles et une pince.
+        const px = pinceTour(s), yp = yE(hautVu) - RTR.chute, pret = !s.tombe && !s.bascule && s.attente <= 0 && s.t < duree && !clos;
+        const porte = gabaritTour(s.servis), hp = pret ? porte.h : 0, lp = pret ? porte.w : 44;
+        ctx.fillStyle = N; ctx.fillRect(0, RAIL - 3, W, 6);
+        trait(ctx, 1.8); ctx.beginPath(); ctx.moveTo(px - 10, RAIL + 6); ctx.lineTo(px - 10, yp - hp - 5); ctx.moveTo(px + 10, RAIL + 6); ctx.lineTo(px + 10, yp - hp - 5); ctx.stroke();
+        trait(ctx, 2.4); ctx.fillStyle = O; ctx.beginPath(); ctx.roundRect(px - 19, RAIL - 8, 38, 16, 5); ctx.fill(); ctx.stroke();
+        if (pret) {
+          boite(px, yp, porte, 1);
+          { ctx.strokeStyle = "rgba(38,7,109,.28)"; ctx.lineWidth = 1.6; ctx.setLineDash([3, 5]); ctx.beginPath(); ctx.moveTo(px, yp + 5); ctx.lineTo(px, yp + 44); ctx.stroke(); ctx.setLineDash([]); }   // le fil à plomb
+        }
+        trait(ctx, 2.4); ctx.fillStyle = V; ctx.beginPath(); ctx.roundRect(px - lp / 2 - 4, yp - hp - 7, lp + 8, 7, 3); ctx.fill(); ctx.stroke();
+        if (pret) { ctx.fillStyle = V; for (const c of [-1, 1]) { ctx.beginPath(); ctx.rect(px + c * (lp / 2 + 2.5) - 2.5, yp - hp - 2, 5, 12); ctx.fill(); ctx.stroke(); } }
+        if (s.tombe) boite(s.tombe.x, yp + s.tombe.d, s.tombe, 1);
+        // Le résultat de la dernière boîte.
+        const dtE = s.t - s.evT, ev = s.ev;
+        if (ev && dtE < 1 && !clos) {
+          const ex = borne(ev.x, 92, W - 92), ey = Math.max(RAIL + 70, yE(ev.y) - 30 - (calme ? 0 : dtE * 14));
+          if ((ev.type === "parfait" || ev.type === "pose") && !calme && dtE < 0.35) {                // un peu de poussière sous la boîte
+            ctx.fillStyle = "rgba(38,7,109," + (0.25 * (1 - dtE / 0.35)) + ")";
+            for (const c of [-1, 1]) for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(ev.x + c * (20 + i * 7 + dtE * 60), yE(ev.y - ev.h) - 3 - i * 2 - dtE * 10, 3.2 - i * 0.6, 0, 6.3); ctx.fill(); }
+          }
+          if (ev.type === "parfait") {
+            if (!calme) { ctx.globalAlpha = 1 - dtE; ctx.strokeStyle = O; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(ev.x, yE(ev.y) + 12, 22 + dtE * 44, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
+            ctx.fillStyle = "rgba(38,7,109,.88)"; ctx.beginPath(); ctx.roundRect(ex - 88, ey - 15, 176, 30, 15); ctx.fill();
+            texte(ctx, "+100 · Pose parfaite !", ex, ey + 1, 14, Y);
+          } else if (ev.type === "pose") {
+            ctx.fillStyle = "rgba(38,7,109,.88)"; ctx.beginPath(); ctx.roundRect(ex - 28, ey - 13, 56, 26, 13); ctx.fill();
+            texte(ctx, "+" + ev.pts, ex, ey + 1, 14, C);
+          } else {
+            const t = ev.type === "rate" ? "À côté…" : ev.type === "bascule" ? "Ça bascule !" : ev.n > 1 ? "Effondrement : " + ev.n + " boîtes à terre" : "Trop au bord…";
+            ctx.fillStyle = ev.type === "rate" ? "rgba(38,7,109,.6)" : R; ctx.beginPath(); ctx.roundRect(180 - 120, RAIL + 52, 240, 28, 14); ctx.fill();
+            texte(ctx, t, 180, RAIL + 67, 13.5, C);
+          }
+        }
+        // Le niveau à bulle : il dit de quel côté la tour penche, et vire à l'orange quand elle est près de céder.
+        const p = borne(s.penche, -1, 1), danger = Math.abs(p) > 0.7;
+        ctx.fillStyle = "rgba(255,251,242,.92)"; ctx.beginPath(); ctx.roundRect(W - 122, H - 30, 116, 24, 12); ctx.fill(); trait(ctx, 2); ctx.stroke();
+        texte(ctx, "NIVEAU", W - 114, H - 17.5, 8.5, N, "left");
+        ctx.fillStyle = danger ? "#F6C9B4" : "#CFE8DD"; ctx.beginPath(); ctx.roundRect(W - 76, H - 25, 64, 14, 7); ctx.fill(); ctx.lineWidth = 1.6; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(W - 51, H - 25); ctx.lineTo(W - 51, H - 11); ctx.moveTo(W - 37, H - 25); ctx.lineTo(W - 37, H - 11); ctx.stroke();
+        ctx.fillStyle = danger ? O : G; ctx.beginPath(); ctx.arc(W - 44 + p * 24, H - 18, 5, 0, 6.3); ctx.fill(); ctx.stroke();
+        if (danger && !s.bascule && !clos && (calme || Math.floor(s.t * 3) % 2 === 0)) texte(ctx, "Ça penche !", W - 64, H - 40, 12, R);
+        if (s.t < 6 && !clos && !s.servis) {
+          ctx.globalAlpha = Math.min(1, 6 - s.t) * 0.92;
+          ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(28, 92, 304, 28, 14); ctx.fill();
+          texte(ctx, tactile ? "Touchez l'écran pour lâcher la boîte" : "Cliquez ou tapez Espace pour lâcher", 180, 107, 13, Y);
+          ctx.globalAlpha = 1;
+        }
+        const note = noteTour(s);
+        bandeau(ctx, n + (n > 1 ? " boîtes · " : " boîte · ") + s.points + " pts · " + note + "/10", duree - s.t, duree);
+        if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 180, 280, 110, 18); ctx.fill(); texte(ctx, note + " / 10", 180, 220, 40, Y); texte(ctx, s.points + " points · " + n + (n > 1 ? " boîtes debout" : " boîte debout"), 180, 262, 16, C); }
+      }
+      const arret = boucle(dt => {
+        if (!clos) {
+          pasTour(s, dt, duree);
+          if (s.fini) {
+            clos = true;
+            const n = noteTour(s), k = s.pile.length, pl = (q, un, des) => q + " " + (q > 1 ? des : un);
+            const bilan = pl(k, "boîte debout", "boîtes debout") + " (" + (hauteurTour(s) / RTR.metre).toFixed(1).replace(".", ",") + " m) sur " + pl(s.poses, "posée", "posées") + ", dont " + pl(s.parfaites, "pose parfaite", "poses parfaites") + ", " + pl(s.effondrements, "effondrement", "effondrements") + ", " + pl(s.rates, "boîte à côté", "boîtes à côté") + " : " + pl(s.points, "point", "points") + ", soit " + n + " sur 10 (de " + RTR.base + " à 100 points par boîte encore debout à la fin, selon son alignement ; barème progressif, 10 sur 10 à partir de " + RTR.seuils[9] + " points).";
+            minuterie = setTimeout(() => { arret(); liberer(); retirer(); opt.onFin(n, bilan, s.points); }, 1300);
+          }
+        }
+        dessiner(dt);
+      });
+      cv.focus({ preventScroll: true });
+      return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
+    };
+    api.tour = tour;
+    Object.assign(api._coeur, { REGL_TOUR: RTR, creerTour, pasTour, noteTour, lacherTour, pinceTour, cibleTour, chuteTour, centresTour, hauteurTour, equilibreTour, gabaritTour, deversTour });
+  }
+  /* ----- Fin [tour] ----- */
+
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PharmacoJeux = api;
 })(typeof window !== "undefined" ? window : globalThis);
