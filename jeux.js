@@ -2180,7 +2180,7 @@
     return HA_TEMOINS[cle];
   }
   function creerHaies(graine, duree, seul) {
-    return { temoin: seul ? null : temoinHaies(graine, duree || 50), pas: 0, t: 0, x: 0, y: 0, vy: 0, v: RH.v0, elan: 0, sol: true, tenu: false, lache: true, grand: false, demande: -1, tSaut: -9, tSalto: -9, arret: 0, tChute: -9, dernier: null,
+    return { temoin: seul ? null : temoinHaies(graine, duree || 50), pas: 0, t: 0, x: 0, y: 0, vy: 0, v: RH.v0, elan: 0, sol: true, tenu: false, lache: true, grand: false, demande: -1, tSaut: -9, tSalto: -9, tVide: -9, arret: 0, tChute: -9, dernier: null,
       file: parcoursHaies(graine, (RH.vmax + RH.sur) * (duree || 50) + 500), suivant: 0, francs: 0, chutes: 0, sauts: 0, salto: null, saltos: 0, fini: false };
   }
   // Le bouton : enfoncé (true) ou relâché (false). Un appui juste avant de toucher le sol est gardé en mémoire un instant.
@@ -2208,7 +2208,7 @@
       const plane = !s.lache && ts >= RH.seuil && ts < RH.tenue;                // bouton tenu : le saut s'allonge
       if (plane) s.grand = true;
       s.vy -= (plane ? RH.gTenu : RH.g) * HA_PAS; s.y += s.vy * HA_PAS;
-      if (s.y <= 0) { s.y = 0; s.vy = 0; s.sol = true; if (s.salto) { s.saltos++; if (s.file.slice(Math.max(0, s.suivant - 2), s.suivant + 1).some(o => !o.touche && o.x >= s.xSaut && o.x + o.w <= s.x + HA_DEMI)) { s.tSalto = s.t; s.elan = Math.min(RH.vmax - RH.v0 + RH.sur, s.elan + RH.gain); } } s.salto = null; }
+      if (s.y <= 0) { s.y = 0; s.vy = 0; s.sol = true; if (s.salto) { s.saltos++; if (s.file.slice(Math.max(0, s.suivant - 2), s.suivant + 1).some(o => !o.touche && o.x >= s.xSaut && o.x + o.w <= s.x + HA_DEMI)) { s.tSalto = s.t; s.elan = Math.min(RH.vmax - RH.v0 + RH.sur, s.elan + RH.gain); } else s.tVide = s.t; } s.salto = null; }
     }
     let o = s.file[s.suivant];
     while (o && o.x + o.w < s.x - HA_DEMI) { if (!o.touche) s.francs++; o = s.file[++s.suivant]; }
@@ -2414,6 +2414,7 @@
     }
     function dessiner() {
       const cam = s.x - HA_XJ, m = Math.floor(metresHaies(s)), n = noteHaies(s, duree);
+      const gagne = s.t - s.tSalto, flash = gagne < 0.7 && !clos;                                      // un salto vient de rapporter de l'élan
       decor(cam);
       for (let i = Math.max(0, s.suivant - 2); i < s.file.length; i++) {
         const o = s.file[i], x = o.x - cam;
@@ -2423,7 +2424,16 @@
         if (o.aide && !o.touche && x + o.w > HA_XJ) pastille(o.bas ? "SAUT BREF" : "MAINTENIR", x + o.w / 2, o.bas ? HA_SOL - o.bas - 40 : HA_SOL - 150);
       }
       coureur();
-      ctx.fillStyle = "rgba(38,7,109,.5)"; texte(ctx, "ÉLAN", 10, HA_H - 12, 9, "rgba(38,7,109,.6)", "left");   // la jauge d'élan
+      if (flash) {                                                                                     // le gain se voit sur le coureur : chevrons de vitesse et « + ÉLAN » qui s'envole
+        const q = gagne / 0.7;
+        ctx.globalAlpha = 1 - q * q;
+        if (!calme) { trait(ctx, 4); ctx.strokeStyle = O; for (let i = 0; i < 3; i++) { const x = HA_XJ - 34 - i * 13 - q * 22; ctx.beginPath(); ctx.moveTo(x - 7, HA_SOL - 58); ctx.lineTo(x, HA_SOL - 42); ctx.lineTo(x - 7, HA_SOL - 26); ctx.stroke(); } }
+        const y = HA_SOL - 96 - (calme ? 0 : q * 22);
+        ctx.fillStyle = Y; trait(ctx, 2.2); ctx.beginPath(); ctx.roundRect(HA_XJ - 26, y - 10, 62, 20, 10); ctx.fill(); ctx.stroke(); texte(ctx, "+ ÉLAN", HA_XJ + 5, y + 0.5, 12, N);
+        ctx.globalAlpha = 1;
+      }
+      texte(ctx, "ÉLAN", 10, HA_H - 12, 9, "rgba(38,7,109,.6)", "left");                                // la jauge d'élan
+      if (flash) { ctx.fillStyle = Y; ctx.beginPath(); ctx.roundRect(36, HA_H - 20, 102, 16, 8); ctx.fill(); trait(ctx, 2); ctx.stroke(); texte(ctx, "+", 126, HA_H - 12, 13, N); }
       ctx.fillStyle = "rgba(38,7,109,.15)"; ctx.beginPath(); ctx.roundRect(40, HA_H - 16, 70, 8, 4); ctx.fill();
       const plein = RH.vmax - RH.v0;
       if (s.elan > plein) { ctx.fillStyle = O; ctx.beginPath(); ctx.roundRect(40, HA_H - 16, 70 + 24 * (s.elan - plein) / RH.sur, 8, 4); ctx.fill(); }   // le surplus gagné aux saltos
@@ -2437,7 +2447,8 @@
       bandeau(ctx, m + " m · " + s.chutes + (s.chutes > 1 ? " chutes" : " chute") + " · " + n + "/10", duree - s.t, duree);
       const cent = Math.floor(m / 100);
       if (!clos && s.arret > 0 && s.dernier) pastilleGrande(s.dernier.tete ? "Attention la tête !" : HA_MOTS[s.dernier.k], P);
-      else if (!clos && (s.salto || s.t - s.tSalto < 0.5)) pastilleGrande(s.salto ? "Salto !" : "Salto : élan gagné !", Y);
+      else if (!clos && (s.salto || gagne < 0.9)) pastilleGrande(s.salto ? "Salto !" : "Salto réussi : + vite !", Y);
+      else if (!clos && s.t - s.tVide < 0.9) pastilleGrande("Salto à vide : pas d'élan", P);
       else if (!clos && cent > 0 && metresHaies(s) - cent * 100 < 9) pastilleGrande(cent * 100 + " m !", Y);
       if (clos) { ctx.fillStyle = "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(40, 96, 280, 110, 18); ctx.fill(); texte(ctx, n + " / 10", 180, 136, 40, Y); texte(ctx, m + " m · " + Math.floor(avanceHaies(s)) + " m d'avance", 180, 178, 16, C); }
     }
