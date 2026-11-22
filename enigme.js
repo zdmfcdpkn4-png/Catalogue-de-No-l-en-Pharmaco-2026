@@ -404,6 +404,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<p class="eg-tools"><button class="go" type="button" id="egReload">Actualiser</button><button class="linkbtn" type="button" id="egBrigade" hidden>Ma brigade</button><button class="linkbtn" type="button" id="egAvatar" hidden>Retoucher ma fiche</button><button class="linkbtn" type="button" id="egChange">Changer de prénom</button></p></div>'
       + '<aside class="eg-panel" id="egPanel" aria-live="polite"></aside>'
       + "</div>"
+      + '<section id="egEnquete" aria-label="L\'enquête des brigades" hidden></section>'
       + '<div class="eg-panel eg-rank" id="egRank" hidden><div class="eg-rhead"><h3>Classement des Pharmacogames</h3><p class="eg-sum" id="egSum"></p></div>'
       + '<p class="eg-d" id="egRankMsg"></p>'
       + '<section class="eg-scene" id="egScene" aria-label="Remise des prix" hidden><div class="eg-scene-c" id="egSceneC" aria-hidden="true"><div class="eg-face f1"></div><div class="eg-face f2"></div><div class="eg-face f3"></div></div>'
@@ -554,7 +555,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (enJeu) { enJeu(); enJeu = null; }
     clearInterval(tic); echeance = {};
     relecture = "";
-    E = null; enFiche = false; enTirage = false;
+    E = null; enFiche = false; enTirage = false; majEnquete();
     q("#egBody").hidden = true; q("#egRank").hidden = true; q("#egBanner").hidden = true;
     q("#egGate").hidden = false;
     q("#egNotice").open = true;
@@ -991,7 +992,41 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   const brigOuvertes = new Set();
   const dec = n => String(n).replace(".", ",");
 
+  // Enquête des brigades : le bloc vient de enquete.js, chargé seulement quand le serveur a quelque chose à montrer
+  // (une étape d'amorce acquise au joueur, ou une énigme ouverte ou close). Avant cela, rien n'est téléchargé ni affiché.
+  let blocEnquete = null;
+  const chargerEnquete = () => new Promise((ok, ko) => {
+    if (window.PharmacoEnquete) return ok();
+    const sc = document.createElement("script");
+    sc.src = "enquete.js"; sc.onload = () => (window.PharmacoEnquete ? ok() : ko()); sc.onerror = ko;
+    document.head.appendChild(sc);
+  });
+  const envoyerEnquete = async (k, reponse) => {
+    const r = await call({ code: mem.code, prenom: mem.prenom, action: "enquete", k, reponse });
+    if (r.j && r.j.portes) { E = r.j; majBrigades(); rang(); }
+    return r;
+  };
+  function majEnquete() {
+    const Q = E && E.enquete, el = q("#egEnquete");
+    if (!el) return;
+    if (E && (enJeu || q("#egTime"))) return; // pas de nouveauté sous la grille pendant un chrono : elle sort après le jeu
+    const visible = Q && ((Q.amorces || []).length || (Q.enigmes || []).some(e => e.etat !== "avenir"));
+    if (!visible) { if (blocEnquete) blocEnquete.maj(null); else el.hidden = true; return; }
+    chargerEnquete().then(() => {
+      if (!E || !E.enquete) return;
+      blocEnquete = blocEnquete || window.PharmacoEnquete.monter(el, {
+        envoyer: envoyerEnquete,
+        peutRepondre: () => Boolean(!relecture && E && E.profil && E.profil.b !== undefined),
+        identifier: () => { if (!relecture && !enJeu && brouillon === null && !q("#egTime")) identifier(); },
+        brigade: b => { const W = window.PharmacoParticipants, B = W && W.BRIGADES[b]; return B ? B.nom : "Brigade " + (b + 1); },
+        mienne: () => (E && E.profil ? E.profil.b : undefined),
+      });
+      blocEnquete.maj(E.enquete);
+    }).catch(() => {});
+  }
+
   function rang() {
+    majEnquete();
     const L = E.classement || [], moi = relecture ? "" : norm(mem.prenom || "");
     const closes = E.portes.filter(p => p.etat === "close"), clos = closes.length;
     const me = moi ? L.find(x => norm(x.p) === moi) : null;
