@@ -37,6 +37,8 @@ Le stockage des votes et des parties est un magasin Vercel Blob privé. Les modu
 - Finale du 25 (type `duo`) : deux jeux dans la même porte, joués dans l'ordre, deux tentatives chacun ; chaque jeu est classé à part (10 au premier, 1 au dernier) et la porte vaut leur somme, 20 points au plus.
 - Avant tout lancement (jeu ou question), la page rappelle les essais restants et demande une validation (`avertir` dans `enigme.js`).
 - Solution, points et classement ne sortent qu'à la clôture de la porte.
+- Le sapin d'abord : une porte ne se lance que si le joueur a ouvert la goutte du même jour dans le sapin. Le sapin retient ses gouttes dans le navigateur ; `enigme.js` les déclare au serveur (action `sapin`), qui les garde par joueur et refuse sinon le lancement (403 `sapin`). La page dit alors : « Un mystère t'attend d'abord auprès du sapin ».
+- Les portes dans l'ordre : parmi les portes encore ouvertes, une porte ne se lance que si les plus anciennes ont été lancées (403 `ordre`), même pour un joueur qui commence tard. Une porte déjà lancée n'est plus verrouillée. Les bancs généraux coupent ces deux verrous (`handler.sansVerrou`) ; ils ont leurs bancs dans l'atelier (`test-verrou.js`, `test-enquete-page.js`).
 
 ## Secrets
 Deux codes existent : le **code d'équipe** (donné aux joueurs) et le **code d'administration** (variable `ADMIN_CODE`,

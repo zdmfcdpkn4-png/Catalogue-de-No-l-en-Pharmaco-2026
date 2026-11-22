@@ -432,16 +432,28 @@ function vueDuo(o, q, etat, r, clos, rg) {
     notes(k), { duo: { i: k + 1, nb, titre: c.titre, avant: q.jeux.slice(0, k).map((x, i) => Object.assign({ titre: x.titre }, notes(i))) } });
 }
 
+// Verrou d'une porte ouverte pas encore lancée par le joueur. Les portes se jouent dans l'ordre : « ordre » tant qu'une porte
+// plus ancienne, encore ouverte, n'a pas été lancée (`avant` : laquelle). Le sapin d'abord : « sapin » tant que la goutte du
+// même jour n'a pas été ouverte (action « sapin », gardée dans s: { n: 1 }). Une porte déjà lancée n'est plus verrouillée.
+function verrou(B, j, n, jour) {
+  if (handler.sansVerrou || (j && j.r[n])) return null;
+  const m = B.portes.find(q => q.n < n && etatDe(q.n, jour) === 'ouverte' && !(j && j.r[q.n]));
+  if (m) return { verrou: 'ordre', avant: m.n };
+  return j && j.s && j.s[n] ? null : { verrou: 'sapin' };
+}
+
 function etat(B, joueurs, cle, jour, maintenant) {
   const j = cle ? joueurs[cle] : null;
   const portes = B.portes.map(q => {
     const e = etatDe(q.n, jour);
+    if (e === 'ouverte' && cle) { const v = verrou(B, j, q.n, jour); if (v) return Object.assign(vue(q, e, j && j.r[q.n], false, maintenant), v); }
     return vue(q, e, j && j.r[q.n], false, maintenant, j && (q.type === 'jeu' || q.type === 'duo') && e === 'close' ? rangsPorte(q, joueurs)[cle] : undefined);
   });
   const L = classementSuivi(B, joueurs, jour), E = B.enquete;
   return {
     jour,
     prenom: j ? j.p : undefined,
+    sapin: j && j.s ? Object.keys(j.s).map(Number) : [],
     profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b, d: j.d, g: j.g, n: j.n, e: j.e } : undefined,
     nom: j ? j.l : undefined,
     fiche: { etat: jour < FICHE_JOUR ? 'avenir' : 'ouvert', ouvre: dateDe(FICHE_JOUR) },
@@ -593,6 +605,18 @@ async function handler(req, res) {
       return res.status(s.code).json(s.corps);
     }
     // Réponse d'un membre à une énigme de l'enquête : une seule, définitive. Rien ne dit si elle est juste avant la clôture.
+    // Gouttes du sapin ouvertes par le joueur (le sapin les retient dans le navigateur, la page les déclare ici).
+    if (b.action === 'sapin') {
+      const L = Array.isArray(b.jours) ? [...new Set(b.jours)] : null;
+      if (!L || !L.length || L.length > 25 || L.some(n => !Number.isInteger(n) || n < 1 || n > 25)) return res.status(400).json({ error: 'jours' });
+      const s = await modifier(joueurs => {
+        const j = joueurs[cle], N = L.filter(n => n <= jour && !(j && j.s && j.s[n]));
+        if (!j || !N.length) return { fin: J => ({ code: 200, corps: etat(B, J, cle, jour, maintenant) }) };
+        for (const n of N) (j.s || (j.s = {}))[n] = 1;
+        return { ok: J => ({ code: 200, corps: etat(B, J, cle, jour, maintenant) }) };
+      });
+      return res.status(s.code).json(s.corps);
+    }
     if (b.action === 'enquete') {
       const c = B.enquete && Number.isInteger(b.k) ? B.enquete.enigmes.find(x => x.k === b.k) : null;
       if (!c) return res.status(400).json({ error: 'enigme' });
@@ -624,6 +648,8 @@ async function handler(req, res) {
       // Lancement du chrono d'une question, ou d'une tentative de jeu.
       let jeton;
       sortie = await modifier(joueurs => {
+        const v = verrou(B, joueurs[cle], q.n, jour);
+        if (v) return refus(403, v.verrou);
         if (!joueurs[cle]) {
           if (Object.keys(joueurs).length >= MAX_JOUEURS) return { fin: () => ({ code: 403, corps: { error: 'complet' } }) };
           joueurs[cle] = { p: prenom, t: maintenant, r: {} };

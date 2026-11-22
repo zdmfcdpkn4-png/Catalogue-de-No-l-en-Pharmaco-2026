@@ -447,6 +447,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       else if (e.target.closest("#egTry")) jouer(false);
       else if (e.target.closest("[data-try]")) jouer(false, Number(e.target.closest("[data-try]").dataset.try));
     });
+    q("#egPanel").addEventListener("click", e => { const b = e.target.closest("#egAvant"); if (b) { choix = Number(b.dataset.n); brouillon = null; aConfirmer = false; grille(); panneau(); } });
     q("#egPanel").addEventListener("input", e => { if (e.target.id === "egRange") noter(Number(e.target.value)); });
     q("#egChange").addEventListener("click", sortir);
     q("#egAvatar").addEventListener("click", () => { if (!enJeu && brouillon === null && !q("#egTime")) identifier(); });
@@ -605,6 +606,20 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     panneau(msg, cls);
     rang();
     allerFiche();
+  }
+  // Le sapin d'abord : il retient dans le navigateur les gouttes ouvertes ; on les déclare au serveur, qui libère la porte du
+  // même jour. Chaque goutte n'est déclarée qu'une fois par visite, et jamais pendant un jeu ou un chrono.
+  const sapinDit = new Set();
+  async function declarerSapin() {
+    if (relecture || !E || !E.profil || !mem.prenom || enJeu || q("#egTime")) return;
+    let L = [];
+    try { L = JSON.parse(localStorage.getItem("pharmacotechnie-avent-2026") || "[]") || []; } catch (e) {}
+    const vus = E.sapin || [], N = L.filter(n => Number.isInteger(n) && n >= 1 && n <= 25 && !vus.includes(n) && !sapinDit.has(n));
+    if (!N.length) return;
+    N.forEach(n => sapinDit.add(n));
+    let r;
+    try { r = await call({ code: mem.code, prenom: mem.prenom, action: "sapin", jours: N }); } catch (e) { return; }
+    if (r.status === 200 && r.j.portes && !enJeu && !enFiche && brouillon === null && !q("#egTime")) recevoir(r.j);
   }
 
   // Participants : l'avatar et la brigade du joueur. Le dessin vient de participants.js, chargé à la demande ;
@@ -803,6 +818,14 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         + '<p class="eg-d">Encore ' + pl(n, "jour", "jours") + " de quarantaine. Revenez le jour dit : une porte s'ouvrira chaque matin jusqu'au 25.</p>";
     } else if (p.etat === "avenir" && !relecture) {
       html = '<p class="ap-m">Porte ' + p.n + ' · sous scellé</p><h3>Patience</h3><p class="eg-d">Cette porte s\'ouvrira le ' + jour(dt(p.ouvre)) + ". D'ici là, elle reste en quarantaine.</p>";
+    } else if (p.etat === "ouverte" && !relecture && p.verrou && fiche()) { // sans fiche, le bouton habituel mène d'abord à l'identification
+      // Porte verrouillée : le sapin d'abord (la goutte du même jour), et les portes dans l'ordre.
+      html = '<p class="ap-m">Porte ' + p.n + " · " + jour(dt(p.ouvre)) + " · " + forme(p) + "</p><h3>" + fr(p.titre) + "</h3>"
+        + (p.verrou === "ordre"
+          ? '<p class="eg-d"><b>Chaque dose en son temps !</b> Les portes se prennent dans l\'ordre : celle du ' + jour(dt(E.portes[p.avant - 1].ouvre)) + " passe d'abord.</p>"
+            + '<button class="go main" type="button" id="egAvant" style="margin-top:14px" data-n="' + p.avant + '">Aller à la porte ' + p.avant + "</button>"
+          : '<p class="eg-d"><b>Pas si vite !</b> Un mystère t\'attend d\'abord auprès du sapin : ouvre la goutte du ' + jour(dt(p.ouvre)) + ", puis reviens ici, la porte sera libérée.</p>"
+            + '<a class="go main" id="egSapin" href="#sapin" style="display:inline-block;margin-top:14px;text-decoration:none">Filer au sapin</a>');
     } else {
       const ouverte = p.etat === "ouverte" && !relecture;
       html = '<p class="ap-m">Porte ' + p.n + " · " + jour(dt(p.ouvre)) + " · " + forme(p) + "</p><h3>" + fr(p.titre) + "</h3>"
@@ -1027,6 +1050,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 
   function rang() {
     majEnquete();
+    declarerSapin();
     const L = E.classement || [], moi = relecture ? "" : norm(mem.prenom || "");
     const closes = E.portes.filter(p => p.etat === "close"), clos = closes.length;
     const me = moi ? L.find(x => norm(x.p) === moi) : null;
