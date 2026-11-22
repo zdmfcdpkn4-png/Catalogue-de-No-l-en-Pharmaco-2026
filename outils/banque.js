@@ -50,6 +50,28 @@ function controler(b) {
     } else question(p, ou);
     if (/—/.test(JSON.stringify(p))) e.push(ou + 'tiret cadratin');
   });
+  // Enquête, facultative : une énigme par jour, réponse au choix ou en texte.
+  if (b.enquete !== undefined) {
+    const E = b.enquete, ou = 'enquête : ';
+    if (!E || typeof E.titre !== 'string' || !E.titre || !Array.isArray(E.enigmes) || !E.enigmes.length) e.push(ou + 'titre et énigmes attendus');
+    else {
+      if (new Set(E.enigmes.map(c => c.k)).size !== E.enigmes.length) e.push(ou + 'numéros d\'énigme en double');
+      E.enigmes.forEach(c => {
+        const o = ou + 'énigme ' + c.k + ' : ';
+        if (!Number.isInteger(c.k) || c.k < 1) e.push(o + 'numéro entier attendu');
+        if (!Number.isInteger(c.n) || c.n < 1 || c.n > 25) e.push(o + 'jour entre 1 et 25');
+        if (!Number.isInteger(c.pts) || c.pts < 0 || c.pts > 10) e.push(o + 'points entre 0 et 10');
+        for (const k of ['titre', 'enonce', 'revelation']) if (typeof c[k] !== 'string' || !c[k]) e.push(o + k + ' manquant');
+        if (c.saisie === 'choix') {
+          if (!Array.isArray(c.options) || c.options.length < 2 || c.options.some(x => typeof x !== 'string' || !x)) e.push(o + 'au moins 2 propositions');
+          else if (!Number.isInteger(c.bonne) || c.bonne < 0 || c.bonne >= c.options.length) e.push(o + 'bonne réponse hors des propositions');
+        } else if (c.saisie === 'texte') {
+          if (!Array.isArray(c.reponses) || !c.reponses.length || c.reponses.some(x => typeof x !== 'string' || !norm(x).replace(/[^a-z0-9]/g, ''))) e.push(o + 'réponses acceptées manquantes');
+        } else e.push(o + 'saisie inconnue');
+      });
+      if (/—/.test(JSON.stringify(E))) e.push(ou + 'tiret cadratin');
+    }
+  }
   return e;
 }
 

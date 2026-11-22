@@ -231,10 +231,58 @@ function attribuer(V, k) {
   for (const x of P) if (R[x.b] === undefined && !pris.has(x.o)) { R[x.b] = x.o; pris.add(x.o); }
   return R;
 }
-function brigades(L, joueurs, mienne) {
+// Enquête (facultative : `enquete` dans la banque). Une énigme par jour, jouée par brigade : chaque membre a un seul essai
+// par énigme, et dès qu'un membre trouve, la révélation est acquise à toute sa brigade. Une énigme reste ouverte son jour
+// et les deux suivants, comme une porte ; close sans avoir été résolue, sa révélation sort d'office, sans point.
+// Banque : { titre, denouement, enigmes: [ { k, n: jour de décembre, titre, enonce, saisie: 'choix' | 'texte',
+//   options (choix), bonne: indice (choix), reponses: [textes acceptés] (texte), revelation, elimine, source, pts } ] }.
+// Ce que le serveur garde par joueur : x: { k: { v: sa réponse, t: heure, ok: juste ou non } }.
+// Les points vont à la brigade, jamais au classement individuel.
+const normRep = s => norm(s).replace(/[^a-z0-9]/g, '');
+const justeEnq = (c, v) => (c.saisie === 'choix' ? v === c.bonne : c.reponses.some(x => normRep(x) === normRep(v)));
+// Par brigade, les énigmes résolues : { k: { par: pseudo du premier membre à avoir trouvé, t } }.
+function resolues(joueurs) {
+  const S = Array.from({ length: NB_BRIGADES }, () => ({}));
+  for (const cle of Object.keys(joueurs)) {
+    const j = joueurs[cle], s = S[j.b];
+    if (!s || !j.x) continue;
+    for (const k of Object.keys(j.x)) if (j.x[k].ok && (!s[k] || j.x[k].t < s[k].t)) s[k] = { par: j.p, t: j.x[k].t };
+  }
+  return S;
+}
+// Points d'enquête de chaque brigade ; `closes` : les seules énigmes closes (ce qui entre au classement).
+const pointsEnq = (E, S, jour, closes) => S.map(s => E.enigmes.reduce((t, c) => t + (s[c.k] && (!closes || etatDe(c.n, jour) === 'close') ? c.pts : 0), 0));
+// Ce qu'un joueur voit de l'enquête : l'énoncé à l'ouverture ; la révélation quand sa brigade a trouvé ou à la clôture ;
+// les réponses attendues en relecture seulement (`tout`).
+function vueEnquete(E, joueurs, cle, jour, tout) {
+  const j = cle ? joueurs[cle] : null, S = resolues(joueurs), s = j && S[j.b];
+  const su = c => Boolean(s && s[c.k]) || etatDe(c.n, jour) === 'close' || tout;
+  const enigmes = E.enigmes.map(c => {
+    const e = etatDe(c.n, jour), o = { k: c.k, jour: c.n, etat: e, ouvre: dateDe(c.n), ferme: dateDe(c.n + DELAI), pts: c.pts };
+    if (e === 'avenir' && !tout) return o;
+    Object.assign(o, { titre: c.titre, enonce: c.enonce, saisie: c.saisie });
+    if (c.saisie === 'choix') o.options = c.options;
+    const a = j && j.x && j.x[c.k];
+    if (a) Object.assign(o, { repondu: true, juste: a.ok, rep: a.v });
+    if (s && s[c.k]) Object.assign(o, { resolue: true, par: s[c.k].par });
+    if (su(c)) Object.assign(o, { revelation: c.revelation, elimine: c.elimine, source: c.source });
+    if (tout) { if (c.saisie === 'choix') o.bonne = c.bonne; else o.reponses = c.reponses; }
+    return o;
+  });
+  const o = { titre: E.titre, fiction: true, max: E.enigmes.reduce((t, c) => t + c.pts, 0), enigmes };
+  if (s) o.points = pointsEnq(E, S, jour, false)[j.b];
+  // Le dénouement : quand les énigmes du dernier jour sont toutes sues de la brigade (résolues ou closes).
+  const fin = Math.max(...E.enigmes.map(c => c.n));
+  if (E.denouement && E.enigmes.filter(c => c.n === fin).every(su)) o.denouement = E.denouement;
+  o.classement = pointsEnq(E, S, jour, true).map((points, b) => ({ b, points }));
+  return o;
+}
+
+// `enq` : les points d'enquête de chaque brigade (énigmes closes), ajoutés à sa moyenne pour le classement (`tot`).
+function brigades(L, joueurs, mienne, enq) {
   const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, actifs: 0, pts: 0, moy: 0 }));
   for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; if (x.cl) T[x.b].actifs++; }
-  for (const t of T) t.moy = t.actifs ? Math.round(t.pts / t.actifs * 10) / 10 : 0;
+  for (const t of T) { t.moy = t.actifs ? Math.round(t.pts / t.actifs * 10) / 10 : 0; t.enq = enq ? enq[t.b] : 0; t.tot = Math.round((t.moy + t.enq) * 10) / 10; }
   // nn : les voix pour le nom, regroupées sans accents ni casse ; n : les mêmes voix telles que les membres les ont écrites.
   const V = Array.from({ length: NB_BRIGADES }, () => ({ d: {}, g: {}, n: {}, e: {}, nn: {} }));
   for (const cle of Object.keys(joueurs)) {
@@ -259,9 +307,9 @@ function brigades(L, joueurs, mienne) {
     if (emblemes[t.b] !== undefined) t.embleme = Number(emblemes[t.b]);
     if (t.b === mienne) t.voix = { d: v.d, g: v.g, n: v.n, e: v.e };
   }
-  T.sort((x, y) => y.moy - x.moy || x.b - y.b);
+  T.sort((x, y) => y.tot - x.tot || x.b - y.b);
   let rang = 0;
-  T.forEach((t, i) => { if (!i || t.moy !== T[i - 1].moy) rang = i + 1; t.rang = rang; });
+  T.forEach((t, i) => { if (!i || t.tot !== T[i - 1].tot) rang = i + 1; t.rang = rang; });
   return T;
 }
 
@@ -358,7 +406,7 @@ function etat(B, joueurs, cle, jour, maintenant) {
     const e = etatDe(q.n, jour);
     return vue(q, e, j && j.r[q.n], false, maintenant, j && (q.type === 'jeu' || q.type === 'duo') && e === 'close' ? rangsPorte(q, joueurs)[cle] : undefined);
   });
-  const L = classementSuivi(B, joueurs, jour);
+  const L = classementSuivi(B, joueurs, jour), E = B.enquete;
   return {
     jour,
     prenom: j ? j.p : undefined,
@@ -369,7 +417,8 @@ function etat(B, joueurs, cle, jour, maintenant) {
     portes,
     total: portes.reduce((s, p) => s + (p.pts || 0), 0),
     classement: L,
-    brigades: brigades(L, joueurs, j ? j.b : undefined),
+    brigades: brigades(L, joueurs, j ? j.b : undefined, E && pointsEnq(E, resolues(joueurs), jour, true)),
+    enquete: E ? vueEnquete(E, joueurs, cle, jour, false) : undefined,
   };
 }
 
@@ -427,7 +476,7 @@ async function handler(req, res) {
     // Code d'administration seul : relecture des 25 portes, solutions comprises. Rien ne s'enregistre.
     if (!equipe) {
       const { joueurs } = await lire();
-      return res.status(200).json({ relecture: true, jour, portes: B.portes.map(q => vue(q, etatDe(q.n, jour), null, true, maintenant)), total: 0, classement: classement(B, joueurs, jour) });
+      return res.status(200).json({ relecture: true, jour, portes: B.portes.map(q => vue(q, etatDe(q.n, jour), null, true, maintenant)), total: 0, classement: classement(B, joueurs, jour), enquete: B.enquete ? vueEnquete(B.enquete, joueurs, null, jour, true) : undefined });
     }
 
     // La liste des participants, pour le menu déroulant de l'entrée : elle ne sort qu'ici, avec le code d'équipe.
@@ -508,6 +557,24 @@ async function handler(req, res) {
         if (ti !== undefined) j.n = ti;
         if (em !== undefined) j.e = em;
         return { ok: J => ({ code: 200, corps: { ok: true, ...etat(B, J, cle, jour, maintenant) } }) };
+      });
+      return res.status(s.code).json(s.corps);
+    }
+    // Réponse d'un membre à une énigme de l'enquête : un seul essai par membre ; juste, elle vaut pour toute sa brigade.
+    if (b.action === 'enquete') {
+      const c = B.enquete && Number.isInteger(b.k) ? B.enquete.enigmes.find(x => x.k === b.k) : null;
+      if (!c) return res.status(400).json({ error: 'enigme' });
+      const e = etatDe(c.n, jour);
+      if (e !== 'ouverte') return res.status(403).json({ error: e === 'avenir' ? 'scellee' : 'close' });
+      const v = typeof b.reponse === 'string' ? b.reponse.trim() : b.reponse;
+      if (c.saisie === 'choix' ? !(Number.isInteger(v) && v >= 0 && v < c.options.length) : !(typeof v === 'string' && normRep(v) && v.length <= 80 && !/[\u0000-\u001f<>]/.test(v))) return res.status(400).json({ error: 'reponse' });
+      const s = await modifier(joueurs => {
+        const j = joueurs[cle], vu = J => etat(B, J, cle, jour, maintenant);
+        if (!j || j.b === undefined) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
+        if ((j.x && j.x[c.k]) || resolues(joueurs)[j.b][c.k]) return { fin: J => ({ code: 409, corps: { error: 'deja', ...vu(J) } }) };
+        const ok = justeEnq(c, v);
+        (j.x || (j.x = {}))[c.k] = { v, t: maintenant, ok };
+        return { ok: J => ({ code: 200, corps: { ok: true, juste: ok, ...vu(J) } }) };
       });
       return res.status(s.code).json(s.corps);
     }
