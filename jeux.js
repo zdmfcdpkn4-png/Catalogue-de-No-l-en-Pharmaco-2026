@@ -499,39 +499,76 @@
       clos = true; phase = "fin";
       setTimeout(() => { arret(); liberer(); opt.onFin(noteBowling(total), total === 10 * SERIES ? "Lot parfait : les " + total + " flacons sont tombés." : total + (total > 1 ? " flacons renversés" : " flacon renversé") + " sur " + 10 * SERIES + ".", total, chiffres()); }, 1100);
     }
+    // Vue en perspective : la piste fuit vers le fond. Le cœur du jeu reste à plat ; seul le dessin est projeté.
+    // PF = échelle au fond de la piste, PH = hauteur d'écran du fond. Une droite du jeu reste une droite à l'écran.
+    const PF = 0.74, PH = 62, PD = PF * (HB - 48) / (1 - PF), PK = (HB - PH) / (1 - PF);
+    const proj = (x, y) => { const s = PD / Math.max(60, PD + HB - y); return { x: 180 + (x - 180) * s, y: HB - PK * (1 - s), s }; };
+    const quad = (x1, y1, x2, y2) => { const a = proj(x1, y1), b = proj(x2, y1), c = proj(x2, y2), d = proj(x1, y2); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath(); };
+    const ligne = (x1, y1, x2, y2) => { const a = proj(x1, y1), b = proj(x2, y2); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); };
+    const pose = (x, y, f) => { const q = proj(x, y); ctx.save(); ctx.translate(q.x, q.y); ctx.scale(q.s, q.s); f(); ctx.restore(); };
+    const ombre = (x, y, rx, ry) => pose(x, y, () => { ctx.fillStyle = "rgba(38,7,109,.2)"; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 6.3); ctx.fill(); });
+    function piste() {
+      let g = ctx.createLinearGradient(0, 48, 0, HB); g.addColorStop(0, "#1B0550"); g.addColorStop(1, "#3B1C8E");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, HB);                                                    // la salle
+      g = ctx.createLinearGradient(0, PH, 0, HB); g.addColorStop(0, "#A79BC8"); g.addColorStop(1, "#E4DFF0");
+      ctx.fillStyle = g; quad(-400, 48, GAUCHE - 16, HB + 40); ctx.fill(); quad(DROITE + 16, 48, W + 400, HB + 40); ctx.fill(); // les abords
+      g = ctx.createLinearGradient(0, PH, 0, HB); g.addColorStop(0, "#12033A"); g.addColorStop(1, "#2A0B78");
+      ctx.fillStyle = g; quad(GAUCHE - 16, 48, GAUCHE, HB + 40); ctx.fill(); quad(DROITE, 48, DROITE + 16, HB + 40); ctx.fill();   // les rigoles, en creux
+      ctx.strokeStyle = "rgba(255,251,242,.35)"; ctx.lineWidth = 1.5; ligne(GAUCHE - 16, 48, GAUCHE - 16, HB + 40); ligne(DROITE + 16, 48, DROITE + 16, HB + 40);
+      g = ctx.createLinearGradient(0, PH, 0, HB); g.addColorStop(0, "#D2B47A"); g.addColorStop(0.45, "#EFD79E"); g.addColorStop(1, "#FBEBC2");
+      ctx.fillStyle = g; quad(GAUCHE, 48, DROITE, HB + 40); ctx.fill();                               // la paillasse vernie
+      ctx.strokeStyle = "rgba(120,78,20,.16)"; ctx.lineWidth = 1;
+      for (let k = 1; k < 12; k++) { const x = GAUCHE + k * (DROITE - GAUCHE) / 12; ligne(x, 48, x, HB + 40); }          // les lattes
+      ctx.fillStyle = "rgba(255,251,242,.3)"; quad(GAUCHE, 48, DROITE, 190); ctx.fill();              // le plateau des flacons
+      ctx.strokeStyle = "rgba(120,78,20,.3)"; ctx.lineWidth = 1.5; ligne(GAUCHE, 190, DROITE, 190);
+      ctx.fillStyle = "rgba(236,119,57,.6)";                                                           // les flèches de visée
+      for (let k = -2; k <= 2; k++) { const x = 180 + k * 46, y = 404 + Math.abs(k) * 15, a = proj(x, y - 16), b = proj(x - 6, y + 6), c = proj(x + 6, y + 6); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.fill(); }
+      g = ctx.createLinearGradient(0, PH, 0, HB); g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(0.5, "rgba(255,255,255,.3)"); g.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = g; quad(150, 48, 206, HB + 40); ctx.fill();                                      // le reflet du vernis
+      g = ctx.createLinearGradient(0, PH, 0, PH + 170); g.addColorStop(0, "rgba(27,5,80,.45)"); g.addColorStop(1, "rgba(27,5,80,0)");
+      ctx.fillStyle = g; ctx.fillRect(0, PH, W, 170);                                                  // le fond s'assombrit
+      ctx.fillStyle = "#0E022E"; ctx.fillRect(0, 48, W, PH - 48);                                      // la fosse
+      ctx.strokeStyle = O; ctx.lineWidth = 3; ligne(GAUCHE, DEPART - 26, DROITE, DEPART - 26);         // la ligne de tir
+    }
     function dessiner() {
-      ctx.fillStyle = "#F4F2F8"; ctx.fillRect(0, 0, W, HB);
-      ctx.fillStyle = "#D8D3E3"; ctx.fillRect(0, 48, GAUCHE - 16, HB); ctx.fillRect(DROITE + 16, 48, W, HB); // bords
-      ctx.fillStyle = N; ctx.fillRect(GAUCHE - 16, 48, 16, HB); ctx.fillRect(DROITE, 48, 16, HB);              // rigoles
-      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(GAUCHE, 48, DROITE - GAUCHE, HB);                                // paillasse
-      ctx.strokeStyle = "rgba(38,7,109,.12)"; ctx.lineWidth = 2;
-      for (let x = GAUCHE + 38; x < DROITE; x += 38) { ctx.beginPath(); ctx.moveTo(x, 48); ctx.lineTo(x, HB); ctx.stroke(); }
-      ctx.strokeStyle = O; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(GAUCHE, DEPART - 26); ctx.lineTo(DROITE, DEPART - 26); ctx.stroke();
+      piste();
       const Q = sim ? sim.quilles : PLACES.map((p, i) => ({ x: p.x, y: p.y, la: debout[i], tombee: false, rot: 0 }));
-      Q.forEach((q, i) => { if (q.la) { ctx.globalAlpha = q.tombee ? 0.55 : 1; flacon(ctx, q.x, q.y, q.tombee ? q.rot : 0, COUL[i]); ctx.globalAlpha = 1; } });
+      Q.map((q, i) => [q, i]).filter(e => e[0].la).sort((a, b) => a[0].y - b[0].y).forEach(([q, i]) => {
+        ombre(q.x + 3, q.y + 10, 11, 4.5);
+        if (!q.tombee) pose(q.x, q.y + 11, () => { ctx.scale(1, -0.7); ctx.globalAlpha = 0.16; flacon(ctx, 0, -11, 0, COUL[i]); }); // reflet sur le vernis
+        pose(q.x, q.y, () => { ctx.globalAlpha = q.tombee ? 0.6 : 1; flacon(ctx, 0, 0, q.tombee ? q.rot : 0, COUL[i]); });
+      });
       // La seringue de garde, aiguille en avant dans le sens de la marche.
       const ts = sim ? sim.ts : horloge, L = REGL.sl;
-      ctx.save(); ctx.translate(xSeringue(ts), REGL.sy); ctx.scale(Math.cos(ts * REGL.sv) < 0 ? -1 : 1, 1);
-      trait(ctx, 2.4);
-      ctx.beginPath(); ctx.moveTo(L - 16, 0); ctx.lineTo(L, 0); ctx.stroke();                              // aiguille
-      ctx.beginPath(); ctx.moveTo(-L + 2, 0); ctx.lineTo(-L + 14, 0); ctx.moveTo(-L + 2, -RS); ctx.lineTo(-L + 2, RS); ctx.stroke(); // piston
-      ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-L + 12, -RS, 2 * L - 28, 2 * RS, 3); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = B; ctx.beginPath(); ctx.roundRect(-L + 30, -RS, 2 * L - 46, 2 * RS, [0, 3, 3, 0]); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = N; ctx.fillRect(-L + 9, -RS - 3, 4, 2 * RS + 6);                                    // collerette
-      ctx.restore();
-      // La boule : un gros comprimé sécable.
+      ombre(xSeringue(ts) + 3, REGL.sy + 11, L, 4);
+      pose(xSeringue(ts), REGL.sy, () => {
+        ctx.scale(Math.cos(ts * REGL.sv) < 0 ? -1 : 1, 1);
+        trait(ctx, 2.4);
+        ctx.beginPath(); ctx.moveTo(L - 16, 0); ctx.lineTo(L, 0); ctx.stroke();                              // aiguille
+        ctx.beginPath(); ctx.moveTo(-L + 2, 0); ctx.lineTo(-L + 14, 0); ctx.moveTo(-L + 2, -RS); ctx.lineTo(-L + 2, RS); ctx.stroke(); // piston
+        ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-L + 12, -RS, 2 * L - 28, 2 * RS, 3); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = B; ctx.beginPath(); ctx.roundRect(-L + 30, -RS, 2 * L - 46, 2 * RS, [0, 3, 3, 0]); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.fillRect(-L + 15, -RS + 2.5, 2 * L - 34, 2.5);          // reflet du corps
+        ctx.fillStyle = N; ctx.fillRect(-L + 9, -RS - 3, 4, 2 * RS + 6);                                    // collerette
+      });
+      // La boule : le logo de l'unité sur une sphère (ou un comprimé sécable si l'image manque).
       const b = sim ? sim.boule : { x: posX, y: DEPART, tour: 0 };
       if (!sim || !b.sortie) {
-        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.tour || 0);
-        trait(ctx, 3); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, RB, 0, 6.3); ctx.fill(); ctx.stroke();
-        if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, -RB + 1.5, -RB + 1.5, 2 * RB - 3, 2 * RB - 3);
-        else { ctx.beginPath(); ctx.moveTo(-RB + 4, 0); ctx.lineTo(RB - 4, 0); ctx.stroke(); }
-        ctx.restore();
+        ombre(b.x + 4, b.y + 9, RB, RB * 0.45);
+        pose(b.x, b.y, () => {
+          ctx.save(); ctx.rotate(b.tour || 0);
+          trait(ctx, 3); ctx.fillStyle = C; ctx.beginPath(); ctx.arc(0, 0, RB, 0, 6.3); ctx.fill(); ctx.stroke();
+          if (logo.complete && logo.naturalWidth) ctx.drawImage(logo, -RB + 1.5, -RB + 1.5, 2 * RB - 3, 2 * RB - 3);
+          else { ctx.beginPath(); ctx.moveTo(-RB + 4, 0); ctx.lineTo(RB - 4, 0); ctx.stroke(); }
+          ctx.restore();
+          const g = ctx.createRadialGradient(-5, -6, 1, 0, 0, RB); g.addColorStop(0, "rgba(255,255,255,.55)"); g.addColorStop(0.45, "rgba(255,255,255,0)"); g.addColorStop(1, "rgba(38,7,109,.28)");
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, RB - 1.5, 0, 6.3); ctx.fill();                  // le volume de la sphère
+        });
       }
       if (phase === "position" || phase === "angle") {
         const a = (phase === "angle" ? angle : 0) * Math.PI / 180;
         ctx.strokeStyle = O; ctx.lineWidth = 4; ctx.setLineDash([9, 8]);
-        ctx.beginPath(); ctx.moveTo(posX, DEPART - 20); ctx.lineTo(posX + Math.sin(a) * 150, DEPART - 20 - Math.cos(a) * 150); ctx.stroke(); ctx.setLineDash([]);
+        ligne(posX, DEPART - 20, posX + Math.sin(a) * 150, DEPART - 20 - Math.cos(a) * 150); ctx.setLineDash([]);
         ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(60, HB - 30, 240, 24, 12); ctx.fill();
         texte(ctx, phase === "position" ? "Touchez pour fixer la position" : "Touchez pour fixer l'angle", 180, HB - 18, 13, Y);
       }
