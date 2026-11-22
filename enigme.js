@@ -52,6 +52,33 @@
 <p class="eg-fx">Effet indésirable très fréquent : consultation compulsive du classement.</p></details>`;
   const SCEAU = '<svg class="eg-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5l2.2 2 3-.3.7 2.9 2.6 1.5-1.2 2.7 1.2 2.7-2.6 1.5-.7 2.9-3-.3-2.2 2-2.2-2-3 .3-.7-2.9L1.5 13l1.2-2.7L1.5 7.6l2.6-1.5.7-2.9 3 .3z" fill="currentColor"/><path d="M6.4 10.3l2.4 2.4 4.6-4.9" fill="none" stroke="#26076D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const CADENAS = '<svg class="eg-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="3.5" y="9" width="13" height="9.5" rx="2.5" fill="currentColor"/></svg>';
+  // Symbole d'une porte ouverte : un par jeu d'adresse, un pour les cases de questions, un pour la finale. Dessins originaux,
+  // repère de 24 sur 24, trait et aplats du logo. Une porte sous scellé n'en porte jamais : le serveur ne dit pas ce qu'elle cache.
+  const SYMBOLES = {
+    bowling: '<circle cx="8" cy="16" r="5" fill="#EC7739"/><circle cx="6.6" cy="14.4" r="0.8" fill="#26076D" stroke="none"/><circle cx="9" cy="14" r="0.8" fill="#26076D" stroke="none"/><rect x="15" y="9" width="6" height="12" rx="1.6" fill="#FFFBF2"/><path d="M15 14.5h6"/><rect x="16.4" y="5.5" width="3.2" height="3.5" fill="#26076D"/>',
+    tir: '<circle cx="12" cy="12" r="9" fill="#FFFBF2"/><circle cx="12" cy="12" r="5.6" fill="#E5B4D9"/><circle cx="12" cy="12" r="2.2" fill="#EC7739"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>',
+    flipper: '<path d="M2.5 13.5l7.5 4.6-1.2 2.2-7-3.6z" fill="#EC7739"/><path d="M21.5 13.5l-7.5 4.6 1.2 2.2 7-3.6z" fill="#EC7739"/><circle cx="12" cy="7.5" r="3.4" fill="#ECD567"/>',
+    tennis: '<ellipse cx="9.5" cy="9" rx="5.6" ry="6.6" fill="#FFFBF2"/><path d="M6 4.5v9M9.5 2.6v12.8M13 4.5v9M4.4 7h10.2M4.4 11h10.2" stroke-width="1"/><path d="M13.2 14.4l5.6 6.4" stroke-width="2.8"/><circle cx="19" cy="6" r="2.5" fill="#ECD567"/>',
+    labyrinthe: '<rect x="3" y="3" width="18" height="18" rx="2" fill="#FFFBF2"/><path d="M7 7h10v10H9.5v-6H14v3"/>',
+    basket: '<circle cx="12" cy="5.2" r="3.7" fill="#EC7739"/><path d="M6 11.5l2.6 9h6.8l2.6-9z" fill="#FFFBF2"/><path d="M9.4 11.5l1.3 9M14.6 11.5l-1.3 9M7 15h10" stroke-width="1"/><ellipse cx="12" cy="11.5" rx="6.4" ry="1.7" fill="#ECD567"/>',
+    penalty: '<path d="M3 20V6h18v14" stroke-width="2.4"/><path d="M7.5 6v9M12 6v6M16.5 6v9M3 10.5h18" stroke-width="1"/><circle cx="12" cy="17.5" r="3.2" fill="#FFFBF2"/><circle cx="12" cy="17.5" r="1" fill="#26076D" stroke="none"/>',
+    volley: '<circle cx="12" cy="12" r="9.5" fill="#ECD567"/><path d="M12 2.5c-1.5 3.5-1 7 1.5 10M13.5 12.5c3.5-1 6-.5 7.5 1.5M13.5 12.5c-1 3.5-3.5 6-7 7M3 9.5c3 1.5 6 1.5 9-.5" stroke-width="1.4"/>',
+    haies: '<path d="M6.5 9l-2 12M17.5 9l2 12M2.5 21h4M17.5 21h4"/><rect x="3" y="5" width="18" height="4.4" rx="1" fill="#FFFBF2"/><path d="M7.5 5v4.4M12 5v4.4M16.5 5v4.4" stroke="#EC7739" stroke-width="2.6" stroke-linecap="butt"/><rect x="3" y="5" width="18" height="4.4" rx="1"/>',
+    etageres: '<rect x="3" y="3" width="18" height="18" rx="1.5" fill="#FFFBF2"/><path d="M3 9.2h18M3 15.2h18"/><rect x="5.5" y="5" width="4" height="4.2" fill="#EC7739"/><rect x="12" y="11.4" width="5.5" height="3.8" fill="#B9A6F0"/><rect x="6.5" y="17" width="3.6" height="4" fill="#ECD567"/><rect x="14.5" y="5.8" width="3" height="3.4" fill="#E5B4D9"/>',
+    pastilles: '<circle cx="7.5" cy="8.5" r="4.6" fill="#E5B4D9"/><path d="M4.6 11.4l5.8-5.8" stroke-width="1.1"/><circle cx="16.5" cy="8.5" r="4.6" fill="#ECD567"/><path d="M13.6 11.4l5.8-5.8" stroke-width="1.1"/><circle cx="12" cy="16.5" r="4.6" fill="#EC7739"/><path d="M9.1 19.4l5.8-5.8" stroke-width="1.1"/>',
+    twirling: '<path d="M4.5 9.5c2.5-4.5 5.5 1.5 8.5-1.500s3-4 6.5-2" stroke="#EC7739" stroke-width="2.2"/><path d="M5.5 19.500L18.5 5.5" stroke-width="2.2"/><circle cx="5" cy="20" r="2.2" fill="#FFFBF2"/><circle cx="19" cy="5" r="2.2" fill="#FFFBF2"/>',
+    tour: '<rect x="6.5" y="15.5" width="11" height="6" rx="1" fill="#EC7739"/><rect x="8" y="9.8" width="8.5" height="5.7" rx="1" fill="#ECD567"/><rect x="10" y="4.6" width="5.5" height="5.2" rx="1" fill="#E5B4D9"/><path d="M3.5 21.500h17"/>',
+    seringue: '<g transform="rotate(45 12 12)"><path d="M12 .5v4M9.3 .5h5.400M12 18.500v5"/><rect x="8.7" y="5.5" width="6.6" height="13" rx="1.2" fill="#FFFBF2"/><rect x="8.7" y="11.5" width="6.6" height="7" rx="1.2" fill="#EC7739"/><path d="M7 5.500h10"/></g>',
+    minigolf: '<ellipse cx="8" cy="19.5" rx="5.5" ry="2" fill="#26076D"/><path d="M8 19V3"/><path d="M8 3.200l9 3.3-9 3.300z" fill="#EC7739"/><circle cx="18.5" cy="17.5" r="2.7" fill="#FFFBF2"/>',
+    badminton: '<path d="M9.8 13.200L13.5 2.500l8 8-10.7 3.700z" fill="#FFFBF2"/><path d="M11.5 13.400l4.8-8.200M12.6 14.300l7-4.3" stroke-width="1"/><circle cx="8" cy="16" r="3.8" fill="#EC7739"/>',
+    quiz: '<rect x="5.5" y="8" width="13" height="13.5" rx="2.8" fill="#FFFBF2"/><rect x="8.8" y="2.8" width="6.4" height="5.2" rx="1" fill="#26076D"/><path d="M9.7 12.600a2.4 2.4 0 1 1 3.5 2.100c-.9.5-1.2 1-1.2 1.8" stroke-width="2"/><circle cx="12" cy="19" r="1.15" fill="#26076D" stroke="none"/>',
+    duo: '<path d="M12 2.200l3 6.2 6.8.800-5 4.7 1.3 6.700L12 17.300l-6.1 3.3 1.3-6.7-5-4.7 6.8-.8z" fill="#ECD567"/>',
+    de: '<rect x="4" y="4" width="16" height="16" rx="3.5" fill="#ECD567"/><circle cx="8.5" cy="8.5" r="1.3" fill="#26076D" stroke="none"/><circle cx="15.5" cy="8.5" r="1.3" fill="#26076D" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="#26076D" stroke="none"/><circle cx="8.5" cy="15.5" r="1.3" fill="#26076D" stroke="none"/><circle cx="15.5" cy="15.5" r="1.3" fill="#26076D" stroke="none"/>',
+  };
+  const symbole = p => {
+    const k = p.duo || p.type === "duo" ? "duo" : p.type === "jeu" ? (SYMBOLES[p.jeu] ? p.jeu : "de") : "quiz";
+    return '<span class="eg-sym"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="#26076D" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">' + SYMBOLES[k] + "</svg></span>";
+  };
 
   const CSS = `
 .eg [hidden]{display:none!important}
@@ -102,6 +129,24 @@
 .eg-cell.ok.max .eg-door{background:radial-gradient(120% 90% at 30% 14%,#fffbe3 0 14%,#f6e79a 42%,#ECD567 100%)}
 .eg-cell.ko .eg-door{color:var(--muted);background:var(--foil-b);box-shadow:none}
 .eg-cell.rl .eg-door{background:var(--tF)}
+/* Porte ouverte (.op) : le battant pivote à gauche avec le numéro, l'intérieur éclairé porte le symbole, l'état reste en bas.
+   Une courte vidéo « la porte s'ouvre » pourra se poser dans .eg-door.op, par-dessus .eg-sym, à la première ouverture. */
+.eg-door.op{grid-template-columns:31% minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;padding:0;align-items:stretch;justify-items:stretch;animation:none}
+.eg-door.op::after{content:none}
+.eg-door.op b{position:relative;grid-column:1;grid-row:1;display:grid;place-items:center;padding-top:34%;font-size:1.3em;background:var(--surface);border-right:2.5px solid var(--line);transform-origin:0 50%;transform:perspective(60px) rotateY(24deg);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.eg-door.op b::after{content:"";position:absolute;right:9%;top:66%;width:20%;aspect-ratio:1;border-radius:50%;background:currentColor;opacity:.55}
+.eg-sym{grid-column:2;grid-row:1;display:grid;place-items:center;min-width:0;min-height:0;padding:16% 5% 0 0}
+.eg-sym svg{display:block;width:100%;height:100%;max-width:3.5em;max-height:3.5em;overflow:visible}
+.eg-door.op small{grid-column:1/3;grid-row:2;justify-content:center;padding:2px 1px 3px;border-top:2.5px solid var(--line);background:var(--surface);position:relative}
+@media(hover:hover){.eg-cell:hover .eg-door.op b{transform:perspective(60px) rotateY(46deg)}}
+@media(max-width:360px){.eg-door.op{grid-template-columns:34% minmax(0,1fr)}.eg-door.op b{font-size:1.12em;letter-spacing:-.04em}}
+.eg-cell.ou .eg-door.op{box-shadow:3px 3px 0 var(--shadow);animation:egPulse 1.9s ease-in-out infinite}
+.eg-cell.sc .eg-door.op{color:var(--on-surface);background:var(--tI)}
+.eg-cell.sc .eg-door.op b,.eg-cell.sc .eg-door.op small{color:var(--pressed-on);background:var(--pressed)}
+.eg-cell.ok .eg-door.op b{background:var(--tE)}
+.eg-cell.ko .eg-door.op b,.eg-cell.ko .eg-door.op small{background:var(--foil-a)}
+.eg-cell.ko .eg-sym{opacity:.45;filter:grayscale(1)}
+.eg-cell.rl .eg-door.op b,.eg-cell.rl .eg-door.op small{background:var(--surface)}
 .eg-cell.sel .eg-door{outline:3.5px solid #EC7739;outline-offset:2px;transform:translateY(-2px)}
 .eg-cell:focus-visible{outline:0}
 .eg-cell:focus-visible .eg-door{outline:3.5px solid var(--focus);outline-offset:2px}
@@ -269,7 +314,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 @media(min-width:861px){.eg-rules{grid-template-columns:1fr 1fr;gap:11px 30px}.eg-rbody.duo{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}}
 @media(max-width:860px){.eg-body{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:480px){.eg-sheet{padding:10px 8px 12px}.eg-grid{gap:8px 6px}.eg-notice{padding:6px 12px}.eg-notice[open]{padding-bottom:14px}.eg-panel{padding:14px 14px 16px}}
-@media(prefers-reduced-motion:reduce){.eg-brig summary i{transition:none}.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door{animation:none}.eg-door{transition:none}}`;
+@media(prefers-reduced-motion:reduce){.eg-brig summary i{transition:none}.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door,.eg-cell.ou .eg-door.op{animation:none}.eg-door,.eg-door.op b{transition:none}}`;
 
   function init() {
     const st = document.createElement("style");
@@ -564,7 +609,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         else { k = "ou"; lab = "Ouverte"; dit = "ouverte, à faire"; }
       } else { const f = p.pts !== undefined; k = f ? "ok" + (p.pts === (p.type === "duo" ? 10 * p.nb : 10) ? " max" : "") : "ko"; lab = f ? "+" + p.pts : "Manquée"; dit = f ? pl(p.pts, "point", "points") : "manquée"; }
       return '<button class="eg-cell ' + k + (p.n === choix ? " sel" : "") + '" type="button" data-n="' + p.n + '" aria-pressed="' + (p.n === choix) + '" aria-label="' + h("Porte " + p.n + " : " + dit) + '">'
-        + '<span class="eg-door"><b>' + p.n + "</b><small>" + lab + "</small></span></button>";
+        + '<span class="eg-door' + (k === "av" ? "" : " op") + '">' + (k === "av" ? "" : symbole(p)) + "<b>" + p.n + "</b><small>" + lab + "</small></span></button>";
     }).join("");
     const clos = E.portes.filter(p => p.etat === "close").length;
     const att = E.portes.filter(p => p.etat === "ouverte" && (p.rep !== undefined || tentatives(p) > 0 || p.type === "quiz" || p.type === "duo" || (p.quiz && p.quiz.i > 1) || (p.duo && p.duo.i > 1))).length;
