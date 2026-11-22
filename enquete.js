@@ -5,7 +5,7 @@
    fonction `envoyer` que lui donne enigme.js.
    Règle : chaque membre dépose une seule réponse par énigme, définitive (la page avertit et demande une validation).
    Rien ne dit si elle est juste. À la clôture de l'énigme, la réponse majoritaire de la brigade est retenue : si elle
-   est juste, l'énigme est acquise (`resolue`) ; fausse ou à égalité, pas de point. La révélation sort dans tous les cas.
+   est juste, l'énigme est acquise (`resolue`) ; fausse, pas de point ; à égalité, la réponse déposée la première l'emporte. La révélation sort dans tous les cas.
    Amorce : le champ `amorces` ne porte que les étapes acquises au joueur ([{n, titre, texte, fiche}]). Tant qu'il est
    vide, le bloc ne montre rien. Étape 1 seule : le message seul. Le titre attend une étape n >= 2 ; la fiche de suivi
    et les énigmes attendent une étape marquée `fiche`. Sans champ `amorces`, tout s'affiche.
@@ -131,7 +131,7 @@
       if (e.etat === "close") {
         s += e.resolue
           ? '<p class="enq-etat ok">Énigme acquise : la réponse majoritaire de la brigade était la bonne.' + (e.repondu ? (e.juste ? " La vôtre aussi." : " La vôtre ne l'était pas.") : "") + "</p>"
-          : '<p class="enq-etat ko">Énigme non acquise : réponse majoritaire fausse, égalité ou aucune réponse. Révélation d\'office, sans point.</p>';
+          : '<p class="enq-etat ko">Énigme non acquise : réponse majoritaire fausse ou aucune réponse. Révélation d\'office, sans point.</p>';
         s += revelation(e);
       } else if (e.repondu) {
         s += '<p class="enq-etat">Votre réponse est déposée et scellée' + (e.reponse !== undefined && e.reponse !== null ? " : «\u00A0" + fr(Array.isArray(e.options) && Number.isInteger(e.reponse) ? e.options[e.reponse] : e.reponse) + "\u00A0»" : "") + ". "

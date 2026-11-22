@@ -256,17 +256,17 @@ function voix(E, joueurs) {
     if (!s || !j.x) continue;
     for (const k of Object.keys(j.x)) {
       if (!C[k]) continue;
-      const v = C[k].saisie === 'choix' ? String(j.x[k].v) : justeEnq(C[k], j.x[k].v) ? '=' : normRep(j.x[k].v), u = s[k] || (s[k] = { n: 0, v: {} });
-      u.n++; u.v[v] = (u.v[v] || 0) + 1;
+      const v = C[k].saisie === 'choix' ? String(j.x[k].v) : justeEnq(C[k], j.x[k].v) ? '=' : normRep(j.x[k].v), u = s[k] || (s[k] = { n: 0, v: {}, t: {} });
+      u.n++; u.v[v] = (u.v[v] || 0) + 1; u.t[v] = Math.min(u.t[v] || Infinity, Number(j.x[k].t) || 0);
     }
   }
   return S;
 }
-// La réponse majoritaire d'une brigade est-elle la bonne ? Égalité en tête ou aucune réponse : non.
+// La réponse majoritaire d'une brigade est-elle la bonne ? Aucune réponse : non. Égalité en tête : la réponse déposée
+// la première parmi les ex aequo l'emporte.
 function acquise(c, u) {
   if (!u) return false;
-  const L = Object.entries(u.v).sort((a, b) => b[1] - a[1]);
-  if (L.length > 1 && L[0][1] === L[1][1]) return false;
+  const L = Object.entries(u.v).sort((a, b) => b[1] - a[1] || u.t[a[0]] - u.t[b[0]]);
   return c.saisie === 'choix' ? Number(L[0][0]) === c.bonne : L[0][0] === '=';
 }
 // Points d'enquête de chaque brigade : les énigmes closes dont la réponse majoritaire est juste.
