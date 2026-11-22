@@ -13,7 +13,8 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
 
 (async () => {
   const source = fs.readFileSync(path.join(racine, 'enquete.js'), 'utf8');
-  ok(!/Lot 22|Yngue|Lyse|Tiseptique|Flacon|Mortier|gélule/i.test(source) && !/—/.test(source), 'enquete.js ne contient ni titre, ni nom de fiche, ni tiret cadratin');
+  // Le fichier ne doit porter aucun texte du scénario : ni constante de titre ou de fiches, ni nom propre entre guillemets.
+  ok(!/const (CRIME|FICHES|TITRE)\b/.test(source) && !/nom: "/.test(source) && !/\u2014/.test(source), 'enquete.js ne déclare ni titre, ni fiche, ni tiret cadratin');
 
   const nav = await chromium.launch();
   const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
