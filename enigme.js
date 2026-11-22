@@ -993,7 +993,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   const dec = n => String(n).replace(".", ",");
 
   // Enquête des brigades : le bloc vient de enquete.js, chargé seulement quand le serveur a quelque chose à montrer
-  // (une étape d'amorce acquise au joueur, ou une énigme ouverte ou close). Avant cela, rien n'est téléchargé ni affiché.
+  // (une étape d'amorce acquise au joueur). Avant cela, rien n'est téléchargé ni affiché.
   let blocEnquete = null;
   const chargerEnquete = () => new Promise((ok, ko) => {
     if (window.PharmacoEnquete) return ok();
@@ -1010,7 +1010,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     const Q = E && E.enquete, el = q("#egEnquete");
     if (!el) return;
     if (E && (enJeu || q("#egTime"))) return; // pas de nouveauté sous la grille pendant un chrono : elle sort après le jeu
-    const visible = Q && ((Q.amorces || []).length || (Q.enigmes || []).some(e => e.etat !== "avenir"));
+    const visible = Q && (Q.amorces ? Q.amorces.length : (Q.enigmes || []).some(e => e.etat !== "avenir"));
     if (!visible) { if (blocEnquete) blocEnquete.maj(null); else el.hidden = true; return; }
     chargerEnquete().then(() => {
       if (!E || !E.enquete) return;

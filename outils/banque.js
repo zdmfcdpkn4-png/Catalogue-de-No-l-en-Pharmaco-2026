@@ -70,6 +70,10 @@ function controler(b) {
         } else e.push(o + 'saisie inconnue');
       });
       if (E.amorces !== undefined && (!Array.isArray(E.amorces) || E.amorces.some(a => !a || !Number.isInteger(a.n) || a.n < 1 || a.n > 25 || typeof a.titre !== 'string' || !a.titre || typeof a.texte !== 'string' || !a.texte))) e.push(ou + 'amorces : jour, titre et texte attendus');
+      if (E.fiches !== undefined) {
+        if (!Array.isArray(E.fiches) || E.fiches.some(f => !f || typeof f.id !== 'string' || !f.id || typeof f.cat !== 'string' || !f.cat || typeof f.nom !== 'string' || !f.nom)) e.push(ou + 'fiches : id, cat et nom attendus');
+        else E.enigmes.forEach(c => { if (c.elimine && !E.fiches.some(f => f.id === c.elimine)) e.push(ou + 'énigme ' + c.k + ' : élimine une fiche inconnue'); });
+      }
       if (/—/.test(JSON.stringify(E))) e.push(ou + 'tiret cadratin');
     }
   }

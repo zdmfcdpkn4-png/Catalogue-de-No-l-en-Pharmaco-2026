@@ -231,53 +231,82 @@ function attribuer(V, k) {
   for (const x of P) if (R[x.b] === undefined && !pris.has(x.o)) { R[x.b] = x.o; pris.add(x.o); }
   return R;
 }
-// Enquête (facultative : `enquete` dans la banque). Une énigme par jour, jouée par brigade : chaque membre a un seul essai
-// par énigme, et dès qu'un membre trouve, la révélation est acquise à toute sa brigade. Une énigme reste ouverte son jour
-// et les deux suivants, comme une porte ; close sans avoir été résolue, sa révélation sort d'office, sans point.
-// Banque : { titre, denouement, enigmes: [ { k, n: jour de décembre, titre, enonce, saisie: 'choix' | 'texte',
-//   options (choix), bonne: indice (choix), reponses: [textes acceptés] (texte), revelation, elimine, source, pts } ] }.
+// Enquête (facultative : `enquete` dans la banque). Une énigme par jour, jouée par brigade : chaque membre dépose une seule
+// réponse, définitive, sans savoir si elle est juste. Une énigme reste ouverte son jour et les deux suivants, comme une porte.
+// À sa clôture, la réponse retenue est la réponse majoritaire de la brigade : juste, le point est acquis ; fausse, à égalité
+// en tête ou absente, pas de point. Dans tous les cas la révélation sort à la clôture, jamais avant.
+// Banque : { titre, denouement, fiches: [ { id, cat, nom } ], enigmes: [ { k, n: jour de décembre, titre, enonce,
+//   saisie: 'choix' | 'texte', options (choix), bonne: indice (choix), reponses: [textes acceptés] (texte), revelation,
+//   elimine, source, pts } ] }.
 // Amorce (facultative) : amorces: [ { n: jour, titre, texte, fiche: vrai si elle dévoile la fiche de suivi } ]. Chacune sort
 // pour le joueur qui a joué la porte de ce jour (une porte lancée compte), et pour tous quand cette porte est close.
-// Ce que le serveur garde par joueur : x: { k: { v: sa réponse, t: heure, ok: juste ou non } }.
+// Avec une amorce, rien d'identifiable ne sort avant l'étape qui le dévoile : pas de champ `enquete` sans étape acquise,
+// le titre à partir de la deuxième étape, les fiches et les énigmes à partir de l'étape marquée `fiche`.
+// Ce que le serveur garde par joueur : x: { k: { v: sa réponse, t: heure } }.
 // Les points vont à la brigade, jamais au classement individuel.
 const normRep = s => norm(s).replace(/[^a-z0-9]/g, '');
 const justeEnq = (c, v) => (c.saisie === 'choix' ? v === c.bonne : c.reponses.some(x => normRep(x) === normRep(v)));
-// Par brigade, les énigmes résolues : { k: { par: pseudo du premier membre à avoir trouvé, t } }.
-function resolues(joueurs) {
-  const S = Array.from({ length: NB_BRIGADES }, () => ({}));
+// Par brigade et par énigme, les voix : { k: { n: réponses déposées, v: { réponse: voix } } }. Un texte est compté sans casse,
+// accents, espaces ni ponctuation ; toutes les écritures acceptées de la bonne réponse comptent ensemble (clé « = »).
+function voix(E, joueurs) {
+  const S = Array.from({ length: NB_BRIGADES }, () => ({})), C = {};
+  for (const c of E.enigmes) C[c.k] = c;
   for (const cle of Object.keys(joueurs)) {
     const j = joueurs[cle], s = S[j.b];
     if (!s || !j.x) continue;
-    for (const k of Object.keys(j.x)) if (j.x[k].ok && (!s[k] || j.x[k].t < s[k].t)) s[k] = { par: j.p, t: j.x[k].t };
+    for (const k of Object.keys(j.x)) {
+      if (!C[k]) continue;
+      const v = C[k].saisie === 'choix' ? String(j.x[k].v) : justeEnq(C[k], j.x[k].v) ? '=' : normRep(j.x[k].v), u = s[k] || (s[k] = { n: 0, v: {} });
+      u.n++; u.v[v] = (u.v[v] || 0) + 1;
+    }
   }
   return S;
 }
-// Points d'enquête de chaque brigade ; `closes` : les seules énigmes closes (ce qui entre au classement).
-const pointsEnq = (E, S, jour, closes) => S.map(s => E.enigmes.reduce((t, c) => t + (s[c.k] && (!closes || etatDe(c.n, jour) === 'close') ? c.pts : 0), 0));
-// Ce qu'un joueur voit de l'enquête : l'énoncé à l'ouverture ; la révélation quand sa brigade a trouvé ou à la clôture ;
-// les réponses attendues en relecture seulement (`tout`).
+// La réponse majoritaire d'une brigade est-elle la bonne ? Égalité en tête ou aucune réponse : non.
+function acquise(c, u) {
+  if (!u) return false;
+  const L = Object.entries(u.v).sort((a, b) => b[1] - a[1]);
+  if (L.length > 1 && L[0][1] === L[1][1]) return false;
+  return c.saisie === 'choix' ? Number(L[0][0]) === c.bonne : L[0][0] === '=';
+}
+// Points d'enquête de chaque brigade : les énigmes closes dont la réponse majoritaire est juste.
+const pointsEnq = (E, S, jour) => S.map(s => E.enigmes.reduce((t, c) => t + (etatDe(c.n, jour) === 'close' && acquise(c, s[c.k]) ? c.pts : 0), 0));
+// Ce qu'un joueur voit de l'enquête : l'énoncé à l'ouverture, sa propre réponse, le nombre de réponses de sa brigade ;
+// à la clôture seulement, le résultat et la révélation ; les réponses attendues en relecture seulement (`tout`).
 function vueEnquete(E, joueurs, cle, jour, tout) {
-  const j = cle ? joueurs[cle] : null, S = resolues(joueurs), s = j && S[j.b];
-  const su = c => Boolean(s && s[c.k]) || etatDe(c.n, jour) === 'close' || tout;
-  const enigmes = E.enigmes.map(c => {
-    const e = etatDe(c.n, jour), o = { k: c.k, jour: c.n, etat: e, ouvre: dateDe(c.n), ferme: dateDe(c.n + DELAI), pts: c.pts };
-    if (e === 'avenir' && !tout) return o;
-    Object.assign(o, { titre: c.titre, enonce: c.enonce, saisie: c.saisie });
-    if (c.saisie === 'choix') o.options = c.options;
+  const j = cle ? joueurs[cle] : null, S = voix(E, joueurs), s = j && S[j.b];
+  const A = (E.amorces || []).filter(a => tout || (jour >= a.n && (etatDe(a.n, jour) === 'close' || Boolean(j && j.r && j.r[a.n]))));
+  const libre = tout || !E.amorces;
+  if (!libre && !A.length) return undefined;
+  const premiere = E.amorces ? Math.min(...E.amorces.map(a => a.n)) : 0;
+  const o = { fiction: true };
+  if (E.amorces) o.amorces = A;
+  if (libre || A.some(a => a.n > premiere)) o.titre = E.titre;
+  if (!libre && !A.some(a => a.fiche)) { o.enigmes = []; return o; }
+  if (E.fiches) o.fiches = E.fiches;
+  o.max = E.enigmes.reduce((t, c) => t + c.pts, 0);
+  o.enigmes = E.enigmes.map(c => {
+    const e = etatDe(c.n, jour), x = { k: c.k, jour: c.n, etat: e, ouvre: dateDe(c.n), ferme: dateDe(c.n + DELAI), resultat: dateDe(c.n + DELAI + 1), pts: c.pts };
+    if (e === 'avenir' && !tout) return x;
+    Object.assign(x, { titre: c.titre, enonce: c.enonce, saisie: c.saisie });
+    if (c.saisie === 'choix') x.options = c.options;
     const a = j && j.x && j.x[c.k];
-    if (a) Object.assign(o, { repondu: true, juste: a.ok, rep: a.v });
-    if (s && s[c.k]) Object.assign(o, { resolue: true, par: s[c.k].par });
-    if (su(c)) Object.assign(o, { revelation: c.revelation, elimine: c.elimine, source: c.source });
-    if (tout) { if (c.saisie === 'choix') o.bonne = c.bonne; else o.reponses = c.reponses; }
-    return o;
+    if (a) Object.assign(x, { repondu: true, reponse: a.v });
+    if (s) x.deposes = s[c.k] ? s[c.k].n : 0;
+    if (e === 'close' || tout) {
+      Object.assign(x, { revelation: c.revelation, elimine: c.elimine, source: c.source });
+      if (s && e === 'close') x.resolue = acquise(c, s[c.k]);
+      if (a && e === 'close') x.juste = justeEnq(c, a.v);
+    }
+    if (tout) { if (c.saisie === 'choix') x.bonne = c.bonne; else x.reponses = c.reponses; }
+    return x;
   });
-  const o = { titre: E.titre, fiction: true, max: E.enigmes.reduce((t, c) => t + c.pts, 0), enigmes };
-  if (E.amorces) o.amorces = E.amorces.filter(a => tout || (jour >= a.n && (etatDe(a.n, jour) === 'close' || Boolean(j && j.r[a.n]))));
-  if (s) o.points = pointsEnq(E, S, jour, false)[j.b];
-  // Le dénouement : quand les énigmes du dernier jour sont toutes sues de la brigade (résolues ou closes).
+  const P = pointsEnq(E, S, jour);
+  if (s) o.points = P[j.b];
+  // Le dénouement : quand toutes les énigmes du dernier jour sont closes.
   const fin = Math.max(...E.enigmes.map(c => c.n));
-  if (E.denouement && E.enigmes.filter(c => c.n === fin).every(su)) o.denouement = E.denouement;
-  o.classement = pointsEnq(E, S, jour, true).map((points, b) => ({ b, points }));
+  if (E.denouement && (tout || etatDe(fin, jour) === 'close')) o.denouement = E.denouement;
+  o.classement = P.map((points, b) => ({ b, points }));
   return o;
 }
 
@@ -420,7 +449,7 @@ function etat(B, joueurs, cle, jour, maintenant) {
     portes,
     total: portes.reduce((s, p) => s + (p.pts || 0), 0),
     classement: L,
-    brigades: brigades(L, joueurs, j ? j.b : undefined, E && pointsEnq(E, resolues(joueurs), jour, true)),
+    brigades: brigades(L, joueurs, j ? j.b : undefined, E && pointsEnq(E, voix(E, joueurs), jour)),
     enquete: E ? vueEnquete(E, joueurs, cle, jour, false) : undefined,
   };
 }
@@ -563,7 +592,7 @@ async function handler(req, res) {
       });
       return res.status(s.code).json(s.corps);
     }
-    // Réponse d'un membre à une énigme de l'enquête : un seul essai par membre ; juste, elle vaut pour toute sa brigade.
+    // Réponse d'un membre à une énigme de l'enquête : une seule, définitive. Rien ne dit si elle est juste avant la clôture.
     if (b.action === 'enquete') {
       const c = B.enquete && Number.isInteger(b.k) ? B.enquete.enigmes.find(x => x.k === b.k) : null;
       if (!c) return res.status(400).json({ error: 'enigme' });
@@ -574,10 +603,9 @@ async function handler(req, res) {
       const s = await modifier(joueurs => {
         const j = joueurs[cle], vu = J => etat(B, J, cle, jour, maintenant);
         if (!j || j.b === undefined) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
-        if ((j.x && j.x[c.k]) || resolues(joueurs)[j.b][c.k]) return { fin: J => ({ code: 409, corps: { error: 'deja', ...vu(J) } }) };
-        const ok = justeEnq(c, v);
-        (j.x || (j.x = {}))[c.k] = { v, t: maintenant, ok };
-        return { ok: J => ({ code: 200, corps: { ok: true, juste: ok, ...vu(J) } }) };
+        if (j.x && j.x[c.k]) return { fin: J => ({ code: 409, corps: { error: 'deja', ...vu(J) } }) };
+        (j.x || (j.x = {}))[c.k] = { v, t: maintenant };
+        return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
       });
       return res.status(s.code).json(s.corps);
     }
