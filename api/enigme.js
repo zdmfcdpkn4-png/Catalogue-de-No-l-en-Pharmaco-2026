@@ -11,6 +11,7 @@
 const crypto = require('crypto');
 const { get, put } = require('@vercel/blob');
 const COFFRE = require('./_banque.js');
+const { composerIndices } = require('./_indices.js');
 
 const FILE = 'enigme.json';
 const MAX_JOUEURS = 300;
@@ -275,6 +276,7 @@ const pointsEnq = (E, S, jour) => S.map(s => E.enigmes.reduce((t, c) => t + (eta
 // à la clôture seulement, le résultat et la révélation ; les réponses attendues en relecture seulement (`tout`).
 function vueEnquete(E, joueurs, cle, jour, tout) {
   const j = cle ? joueurs[cle] : null, S = voix(E, joueurs), s = j && S[j.b];
+  const D = s ? des(E, j.b) : {};
   const A = (E.amorces || []).filter(a => tout || (jour >= a.n && (etatDe(a.n, jour) === 'close' || Boolean(j && j.r && j.r[a.n]))));
   const libre = tout || !E.amorces;
   if (!libre && !A.length) return undefined;
@@ -293,9 +295,15 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
     const a = j && j.x && j.x[c.k];
     if (a) Object.assign(x, { repondu: true, reponse: a.v });
     if (s) x.deposes = s[c.k] ? s[c.k].n : 0;
+    if (D[c.k]) { x.de = D[c.k]; const a = aideServie((c.aides || [])[Math.floor((D[c.k] - 1) / 2) - 1]); if (a) x.aide = a; }
+    if (tout && c.aides) Object.assign(x, { id: c.id, niveau: c.niveau, meca: c.meca, aides: c.aides });
     if (e === 'close' || tout) {
-      Object.assign(x, { revelation: c.revelation, elimine: c.elimine, source: c.source });
-      if (s && e === 'close') x.resolue = acquise(c, s[c.k]);
+      // Avec un retard (`retard`, en jours), la révélation sort à la clôture pour la brigade dont la réponse retenue est
+      // juste, et plus tard pour les autres ; jamais de retard au dénouement.
+      const juste = Boolean(s) && acquise(c, s[c.k]);
+      if (tout || !E.retard || c.final || juste || etatDe(c.n + E.retard, jour) === 'close') Object.assign(x, { revelation: c.revelation, elimine: c.elimine, source: c.source });
+      else x.attente = dateDe(c.n + DELAI + 1 + E.retard);
+      if (s && e === 'close') x.resolue = juste;
       if (a && e === 'close') x.juste = justeEnq(c, a.v);
     }
     if (tout) { if (c.saisie === 'choix') x.bonne = c.bonne; else x.reponses = c.reponses; }
@@ -324,7 +332,83 @@ function alea(graine) {
   let i = 0;
   return () => crypto.createHash('sha256').update(graine + ':' + (i++)).digest().readUInt32BE(0) / 4294967296;
 }
+// Réservoir à grille (champ `grille`) : la déduction passe par les détails visibles des cartes. Plan : 'carte' (devinette
+// d'un innocent, qui l'élimine), 'attribut' (énigme de logique dont la révélation est un indice d'attribut ; `decisif` :
+// il ne reste alors que le coupable), 'libre' (énigme de logique sans révélation sur le trio), 'final' (accusation).
+// Les éliminations et les indices viennent de `_indices.js`. Chaque énigme porte un `niveau` (1 à 3) : la courbe monte
+// dans le mois, un cran plus bas le week-end, et un indice décisif ne dépasse jamais le niveau 2. Sont toujours placées :
+// l'énigme `meta` (au premier créneau de logique à partir de son jour `apres`) et celles qui demandent l'enveloppe
+// (`requiert: 'scelle'`). Une carte a ses `variantes` de devinette ; chaque énigme a deux `aides` (légère, forte).
+const SAMEDI_4 = 5; // le 4 décembre 2026 est un vendredi : les 5, 6, 12, 13, 19 et 20 tombent un week-end
+const niveauVise = s => { const w = (s.n - SAMEDI_4 + 70) % 7 < 2 ? 1 : 0, b = s.n <= 9 ? 1 : s.n <= 18 ? 2 : 3; return Math.max(1, Math.min(s.decisif ? 2 : 3, b - w)); };
+const REQUIS = ['scelle'];
+function composerGrille(E, graine) {
+  const R = E.reservoir, rnd = alea(graine), tire = L => L[Math.floor(rnd() * L.length)];
+  const cats = [...new Set(E.fiches.map(f => f.cat))], fiche = id => E.fiches.find(f => f.id === id), coupable = {}, vue = {};
+  for (const c of cats) coupable[c] = tire(E.fiches.filter(f => f.cat === c)).id;
+  for (const id of Object.keys(R.cartes)) vue[id] = R.cartes[id].vue;
+  const I = composerIndices(R.grille, R.plan, coupable, alea(graine + ':indices'), vue);
+  const ok = (x, s) => (x.apres || 0) <= s.n && (!x.requiert || [].concat(x.requiert).every(q => REQUIS.includes(q)));
+  // Les énigmes de logique : d'abord celles qui ont une place imposée, puis le reste au niveau visé.
+  const places = R.plan.filter(s => s.r === 'attribut' || s.r === 'libre'), pose = {}, pris = new Set();
+  const mettre = (s, x) => { pose[s.k] = x; pris.add(x.id); };
+  for (const x of R.logiques.filter(x => x.meta)) { const s = places.find(s => !pose[s.k] && ok(x, s)); if (s) mettre(s, x); }
+  for (const x of R.logiques.filter(x => x.requiert && !x.meta)) {
+    const L = places.filter(s => !pose[s.k] && !s.decisif && ok(x, s)), M = L.filter(s => niveauVise(s) === x.niveau);
+    if (L.length) mettre(tire(M.length ? M : L), x);
+  }
+  let avant = null;
+  for (const s of places) {
+    if (!pose[s.k]) {
+      const L = R.logiques.filter(x => !pris.has(x.id) && !x.meta && !x.requiert && ok(x, s)), v = niveauVise(s);
+      const choix = [1, 0].map(m => [0, 1, 2].map(d => L.filter(x => Math.abs(x.niveau - v) === d && (!m || x.meca !== avant)))).flat().find(C => C.length);
+      if (!choix) throw new Error('aucune énigme de logique pour le créneau ' + s.k);
+      mettre(s, tire(choix));
+    }
+    avant = pose[s.k].meca;
+  }
+  const noms = c => E.fiches.filter(f => f.cat === c).map(f => f.nom);
+  const enigmes = R.plan.map(s => {
+    const base = { k: s.k, n: s.n, pts: s.pts };
+    if (s.r === 'carte') {
+      const f = fiche(I[s.k].elimine), V = (R.cartes[f.id].variantes || []).filter(x => ok(x, s)), v = niveauVise(s);
+      const C = [0, 1, 2].map(d => V.filter(x => Math.abs(x.niveau - v) === d)).find(C => C.length), x = C ? tire(C) : R.cartes[f.id].devinette, N = noms(f.cat);
+      return Object.assign(base, { id: x.id || f.id, niveau: x.niveau || 1, meca: x.meca, titre: x.titre, enonce: x.enonce, aides: x.aides, saisie: 'choix', options: N, bonne: N.indexOf(f.nom), revelation: f.nom + ' est hors de cause.', elimine: f.id });
+    }
+    if (s.r === 'final') { const f = fiche(coupable[s.cat]), N = noms(s.cat); return Object.assign(base, { final: true, titre: s.titre, enonce: s.enonce || '', saisie: 'choix', options: N, bonne: N.indexOf(f.nom), revelation: R.cartes[f.id].preuve }); }
+    const x = pose[s.k], e = Object.assign(base, x, { k: s.k, n: s.n, pts: s.pts, revelation: s.r === 'attribut' ? I[s.k].texte : R.libre || '' });
+    for (const c of ['apres', 'requiert', 'meta', 'famille', 'solution', 'prerequis']) delete e[c];
+    return e;
+  });
+  const nom = c => { const C = cats.find(x => x.toLowerCase() === c.toLowerCase()), n = C && fiche(coupable[C]).nom; return !n ? '{' + c + '}' : c[0] === c[0].toLowerCase() ? n[0].toLowerCase() + n.slice(1) : n; };
+  return Object.assign({}, E, { reservoir: undefined, graine, retard: R.retard || 0, aides: R.aides, fiches: E.fiches.map(f => Object.assign({}, f, { vue: vue[f.id] })), enigmes,
+    denouement: String(R.denouement || '').replace(/\{([^{}]+)\}/g, (m, c) => nom(c)) });
+}
+// Le dé d'aide : un par brigade et par énigme (jamais au dénouement), le même pour tous ses membres. Faces 1-2 : aucune
+// aide ; 3-4 : aide légère ; 5-6 : aide forte. Le sort est équilibré : dans chaque tranche du mois (4 au 9, 10 au 18,
+// 19 au 24), chaque brigade reçoit autant de chaque niveau d'aide ; seul l'ordre change d'une brigade à l'autre.
+function des(E, b) {
+  if (!E.aides || E.aides.mode !== 'brigade' || !E.graine) return {};
+  const rnd = alea(E.graine + ':de:' + b), D = {};
+  for (const T of [[4, 9], [10, 18], [19, 24]]) {
+    const L = E.enigmes.filter(c => !c.final && c.n >= T[0] && c.n <= T[1]), S = L.map((c, i) => i % 3);
+    for (let i = S.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [S[i], S[j]] = [S[j], S[i]]; }
+    L.forEach((c, i) => { D[c.k] = S[i] * 2 + 1 + Math.floor(rnd() * 2); });
+  }
+  return D;
+}
+// L'aide telle qu'elle est servie : en clair, ou déguisée (le texte reste en clair dans la banque).
+const MORSE = { a: '.-', b: '-...', c: '-.-.', d: '-..', e: '.', f: '..-.', g: '--.', h: '....', i: '..', j: '.---', k: '-.-', l: '.-..', m: '--', n: '-.', o: '---', p: '.--.', q: '--.-', r: '.-.', s: '...', t: '-', u: '..-', v: '...-', w: '.--', x: '-..-', y: '-.--', z: '--..', 0: '-----', 1: '.----', 2: '..---', 3: '...--', 4: '....-', 5: '.....', 6: '-....', 7: '--...', 8: '---..', 9: '----.' };
+function aideServie(a) {
+  const t = typeof a === 'string' ? a : a && a.texte, f = (a && a.forme) || 'clair';
+  if (!t) return undefined;
+  if (f === 'envers') return { forme: f, texte: [...t].reverse().join('') };
+  if (f === 'morse') return { forme: f, texte: norm(t).split(/\s+/).map(m => [...m].map(c => MORSE[c] || '').filter(Boolean).join(' ')).filter(Boolean).join(' / ') };
+  if (f === 'decalage') return { forme: f, cle: 1, texte: norm(t).toUpperCase().replace(/[A-Z]/g, c => String.fromCharCode((c.charCodeAt(0) - 64) % 26 + 65)) };
+  return { forme: f, texte: t };
+}
 function composer(E, graine) {
+  if (E.reservoir.grille) return composerGrille(E, graine);
   const R = E.reservoir, rnd = alea(graine);
   const melange = L => { const A = L.slice(), o = []; while (A.length) o.push(A.splice(Math.floor(rnd() * A.length), 1)[0]); return o; };
   const coupable = {}, innocents = {};
@@ -789,3 +873,4 @@ async function handler(req, res) {
 handler.maintenant = () => new Date(); // remplaçable par le banc d'essai
 handler.composer = composer; // pour le contrôle de la banque (outils/banque.js)
 module.exports = handler;
+handler.aideServie = aideServie;

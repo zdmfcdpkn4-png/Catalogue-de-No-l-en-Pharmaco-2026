@@ -89,17 +89,30 @@ function controler(b) {
         const c = R.cartes[f.id], o = ou + 'carte ' + f.id + ' : ';
         if (!c) return e.push(o + 'absente du réservoir');
         if (!c.devinette || typeof c.devinette.titre !== 'string' || !c.devinette.titre || typeof c.devinette.enonce !== 'string' || !c.devinette.enonce) e.push(o + 'devinette (titre, enonce) attendue');
-        if (!Array.isArray(c.indices) || !c.indices.length || c.indices.some(x => typeof x !== 'string' || !x)) e.push(o + 'indices attendus');
+        if (!R.grille && (!Array.isArray(c.indices) || !c.indices.length || c.indices.some(x => typeof x !== 'string' || !x))) e.push(o + 'indices attendus');
+        if (R.grille && (c.variantes || []).some(x => !x.id || ![1, 2, 3].includes(x.niveau) || !x.titre || !x.enonce || !Array.isArray(x.aides) || x.aides.length !== 2)) e.push(o + 'variantes : id, niveau de 1 à 3, titre, énoncé et deux aides attendus');
         if (typeof c.preuve !== 'string' || !c.preuve) e.push(o + 'preuve attendue');
       });
       const P = Array.isArray(R.plan) ? R.plan : [];
       if (!P.length) e.push(ou + 'plan attendu');
-      if (P.some(s => !['carte', 'indice', 'final'].includes(s.r) || (s.r !== 'indice' && !cats.includes(s.cat)))) e.push(ou + 'plan : genre ou catégorie inconnus');
+      const genres = R.grille ? ['carte', 'attribut', 'libre', 'final'] : ['carte', 'indice', 'final'];
+      if (P.some(s => !genres.includes(s.r) || (s.r !== 'indice' && s.r !== 'libre' && !cats.includes(s.cat)))) e.push(ou + 'plan : genre ou catégorie inconnus');
       for (const c of cats) {
         if (P.filter(s => s.r === 'carte' && s.cat === c).length > F.filter(f => f.cat === c).length - 1) e.push(ou + 'plan : trop d\'éliminations en ' + c);
         if (P.filter(s => s.r === 'final' && s.cat === c).length !== 1) e.push(ou + 'plan : un dénouement et un seul en ' + c);
       }
-      const nbInd = P.filter(s => s.r === 'indice').length;
+      if (R.grille) {
+        // Réservoir à grille : identifiants uniques, niveaux, deux aides, une méta-énigme et une seule, dénouement neutre.
+        const L = Array.isArray(R.logiques) ? R.logiques : [], ids = L.map(x => x.id).concat(...Object.values(R.cartes || {}).map(c => (c.variantes || []).map(x => x.id)));
+        if (ids.some(x => !x) || new Set(ids).size !== ids.length) e.push(ou + 'identifiants d\'énigme absents ou en double');
+        if (L.some(x => ![1, 2, 3].includes(x.niveau))) e.push(ou + 'niveau de 1 à 3 attendu pour chaque énigme de logique');
+        if (L.some(x => !Array.isArray(x.aides) || x.aides.length !== 2 || x.aides.some(a => !(typeof a === 'string' ? a : a && a.texte) || !['clair', 'miroir', 'envers', 'morse', 'decalage', 'couleur', 'emoji'].includes((a && a.forme) || 'clair')))) e.push(ou + 'deux aides, de forme connue, attendues par énigme');
+        if (L.filter(x => x.meta).length !== 1) e.push(ou + 'une méta-énigme et une seule attendue');
+        if (L.some(x => x.requiert && [].concat(x.requiert).some(q => q !== 'scelle'))) e.push(ou + 'valeur de requiert inconnue');
+        if (P.some(s => s.r === 'final' && (!s.titre || !s.enonce))) e.push(ou + 'dénouement : titre et énoncé attendus dans le plan');
+        if (Object.keys(R.grille).filter(c => c[0] !== '_').some(c => !cats.includes(c) || F.filter(f => f.cat === c).some(f => !R.grille[c].cartes.includes(f.id)))) e.push(ou + 'grille : catégories ou cartes qui ne correspondent pas aux fiches');
+      }
+      const nbInd = P.filter(s => s.r === 'indice' || s.r === 'attribut' || s.r === 'libre').length;
       if (!Array.isArray(R.logiques) || R.logiques.length < nbInd) e.push(ou + 'il faut au moins ' + nbInd + ' énigmes de logique');
       if (R.cartes && F.length && cats.some(c => F.filter(f => f.cat === c).some(f => R.cartes[f.id] && Array.isArray(R.cartes[f.id].indices) && R.cartes[f.id].indices.length * cats.length < nbInd))) e.push(ou + 'pas assez d\'indices par carte pour ' + nbInd + ' énigmes de logique');
       if (typeof R.denouement !== 'string' || !R.denouement) e.push(ou + 'dénouement attendu');
@@ -107,7 +120,9 @@ function controler(b) {
       if (e.length === avant) {
         const { composer } = require('../api/enigme.js'), vus = new Set(e);
         for (let i = 0; i < 40; i++) {
-          const C = composer(E, 'controle-' + i), n = e.length;
+          let C; const n = e.length;
+          try { C = composer(E, 'controle-' + i); } catch (x) { e.push(ou + 'composition impossible : ' + x.message); break; }
+          if (R.grille) { if (C.enigmes.filter(x => x.id && /scelle/.test(JSON.stringify((R.logiques.find(y => y.id === x.id) || {}).requiert || ''))).length !== R.logiques.filter(x => x.requiert).length) e.push(ou + 'une énigme de l\'enveloppe n\'est pas placée'); if (!C.enigmes.some(x => (R.logiques.find(y => y.id === x.id) || {}).meta)) e.push(ou + 'la méta-énigme n\'est pas placée'); }
           enquete(C);
           if (/\{[^{}]+\}/.test(C.denouement)) e.push(ou + 'dénouement : un trou n\'est pas rempli');
           for (const x of e.splice(n)) if (!vus.has(x)) { vus.add(x); e.push(x); }
