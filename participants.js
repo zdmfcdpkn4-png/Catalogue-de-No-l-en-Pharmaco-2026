@@ -87,12 +87,12 @@
   // BRIGADES[b].nom, .court ou embleme(b) suit sans rien changer. Seules la teinte (c) et sa version claire (fond) sont fixes.
   const jeton = b => '<circle cx="12" cy="12" r="9.5" ' + EC + '/><text x="12" y="16.4" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="800" fill="' + L + '">' + (b + 1) + "</text>";
   const BRIGADES = [["#4FB286", "#CDEBDD"], ["#5AA9E6", "#D3E8F8"], ["#F2A0C4", "#FBDDEA"], ["#ECD567", "#F8EFC0"], ["#EC7739", "#F9D6C0"]]
-    .map((x, b) => ({ nom: "Brigade " + (b + 1), court: "Brigade " + (b + 1), c: x[0], fond: x[1], d: jeton(b) }));
+    .map((x, b) => ({ nom: "Brigade " + (b + 1), court: "Brigade " + (b + 1), c: x[0], fond: x[1], d: jeton(b), img: "jeton-" + (b + 1) }));
   function maj(lignes) {
     (lignes || []).forEach(t => {
       const B = BRIGADES[t.b], N = typeof t.titre === "string" && t.titre ? t.titre : "", M = EMBLEMES[t.embleme];
       if (!B) return;
-      B.nom = N || "Brigade " + (t.b + 1); B.court = N ? court(N) : B.nom; B.d = M ? M.d : jeton(t.b);
+      B.nom = N || "Brigade " + (t.b + 1); B.court = N ? court(N) : B.nom; B.d = M ? M.d : jeton(t.b); B.img = M ? IMAGES[t.embleme] : "jeton-" + (t.b + 1);
     });
   }
   // Devises proposées aux brigades : chaque membre en soutient une, la plus soutenue s'affiche (serveur : NB_DEVISES).
@@ -108,7 +108,18 @@
   const borne = (v, n) => (Number.isInteger(v) && v >= 0 && v < n ? v : 0);
   const sain = a => { a = Array.isArray(a) ? a : []; return [borne(a[0], COULEURS.length), borne(a[1], COIFFES.length), borne(a[2], ACCESSOIRES.length)]; };
   const decrire = a => { a = sain(a); return "Meeple " + COULEURS[a[0]].nom + ", " + COIFFES[a[1]].nom + ", " + ACCESSOIRES[a[2]].nom; };
-  const emblemeSvg = (b, cls) => { const B = BRIGADES[b]; return B ? '<svg class="' + (cls || "pp-emb") + '" viewBox="0 0 24 24" aria-hidden="true" style="color:' + B.c + '">' + B.d + "</svg>" : ""; };
+  // Emblème d'une brigade : l'autocollant illustré (img/emblemes), ou à défaut le dessin au trait ci-dessus.
+  // Les images portent le même ordre que EMBLEMES ; « jeton-N » est le jeton numéroté d'une brigade encore sans emblème.
+  const IMAGES = ["flacon", "seringue", "poche", "gelule", "ampoule", "de", "meeple", "etoile", "goutte", "sablier", "mortier", "sapin", "pipette", "balance", "becher",
+    "comprime", "croix", "coeur", "trefle", "pique", "carreau", "carte", "pion", "cadeau", "flocon", "cloche", "bonnet", "couronne", "trophee", "sucre-d-orge"];
+  const image = (nom, cls, attr) => '<img class="' + cls + '" src="img/emblemes/' + nom + '.webp" alt="" loading="lazy" decoding="async" ' + attr + ' onerror="window.PharmacoParticipants&&PharmacoParticipants.secours(this)">';
+  const trait = (b, cls) => { const B = BRIGADES[b]; return B ? '<svg class="' + (cls || "pp-emb") + '" viewBox="0 0 24 24" aria-hidden="true" style="color:' + B.c + '">' + B.d + "</svg>" : ""; };
+  const emblemeSvg = (b, cls) => (BRIGADES[b] ? image(BRIGADES[b].img, cls || "pp-emb", 'data-b="' + b + '"') : "");
+  // Une image qui ne se charge pas laisse la place au dessin au trait : l'emblème reste lisible.
+  function secours(el) {
+    const e = EMBLEMES[el.dataset.e];
+    el.outerHTML = e ? '<svg viewBox="0 0 24 24" aria-hidden="true">' + e.d + "</svg>" : trait(Number(el.dataset.b), el.className);
+  }
 
   // Avatar sur son jeton. brigade : numéro de 0 à 4 (le jeton prend sa teinte), ou rien (jeton crème).
   // Dessin décoratif par défaut (aria-hidden) ; avec o.titre, il porte sa description.
@@ -175,7 +186,14 @@
 .pp-vote[open]>summary{border-bottom:2.5px solid var(--line,#26076D)}
 .pp-vote>div{padding:10px}
 .pp-vote .pp-opt span svg{color:var(--pp-c,#26076D)}
-.pp-vote .pp-opts{grid-template-columns:repeat(auto-fill,minmax(58px,1fr))}
+.pp-vote .pp-opts{grid-template-columns:repeat(auto-fill,minmax(74px,1fr))}
+.pp-vote .pp-opt span img,.pp-vote .pp-opt span svg{display:block;width:58px;height:58px}
+img.pp-emb,.pp-elus img.pp-emb{object-fit:contain;border-radius:0}
+.pp-carte img.pp-emb{width:52px;height:52px}
+h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
+.pp-brig img.pp-emb{width:28px;height:28px}
+.eg-rank img.eg-emb{width:26px;height:26px}
+.eg-brig summary img.eg-emb{width:36px;height:36px}
 .pp-opt span em{font:600 .58rem/1.1 var(--mono,monospace);font-style:normal}
 @media(max-width:380px){.pp-apercu{width:96px}.pp-top{gap:10px}.pp-opts{gap:5px}.pp-opt span{padding:6px 0 5px;font-size:.6rem;letter-spacing:-.01em}.pp-opt span svg,.pp-opt span i{width:34px;height:34px}.pp-carte .pp-apercu{width:84px}}
 @media(prefers-reduced-motion:reduce){.pp-pop{animation:none}.pp-opt input:checked+span{transform:none}}`;
@@ -345,7 +363,7 @@
             + '<label for="ppNomLibre">Ou proposer un autre nom</label><input class="pp-jeu" id="ppNomLibre" type="text" autocomplete="off" maxlength="40" placeholder="Brigade des…">'
             + '<p class="eg-hint">De 3 à 40 caractères, lettres et chiffres. Il s\'ajoute aux choix de votre brigade, et il est visible de tous : restez dans le ton, jamais moqueur.</p>')
           + section("e", "Emblème", maVoix(moi.e, EMBLEMES[moi.e] ? EMBLEMES[moi.e].nom : ""), '<div class="pp-opts" role="group" aria-label="Emblème de la brigade">'
-            + EMBLEMES.map((t, i) => '<label class="pp-opt"><input class="pp-vh" type="radio" name="ppEmbleme" value="' + i + '"' + (moi.e === i ? " checked" : "") + '><span><svg viewBox="0 0 24 24" aria-hidden="true">' + t.d + "</svg>" + h(t.nom) + note(voix.e[i], emblPris.has(i)) + "</span></label>").join("") + "</div>")
+            + EMBLEMES.map((t, i) => '<label class="pp-opt"><input class="pp-vh" type="radio" name="ppEmbleme" value="' + i + '"' + (moi.e === i ? " checked" : "") + '><span>' + image(IMAGES[i], "pp-img", 'data-e="' + i + '"') + h(t.nom) + note(voix.e[i], emblPris.has(i)) + "</span></label>").join("") + "</div>")
           + section("d", "Devise", maVoix(moi.d, "choisie"), '<div class="pp-devises" role="group" aria-label="Devise de la brigade">'
             + DEVISES.map((t, i) => '<label class="pp-dev"><input class="pp-vh" type="radio" name="ppDevise" value="' + i + '"' + (moi.d === i ? " checked" : "") + "><span>" + h(t) + note(voix.d[i]) + "</span></label>").join("") + "</div>")
           + section("g", "Jeu emblème", maVoix(moi.g, h(moi.g || "")), '<select class="pp-jeu" id="ppJeu" aria-label="Jeu emblème de la brigade"><option value="">Choisir un jeu du catalogue</option>'
@@ -382,5 +400,5 @@
     q("#ppTitre").focus({ preventScroll: true });
   }
 
-  window.PharmacoParticipants = { COULEURS, COIFFES, ACCESSOIRES, BRIGADES, NOMS, EMBLEMES, DEVISES, tirage, maj, court, avatar, embleme: emblemeSvg, decrire, fiche, brigade };
+  window.PharmacoParticipants = { COULEURS, COIFFES, ACCESSOIRES, BRIGADES, NOMS, EMBLEMES, DEVISES, tirage, maj, court, secours, avatar, embleme: emblemeSvg, decrire, fiche, brigade };
 })();
