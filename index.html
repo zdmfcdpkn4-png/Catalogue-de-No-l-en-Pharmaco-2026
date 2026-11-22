@@ -355,6 +355,11 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .adv-panel .ap-bd img{display:block;width:100%;height:100%;max-height:none;object-fit:contain;border:0;border-radius:0;background:none}
 .ap-bd .bdv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;background:#DDD0EC;animation:bdvOut .5s 12s forwards}
 .ap-bd.fin .bdv{animation:bdvOut2 .5s forwards}
+/* Lever de rideau des jours d'événement (1er et 25 décembre) : une courte vidéo dans son cadre, par-dessus le sapin, puis fondu */
+.av-ev{position:absolute;z-index:3;inset:0;margin:auto;width:min(100%,560px);height:fit-content;padding:10px 10px 12px;background:var(--surface);color:var(--on-surface);border:3px solid var(--line);border-radius:16px;box-shadow:6px 6px 0 var(--shadow);text-align:center;cursor:pointer;animation:apIn .4s cubic-bezier(.16,1,.3,1) both;transition:opacity .5s}
+.av-ev.out{opacity:0}
+.av-ev video{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border:3px solid var(--line);border-radius:10px;background:#EC7739}
+.av-ev p{margin:10px 4px 8px;font-weight:800;font-size:1.02rem;line-height:1.2}
 .adv-panel .ouv{position:absolute;inset:0;z-index:2;width:100%;height:100%;object-fit:cover;border-radius:15px;background:#FFFBF2;pointer-events:none;animation:bdvOut .5s 10s forwards}
 @keyframes bdvOut{to{opacity:0;visibility:hidden}}
 @keyframes bdvOut2{to{opacity:0;visibility:hidden}}
@@ -765,12 +770,13 @@ function avNext(){
   if(n===0){const j=avDays(1);return '<p class="ap-next">'+avSvg("lock")+'La première goutte s\'ouvrira le 1er décembre'+(j>1?", dans "+j+" jours.":".")+'</p>'}
   return '<p class="ap-next">'+avSvg("lock")+'La goutte '+(n+1)+' s\'ouvrira demain, le '+avDate(n+1)+'.</p>';
 }
+function avEvBtn(n){return AV_EV[n]?' <button class="go" type="button" data-ev>Revoir le lever de rideau</button>':''}
 function avIntro(){
   const n=avNow();
   if(n===0)return avHead("lock","Sapin sous scellé","Ouverture le 01/12")+'<p class="ap-p">Lot en quarantaine jusqu\'au 1er décembre. Inutile de secouer le sapin, on a essayé. Touchez une goutte pour connaître sa date de libération.</p>'+avNext();
   if(n>25)return avHead("citation","Les 25 doses sont délivrées","Traitement terminé")+'<p class="ap-p">Touchez une goutte pour revoir sa surprise.</p>';
-  if(AVO.has(n))return avHead("wait","Dose du "+avDate(n),"Déjà délivrée")+'<p class="ap-p">Dose du jour déjà délivrée. Touchez la goutte pour une seconde administration.</p><button class="go main" type="button" data-av="'+n+'">Revoir la dose du jour</button>'+avNext();
-  return avHead("wait","Dose du "+avDate(n),"Dose du jour")+'<p class="ap-p">Votre dose du jour est prête. Contenu : surprise.</p><button class="go main" type="button" data-av="'+n+'">Ouvrir la goutte du jour</button>'+avNext();
+  if(AVO.has(n))return avHead("wait","Dose du "+avDate(n),"Déjà délivrée")+'<p class="ap-p">Dose du jour déjà délivrée. Touchez la goutte pour une seconde administration.</p><button class="go main" type="button" data-av="'+n+'">Revoir la dose du jour</button>'+avEvBtn(n)+avNext();
+  return avHead("wait","Dose du "+avDate(n),"Dose du jour")+'<p class="ap-p">Votre dose du jour est prête. Contenu : surprise.</p><button class="go main" type="button" data-av="'+n+'">Ouvrir la goutte du jour</button>'+avEvBtn(n)+avNext();
 }
 function avContent(d){
   const c=AVENT[d-1]||{},t=c.type;
@@ -815,19 +821,34 @@ function avOri(d){
     +'<g class="o-c"><circle r="31" fill="#FFFBF2" stroke="'+V+'" stroke-width="3"/><image href="'+AV_LOGO+'" x="-25" y="-25" width="50" height="50"/></g></svg></div>';
 }
 /* Vidéo d'ouverture d'une bande dessinée : à la fin (ou en cas d'échec), elle laisse la place à la planche. */
-["ended","error"].forEach(ev=>document.addEventListener(ev,e=>{const v=e.target;if(!v||!v.classList)return;if(v.classList.contains("bdv"))v.parentNode.classList.add("fin");if(v.classList.contains("ouv"))v.remove()},true));
+["ended","error"].forEach(ev=>document.addEventListener(ev,e=>{const v=e.target;if(!v||!v.classList)return;if(v.classList.contains("bdv"))v.parentNode.classList.add("fin");if(v.classList.contains("ouv"))v.remove();if(v.classList.contains("evv"))avEvEnd()},true));
 /* Vidéo générique d'ouverture d'une goutte : indiquer ici son chemin (elle doit finir sur un aplat crème #FFFBF2).
    Vide : pas de vidéo. Elle ne joue qu'au clic, jamais pour une case qui a sa propre vidéo, ni en mouvement réduit. */
 const AV_OUV="";
 /* Lecture en grand : la planche reste ouverte par-dessus la page jusqu'au bouton Fermer (ou Échap). */
 document.addEventListener("click",e=>{
+  if(e.target.closest("[data-ev]")){avEv(true);return}
+  if(e.target.closest(".av-ev")){avEvEnd();return}
   const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG")e.target.classList.toggle("zz");else z.remove();return}
   const a=e.target.closest(".ap-bd a");if(!a)return;e.preventDefault();
   const im=a.querySelector("img"),d=document.createElement("div");d.className="bdz";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-label",im.alt);
   d.innerHTML='<button type="button">Fermer</button><img src="'+esc(a.getAttribute("href"))+'" alt="'+esc(im.alt)+'"><p>Touchez l\'image pour zoomer.</p>';
   document.body.appendChild(d);d.querySelector("button").focus();
 });
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){const z=document.querySelector(".bdz");if(z)z.remove()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){const z=document.querySelector(".bdz");if(z)z.remove();else avEvEnd()}});
+/* Jours d'événement : le 1er et le 25 décembre, une vidéo du sapin joue une fois par appareil à l'arrivée sur la page (muette),
+   dans son propre cadre, puis s'efface. Elle n'ouvre aucune goutte. Pas en mouvement réduit ; se passe d'un toucher ou avec Échap. */
+const AV_EV={1:["video/sapin-1er-decembre.mp4","Levée de quarantaine : le lot de décembre est libéré."],25:["video/sapin-25-decembre.mp4","Dernière dose. Le Père Noël a signé la libération."]};
+function avEvEnd(now){clearTimeout(avEv.t);const o=document.querySelector("#avTree .av-ev");if(!o)return;if(now){o.remove();return}o.classList.add("out");setTimeout(()=>o.remove(),500)}
+function avEv(force){
+  const n=avNow(),ev=AV_EV[n];if(!ev)return;
+  let vu=[];try{vu=JSON.parse(localStorage.getItem(AV_KEY+"-ev")||"[]")}catch(e){}
+  if(!force&&(vu.includes(n)||matchMedia("(prefers-reduced-motion:reduce)").matches))return;
+  if(!vu.includes(n)){vu.push(n);try{localStorage.setItem(AV_KEY+"-ev",JSON.stringify(vu))}catch(e){}}
+  avEvEnd(true);
+  $("#avTree").insertAdjacentHTML("beforeend",'<div class="av-ev" role="group" aria-label="'+esc(ev[1])+'"><video class="evv" src="'+ev[0]+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video><p>'+esc(ev[1])+'</p><button class="go" type="button">Passer</button></div>');
+  avEv.t=setTimeout(avEvEnd,10000);
+}
 function avLocked(d){
   const j=avDays(d);
   return avHead("lock","Goutte du "+avDate(d),"Sous scellé")+'<p class="ap-p">Libération prévue le '+avDate(d)+(j>1?", dans "+j+" jours":"")+'. Ne pas dépasser la dose prescrite : le Père Noël surveille les stocks.</p>';
@@ -836,7 +857,7 @@ function avLocked(d){
 function avView(){
   const on=location.hash==="#sapin";
   $("#avent").hidden=!on;document.querySelectorAll(".ind,.bar,main").forEach(e=>e.hidden=on);
-  if(on){const t=$("#avTree");t.classList.remove("casc");void t.offsetWidth;t.classList.add("casc");clearTimeout(avView.t);avView.t=setTimeout(()=>t.classList.remove("casc"),4500);$("#avent").scrollIntoView({block:"start"});AVENT.forEach(c=>{if(avSt(c.jour)==="lock")return;if(c.pochette)new Image().src=c.pochette;if(c.type==="origami")new Image().src=AV_LOGO})}else avHush();
+  if(on){const t=$("#avTree");t.classList.remove("casc");void t.offsetWidth;t.classList.add("casc");clearTimeout(avView.t);avView.t=setTimeout(()=>t.classList.remove("casc"),4500);$("#avent").scrollIntoView({block:"start"});AVENT.forEach(c=>{if(avSt(c.jour)==="lock")return;if(c.pochette)new Image().src=c.pochette;if(c.type==="origami")new Image().src=AV_LOGO});avEv()}else{avHush();avEvEnd(true)}
 }
 function avHush(){document.querySelectorAll("#avPanel audio").forEach(a=>a.pause())}
 function avOpen(d,viaBtn){
