@@ -51,8 +51,8 @@ function controler(b) {
     if (/—/.test(JSON.stringify(p))) e.push(ou + 'tiret cadratin');
   });
   // Enquête, facultative : une énigme par jour, réponse au choix ou en texte.
-  if (b.enquete !== undefined) {
-    const E = b.enquete, ou = 'enquête : ';
+  const enquete = E => {
+    const ou = 'enquête : ';
     if (!E || typeof E.titre !== 'string' || !E.titre || !Array.isArray(E.enigmes) || !E.enigmes.length) e.push(ou + 'titre et énigmes attendus');
     else {
       if (new Set(E.enigmes.map(c => c.k)).size !== E.enigmes.length) e.push(ou + 'numéros d\'énigme en double');
@@ -75,6 +75,44 @@ function controler(b) {
         else E.enigmes.forEach(c => { if (c.elimine && !E.fiches.some(f => f.id === c.elimine)) e.push(ou + 'énigme ' + c.k + ' : élimine une fiche inconnue'); });
       }
       if (/—/.test(JSON.stringify(E))) e.push(ou + 'tiret cadratin');
+    }
+  };
+  if (b.enquete !== undefined) {
+    const E = b.enquete, R = E && E.reservoir, ou = 'enquête à tirage : ';
+    if (!R) enquete(E);
+    else {
+      // Enquête à tirage : le réservoir, puis des compositions d'essai contrôlées comme une enquête écrite.
+      const F = Array.isArray(E.fiches) ? E.fiches : [], cats = [...new Set(F.map(f => f.cat))], avant = e.length;
+      if (!F.length) e.push(ou + 'fiches attendues');
+      if (!R.cartes || typeof R.cartes !== 'object') e.push(ou + 'cartes attendues');
+      else F.forEach(f => {
+        const c = R.cartes[f.id], o = ou + 'carte ' + f.id + ' : ';
+        if (!c) return e.push(o + 'absente du réservoir');
+        if (!c.devinette || typeof c.devinette.titre !== 'string' || !c.devinette.titre || typeof c.devinette.enonce !== 'string' || !c.devinette.enonce) e.push(o + 'devinette (titre, enonce) attendue');
+        if (!Array.isArray(c.indices) || !c.indices.length || c.indices.some(x => typeof x !== 'string' || !x)) e.push(o + 'indices attendus');
+        if (typeof c.preuve !== 'string' || !c.preuve) e.push(o + 'preuve attendue');
+      });
+      const P = Array.isArray(R.plan) ? R.plan : [];
+      if (!P.length) e.push(ou + 'plan attendu');
+      if (P.some(s => !['carte', 'indice', 'final'].includes(s.r) || (s.r !== 'indice' && !cats.includes(s.cat)))) e.push(ou + 'plan : genre ou catégorie inconnus');
+      for (const c of cats) {
+        if (P.filter(s => s.r === 'carte' && s.cat === c).length > F.filter(f => f.cat === c).length - 1) e.push(ou + 'plan : trop d\'éliminations en ' + c);
+        if (P.filter(s => s.r === 'final' && s.cat === c).length !== 1) e.push(ou + 'plan : un dénouement et un seul en ' + c);
+      }
+      const nbInd = P.filter(s => s.r === 'indice').length;
+      if (!Array.isArray(R.logiques) || R.logiques.length < nbInd) e.push(ou + 'il faut au moins ' + nbInd + ' énigmes de logique');
+      if (R.cartes && F.length && cats.some(c => F.filter(f => f.cat === c).some(f => R.cartes[f.id] && Array.isArray(R.cartes[f.id].indices) && R.cartes[f.id].indices.length * cats.length < nbInd))) e.push(ou + 'pas assez d\'indices par carte pour ' + nbInd + ' énigmes de logique');
+      if (typeof R.denouement !== 'string' || !R.denouement) e.push(ou + 'dénouement attendu');
+      if (/—/.test(JSON.stringify(R))) e.push(ou + 'tiret cadratin');
+      if (e.length === avant) {
+        const { composer } = require('../api/enigme.js'), vus = new Set(e);
+        for (let i = 0; i < 40; i++) {
+          const C = composer(E, 'controle-' + i), n = e.length;
+          enquete(C);
+          if (/\{[^{}]+\}/.test(C.denouement)) e.push(ou + 'dénouement : un trou n\'est pas rempli');
+          for (const x of e.splice(n)) if (!vus.has(x)) { vus.add(x); e.push(x); }
+        }
+      }
     }
   }
   return e;

@@ -310,6 +310,52 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
   return o;
 }
 
+// Enquête à tirage (facultative : `reservoir` dans `enquete`, à la place de `enigmes` et `denouement`). Personne ne connaît
+// la solution, concepteurs compris : le serveur tire une graine au premier jour du jeu, la garde dans le magasin, et compose
+// l'enquête à partir d'elle. Par catégorie de fiches : un coupable, des innocents éliminés un à un par leur devinette, un
+// dernier innocent qui reste en lice. Les énigmes de logique livrent les indices des trois cartes coupables.
+// Réservoir : { cartes: { id: { devinette: { titre, enonce }, indices: [textes], preuve, vue: jour de présentation } },
+//   logiques: [ énigmes sans révélation ], plan: [ { k, n, pts, r: 'carte' | 'indice' | 'final', cat, titre } ],
+//   denouement: texte à trous ({Catégorie} : le nom ; {catégorie} : le nom, initiale en minuscule) }.
+// La relecture montre le réservoir, jamais le tirage. En date simulée (essais de l'administration), la graine est fixe
+// et rien n'est gardé : le vrai tirage reste intact.
+const FILE_TIRAGE = 'enquete-tirage.json';
+function alea(graine) {
+  let i = 0;
+  return () => crypto.createHash('sha256').update(graine + ':' + (i++)).digest().readUInt32BE(0) / 4294967296;
+}
+function composer(E, graine) {
+  const R = E.reservoir, rnd = alea(graine);
+  const melange = L => { const A = L.slice(), o = []; while (A.length) o.push(A.splice(Math.floor(rnd() * A.length), 1)[0]); return o; };
+  const coupable = {}, innocents = {};
+  for (const c of [...new Set(E.fiches.map(f => f.cat))]) { const F = melange(E.fiches.filter(f => f.cat === c)); coupable[c] = F[0]; innocents[c] = F.slice(1); }
+  const indices = melange(Object.keys(coupable).flatMap(c => R.cartes[coupable[c].id].indices)), logiques = melange(R.logiques);
+  const devinette = f => { const noms = E.fiches.filter(x => x.cat === f.cat).map(x => x.nom); return Object.assign({}, R.cartes[f.id].devinette, { saisie: 'choix', options: noms, bonne: noms.indexOf(f.nom) }); };
+  const enigmes = R.plan.map(s => {
+    const base = { k: s.k, n: s.n, pts: s.pts };
+    if (s.r === 'carte') { // de préférence une carte déjà présentée dans le sapin
+      const I = innocents[s.cat], i = Math.max(0, I.findIndex(f => !(R.cartes[f.id].vue > s.n))), f = I.splice(i, 1)[0];
+      return Object.assign(base, devinette(f), { revelation: f.nom + ' est hors de cause.', elimine: f.id });
+    }
+    if (s.r === 'final') return Object.assign(base, devinette(coupable[s.cat]), s.titre ? { titre: s.titre } : {}, { revelation: R.cartes[coupable[s.cat].id].preuve });
+    return Object.assign(base, logiques.shift(), { revelation: indices.shift() });
+  });
+  const nom = c => { const C = Object.keys(coupable).find(x => x.toLowerCase() === c.toLowerCase()), n = C && coupable[C].nom; return !n ? '{' + c + '}' : c[0] === c[0].toLowerCase() ? n[0].toLowerCase() + n.slice(1) : n; };
+  return Object.assign({}, E, { reservoir: undefined, enigmes, denouement: String(R.denouement || '').replace(/\{([^{}]+)\}/g, (m, c) => nom(c)) });
+}
+let graineConnue = null;
+async function graineTirage() {
+  if (graineConnue) return graineConnue;
+  const relire = async () => { const r = await get(FILE_TIRAGE, { access: 'private', useCache: false }); return r && r.statusCode === 200 ? JSON.parse(await new Response(r.stream).text()).graine : null; };
+  let g = await relire();
+  if (!g) {
+    g = crypto.randomBytes(16).toString('hex');
+    try { await put(FILE_TIRAGE, JSON.stringify({ graine: g, t: Date.now() }), { access: 'private', contentType: 'application/json', allowOverwrite: false }); }
+    catch (e) { g = await relire(); if (!g) throw e; } // un autre appel a tiré entre-temps : sa graine fait foi
+  }
+  return (graineConnue = g);
+}
+
 // `enq` : les points d'enquête de chaque brigade (énigmes closes), ajoutés à sa moyenne pour le classement (`tot`).
 function brigades(L, joueurs, mienne, enq) {
   const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, actifs: 0, pts: 0, moy: 0 }));
@@ -481,12 +527,19 @@ async function handler(req, res) {
   const admin = codeOk(b.admin, process.env.ADMIN_CODE) || codeOk(b.code, process.env.ADMIN_CODE);
   if (!equipe && !admin) return res.status(401).json({ error: 'code' });
 
-  const B = banque();
+  let B = banque();
   // L'administration peut se placer à une autre date, pour essayer le jeu avant décembre.
   const instant = handler.maintenant(), maintenant = instant.getTime();
   const jour = rangDe(admin && typeof b.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.date) ? b.date : PARIS.format(instant));
 
   try {
+    // Enquête à tirage : composée d'après la graine. Avant le 1er décembre réel, rien n'est tiré et l'enquête n'existe pas encore.
+    const reservoir = B.enquete && B.enquete.reservoir ? B.enquete : null;
+    if (reservoir) {
+      const simule = admin && typeof b.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.date);
+      const graine = simule ? 'essai' : jour >= 1 ? await graineTirage() : null;
+      B = Object.assign({}, B, { enquete: graine ? composer(reservoir, graine) : undefined });
+    }
     if (admin && typeof b.retirer === 'string') {
       const cle = norm(b.retirer.trim().replace(/’/g, "'"));
       return res.status(200).json(await modifier(joueurs => {
@@ -520,7 +573,7 @@ async function handler(req, res) {
     // Code d'administration seul : relecture des 25 portes, solutions comprises. Rien ne s'enregistre.
     if (!equipe) {
       const { joueurs } = await lire();
-      return res.status(200).json({ relecture: true, jour, portes: B.portes.map(q => vue(q, etatDe(q.n, jour), null, true, maintenant)), total: 0, classement: classement(B, joueurs, jour), enquete: B.enquete ? vueEnquete(B.enquete, joueurs, null, jour, true) : undefined });
+      return res.status(200).json({ relecture: true, jour, portes: B.portes.map(q => vue(q, etatDe(q.n, jour), null, true, maintenant)), total: 0, classement: classement(B, joueurs, jour), enquete: reservoir ? { titre: reservoir.titre, tirage: true, fiches: reservoir.fiches, amorces: reservoir.amorces, reservoir: reservoir.reservoir } : B.enquete ? vueEnquete(B.enquete, joueurs, null, jour, true) : undefined });
     }
 
     // La liste des participants, pour le menu déroulant de l'entrée : elle ne sort qu'ici, avec le code d'équipe.
@@ -732,4 +785,5 @@ async function handler(req, res) {
   }
 }
 handler.maintenant = () => new Date(); // remplaçable par le banc d'essai
+handler.composer = composer; // pour le contrôle de la banque (outils/banque.js)
 module.exports = handler;
