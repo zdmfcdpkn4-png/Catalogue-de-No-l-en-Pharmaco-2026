@@ -50,15 +50,21 @@ def etiquette(a, e):
     fond = np.clip(m * (1.10 if sens == 'clair' else 0.88) + (10 if sens == 'clair' else 0), 0, 255)
     encre = np.clip(m * (0.52 if sens == 'clair' else 0.45), 0, 255)
     bord = np.clip(m * 0.80, 0, 255)
-    s = 8; W, H = 58 * s, 30 * s
+    s = 8; etroite = e.get('forme') == 'etroite'
+    W, H = (38 * s, 48 * s) if etroite else (58 * s, 30 * s)
     L = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(L)
     t = lambda c, al: tuple(int(v) for v in c) + (al,)
     d.rounded_rectangle([0, 0, W - 1, H - 1], radius=4 * s, fill=t(fond, e.get('opacite', 228)), outline=t(bord, 230), width=int(1.5 * s))
     d.text((4 * s, 2.5 * s), 'LOT', font=ImageFont.truetype(POLICE, 7 * s), fill=t(encre, 235))
     f = ImageFont.truetype(POLICE, 15 * s)
-    d.text((4 * s, 11 * s), e['num'], font=f, fill=t(encre, 240))
-    d.line([(int(34 * s), 5 * s), (int(34 * s), 25 * s)], fill=t(bord, 200), width=s)
-    d.text((38 * s, 11 * s), e['lettre'], font=f, fill=t(encre, 240))
+    if etroite:   # numéro au-dessus, lettre en dessous : même corps que la forme large
+        d.text((W // 2, 18 * s), e['num'], font=f, fill=t(encre, 240), anchor='mm')
+        d.line([(6 * s, 28 * s), (W - 6 * s, 28 * s)], fill=t(bord, 200), width=s)
+        d.text((W // 2, 38 * s), e['lettre'], font=f, fill=t(encre, 240), anchor='mm')
+    else:
+        d.text((4 * s, 11 * s), e['num'], font=f, fill=t(encre, 240))
+        d.line([(int(34 * s), 5 * s), (int(34 * s), 25 * s)], fill=t(bord, 200), width=s)
+        d.text((38 * s, 11 * s), e['lettre'], font=f, fill=t(encre, 240))
     # déformation en perspective sur le quadrilatère du support
     ow, oh = bx1 - bx0, by1 - by0
     dst = [(x - bx0, y - by0) for x, y in q]
@@ -67,9 +73,54 @@ def etiquette(a, e):
     patch = big.resize((ow, oh), Image.LANCZOS).filter(ImageFilter.GaussianBlur(e.get('flou', 0.35)))
     im = Image.fromarray(a); im.paste(patch, (bx0, by0), patch); a[:] = np.array(im)
 
+COND = __import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), 'node_modules/@fontsource/fira-sans-extra-condensed/files/fira-sans-extra-condensed-latin-700-normal.woff')
+def remplace(a, r):
+    # repeint une petite étiquette dessinée (boîte) et y écrit un nouveau texte, ligne par ligne
+    x0, y0, x1, y1 = r['boite']; z = a[y0:y1, x0:x1].reshape(-1, 3).astype(float); lum = z.mean(1)
+    sombre = r.get('sombre', False)
+    fond = np.median(z[lum < np.percentile(lum, 50)] if sombre else z[lum > np.percentile(lum, 50)], 0)
+    encre = r.get('encre') or ((235, 240, 230) if sombre else (40, 30, 25))
+    im = Image.fromarray(a); d = ImageDraw.Draw(im)
+    d.rectangle([x0, y0, x1, y1], fill=tuple(int(v) for v in fond))
+    lignes = r['lignes']; n = len(lignes); hl = (y1 - y0) / n
+    for i, l in enumerate(lignes):
+        tl = int(hl * 0.8)
+        while tl > 5 and ImageFont.truetype(COND, tl).getlength(l) > (x1 - x0) * 0.94: tl -= 1
+        d.text(((x0 + x1) / 2, y0 + hl * (i + 0.5)), l, font=ImageFont.truetype(COND, tl), fill=tuple(encre), anchor='mm')
+    a[:] = np.array(im.filter(ImageFilter.GaussianBlur(0))) ; 
+    b = a[y0 - 1:y1 + 2, x0 - 1:x1 + 2]; a[y0 - 1:y1 + 2, x0 - 1:x1 + 2] = np.array(Image.fromarray(b).filter(ImageFilter.GaussianBlur(0.5)))
+
+def floute(a, b, r=3.2):
+    x0, y0, x1, y1 = b; z = Image.fromarray(a[y0:y1, x0:x1]).filter(ImageFilter.GaussianBlur(r)); a[y0:y1, x0:x1] = np.array(z)
+
+def gribouille(a, b):
+    # efface une écriture manuscrite (couleur du papier) et la remplace par un gribouillis illisible, penché comme le texte
+    x0, y0, x1, y1, pente = b
+    z = a[y0:y1, x0:x1].reshape(-1, 3).astype(float); lum = z.mean(1)
+    papier = np.median(z[lum > np.percentile(lum, 60)], 0); encre = np.median(z[lum < np.percentile(lum, 8)], 0)
+    sombre = (a[y0:y1, x0:x1].mean(2) < lum.mean() - 18)
+    m = nd.binary_dilation(sombre, iterations=1)
+    a[y0:y1, x0:x1][m] = papier.astype(np.uint8)
+    im = Image.fromarray(a); d = ImageDraw.Draw(im); n = max(8, (x1 - x0) // 3)
+    ym = (y0 + y1) / 2
+    pts = [(x0 + 3 + i * (x1 - x0 - 6) / n, ym + pente * (i / n - .5) * (x1 - x0) + (2.4 if i % 2 else -2.4)) for i in range(n + 1)]
+    d.line(pts, fill=tuple(int(v) for v in encre), width=1, joint='curve')
+    a[:] = np.array(im)
+    a[y0:y1, x0:x1] = np.array(Image.fromarray(a[y0:y1, x0:x1]).filter(ImageFilter.GaussianBlur(0.5)))
+
+def attenue(a, b):
+    x0, y0, x1, y1 = b; z = a[y0:y1, x0:x1].astype(float); lum = z.mean(2)
+    med = np.median(z.reshape(-1, 3), 0); m = lum > np.percentile(lum, 55)
+    z[m] = z[m] * 0.25 + med * 0.75
+    a[y0:y1, x0:x1] = np.array(Image.fromarray(z.astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.2)))
+
 def prepare(c):
     a = np.array(Image.open(A + c['source'] + '.jpg').convert('RGB'))
     for r in c.get('raccords', []): raccord(a, *r)
+    for b in c.get('flous', []): floute(a, b)
+    for b in c.get('gribouillis', []): gribouille(a, b)
+    for b in c.get('attenues', []): attenue(a, b)
+    for r in c.get('remplacements', []): remplace(a, r)
     zones_abs = [vide_bulle(a, b['boite']) for b in c.get('bulles', [])]
     if c.get('etiquette'): etiquette(a, c['etiquette'])
     f = c['fenetre']; x, y, w = f[0], f[1], f[2]; h = f[3] if len(f) > 3 else w

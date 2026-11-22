@@ -70,6 +70,7 @@ function rendre(C){
   // ajustements : titre sur une ligne, bulles et texte dans leur boîte
   const ts=c.querySelectorAll('.titre span');let f=50;ts.forEach(s=>s.style.fontSize=f+'px');
   while(f>30&&ts[1].offsetWidth>600){f-=1;ts.forEach(s=>s.style.fontSize=f+'px')}
+  const so=c.querySelector('.sous');so.style.whiteSpace='nowrap';let fs=25;so.style.fontSize=fs+'px';while(fs>15&&so.scrollWidth>so.clientWidth){fs-=.5;so.style.fontSize=fs+'px'}
   c.querySelectorAll('.bulle').forEach(b=>ajuste(b,22,11));
   const tx=c.querySelector('.texte');let t=23;tx.style.fontSize=t+'px';while(t>15&&tx.scrollHeight>tx.clientHeight+1){t-=.5;tx.style.fontSize=t+'px'}
   const st=c.querySelector('.stats');
