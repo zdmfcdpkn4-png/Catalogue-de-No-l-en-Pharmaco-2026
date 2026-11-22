@@ -2243,7 +2243,12 @@
     if (opt.essai) opt.essai(s);                                                                       // pour le banc d'essai : l'état du jeu
     let clos = false, minuterie = 0;
     const logo = new Image(); logo.src = opt.logo || "img/logo-pharmacotechnie.webp";               // le logo de l'unité, sur le colis
-    const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } appuiHaies(s, true); };
+    // Sur téléphone, un appui long (le grand saut) ou un double appui (le salto) ne doit ouvrir ni sélection de texte, ni menu
+    // « copier / coller », ni loupe : rien n'est sélectionnable dans la zone de jeu tant que la partie dure, et le geste par défaut du doigt est annulé.
+    const STYLES = ["userSelect", "webkitUserSelect", "webkitTouchCallout", "webkitTapHighlightColor"], avantStyles = STYLES.map(k => el.style[k]);
+    for (const k of STYLES) cv.style[k] = el.style[k] = k === "webkitTapHighlightColor" ? "transparent" : "none";
+    const rien = e => e.preventDefault(), deselect = () => { try { const sel = window.getSelection && window.getSelection(); if (sel && sel.rangeCount) sel.removeAllRanges(); } catch (_) { } };
+    const appui = e => { e.preventDefault(); deselect(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } appuiHaies(s, true); };
     const lache = () => appuiHaies(s, false);
     const clavier = (e, v) => {
       if (e.key !== " " && e.key !== "Spacebar" && e.key !== "ArrowUp") return;
@@ -2253,10 +2258,13 @@
     };
     const enfonce = e => clavier(e, true), leve = e => clavier(e, false), menu = e => e.preventDefault();
     cv.addEventListener("pointerdown", appui); cv.addEventListener("contextmenu", menu);
+    cv.addEventListener("touchstart", rien, { passive: false }); cv.addEventListener("touchend", rien, { passive: false }); cv.addEventListener("selectstart", rien); cv.addEventListener("dblclick", rien);
     window.addEventListener("pointerup", lache); window.addEventListener("pointercancel", lache);
     window.addEventListener("keydown", enfonce); window.addEventListener("keyup", leve); window.addEventListener("blur", lache);
     const retirer = () => {
       cv.removeEventListener("pointerdown", appui); cv.removeEventListener("contextmenu", menu);
+      cv.removeEventListener("touchstart", rien); cv.removeEventListener("touchend", rien); cv.removeEventListener("selectstart", rien); cv.removeEventListener("dblclick", rien);
+      STYLES.forEach((k, i) => { el.style[k] = avantStyles[i]; });
       window.removeEventListener("pointerup", lache); window.removeEventListener("pointercancel", lache);
       window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
     };
