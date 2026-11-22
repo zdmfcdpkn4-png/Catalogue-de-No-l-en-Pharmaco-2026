@@ -1201,9 +1201,12 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     const T = (E.brigades || []).filter(t => t.n > 0), zone = q("#egBrigs");
     zone.hidden = !(W && T.length);
     if (zone.hidden) return;
-    const note = clos > 0 && T.some(t => t.moy > 0), mienne = !relecture && E.profil ? E.profil.b : undefined;
+    // Le serveur classe les brigades sur un total : la moyenne des portes par membre actif, plus les points de l'enquête
+    // de brigade (tot = moy + enq). La ligne montre ce total ; le détail est dans la partie dépliée.
+    const total = t => (t.tot !== undefined ? t.tot : t.moy), enquete = T.some(t => t.enq > 0), pts = n => dec(n) + " " + (n >= 2 ? "points" : "point");
+    const note = T.some(t => total(t) > 0), mienne = !relecture && E.profil ? E.profil.b : undefined;
     const cat = typeof G !== "undefined" && Array.isArray(G) ? G : [];
-    q("#egBrigsS").textContent = note ? "Moyenne de points par membre actif, portes closes" : "Rang et moyenne à la première clôture";
+    q("#egBrigsS").textContent = !note ? "Rang et points à la première clôture" : enquete ? "Total : moyenne des portes par membre actif, plus l'enquête" : "Moyenne de points par membre actif, portes closes";
     q("#egBrigsL").innerHTML = T.map(t => {
       const b = W.BRIGADES[t.b];
       if (!b) return "";
@@ -1211,8 +1214,9 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       return '<li><details class="eg-brig' + (t.b === mienne ? " me" : "") + '" data-b="' + t.b + '" style="--bf:' + b.fond + '"' + (brigOuvertes.has(String(t.b)) ? " open" : "") + ">"
         + '<summary><span class="eg-rk">' + (note ? '<span class="sr">Rang </span>' + t.rang : '<span aria-hidden="true">·</span>') + "</span>" + W.embleme(t.b, "eg-emb")
         + '<span class="eg-brig-t"><b>' + h(b.nom) + (t.b === mienne ? ' <span class="eg-vous">la vôtre</span>' : "") + "</b>"
-        + '<span class="eg-pt">' + (note ? "moyenne " + dec(t.moy) + " " + (t.moy >= 2 ? "points" : "point") + " · " : "") + pl(t.n, "membre", "membres") + '</span></span><i aria-hidden="true"></i></summary>'
-        + '<div class="eg-brig-c"><p><small>Devise</small>' + (devise ? "« " + h(devise) + " »" : "Pas encore élue.") + "</p>"
+        + '<span class="eg-pt">' + (note ? (enquete ? "" : "moyenne ") + pts(total(t)) + " · " : "") + pl(t.n, "membre", "membres") + '</span></span><i aria-hidden="true"></i></summary>'
+        + '<div class="eg-brig-c">' + (note && enquete ? "<p><small>Points</small>Portes, moyenne par membre actif : <b>" + pts(t.moy) + "</b>. Enquête : <b>" + pts(t.enq || 0) + "</b>. Total : <b>" + pts(total(t)) + "</b>.</p>" : "")
+        + '<p><small>Devise</small>' + (devise ? "« " + h(devise) + " »" : "Pas encore élue.") + "</p>"
         + '<div><small>Jeu emblème</small><div class="eg-brig-j">' + (jeu ? '<img src="img/' + h(jeu.img) + '" alt="" loading="lazy"><b>' + h(jeu.n) + "</b>" : "<p>Pas encore élu.</p>") + "</div></div>"
         + "<p><small>Effectif</small>" + pl(t.n, "membre", "membres") + (clos ? ", dont " + pl(t.actifs, "actif", "actifs") + " sur les portes closes" : "") + ".</p>"
         + '<div><small>Membres</small><ul class="eg-brig-m">' + M.map(x => "<li" + (moi && norm(x.p) === moi ? ' class="me"' : "") + ">" + av(x) + h(x.p) + "</li>").join("") + "</ul></div></div></details></li>";
