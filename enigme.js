@@ -90,6 +90,7 @@
 .eg-panel label{display:block;margin:14px 0 5px;font:600 .72rem var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .eg-gate input{display:block;width:100%;min-height:46px;font:700 1rem var(--display);color:var(--on-surface);background:#fff;border:2.5px solid var(--line);border-radius:12px;padding:8px 10px}
 .eg-hint{margin:8px 0 0;font-size:.82rem;color:var(--muted)}
+.eg-warn{margin:12px 0 0;padding:10px 12px;border:2.5px solid var(--line);border-radius:12px;background:#F8EFC0;color:#26076D;font-weight:700;font-size:.9rem;line-height:1.35}
 .eg-d{margin:10px 0 0;font-size:1rem}
 .eg-msg{margin:12px 0 0;font-size:.95rem;font-weight:800}
 .eg-msg:empty{display:none}
@@ -374,8 +375,9 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       if (o) noter(Number(o.dataset.v));
       else if (s) { const r = q("#egRange"); r.value = Math.max(0, Math.min(100, Number(r.value) + Number(s.dataset.d))); noter(Number(r.value)); }
       else if (e.target.closest("#egSend")) envoyer();
-      else if (e.target.closest("#egStart")) lancer();
-      else if (e.target.closest("#egPlay")) jouer(true);
+      else if (e.target.closest("#egStart")) avertir("#egStart", lancer);
+      else if (e.target.closest("#egPlay")) avertir("#egPlay", () => jouer(true));
+      else if (e.target.closest("#egNon")) panneau();
       else if (e.target.closest("#egTry")) jouer(false);
       else if (e.target.closest("[data-try]")) jouer(false, Number(e.target.closest("[data-try]").dataset.try));
     });
@@ -745,6 +747,19 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   }
 
   // Lancement du chrono d'une question : le serveur note l'heure et livre l'énoncé.
+  // Avant tout lancement : rappel des essais restants, puis validation. Le premier appui avertit, le second lance.
+  function avertir(sel, fn) {
+    const b = q(sel), p = E.portes[choix - 1];
+    if (!b || !p) return;
+    if (b.dataset.ok || !fiche()) return fn(); // pas encore identifié : la fiche passe d'abord, rien n'est lancé
+    const reste = p.type === "jeu" ? p.essais - tentatives(p) : 1;
+    const msg = p.type === "jeu"
+      ? (reste > 1 ? "Il vous reste " + pl(reste, "tentative", "tentatives") + " sur " + p.essais + " pour ce jeu." : "C'est votre dernière tentative pour ce jeu.") + " Dès le lancement, elle est décomptée, même interrompue."
+      : "Une seule tentative pour cette question : le chrono de " + p.duree + " s part au lancement et ne s'arrête plus, même si vous quittez la page.";
+    b.dataset.ok = "1"; b.textContent = "Je confirme, je lance";
+    b.insertAdjacentHTML("beforebegin", '<p class="eg-warn" role="alert">' + msg + "</p>");
+    b.insertAdjacentHTML("afterend", '<button class="go" type="button" id="egNon">Pas maintenant</button>');
+  }
   async function lancer() {
     const p = E.portes[choix - 1];
     if (!p || occupe) return;
