@@ -35,39 +35,64 @@
   ];
   // Emblèmes des brigades : repère 24 x 24.
   const E = 'fill="#fff" stroke="' + L + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"';
-  // Emblèmes proposés au vote des brigades (serveur : NB_EMBLEMES). Les cinq premiers sont ceux d'origine.
+  const EC = E.replace('#fff', "currentColor"), EN = E.replace('#fff', "none"); // rempli de la teinte de la brigade, ou trait seul
+  // Les trente emblèmes proposés au vote des brigades (serveur : NB_EMBLEMES). Les cinq premiers sont ceux d'origine.
   const EMBLEMES = [
-    { nom: "flacon", d: '<rect x="6" y="9" width="12" height="13" rx="2.5" ' + E + '/><rect x="9" y="5" width="6" height="4" ' + E + '/><rect x="7.5" y="2" width="9" height="3.5" rx="1" ' + E + ' fill="currentColor"/><path d="M7 15h10v4.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 19.5z" fill="currentColor"/>' },
-    { nom: "seringue", d: '<g transform="rotate(45 12 12)"><path d="M12 1v3M9 1h6M12 18v5" ' + E + ' fill="none"/><rect x="8.5" y="4.5" width="7" height="13" rx="1" ' + E + '/><rect x="9.5" y="10" width="5" height="6.5" fill="currentColor"/></g>' },
-    { nom: "poche", d: '<path d="M12 1.5v3M12 19v3.5" ' + E + ' fill="none"/><rect x="5.5" y="4.5" width="13" height="15" rx="3.5" ' + E + '/><path d="M6.5 11h11v5a2.5 2.5 0 0 1-2.5 2.5H9A2.5 2.5 0 0 1 6.5 16z" fill="currentColor"/>' },
+    { nom: "flacon", d: '<rect x="6" y="9" width="12" height="13" rx="2.5" ' + E + '/><rect x="9" y="5" width="6" height="4" ' + E + '/><rect x="7.5" y="2" width="9" height="3.5" rx="1" ' + EC + '/><path d="M7 15h10v4.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 19.5z" fill="currentColor"/>' },
+    { nom: "seringue", d: '<g transform="rotate(45 12 12)"><path d="M12 1v3M9 1h6M12 18v5" ' + EN + '/><rect x="8.5" y="4.5" width="7" height="13" rx="1" ' + E + '/><rect x="9.5" y="10" width="5" height="6.5" fill="currentColor"/></g>' },
+    { nom: "poche", d: '<path d="M12 1.5v3M12 19v3.5" ' + EN + '/><rect x="5.5" y="4.5" width="13" height="15" rx="3.5" ' + E + '/><path d="M6.5 11h11v5a2.5 2.5 0 0 1-2.5 2.5H9A2.5 2.5 0 0 1 6.5 16z" fill="currentColor"/>' },
     { nom: "gélule", d: '<g transform="rotate(-40 12 12)"><rect x="2" y="7" width="20" height="10" rx="5" ' + E + '/><path d="M12 7h5a5 5 0 0 1 0 10h-5z" fill="currentColor" stroke="' + L + '" stroke-width="2"/></g>' },
     { nom: "ampoule", d: '<path d="M10 1.5h4v4l-1.2 2 1.2 2.5c2 1 3 2 3 4.5V20a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 7 20v-5.5c0-2.5 1-3.5 3-4.5l1.2-2.5L10 5.5z" ' + E + '/><path d="M8 15h8v5a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 8 20z" fill="currentColor"/>' },
-    { nom: "dé", d: '<rect x="3.5" y="3.5" width="17" height="17" rx="4" ' + E + ' fill="currentColor"/><circle cx="8.5" cy="8.5" r="1.7" fill="' + L + '"/><circle cx="12" cy="12" r="1.7" fill="' + L + '"/><circle cx="15.5" cy="15.5" r="1.7" fill="' + L + '"/>' },
+    { nom: "dé", d: '<rect x="3.5" y="3.5" width="17" height="17" rx="4" ' + EC + '/><circle cx="8.5" cy="8.5" r="1.7" fill="' + L + '"/><circle cx="12" cy="12" r="1.7" fill="' + L + '"/><circle cx="15.5" cy="15.5" r="1.7" fill="' + L + '"/>' },
     { nom: "meeple", d: '<g transform="translate(2.2 2.2) scale(.196)"><path d="M50 4c-9 0-16 7-16 16 0 6 3 11 8 14-14 3-34 12-36 20-1 5 6 14 10 13 6-1 13-6 19-8-3 11-13 26-13 33 0 3 2 4 5 4h16c2 0 3-1 4-3l3-10 3 10c1 2 2 3 4 3h16c3 0 5-1 5-4 0-7-10-22-13-33 6 2 13 7 19 8 4 1 11-8 10-13-2-8-22-17-36-20 5-3 8-8 8-14 0-9-7-16-16-16z" fill="currentColor" stroke="' + L + '" stroke-width="10" stroke-linejoin="round"/></g>' },
-    { nom: "étoile", d: '<path d="M12 2.2l2.9 6 6.6.9-4.8 4.6 1.2 6.500L12 17.100l-5.9 3.1 1.2-6.500L2.5 9.100l6.6-.900z" ' + E + ' fill="currentColor"/>' },
-    { nom: "goutte", d: '<path d="M12 2.5c4 5 6.5 8 6.5 11.5a6.5 6.5 0 0 1-13 0C5.5 10.5 8 7.5 12 2.500z" ' + E + ' fill="currentColor"/><path d="M9 14.500a3 3 0 0 0 3 3" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>' },
-    { nom: "sablier", d: '<path d="M7 3h10v3.500L13.5 12 17 17.500V21H7v-3.500L10.5 12 7 6.500z" ' + E + '/><path d="M8.5 19.500h7L12 15zM10 7h4l-2 3z" fill="currentColor"/><path d="M5.5 3h13M5.5 21h13" ' + E + ' fill="none"/>' },
-    { nom: "mortier", d: '<path d="M15 9l4.5-6.5" fill="none" stroke="' + L + '" stroke-width="3.4" stroke-linecap="round"/><path d="M3.5 10h17c0 5.5-3.5 9-8.5 9s-8.5-3.5-8.5-9z" ' + E + ' fill="currentColor"/><path d="M8.5 21.500h7" ' + E + ' fill="none"/>' },
-    { nom: "sapin", d: '<rect x="10.5" y="18.5" width="3" height="3.5" ' + E + '/><path d="M12 2l4.5 5.500h-2.200l4 5h-2.600l4.3 6H4l4.3-6H5.700l4-5H7.500z" ' + E + ' fill="currentColor"/>' },
+    { nom: "étoile", d: '<path d="M12 2.2l2.9 6 6.6.9-4.8 4.6 1.2 6.500L12 17.100l-5.9 3.1 1.2-6.500L2.5 9.100l6.6-.900z" ' + EC + '/>' },
+    { nom: "goutte", d: '<path d="M12 2.5c4 5 6.5 8 6.5 11.5a6.5 6.5 0 0 1-13 0C5.5 10.5 8 7.5 12 2.500z" ' + EC + '/><path d="M9 14.500a3 3 0 0 0 3 3" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>' },
+    { nom: "sablier", d: '<path d="M7 3h10v3.500L13.5 12 17 17.500V21H7v-3.500L10.5 12 7 6.500z" ' + E + '/><path d="M8.5 19.500h7L12 15zM10 7h4l-2 3z" fill="currentColor"/><path d="M5.5 3h13M5.5 21h13" ' + EN + '/>' },
+    { nom: "mortier", d: '<path d="M15 9l4.5-6.5" fill="none" stroke="' + L + '" stroke-width="3.4" stroke-linecap="round"/><path d="M3.5 10h17c0 5.5-3.5 9-8.5 9s-8.5-3.5-8.5-9z" ' + EC + '/><path d="M8.5 21.500h7" ' + EN + '/>' },
+    { nom: "sapin", d: '<rect x="10.5" y="18.5" width="3" height="3.5" ' + E + '/><path d="M12 2l4.5 5.500h-2.200l4 5h-2.600l4.3 6H4l4.3-6H5.700l4-5H7.500z" ' + EC + '/>' },
+    { nom: "pipette", d: '<g transform="rotate(40 12 12)"><rect x="10" y="1.5" width="4" height="5.5" rx="2" ' + EC + '/><rect x="9" y="7" width="6" height="9" rx="1" ' + E + '/><path d="M12 16v6.5" ' + EN + '/><rect x="10" y="11" width="4" height="4" fill="currentColor"/></g>' },
+    { nom: "balance", d: '<path d="M12 4v15.5M7 20.5h10M4.5 6.5h15" ' + EN + '/><path d="M4.5 7l-3 6h6zM19.5 7l-3 6h6z" ' + EC + '/>' },
+    { nom: "bécher", d: '<path d="M7 3v15a3 3 0 0 0 3 3h4a3 3 0 0 0 3-3V3z" ' + E + '/><path d="M8 12h8v6a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z" fill="currentColor"/><path d="M5.5 3h13" ' + EN + '/>' },
+    { nom: "comprimé", d: '<circle cx="12" cy="12" r="9" ' + EC + '/><path d="M6.5 12h11" stroke="' + L + '" stroke-width="2" stroke-linecap="round"/>' },
+    { nom: "croix", d: '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z" ' + EC + '/>' },
+    { nom: "cœur", d: '<path d="M12 20.5C5 15.5 2.5 12 2.5 8.5A4.7 4.7 0 0 1 12 7a4.7 4.7 0 0 1 9.5 1.5c0 3.5-2.5 7-9.5 12z" ' + EC + '/>' },
+    { nom: "trèfle", d: '<path d="M12 12v9.5M9.5 21.5h5" ' + EN + '/><circle cx="12" cy="6.5" r="4" ' + EC + '/><circle cx="6.8" cy="13" r="4" ' + EC + '/><circle cx="17.2" cy="13" r="4" ' + EC + '/>' },
+    { nom: "pique", d: '<path d="M12 15v6.5M9.5 21.5h5" ' + EN + '/><path d="M12 2.5c4 4.5 8 7 8 11a4 4 0 0 1-8 1 4 4 0 0 1-8-1c0-4 4-6.5 8-11z" ' + EC + '/>' },
+    { nom: "carreau", d: '<path d="M12 2l7.5 10L12 22 4.5 12z" ' + EC + '/>' },
+    { nom: "carte", d: '<rect x="5" y="2.5" width="14" height="19" rx="2.5" ' + E + '/><path d="M12 7.5l3.2 4.5-3.2 4.5L8.800 12z" fill="currentColor"/>' },
+    { nom: "pion", d: '<path d="M9 11h6l1.5 7.5h-9z" ' + EC + '/><circle cx="12" cy="6.5" r="4" ' + EC + '/><rect x="6" y="18.5" width="12" height="3" rx="1" ' + EC + '/>' },
+    { nom: "cadeau", d: '<path d="M12 8.5c-4-6-7-1-2.5 0M12 8.500c4-6 7-1 2.500 0" ' + E + '/><rect x="3.5" y="9" width="17" height="12" rx="1.5" ' + EC + '/><path d="M12 9v12M3.500 14h17" stroke="' + L + '" stroke-width="2"/>' },
+    { nom: "flocon", d: '<path d="M12 2.5v19M3.800 7.200l16.400 9.600M3.800 16.800l16.400-9.600" fill="none" stroke="' + L + '" stroke-width="5.500" stroke-linecap="round"/><path d="M12 2.500v19M3.800 7.200l16.400 9.600M3.800 16.800l16.400-9.600" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round"/>' },
+    { nom: "cloche", d: '<circle cx="12" cy="20.300" r="1.800" ' + E + '/><path d="M12 3a6 6 0 0 0-6 6v5l-2.500 4h17L18 14V9a6 6 0 0 0-6-6z" ' + EC + '/>' },
+    { nom: "bonnet", d: '<path d="M4 17C5 8 10 3.500 19 4.500c-2.500 2-3.500 6-3 12.500z" ' + EC + '/><rect x="2.500" y="16.500" width="15.500" height="4.500" rx="2.250" ' + E + '/><circle cx="20" cy="5" r="2.300" ' + E + '/>' },
+    { nom: "couronne", d: '<path d="M3.500 18.500l-1-11 5.500 4.500L12 5l4 7 5.500-4.500-1 11z" ' + EC + '/>' },
+    { nom: "trophée", d: '<path d="M7 5H3.500c0 3 1.500 5 4 5M17 5h3.500c0 3-1.500 5-4 5M12 14v4M8 21h8M9.500 18h5" ' + EN + '/><path d="M7 3h10v6a5 5 0 0 1-10 0z" ' + EC + '/>' },
+    { nom: "sucre d'orge", d: '<path d="M9 21V8.500a4.500 4.500 0 0 1 9 0V10" fill="none" stroke="' + L + '" stroke-width="6.500" stroke-linecap="round"/><path d="M9 21V8.500a4.500 4.500 0 0 1 9 0V10" fill="none" stroke="#fff" stroke-width="3.500" stroke-linecap="round"/><path d="M9 21V8.500a4.500 4.500 0 0 1 9 0V10" fill="none" stroke="currentColor" stroke-width="3.500" stroke-dasharray="3 3.500"/>' },
   ];
-  // Noms proposés au vote des brigades (serveur : NB_NOMS). Un nom et un emblème ne sont portés que par une brigade.
+  // Noms proposés au vote des brigades. Un membre peut aussi proposer le sien : pour le serveur, un nom est un texte,
+  // et deux brigades ne peuvent pas porter le même (accents et casse ignorés). Un emblème non plus.
   const NOMS = [
-    ["Brigade des Flacons", "Flacons"], ["Brigade des Seringues", "Seringues"], ["Brigade des Poches", "Poches"], ["Brigade des Gélules", "Gélules"], ["Brigade des Ampoules", "Ampoules"],
-    ["Brigade des Meeples Stériles", "Meeples Stériles"], ["Brigade des As de la Paillasse", "As de la Paillasse"], ["Brigade du Double Contrôle", "Double Contrôle"],
-    ["Brigade des Dés Calibrés", "Dés Calibrés"], ["Brigade des Fines Gouttes", "Fines Gouttes"], ["Brigade Sans Particule", "Sans Particule"], ["Brigade des Lots Gagnants", "Lots Gagnants"],
-    ["Brigade de la Dream Hotte", "Dream Hotte"], ["Brigade des Pions Libérés", "Pions Libérés"], ["Brigade des Jokers de Garde", "Jokers de Garde"],
-  ].map(x => ({ nom: x[0], court: x[1] }));
+    "Brigade des Flacons", "Brigade des Seringues", "Brigade des Poches", "Brigade des Gélules", "Brigade des Ampoules",
+    "Brigade des Meeples Stériles", "Brigade des As de la Paillasse", "Brigade du Double Contrôle", "Brigade des Dés Calibrés", "Brigade des Fines Gouttes",
+    "Brigade Sans Particule", "Brigade des Lots Gagnants", "Brigade de la Dream Hotte", "Brigade des Pions Libérés", "Brigade des Jokers de Garde",
+    "Brigade des Pipettes", "Brigade des Mortiers", "Brigade des Balances", "Brigade des Isolateurs", "Brigade des Étiquettes",
+    "Brigade des Scellés", "Brigade des Cartes Maîtresses", "Brigade des Bons Dosages", "Brigade de la Zone Blanche", "Brigade des Lutins Stériles",
+    "Brigade des Rennes Pressés", "Brigade du Grand Chelem", "Brigade du Coup d'Avance", "Brigade des Atouts Maîtres", "Brigade des Petits Chevaux",
+  ];
+  // Nom court d'une brigade, pour les endroits étroits : le nom sans son « Brigade des ».
+  const court = n => String(n).replace(/^Brigade\s+(?:des\s+|du\s+|de\s+la\s+|de\s+l'|d'|de\s+)?/i, "") || String(n);
+  const cle = n => String(n).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/’/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
   // Les cinq brigades. Elles sont tirées sans nom : « Brigade 1 » à « Brigade 5 », avec un jeton numéroté pour emblème,
   // jusqu'à ce que leurs membres votent. maj() y reporte le nom et l'emblème attribués par le serveur : tout ce qui lit
   // BRIGADES[b].nom, .court ou embleme(b) suit sans rien changer. Seules la teinte (c) et sa version claire (fond) sont fixes.
-  const jeton = b => '<circle cx="12" cy="12" r="9.5" ' + E + ' fill="currentColor"/><text x="12" y="16.4" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="800" fill="' + L + '">' + (b + 1) + "</text>";
+  const jeton = b => '<circle cx="12" cy="12" r="9.5" ' + EC + '/><text x="12" y="16.4" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="800" fill="' + L + '">' + (b + 1) + "</text>";
   const BRIGADES = [["#4FB286", "#CDEBDD"], ["#5AA9E6", "#D3E8F8"], ["#F2A0C4", "#FBDDEA"], ["#ECD567", "#F8EFC0"], ["#EC7739", "#F9D6C0"]]
     .map((x, b) => ({ nom: "Brigade " + (b + 1), court: "Brigade " + (b + 1), c: x[0], fond: x[1], d: jeton(b) }));
   function maj(lignes) {
     (lignes || []).forEach(t => {
-      const B = BRIGADES[t.b], N = NOMS[t.titre], M = EMBLEMES[t.embleme];
+      const B = BRIGADES[t.b], N = typeof t.titre === "string" && t.titre ? t.titre : "", M = EMBLEMES[t.embleme];
       if (!B) return;
-      B.nom = N ? N.nom : "Brigade " + (t.b + 1); B.court = N ? N.court : B.nom; B.d = M ? M.d : jeton(t.b);
+      B.nom = N || "Brigade " + (t.b + 1); B.court = N ? court(N) : B.nom; B.d = M ? M.d : jeton(t.b);
     });
   }
   // Devises proposées aux brigades : chaque membre en soutient une, la plus soutenue s'affiche (serveur : NB_DEVISES).
@@ -150,6 +175,7 @@
 .pp-vote[open]>summary{border-bottom:2.5px solid var(--line,#26076D)}
 .pp-vote>div{padding:10px}
 .pp-vote .pp-opt span svg{color:var(--pp-c,#26076D)}
+.pp-vote .pp-opts{grid-template-columns:repeat(auto-fill,minmax(58px,1fr))}
 .pp-opt span em{font:600 .58rem/1.1 var(--mono,monospace);font-style:normal}
 @media(max-width:380px){.pp-apercu{width:96px}.pp-top{gap:10px}.pp-opts{gap:5px}.pp-opt span{padding:6px 0 5px;font-size:.6rem;letter-spacing:-.01em}.pp-opt span svg,.pp-opt span i{width:34px;height:34px}.pp-carte .pp-apercu{width:84px}}
 @media(prefers-reduced-motion:reduce){.pp-pop{animation:none}.pp-opt input:checked+span{transform:none}}`;
@@ -298,7 +324,10 @@
       const cites = Object.keys(voix.g).filter(n => parNom.has(n)).sort((x, y) => voix.g[y] - voix.g[x] || x.localeCompare(y, "fr"));
       // Noms et emblèmes retenus pour l'instant par une autre brigade.
       const autres = (o.lignes ? o.lignes() : []).filter(t => t.b !== o.brigade), ailleurs = k => new Set(autres.map(t => t[k]).filter(x => x !== undefined));
-      const nomsPris = ailleurs("titre"), emblPris = ailleurs("embleme");
+      const nomsPris = new Set([...ailleurs("titre")].map(cle)), emblPris = ailleurs("embleme");
+      // Noms au vote : les trente proposés, puis ceux que des membres de la brigade ont ajoutés. Les voix sont comptées sans tenir compte des accents ni de la casse.
+      const voixNom = {}; Object.keys(voix.n).forEach(t => { voixNom[cle(t)] = (voixNom[cle(t)] || 0) + voix.n[t]; });
+      const ajoutes = Object.keys(voix.n).filter(t => !NOMS.some(x => cle(x) === cle(t))), auVote = NOMS.concat(ajoutes), monNom = moi.n === undefined ? "" : cle(moi.n);
       const note = (n, pris) => (n ? "<em>" + pl(n, "voix", "voix") + (pris ? " · retenu ailleurs" : "") + "</em>" : pris ? "<em>retenu ailleurs</em>" : "");
       // Sections du vote : celles que le joueur a ouvertes restent ouvertes ; au départ, la première où il n'a pas encore voté.
       const cles = ["n", "e", "d", "g"];
@@ -311,8 +340,10 @@
         + "<li>" + (jeu && jeu.img ? '<img src="img/' + h(jeu.img) + '" alt="">' : emblemeSvg(o.brigade)) + "<span><small>Jeu emblème</small><b>" + (jeu ? h(jeu.n) : "Pas encore de jeu emblème") + "</b></span></li></ul>"
         + '<ul class="pp-membres">' + (o.membres || []).map(x => "<li>" + avatar(x.a, { brigade: o.brigade }) + h(x.p) + "</li>").join("") + "</ul>"
         + (ouvert ? '<form id="ppVote" novalidate>'
-          + section("n", "Nom de la brigade", maVoix(moi.n, NOMS[moi.n] ? NOMS[moi.n].court : ""), '<div class="pp-devises" role="group" aria-label="Nom de la brigade">'
-            + NOMS.map((t, i) => '<label class="pp-dev"><input class="pp-vh" type="radio" name="ppNom" value="' + i + '"' + (moi.n === i ? " checked" : "") + "><span>" + h(t.nom) + note(voix.n[i], nomsPris.has(i)) + "</span></label>").join("") + "</div>")
+          + section("n", "Nom de la brigade", maVoix(moi.n, h(court(moi.n || ""))), '<div class="pp-devises" role="group" aria-label="Nom de la brigade">'
+            + auVote.map((t, i) => '<label class="pp-dev"><input class="pp-vh" type="radio" name="ppNom" value="' + h(t) + '"' + (monNom === cle(t) ? " checked" : "") + "><span>" + h(t) + note(voixNom[cle(t)], nomsPris.has(cle(t))) + "</span></label>").join("") + "</div>"
+            + '<label for="ppNomLibre">Ou proposer un autre nom</label><input class="pp-jeu" id="ppNomLibre" type="text" autocomplete="off" maxlength="40" placeholder="Brigade des…">'
+            + '<p class="eg-hint">De 3 à 40 caractères, lettres et chiffres. Il s\'ajoute aux choix de votre brigade, et il est visible de tous : restez dans le ton, jamais moqueur.</p>')
           + section("e", "Emblème", maVoix(moi.e, EMBLEMES[moi.e] ? EMBLEMES[moi.e].nom : ""), '<div class="pp-opts" role="group" aria-label="Emblème de la brigade">'
             + EMBLEMES.map((t, i) => '<label class="pp-opt"><input class="pp-vh" type="radio" name="ppEmbleme" value="' + i + '"' + (moi.e === i ? " checked" : "") + '><span><svg viewBox="0 0 24 24" aria-hidden="true">' + t.d + "</svg>" + h(t.nom) + note(voix.e[i], emblPris.has(i)) + "</span></label>").join("") + "</div>")
           + section("d", "Devise", maVoix(moi.d, "choisie"), '<div class="pp-devises" role="group" aria-label="Devise de la brigade">'
@@ -332,8 +363,10 @@
         e.preventDefault();
         if (occupe) return;
         const coche = n => { const x = q('input[name="' + n + '"]:checked'); return x ? Number(x.value) : undefined; };
-        const envoi = { titre: coche("ppNom"), embleme: coche("ppEmbleme"), devise: coche("ppDevise"), jeu: q("#ppJeu").value || undefined };
+        const libre = q("#ppNomLibre").value.replace(/\s+/g, " ").trim(), choisi = q('input[name="ppNom"]:checked');
+        const envoi = { titre: libre || (choisi ? choisi.value : undefined), embleme: coche("ppEmbleme"), devise: coche("ppDevise"), jeu: q("#ppJeu").value || undefined };
         const dit = (t, cls) => { q("#ppMsg").textContent = t; q("#ppMsg").className = "eg-msg " + cls; };
+        if (libre && !/^\p{L}[\p{L}\p{N} .'’-]{2,39}$/u.test(libre)) { ouvertes.add("n"); q("#ppNomLibre").focus(); return dit("Un nom de 3 à 40 caractères : des lettres, des chiffres, des espaces, sans autre signe.", "err"); }
         if (Object.values(envoi).every(x => x === undefined)) return dit("Choisissez au moins un nom, un emblème, une devise ou un jeu emblème avant d'enregistrer.", "err");
         occupe = true; q("#ppOk").disabled = true;
         let r;
@@ -349,5 +382,5 @@
     q("#ppTitre").focus({ preventScroll: true });
   }
 
-  window.PharmacoParticipants = { COULEURS, COIFFES, ACCESSOIRES, BRIGADES, NOMS, EMBLEMES, DEVISES, tirage, maj, avatar, embleme: emblemeSvg, decrire, fiche, brigade };
+  window.PharmacoParticipants = { COULEURS, COIFFES, ACCESSOIRES, BRIGADES, NOMS, EMBLEMES, DEVISES, tirage, maj, court, avatar, embleme: emblemeSvg, decrire, fiche, brigade };
 })();
