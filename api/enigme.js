@@ -25,14 +25,24 @@ const PRENOM = /^\p{L}+(?:[-']\p{L}+)*$/u;
 // chacun sous le nombre de choix de sa liste (les listes sont dessinées dans participants.js : garder les longueurs accordées).
 const NB_BRIGADES = 5;
 const AVATAR = [8, 8, 8];
-// Devise et jeu emblème d'une brigade : chaque membre vote du 26 novembre au 7 décembre, puis le choix est figé.
+// Paramètres d'une brigade (nom, emblème, devise, jeu emblème) : chaque membre vote du 26 novembre au 10 décembre,
+// puis tout est figé. Les brigades sont tirées sans nom (« Brigade 1 » à « Brigade 5 ») ; le nom et l'emblème sont des
+// numéros des listes NOMS et EMBLEMES de participants.js, et ne peuvent pas être portés par deux brigades (voir attribuer).
 // La devise est un numéro de la liste DEVISES de participants.js ; le jeu emblème, le nom d'un jeu du catalogue
 // (même contrôle que le vote du palmarès : la page ne montre que les noms qu'elle connaît).
 // L'identification (fiche, avatar, tirage de la brigade, changement de pseudo) ouvre le 26 novembre, avant le calendrier :
 // c'est le jour -4 (le jour 1 est le 1er décembre). Le vote de la devise et du jeu emblème ouvre le même jour.
 const FICHE_JOUR = -4;
 const NB_DEVISES = 20;
-const CHOIX_FIN = 7;
+const NB_NOMS = 15;
+const NB_EMBLEMES = 12;
+const CHOIX_FIN = 10;
+// Liste des participants, fournie par l'administration : un fichier à part du magasin privé, jamais dans le dépôt.
+// Elle ne sort du serveur qu'avec le code d'équipe. Sans liste, la saisie libre du prénom reste la règle.
+const FILE_LISTE = 'participants.json';
+const MAX_LISTE = 300;
+const NOM_LISTE = /^\p{L}[\p{L} .'-]{1,39}$/u;
+const propre = s => String(s).replace(/’/g, "'").replace(/\s+/g, ' ').trim();
 const avatarOk = a => Array.isArray(a) && a.length === AVATAR.length && a.every((v, i) => Number.isInteger(v) && v >= 0 && v < AVATAR[i]);
 // Tirage équilibré : la brigade la moins fournie, au hasard entre les ex aequo. Les effectifs ne diffèrent jamais de plus d'un.
 function tirer(joueurs) {
@@ -74,7 +84,8 @@ const dateDe = n => new Date(JOUR1 + (n - 1) * 864e5).toISOString().slice(0, 10)
 const etatDe = (n, jour) => (jour < n ? 'avenir' : jour <= n + DELAI ? 'ouverte' : 'close');
 
 // Ce que le serveur garde par joueur : { p: nom affiché, t: heure d'inscription, r: { porte: réponses },
-//   a: avatar [couleur, coiffe, accessoire], b: brigade de 0 à 4, d: sa voix pour la devise, g: sa voix pour le jeu emblème }. `a` et `b` manquent chez un joueur d'avant les brigades :
+//   a: avatar [couleur, coiffe, accessoire], b: brigade de 0 à 4, d, g, n, e: ses voix pour la devise, le jeu emblème,
+//   le nom et l'emblème de sa brigade, l: son nom dans la liste des participants (absent en saisie libre) }. `a` et `b` manquent chez un joueur d'avant les brigades :
 //   la brigade lui est tirée à sa prochaine ouverture de porte, l'avatar quand il remplit sa fiche.
 // Ce que le serveur garde par joueur et par porte.
 //   question : { d: départ du chrono, v: réponse, t: heure de la réponse }   (v absent : chrono lancé, pas de réponse)
@@ -141,6 +152,14 @@ async function lire() {
   if (!r || r.statusCode !== 200) return { joueurs: {}, etag: null };
   return { joueurs: JSON.parse(await new Response(r.stream).text()), etag: r.blob.etag };
 }
+async function lireListe() {
+  const r = await get(FILE_LISTE, { access: 'private', useCache: false });
+  if (!r || r.statusCode !== 200) return [];
+  const o = JSON.parse(await new Response(r.stream).text());
+  return Array.isArray(o.noms) ? o.noms : [];
+}
+// Le nom de la liste tel qu'il y est écrit, ou rien s'il n'y est pas.
+const dansListe = (liste, nom) => (typeof nom === 'string' ? liste.find(x => norm(x) === norm(propre(nom))) : undefined);
 // Écriture conditionnelle : refusée si le fichier a changé depuis la lecture (deux réponses simultanées).
 function ecrire(joueurs, etag) {
   const opts = { access: 'private', contentType: 'application/json', cacheControlMaxAge: 60 };
@@ -195,17 +214,34 @@ function classementSuivi(B, joueurs, jour) {
 // close : un inscrit qui ne joue pas ne pèse pas sur sa brigade. `n` reste l'effectif. Les ex aequo partagent le rang.
 // Devise et jeu emblème : l'option la plus soutenue par les membres ; à égalité, la première de la liste (devise)
 // ou de l'alphabet (jeux). `voix` donne le détail des voix à la brigade `mienne` seulement.
+// Nom et emblème (`titre`, `embleme`) : attribués sans doublon entre brigades, voir attribuer. Sans attribution,
+// la brigade garde son nom provisoire « Brigade N » : c'est la page qui l'écrit.
+// Attribution sans doublon : chaque option va à la brigade qui la soutient le plus. On range toutes les paires
+// (brigade, option) par voix décroissantes ; à égalité, la brigade qui compte le plus de votants passe d'abord,
+// puis la brigade de plus petit numéro, puis l'option la plus haute dans la liste. Chaque paire est servie si la brigade
+// n'a encore rien et si l'option est libre : une brigade devancée retombe donc sur son choix suivant.
+function attribuer(V, k) {
+  const P = [];
+  V.forEach((v, b) => { const tot = Object.values(v[k]).reduce((s, x) => s + x, 0); for (const o of Object.keys(v[k])) P.push({ b, o: Number(o), c: v[k][o], tot }); });
+  P.sort((x, y) => y.c - x.c || y.tot - x.tot || x.b - y.b || x.o - y.o);
+  const R = {}, pris = new Set();
+  for (const x of P) if (R[x.b] === undefined && !pris.has(x.o)) { R[x.b] = x.o; pris.add(x.o); }
+  return R;
+}
 function brigades(L, joueurs, mienne) {
   const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, actifs: 0, pts: 0, moy: 0 }));
   for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; if (x.cl) T[x.b].actifs++; }
   for (const t of T) t.moy = t.actifs ? Math.round(t.pts / t.actifs * 10) / 10 : 0;
-  const V = T.map(() => ({ d: {}, g: {} }));
+  const V = Array.from({ length: NB_BRIGADES }, () => ({ d: {}, g: {}, n: {}, e: {} }));
   for (const cle of Object.keys(joueurs)) {
     const j = joueurs[cle], v = V[j.b];
     if (!v) continue;
     if (j.d !== undefined) v.d[j.d] = (v.d[j.d] || 0) + 1;
     if (j.g !== undefined) v.g[j.g] = (v.g[j.g] || 0) + 1;
+    if (j.n !== undefined) v.n[j.n] = (v.n[j.n] || 0) + 1;
+    if (j.e !== undefined) v.e[j.e] = (v.e[j.e] || 0) + 1;
   }
+  const titres = attribuer(V, 'n'), emblemes = attribuer(V, 'e');
   const tries = (o, tri) => Object.keys(o).sort((x, y) => o[y] - o[x] || tri(x, y));
   for (const t of T) {
     const v = V[t.b], d = tries(v.d, (x, y) => x - y)[0];
@@ -213,6 +249,8 @@ function brigades(L, joueurs, mienne) {
     // Les cinq jeux les plus soutenus, dans l'ordre : la page retient le premier qui est au catalogue,
     // si bien qu'un nom inconnu (appel direct, jeu retiré ou renommé) ne prive pas la brigade de son emblème.
     t.jeux = tries(v.g, (x, y) => (x < y ? -1 : x > y ? 1 : 0)).slice(0, 5);
+    if (titres[t.b] !== undefined) t.titre = titres[t.b];
+    if (emblemes[t.b] !== undefined) t.embleme = emblemes[t.b];
     if (t.b === mienne) t.voix = v;
   }
   T.sort((x, y) => y.moy - x.moy || x.b - y.b);
@@ -318,7 +356,8 @@ function etat(B, joueurs, cle, jour, maintenant) {
   return {
     jour,
     prenom: j ? j.p : undefined,
-    profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b, d: j.d, g: j.g } : undefined,
+    profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b, d: j.d, g: j.g, n: j.n, e: j.e } : undefined,
+    nom: j ? j.l : undefined,
     fiche: { etat: jour < FICHE_JOUR ? 'avenir' : 'ouvert', ouvre: dateDe(FICHE_JOUR) },
     choix: { etat: jour < FICHE_JOUR ? 'avenir' : jour <= CHOIX_FIN ? 'ouvert' : 'fige', ferme: dateDe(CHOIX_FIN) },
     portes,
@@ -357,12 +396,35 @@ async function handler(req, res) {
         return { ok: J => ({ ok: true, retire: true, classement: classement(B, J, jour) }) };
       }));
     }
+    // Liste des participants : l'administration la remplace (tableau de noms) ou la relit ("lire").
+    // Un nom : 2 à 40 caractères, lettres, espaces, points, apostrophes et traits d'union ; pas de doublon.
+    if (admin && b.participants !== undefined) {
+      if (b.participants !== 'lire') {
+        const N = Array.isArray(b.participants) ? b.participants.map(x => (typeof x === 'string' ? propre(x) : '')) : null;
+        if (!N || N.length > MAX_LISTE || N.some(x => !NOM_LISTE.test(x)) || new Set(N.map(norm)).size !== N.length) return res.status(400).json({ error: 'participants' });
+        await put(FILE_LISTE, JSON.stringify({ noms: N }), { access: 'private', contentType: 'application/json', cacheControlMaxAge: 60, allowOverwrite: true });
+      }
+      const liste = await lireListe(), { joueurs } = await lire();
+      const pris = Object.keys(joueurs).filter(c => joueurs[c].l).map(c => ({ nom: joueurs[c].l, pseudo: joueurs[c].p }));
+      return res.status(200).json({ ok: true, participants: liste, pris, horsListe: Object.keys(joueurs).filter(c => !joueurs[c].l).map(c => joueurs[c].p) });
+    }
     // Code d'administration seul : relecture des 25 portes, solutions comprises. Rien ne s'enregistre.
     if (!equipe) {
       const { joueurs } = await lire();
       return res.status(200).json({ relecture: true, jour, portes: B.portes.map(q => vue(q, etatDe(q.n, jour), null, true, maintenant)), total: 0, classement: classement(B, joueurs, jour) });
     }
 
+    // La liste des participants, pour le menu déroulant de l'entrée : elle ne sort qu'ici, avec le code d'équipe.
+    if (b.action === 'liste') return res.status(200).json({ liste: (await lireListe()).slice().sort((x, y) => x.localeCompare(y, 'fr')) });
+    // Entrée par un nom de la liste : la fiche déjà créée sous ce nom, ou l'invitation à la créer (`nouveau`).
+    if (b.action === 'entrer') {
+      const nom = dansListe(await lireListe(), b.nom);
+      if (!nom) return res.status(400).json({ error: 'nom' });
+      const { joueurs } = await lire(), c = Object.keys(joueurs).find(x => joueurs[x].l && norm(joueurs[x].l) === norm(nom));
+      if (c) return res.status(200).json(etat(B, joueurs, c, jour, maintenant));
+      const mot = nom.split(/[ .]/)[0], libre = mot.length >= 2 && mot.length <= 24 && PRENOM.test(mot) && !joueurs[norm(mot)];
+      return res.status(200).json({ ...etat(B, joueurs, null, jour, maintenant), nouveau: true, nom, suggestion: libre ? mot : '' });
+    }
     // Sans prénom : le calendrier et le classement, sans fiche personnelle.
     if (b.prenom === undefined) return res.status(200).json(etat(B, (await lire()).joueurs, null, jour, maintenant));
     const prenom = typeof b.prenom === 'string' ? b.prenom.trim().replace(/’/g, "'") : '';
@@ -373,10 +435,19 @@ async function handler(req, res) {
       // Sous scellé jusqu'au 26 novembre : ni fiche ni tirage avant.
       if (jour < FICHE_JOUR) return res.status(403).json({ error: 'scellee' });
       if (!avatarOk(b.avatar)) return res.status(400).json({ error: 'avatar' });
+      // Avec `nom` : la fiche est créée pour ce nom de la liste, qui ne peut être pris qu'une fois ; `prenom` est le pseudo choisi.
+      const nom = b.nom === undefined ? undefined : dansListe(await lireListe(), b.nom);
+      if (b.nom !== undefined && !nom) return res.status(400).json({ error: 'nom' });
       const s = await modifier(joueurs => {
+        if (nom) {
+          const c = Object.keys(joueurs).find(x => joueurs[x].l && norm(joueurs[x].l) === norm(nom));
+          if (c && c !== cle) return { fin: () => ({ code: 409, corps: { error: 'nom' } }) };      // ce nom a déjà sa fiche, sous un autre pseudo
+          if (!c && joueurs[cle]) return { fin: () => ({ code: 409, corps: { error: 'pris' } }) }; // ce pseudo est porté par un autre joueur
+        }
         if (!joueurs[cle]) {
           if (Object.keys(joueurs).length >= MAX_JOUEURS) return { fin: () => ({ code: 403, corps: { error: 'complet' } }) };
           joueurs[cle] = { p: prenom, t: maintenant, r: {} };
+          if (nom) joueurs[cle].l = nom;
         }
         const j = joueurs[cle];
         j.a = b.avatar.slice();
@@ -403,11 +474,14 @@ async function handler(req, res) {
       });
       return res.status(s.code).json(s.corps);
     }
-    // Voix d'un membre pour la devise et le jeu emblème de sa brigade : ouvert du 26 novembre au 7 décembre, modifiable d'ici là.
+    // Voix d'un membre pour le nom, l'emblème, la devise et le jeu emblème de sa brigade : ouvert du 26 novembre au 10 décembre, modifiable d'ici là.
     if (b.action === 'brigade') {
       if (jour < FICHE_JOUR || jour > CHOIX_FIN) return res.status(403).json({ error: jour < FICHE_JOUR ? 'scellee' : 'fige' });
       const d = b.devise, g = typeof b.jeu === 'string' ? b.jeu.trim() : b.jeu;
-      if (d === undefined && g === undefined) return res.status(400).json({ error: 'choix' });
+      const ti = b.titre, em = b.embleme;
+      if (d === undefined && g === undefined && ti === undefined && em === undefined) return res.status(400).json({ error: 'choix' });
+      if (ti !== undefined && !(Number.isInteger(ti) && ti >= 0 && ti < NB_NOMS)) return res.status(400).json({ error: 'titre' });
+      if (em !== undefined && !(Number.isInteger(em) && em >= 0 && em < NB_EMBLEMES)) return res.status(400).json({ error: 'embleme' });
       if (d !== undefined && !(Number.isInteger(d) && d >= 0 && d < NB_DEVISES)) return res.status(400).json({ error: 'devise' });
       if (g !== undefined && (typeof g !== 'string' || !g || g.length > 80 || /[\u0000-\u001f<>]/.test(g))) return res.status(400).json({ error: 'jeu' });
       const s = await modifier(joueurs => {
@@ -415,6 +489,8 @@ async function handler(req, res) {
         if (!j || j.b === undefined) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
         if (d !== undefined) j.d = d;
         if (g !== undefined) j.g = g;
+        if (ti !== undefined) j.n = ti;
+        if (em !== undefined) j.e = em;
         return { ok: J => ({ code: 200, corps: { ok: true, ...etat(B, J, cle, jour, maintenant) } }) };
       });
       return res.status(s.code).json(s.corps);

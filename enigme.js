@@ -88,7 +88,7 @@
 .eg-gate{max-width:420px;margin-top:18px}
 .eg-panel h3{margin:0;font-weight:800;font-size:1.3rem;line-height:1.1}
 .eg-panel label{display:block;margin:14px 0 5px;font:600 .72rem var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
-.eg-gate input{display:block;width:100%;min-height:46px;font:700 1rem var(--display);color:var(--on-surface);background:#fff;border:2.5px solid var(--line);border-radius:12px;padding:8px 10px}
+.eg-gate input,.eg-gate select{display:block;width:100%;min-height:46px;font:700 1rem var(--display);color:var(--on-surface);background:#fff;border:2.5px solid var(--line);border-radius:12px;padding:8px 10px}
 .eg-hint{margin:8px 0 0;font-size:.82rem;color:var(--muted)}
 .eg-warn{margin:12px 0 0;padding:10px 12px;border:2.5px solid var(--line);border-radius:12px;background:#F8EFC0;color:#26076D;font-weight:700;font-size:.9rem;line-height:1.35}
 .eg-d{margin:10px 0 0;font-size:1rem}
@@ -332,9 +332,10 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<p class="adv-intro">Le concours de l\'équipe, chacun pour soi : 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, cinq questions au chrono sur un thème du jeu de société (quatre flacons au choix, ou une dose à estimer entre 0 et 100) ou un vrai jeu d\'adresse. Chaque porte vaut 10 points, la finale du 25 en vaut 20. Pour élire votre jeu préféré, c\'est au <a href="#vote">Palmarès</a>.</p></div>'
       + NOTICE
       + '<form class="eg-panel eg-gate" id="egGate" novalidate><h3>Entrer dans le calendrier</h3>'
-      + '<label for="egPrenom">Pseudo ou prénom</label><input id="egPrenom" type="text" autocomplete="given-name" maxlength="24" required>'
       + '<label for="egCode">Code d\'équipe</label><input id="egCode" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" required>'
-      + '<p class="eg-hint">Même nom, même fiche, sur tous vos appareils : vos réponses sont gardées par le serveur de l\'équipe. Deux collègues du même prénom ? Ajoutez une initiale collée, par exemple CamilleB. Avatar et brigade se règlent à votre première porte.</p>'
+      + '<div id="egListe" hidden><label for="egNom">Votre nom</label><select id="egNom"></select></div>'
+      + '<div id="egLibre"><label for="egPrenom">Pseudo ou prénom</label><input id="egPrenom" type="text" autocomplete="given-name" maxlength="24" required></div>'
+      + '<p class="eg-hint">Même nom, même fiche, sur tous vos appareils : vos réponses sont gardées par le serveur de l\'équipe. Deux collègues du même prénom ? Ajoutez une initiale collée, par exemple CamilleB. Avatar et brigade se règlent à la création de votre fiche.</p>'
       + '<p class="eg-msg err" id="egGateMsg" role="status"></p><button class="go main" type="submit">Ouvrir mon calendrier</button></form>'
       + '<p class="eg-banner" id="egBanner" hidden>Mode relecture : les 25 portes s\'affichent avec leur solution. Rien n\'est enregistré.</p>'
       + '<div class="eg-body" id="egBody" hidden>'
@@ -364,6 +365,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (ancre) ancre.insertAdjacentElement("afterend", a);
 
     q("#egGate").addEventListener("submit", entrer);
+    q("#egCode").addEventListener("change", () => chercherListe(q("#egCode").value.trim()));
+    q("#egNom").addEventListener("change", () => { q("#egLibre").hidden = q("#egNom").value !== "*"; dire("#egGateMsg", ""); });
     q("#egGrid").addEventListener("click", e => {
       const c = e.target.closest(".eg-cell");
       if (!c) return;
@@ -410,7 +413,39 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     versFiche = location.hash === "#pharmacomeeple";
     document.querySelectorAll("#avent,.ind,.bar,main").forEach(e => { e.hidden = true; });
     sec.scrollIntoView({ block: "start" });
-    if (relecture || (mem.prenom && mem.code)) charger();
+    if (relecture || ((mem.prenom || mem.nom) && mem.code)) charger();
+    else if (q("#egCode").value.trim()) chercherListe(q("#egCode").value.trim());
+  }
+  // Liste des participants : elle n'arrive du serveur qu'avec le bon code d'équipe. Quand elle existe, l'entrée se fait par
+  // un menu déroulant (avec « Je ne suis pas dans la liste » pour la saisie libre) ; sans liste, la saisie libre reste seule.
+  // liste : null tant qu'on ne sait pas, [] s'il n'y en a pas ; listeCode : le code avec lequel on l'a demandée.
+  let liste = null, listeCode = "";
+  async function chercherListe(code) {
+    if (!code || code === listeCode) return;
+    let r;
+    try { r = await call({ code, action: "liste" }); } catch (e) { r = { status: 0, j: {} }; }
+    if (r.status !== 200) { liste = null; return; }
+    listeCode = code;
+    liste = Array.isArray(r.j.liste) ? r.j.liste : [];
+    const sel = q("#egNom"), avec = liste.length > 0;
+    sel.innerHTML = '<option value="">Choisir dans la liste</option>' + liste.map(n => '<option value="' + h(n) + '">' + h(n) + "</option>").join("") + '<option value="*">Je ne suis pas dans la liste</option>';
+    if (mem.nom && liste.includes(mem.nom)) sel.value = mem.nom;
+    q("#egListe").hidden = !avec;
+    q("#egLibre").hidden = avec && sel.value !== "*";
+  }
+  // Entrée par un nom de la liste : la fiche existe déjà (on la retrouve, avec son pseudo), ou elle reste à créer.
+  async function entrerParNom(code, nom) {
+    let r;
+    try { r = await call({ code, action: "entrer", nom }); } catch (x) { r = { status: 0, j: {} }; }
+    if (r.status === 400) { listeCode = ""; return dire("#egGateMsg", "Ce nom n'est plus dans la liste. Choisissez-le de nouveau.", "err"); }
+    if (r.status !== 200) return dire("#egGateMsg", "Le serveur ne répond pas. Réessayez dans un instant.", "err");
+    relecture = "";
+    mem.code = code; mem.nom = nom;
+    if (r.j.prenom) mem.prenom = r.j.prenom; else delete mem.prenom;
+    save();
+    dire("#egGateMsg", "");
+    if (r.j.nouveau) versFiche = true; // première visite : la fiche s'ouvre d'elle-même
+    recevoir(r.j);
   }
   // Pastille « Pharmacomeeple » : une fois le joueur entré, sa fiche d'identification s'ouvre (création ou retouche).
   // Avant l'ouverture de l'identification (le 26 novembre), rien ne s'ouvre : la mention « sous scellé » en tête du calendrier suffit.
@@ -427,6 +462,12 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     const p = q("#egPrenom").value.trim().replace(/’/g, "'"), code = q("#egCode").value.trim();
     if (!code) return dire("#egGateMsg", "Le code d'équipe est demandé : il circule dans l'unité.", "err");
     dire("#egGateMsg", "Ouverture…", "ok");
+    await chercherListe(code);
+    if (liste && liste.length && listeCode === code) {
+      const nom = q("#egNom").value;
+      if (!nom) { q("#egNom").focus(); return dire("#egGateMsg", "Choisissez votre nom dans la liste, ou « Je ne suis pas dans la liste ».", "err"); }
+      if (nom !== "*") return entrerParNom(code, nom);
+    }
     let r;
     // Un prénom mal formé n'empêche pas la relecture : le serveur tranche d'après le code.
     try { r = await call(p.length >= 2 && p.length <= 24 && PRENOM.test(p) ? { code, prenom: p } : { code }); } catch (x) { r = { status: 0, j: {} }; }
@@ -436,7 +477,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     else {
       if (!(p.length >= 2 && p.length <= 24 && PRENOM.test(p))) return dire("#egGateMsg", "Un pseudo ou un prénom en un seul mot, de 2 à 24 lettres, sans espace ni chiffre.", "err");
       relecture = "";
-      mem.prenom = p; mem.code = code;
+      mem.prenom = p; mem.code = code; delete mem.nom;
       save();
     }
     dire("#egGateMsg", "");
@@ -451,15 +492,17 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egBody").hidden = true; q("#egRank").hidden = true; q("#egBanner").hidden = true;
     q("#egGate").hidden = false;
     q("#egNotice").open = true;
-    q("#egPrenom").focus();
+    (q("#egLibre").hidden ? q("#egNom") : q("#egPrenom")).focus();
   }
 
   async function charger(msg) {
     if (occupe || enJeu) return;
     occupe = true;
     let r;
-    try { r = await call(relecture ? { code: relecture } : { code: mem.code, prenom: mem.prenom }); } catch (e) { r = { status: 0, j: {} }; }
+    // Entré par la liste sans fiche encore : on redemande par le nom, au cas où la fiche aurait été créée sur un autre appareil.
+    try { r = await call(relecture ? { code: relecture } : mem.prenom ? { code: mem.code, prenom: mem.prenom } : mem.nom ? { code: mem.code, action: "entrer", nom: mem.nom } : { code: mem.code }); } catch (e) { r = { status: 0, j: {} }; }
     occupe = false;
+    if (r.status === 200 && !relecture && !mem.prenom && r.j.prenom) { mem.prenom = r.j.prenom; save(); }
     if (r.status === 401 || r.status === 400) { if (!relecture) { delete mem.code; save(); } sortir(); return dire("#egGateMsg", "Code d'équipe à ressaisir.", "err"); }
     if (r.status !== 200) return E ? dire("#egMsg", "Le serveur ne répond pas. Réessayez dans un instant.", "err") : dire("#egGateMsg", "Le serveur ne répond pas. Réessayez dans un instant.", "err");
     recevoir(r.j, msg);
@@ -488,7 +531,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egRank").hidden = false;
     q("#egBanner").hidden = !relecture;
     if (premier) { q("#egNotice").open = false; choix = parDefaut(); brouillon = null; aConfirmer = false; }
-    q("#egWho").textContent = relecture ? "Relecture" : mem.prenom;
+    q("#egWho").textContent = relecture ? "Relecture" : mem.prenom || mem.nom || "";
+    majBrigades();
     identite();
     grille();
     panneau(msg, cls);
@@ -501,10 +545,12 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   const chargerParticipants = () => new Promise((ok, ko) => {
     if (window.PharmacoParticipants) return ok();
     const sc = document.createElement("script");
-    sc.src = "participants.js"; sc.onload = () => (window.PharmacoParticipants ? ok() : ko()); sc.onerror = ko;
+    sc.src = "participants.js"; sc.onload = () => { majBrigades(); return window.PharmacoParticipants ? ok() : ko(); }; sc.onerror = ko;
     document.head.appendChild(sc);
   });
   const fiche = () => !relecture && E && E.profil && E.profil.a;
+  // Nom et emblème votés par les brigades : participants.js les reporte dans ses brigades, pour tout ce qui les affiche.
+  const majBrigades = () => { if (window.PharmacoParticipants && E) window.PharmacoParticipants.maj(E.brigades); };
   // En tête du calendrier : l'avatar devant le nom, la brigade dessous. Le texte de #egWho reste le nom seul.
   function identite() {
     const P = !relecture && E && E.profil, bouton = q("#egAvatar");
@@ -527,7 +573,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       if (B) q("#egBrig").innerHTML = W.embleme(P.b) + "<span>" + h(B.nom) + (devise ? " · « " + h(devise) + " »" : "") + "</span>";
     }).catch(() => {});
   }
-  // Carnet de brigade : membres, devise et jeu emblème, et la voix du joueur tant que le vote est ouvert (serveur : du 26 novembre au 7 décembre).
+  // Carnet de brigade : membres, nom, emblème, devise et jeu emblème, et les voix du joueur tant que le vote est ouvert (serveur : du 26 novembre au 10 décembre).
   async function carnet() {
     if (relecture || occupe || enJeu || !fiche()) return;
     try { await chargerParticipants(); } catch (e) { return dire("#egMsg", "Le carnet de brigade ne s'est pas chargé. Vérifiez la connexion et réessayez.", "err"); }
@@ -535,17 +581,17 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     enFiche = true;
     clearInterval(tic);
     window.PharmacoParticipants.brigade(q("#egPanel"), {
-      pseudo: mem.prenom, brigade: b, ligne: ligne(), moi: E.profil, choix: E.choix,
+      pseudo: mem.prenom, brigade: b, ligne: ligne(), lignes: () => E.brigades || [], moi: E.profil, choix: E.choix,
       membres: (E.classement || []).filter(x => x.b === b).sort((x, y) => x.p.localeCompare(y.p, "fr")),
       jeux: typeof G !== "undefined" ? G : [], familles: typeof CATS !== "undefined" ? CATS : {},
       voter: async v => {
         let r;
-        try { r = await call({ code: mem.code, prenom: mem.prenom, action: "brigade", devise: v.devise, jeu: v.jeu }); } catch (e) { r = { status: 0, j: {} }; }
-        if (r.status === 403 && r.j.error === "fige") return { ok: false, message: "Trop tard : devise et jeu emblème sont scellés depuis la fin de la première semaine." };
+        try { r = await call({ code: mem.code, prenom: mem.prenom, action: "brigade", titre: v.titre, embleme: v.embleme, devise: v.devise, jeu: v.jeu }); } catch (e) { r = { status: 0, j: {} }; }
+        if (r.status === 403 && r.j.error === "fige") return { ok: false, message: "Trop tard : les paramètres de la brigade sont scellés." };
         if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "Le vote de la brigade est encore sous scellé." };
         if (r.status !== 200 || !r.j.profil) return { ok: false };
         E = r.j;
-        identite();
+        majBrigades(); identite(); rang();
         return { ok: true, ligne: ligne(), moi: E.profil };
       },
       onFin: () => { enFiche = false; panneau(); },
@@ -560,7 +606,10 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     enFiche = true;
     clearInterval(tic);
     window.PharmacoParticipants.fiche(q("#egPanel"), {
-      pseudo: mem.prenom, avatar: P.a, brigade: P.b,
+      pseudo: mem.prenom || E.suggestion || "", avatar: P.a, brigade: P.b,
+      // Entré par la liste, sans fiche encore : la fiche demande aussi le pseudo.
+      choisirPseudo: !mem.prenom && Boolean(mem.nom), nom: mem.nom,
+      versCarnet: E.choix && E.choix.etat === "ouvert" ? () => { enFiche = false; carnet(); } : undefined,
       renommer: async neuf => {
         let r;
         try { r = await call({ code: mem.code, prenom: mem.prenom, action: "renommer", pseudo: neuf }); } catch (e) { r = { status: 0, j: {} }; }
@@ -574,14 +623,18 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         identite(); grille(); rang();
         return { ok: true };
       },
-      enregistrer: async a => {
+      enregistrer: async (a, pseudo) => {
         let r;
-        try { r = await call({ code: mem.code, prenom: mem.prenom, action: "profil", avatar: a }); } catch (e) { r = { status: 0, j: {} }; }
+        try { r = await call({ code: mem.code, prenom: pseudo || mem.prenom, action: "profil", avatar: a, nom: pseudo ? mem.nom : undefined }); } catch (e) { r = { status: 0, j: {} }; }
+        if (r.status === 409 && r.j.error === "pris") return { ok: false, message: "Ce pseudo est déjà porté par un autre joueur. Ajoutez une initiale collée, par exemple " + pseudo + "B." };
+        if (r.status === 409) return { ok: false, message: "Ce nom de la liste a déjà sa fiche. Revenez à l'entrée et choisissez-le de nouveau pour la retrouver." };
+        if (r.status === 400 && r.j.error === "prenom") return { ok: false, message: "Un pseudo en un seul mot, de 2 à 24 lettres, sans espace ni chiffre." };
+        if (r.status === 200 && r.j.profil && pseudo) { mem.prenom = pseudo; save(); q("#egWho").textContent = pseudo; q("#egPrenom").value = pseudo; }
         if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "La fiche d'identification est encore sous scellé." };
         if (r.status === 403 && r.j.error === "complet") return { ok: false, message: "Le calendrier affiche complet : plus de place pour un nouveau joueur." };
         if (r.status !== 200 || !r.j.profil) return { ok: false };
         E = r.j;
-        identite(); grille(); rang();
+        majBrigades(); identite(); grille(); rang();
         const b = E.profil.b, ligne = (E.brigades || []).find(x => x.b === b);
         return { ok: true, brigade: b, effectif: ligne ? ligne.n : 0 };
       },
