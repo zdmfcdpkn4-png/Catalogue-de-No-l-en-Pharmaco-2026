@@ -42,8 +42,9 @@
     { id: "sapin", href: "#sapin", t: "Sapin de l'Avent", s: "Une dose par jour", sel: "#avent", img: "menu-sapin.webp", fond: "#BFE3C9", bientot: "lot en quarantaine", ouvre: "2026-12-01" },
     { id: "pharmacogames", href: "#pharmacogames", t: "Pharmacogames", s: "Le concours à points", sel: "#pharmacogames", img: "menu-pharmacogames.webp", fond: "#B9A6F0", bientot: "libération en cours", ouvre: "2026-12-01" },
     { id: "vote", href: "#vote", t: "Palmarès", s: "Votez pour votre jeu", sel: "#vote", img: "menu-palmares.webp", fond: "#F2E39A" },
+    // plein : la face est une image entière (autocollant détouré, avec son propre contour), sans logo ni accessoire.
     // haut : pastille à part, en haut à droite de l'en-tête (dans le coin libre sur ordinateur ; sous le titre quand l'écran est trop étroit pour l'aligner avec lui). Elle mène à la fiche d'identification du joueur.
-    { id: "pharmacomeeple", href: "#pharmacomeeple", t: "Pharmacomeeple", s: "Votre fiche et votre brigade", sel: "#pharmacogames", img: "menu-pharmacomeeple.webp", fond: "#BFE3F2", bientot: "lot en quarantaine", ouvre: "2026-11-26", haut: true },
+    { id: "pharmacomeeple", href: "#pharmacomeeple", t: "Pharmacomeeple", s: "Votre fiche et votre brigade", sel: "#pharmacogames", img: "emblemes/pharmacomeeple.webp", plein: true, fond: "#BFE3F2", bientot: "lot en quarantaine", ouvre: "2026-11-26", haut: true },
   ];
   // ouvre : jour d'ouverture de la page, à l'heure de Paris. L'étiquette « Bientôt disponible » tombe d'elle-même ce jour-là ;
   // ce n'est qu'un affichage, la vraie barrière reste le serveur.
@@ -66,6 +67,8 @@
 .pm-t{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.07);box-shadow:inset 0 0 6px rgba(255,255,255,.35);transform:translateZ(var(--z))}
 .pm-t:nth-child(odd){border-color:color-mix(in srgb,var(--fond) 60%,rgba(255,255,255,.55))}
 .pm-d img{position:absolute;left:8%;top:8%;width:84%;height:84%}
+.pm-f.plein{border:0;background:none}
+.pm-f.plein img{left:-4%;top:-4%;width:108%;height:108%}
 .pm-d svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .pm a.tourne .pm-j{animation:pmTour 1.6s linear both}
 .pm a.tourne .pm-o{animation:pmOmbre 1.6s linear both}
@@ -110,7 +113,7 @@
   nav.className = "pm";
   nav.setAttribute("aria-label", "Les quatre pages du site");
   const bouton = p => '<a href="' + p.href + '" data-page="' + p.id + '"' + (p.sel && !q(p.sel) ? ' class="att"' : "") + '><span class="pm-d" style="--fond:' + p.fond + '">'
-    + '<span class="pm-o"></span><span class="pm-j"><span class="pm-f"><img src="img/' + p.img + '" alt="" width="224" height="224" decoding="async">' + PLUS[p.id] + "</span>" + TRANCHE
+    + '<span class="pm-o"></span><span class="pm-j"><span class="pm-f' + (p.plein ? " plein" : "") + '"><img src="img/' + p.img + '" alt="" width="224" height="224" decoding="async">' + (p.plein ? "" : PLUS[p.id]) + "</span>" + TRANCHE
     + '<span class="pm-v" style="--fond:' + p.fond + '">' + DOS[p.id] + "</span></span></span><b>" + p.t + "</b><small>" + p.s + "</small>" + (attendu(p) ? '<em class="pm-s">Bientôt disponible<i>' + p.bientot + "</i></em>" : "") + "</a>";
   nav.innerHTML = PAGES.filter(p => !p.haut).map(bouton).join("");
   ancre.insertAdjacentElement("afterend", nav);
