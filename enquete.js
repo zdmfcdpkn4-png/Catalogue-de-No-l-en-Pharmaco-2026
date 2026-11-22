@@ -4,6 +4,9 @@
    `enquete` de l'état reçu et renvoie la réponse du joueur par la fonction `envoyer` que lui donne enigme.js.
    Un seul essai par membre et par énigme : la page avertit et demande une validation avant tout envoi.
    La fiche de suivi se coche d'après le champ `elimine` des énigmes dont la révélation est acquise.
+   Amorce des 1er, 2 et 3 décembre : le champ `amorces` ne porte que les étapes acquises au joueur ([{n, titre, texte, fiche}]).
+   Tant qu'il est vide et qu'aucune énigme n'est ouverte, le bloc ne montre rien : la surprise doit tenir. Avec la seule
+   étape 1, ni titre ni synopsis. La fiche de suivi attend une étape marquée `fiche` (ou la première énigme).
    Les noms des dix-huit fiches sont publics ; leurs identifiants doivent rester accordés avec la banque du serveur.
 
    window.PharmacoEnquete.monter(element, {
@@ -160,18 +163,28 @@
       const passees = vues.filter(e => !(e.etat === "ouverte" && !e.resolue)), aVenir = L.filter(e => e.etat === "avenir");
       const indices = vues.filter(e => e.revelation && !e.elimine && e.k <= 21);
       const max = Q.max || 30, moi = opts.mienne ? opts.mienne() : undefined;
-      let s = "<h3>" + fr(Q.titre || "L'Affaire du Lot 22") + "</h3>"
-        + (Q.fiction !== false ? '<p class="enq-fic">Fiction</p>' : "")
-        + '<p class="enq-crime">' + fr(CRIME) + "</p>"
-        + '<p class="enq-pts" role="status">Votre brigade : ' + pl(Q.points || 0, "point", "points") + " sur " + max + ". Une énigme résolue dans les temps par un membre compte pour toute la brigade.</p>";
-      s += '<section class="enq-sec" aria-labelledby="enqT1"><h4 id="enqT1">' + (ouvertes.length ? pl(ouvertes.length, "énigme à résoudre", "énigmes à résoudre") : "Aucune énigme à résoudre pour l'instant") + "</h4>"
+      // Amorce : sans le champ, tout s'affiche ; avec, on ne montre que ce que les étapes reçues autorisent.
+      const amorce = Array.isArray(Q.amorces), A = amorce ? Q.amorces.slice().sort((a, b) => b.n - a.n) : [];
+      const enJeu = vues.length > 0;
+      if (amorce && !A.length && !enJeu) { el.hidden = true; el.innerHTML = ""; return; }
+      const devoile = !amorce || enJeu || A.some(a => a.n >= 2), avecFiche = !amorce || enJeu || A.some(a => a.fiche);
+      let s = "";
+      if (devoile) s += "<h3>" + fr(Q.titre || "L'Affaire du Lot 22") + "</h3>" + (Q.fiction !== false ? '<p class="enq-fic">Fiction</p>' : "");
+      if (!amorce) s += '<p class="enq-crime">' + fr(CRIME) + "</p>";
+      if (A.length) {
+        const une = a => "<h4>" + fr(a.titre || "") + '</h4><p style="margin:0;line-height:1.5">' + fr(a.texte || "") + "</p>";
+        s += '<section class="enq-sec enq-am" aria-live="polite">' + une(A[0]) + "</section>";
+        if (A.length > 1) s += '<section class="enq-sec"><details><summary>' + pl(A.length - 1, "message précédent", "messages précédents") + "</summary>" + A.slice(1).map(a => '<div style="margin-top:10px">' + une(a) + "</div>").join("") + "</details></section>";
+      }
+      if (enJeu) s += '<p class="enq-pts" role="status">Votre brigade : ' + pl(Q.points || 0, "point", "points") + " sur " + max + ". Une énigme résolue dans les temps par un membre compte pour toute la brigade.</p>";
+      if (devoile) s += '<section class="enq-sec" aria-labelledby="enqT1"><h4 id="enqT1">' + (ouvertes.length ? pl(ouvertes.length, "énigme à résoudre", "énigmes à résoudre") : "Aucune énigme à résoudre pour l'instant") + "</h4>"
         + (ouvertes.length ? '<ol class="enq-l">' + ouvertes.map(carte).join("") + "</ol>" : "")
         + (aVenir.length ? '<p class="enq-next">Prochaine énigme' + (dateDe(aVenir[0].jour) ? " le " + dateDe(aVenir[0].jour) : " bientôt") + ". Chaque énigme reste ouverte son jour et les deux jours suivants.</p>" : "") + "</section>";
-      s += '<section class="enq-sec" aria-labelledby="enqT2"><h4 id="enqT2">Fiche de suivi de la brigade</h4>' + suivi() + "</section>";
+      if (avecFiche) s += '<section class="enq-sec" aria-labelledby="enqT2"><h4 id="enqT2">Fiche de suivi de la brigade</h4>' + suivi() + "</section>";
       if (indices.length) s += '<section class="enq-sec" aria-labelledby="enqT3"><h4 id="enqT3">Carnet d\'indices</h4><ol class="enq-ind">' + indices.map(e => "<li>" + fr(e.revelation) + "</li>").join("") + "</ol></section>";
       if (passees.length) s += '<section class="enq-sec"><details><summary>' + pl(passees.length, "énigme passée", "énigmes passées") + '</summary><ol class="enq-l" style="margin-top:10px">' + passees.map(carte).join("") + "</ol></details></section>";
       if (Q.denouement) s += '<section class="enq-sec" aria-labelledby="enqT4"><h4 id="enqT4">Dénouement</h4><p style="margin:0;line-height:1.5">' + fr(Q.denouement) + "</p></section>";
-      if (Array.isArray(Q.classement) && Q.classement.length) {
+      if (enJeu && Array.isArray(Q.classement) && Q.classement.length) {
         const C = Q.classement.slice().sort((a, b) => b.points - a.points || a.b - b.b);
         s += '<section class="enq-sec" aria-labelledby="enqT5"><h4 id="enqT5">Les brigades à l\'enquête</h4><ol class="enq-cl">' + C.map(x =>
           "<li" + (x.b === moi ? ' class="me"' : "") + "><span>" + h(opts.brigade ? opts.brigade(x.b) : "Brigade " + (x.b + 1)) + "</span><b>" + pl(x.points, "point", "points") + "</b></li>").join("")
