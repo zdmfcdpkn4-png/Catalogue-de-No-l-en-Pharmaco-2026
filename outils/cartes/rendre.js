@@ -13,8 +13,8 @@ const { chromium } = require('playwright'), fs = require('fs'), path = require('
     for (const c of D.cartes) {
       if (seule && c.id !== seule) continue;
       for (const v of (c.variantes || [{ suffixe: '' }])) {
-        const z = JSON.parse(fs.readFileSync('illus/' + c.id + '.json', 'utf8')).bulles;
-        const C = Object.assign({ illus: 'illus/' + c.id + '.png', zones: z }, c, v);
+        const J = JSON.parse(fs.readFileSync('illus/' + c.id + '.json', 'utf8'));
+        const C = Object.assign({ illus: 'illus/' + c.id + '.png', zones: J.bulles, ratio: J.ratio }, c, v);
         await p.evaluate(C => window.rendre(C), C);
         await p.waitForFunction(() => [...document.images].every(i => i.complete));
         await p.locator('#c').screenshot({ path: 'sortie/' + c.id + (v.suffixe || '') + '-' + (dpr === 1 ? '680' : '1020') + '.png', omitBackground: true });
