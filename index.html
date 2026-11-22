@@ -355,6 +355,30 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .adv-panel .ap-bd img{display:block;width:100%;height:100%;max-height:none;object-fit:contain;border:0;border-radius:0;background:none}
 .ap-bd .bdv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;background:#DDD0EC;animation:bdvOut .5s 12s forwards}
 .ap-bd.fin .bdv{animation:bdvOut2 .5s forwards}
+/* Cartes : la vidéo du booster joue au clic, puis les cartes de la case apparaissent (une à trois, à faire défiler).
+   Chaque carte est composée sur img/carte-gabarit.webp : image dans la fenêtre, numéro ou symbole dans le médaillon, titre dans le bandeau. */
+.ap-ca{position:relative;aspect-ratio:3/4;margin:14px 0 0;border:3px solid var(--line);border-radius:12px;overflow:hidden;background:#E7CEB0}
+.ap-ca .cas{display:flex;align-items:center;gap:5%;height:100%;padding:0 15%;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.ap-ca .cas::-webkit-scrollbar{display:none}
+.ap-ca .carte{flex:0 0 100%;scroll-snap-align:center;animation:caIn .55s 12s cubic-bezier(.3,1.4,.5,1) both}
+.ap-ca.fin .carte{animation:caIn2 .55s cubic-bezier(.3,1.4,.5,1) both}
+.ap-ca.fin .carte:nth-child(2){animation-delay:.12s}.ap-ca.fin .carte:nth-child(3){animation-delay:.24s}
+@keyframes caIn{from{opacity:0;transform:translateY(30px) scale(.7) rotate(-6deg)}to{opacity:1;transform:none}}
+@keyframes caIn2{from{opacity:0;transform:translateY(30px) scale(.7) rotate(-6deg)}to{opacity:1;transform:none}}
+.ap-ca .cav{position:absolute;inset:0;z-index:2;width:100%;height:100%;object-fit:cover;background:#E7CEB0;cursor:pointer;animation:bdvOut .5s 12s forwards}
+.ap-ca.fin .cav{animation:bdvOut2 .5s forwards}
+.carte{position:relative;display:block;aspect-ratio:680/1024;margin:0;padding:0;border:0;background:none;color:#26076D;font:inherit;cursor:zoom-in;container-type:inline-size;filter:drop-shadow(4px 5px 0 rgba(38,7,109,.35))}
+.carte img{position:absolute;display:block;border:0;max-height:none}
+.adv-panel .carte img,.bdz .carte img{border:0;background:none;max-height:none}
+.carte .cg{inset:0;width:100%;height:100%}
+.carte .ci{left:7.4%;top:10.1%;width:85.3%;height:61.6%;object-fit:cover;border-radius:4% / 3.6%}
+.carte .cm{position:absolute;left:4.6%;top:2.9%;width:13.6%;aspect-ratio:1;display:grid;place-items:center;font-weight:800;font-size:13px;font-size:7.4cqw;line-height:1}
+.carte .cb{position:absolute;left:8%;top:77.2%;width:84%;height:15.6%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2%;overflow:hidden;text-align:center;line-height:1.1}
+.carte .cb b{font-weight:800;font-size:12px;font-size:6.6cqw}
+.carte .cb small{font-size:9px;font-size:4.5cqw}
+.bdz .bdc{width:min(100%,440px);margin:0 auto}
+.bdz .carte{width:100%;cursor:default}
+@media (prefers-reduced-motion:reduce){.ap-ca .carte,.ap-ca.fin .carte{animation:none}}
 /* Lever de rideau des jours d'événement (1er et 25 décembre) : une courte vidéo dans son cadre, par-dessus le sapin, puis fondu */
 .av-ev{position:absolute;z-index:3;inset:0;margin:auto;width:min(100%,560px);height:fit-content;padding:10px 10px 12px;background:var(--surface);color:var(--on-surface);border:3px solid var(--line);border-radius:16px;box-shadow:6px 6px 0 var(--shadow);text-align:center;cursor:pointer;animation:apIn .4s cubic-bezier(.16,1,.3,1) both;transition:opacity .5s}
 .av-ev.out{opacity:0}
@@ -366,10 +390,10 @@ footer{padding:26px 0 34px;font-size:.86rem}
 @media (prefers-reduced-motion:reduce){.ap-bd a,.ap-bd.fin a{animation:none}.ap-bd .bdv{display:none}}
 /* Lecture : la planche s'ouvre en grand par-dessus la page et y reste jusqu'à « Fermer » */
 .bdz{position:fixed;inset:0;z-index:1000;overflow:auto;background:rgba(38,7,109,.94);padding:60px 10px 24px;-webkit-overflow-scrolling:touch}
-.bdz img{display:block;width:100%;max-width:900px;height:auto;margin:0 auto;border:3px solid #26076D;border-radius:10px;background:#FFFBF2;cursor:zoom-in}
-.bdz img.zz{width:200%;max-width:1800px;cursor:zoom-out}
+.bdz>img{display:block;width:100%;max-width:900px;height:auto;margin:0 auto;border:3px solid #26076D;border-radius:10px;background:#FFFBF2;cursor:zoom-in}
+.bdz>img.zz{width:200%;max-width:1800px;cursor:zoom-out}
 .bdz p{margin:10px 0 0;text-align:center;font-size:.9rem;color:#FFFBF2}
-.bdz button{position:fixed;top:10px;right:10px;padding:9px 16px;font:800 1rem var(--display,inherit);color:#26076D;background:#ECD567;border:3px solid #26076D;border-radius:999px;box-shadow:4px 4px 0 #26076D;cursor:pointer}
+.bdz>button{position:fixed;top:10px;right:10px;padding:9px 16px;font:800 1rem var(--display,inherit);color:#26076D;background:#ECD567;border:3px solid #26076D;border-radius:999px;box-shadow:4px 4px 0 #26076D;cursor:pointer}
 .ap-next{display:flex;gap:8px;align-items:center;margin:14px 0 0;padding:9px 11px;border:2.5px dashed var(--line);border-radius:12px;font-size:.86rem}
 .ap-next .avi{width:18px;height:18px;flex:0 0 auto}
 @media(max-width:860px){.adv-body{grid-template-columns:minmax(0,1fr)}}
@@ -698,9 +722,9 @@ function pensee(){
    les gouttes ouvertes sont mémorisées dans le navigateur. Contenu : outils/calendrier_avent.json. */
 const AVENT=[{"jour": 1, "type": "chanson", "titre": "Noël en Pharmaco", "audio": "audio/noel-en-pharmaco.mp3", "pochette": "img/logo-pharmacotechnie.webp"}, {"jour": 2, "type": "origami", "texte": "Pliée en poche, dépliée en fleur."}, {"jour": 3, "type": "bd", "titre": "Clandestin en ZAC", "image": "img/bd-clandestin-en-zac.svg", "video": "video/cygne-bd.mp4", "alt": "Bande dessinée en six cases. Alerte en ZAC : un flacon surprend une particule clandestine, « Choisis ton supplice : une partie contre… » La Perfusion lente : « Je réfléchis… Mon tour dure 45 minutes. » Le Rappel de lot : « Attends, je rappelle mon coup. Et le précédent. Et celui d'avant. » Le Prescripteur : « Toi, tu joues ça. Toi, ça. Laissez, je joue pour tout le monde. » Le Double Contrôle : « Je recompte les points. Deux fois. Par joueur. Par manche. » Le verdict, la particule saute dans le fût DASRI : « Tout bien pesé… je choisis l'incinération ! »", "credit": "Librement inspiré d'une planche de Martin Vidberg (Philimag, octobre 2026)"}, {"jour": 4}, {"jour": 5}, {"jour": 6}, {"jour": 7}, {"jour": 8}, {"jour": 9}, {"jour": 10}, {"jour": 11}, {"jour": 12}, {"jour": 13}, {"jour": 14}, {"jour": 15}, {"jour": 16}, {"jour": 17}, {"jour": 18}, {"jour": 19}, {"jour": 20}, {"jour": 21}, {"jour": 22}, {"jour": 23}, {"jour": 24}, {"jour": 25}];
 const AV_ROWS=[[12,3,19],[7,22,1,15,10],[17,5,24,8,13,2,20],[11,23,4,16,6,21,9,14,18]],AV_Y=[186,268,350,432],AV_KEY="pharmacotechnie-avent-2026";
-const AV_T={chanson:"Chanson",image:"Image",citation:"Citation",origami:"Origami",bd:"Bande dessinée"};
+const AV_T={chanson:"Chanson",image:"Image",citation:"Citation",origami:"Origami",bd:"Bande dessinée",cartes:"Cartes"};
 const AV_C={lock:"#D9CEF5",ready:"#F59A62",today:"#ECD567",open:"#E5B4D9"};
-const AV_IC={bd:'<path d="M4 5h16v11H11l-5 4v-4H4z"/><path d="M8 9h8M8 12h5"/>',origami:'<path d="M4 4h16v16H4z"/><path d="M4 4l16 16M20 4 4 20"/>',chanson:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 17-5-5-9 8"/>',citation:'<path d="M4 18c2.5-1 4-3.4 4-7V6H4v5h4M14 18c2.5-1 4-3.4 4-7V6h-4v5h4"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',wait:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
+const AV_IC={cartes:'<rect x="4" y="6" width="11" height="15" rx="2"/><path d="M8 3h10a2 2 0 0 1 2 2v13"/>',bd:'<path d="M4 5h16v11H11l-5 4v-4H4z"/><path d="M8 9h8M8 12h5"/>',origami:'<path d="M4 4h16v16H4z"/><path d="M4 4l16 16M20 4 4 20"/>',chanson:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 17-5-5-9 8"/>',citation:'<path d="M4 18c2.5-1 4-3.4 4-7V6H4v5h4M14 18c2.5-1 4-3.4 4-7V6h-4v5h4"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',wait:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
 const AVO=new Set();
 try{JSON.parse(localStorage.getItem(AV_KEY)||"[]").forEach(n=>AVO.add(n))}catch(e){}
 function avSave(){try{localStorage.setItem(AV_KEY,JSON.stringify([...AVO]))}catch(e){}}
@@ -787,6 +811,9 @@ function avContent(d){
     +(c.source?'<p class="ap-src">'+esc(c.source)+'</p>':'')
     +(c.audio?'<audio class="ap-audio" controls preload="auto" src="'+esc(c.audio)+'" aria-label="'+esc(c.titre)+'"></audio>':'')
     +(c.lien?'<a class="go main" href="'+esc(c.lien)+'" target="_blank" rel="noopener">Écouter</a>':'');
+  else if(t==="cartes"){const mv=!matchMedia("(prefers-reduced-motion:reduce)").matches,L=(c.cartes||[]).slice(0,3);
+    h+='<div class="ap-ca'+(mv?'':' fin')+'"><div class="cas">'+L.map(k=>avCarte(k,d)).join("")+'</div>'+(mv?'<video class="cav" src="'+esc(c.video||AV_BOOSTER)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div>'
+      +(c.titre?'<p class="ap-t">'+esc(c.titre)+'</p>':'')+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+'<p class="ap-src">'+(L.length>1?'Faites glisser pour voir les '+L.length+' cartes. ':'')+'Touchez une carte pour la voir en grand.</p>'}
   else if(t==="bd")h+='<div class="ap-bd'+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'':' fin')+'"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="Lire en grand : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'<video class="bdv" src="'+esc(c.video)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div>'
     +'<p class="ap-t">'+esc(c.titre)+'</p>'+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+'<p class="ap-src">Touchez la planche pour la lire en grand.</p>';
   else if(t==="image")h+='<figure><img src="'+esc(c.image)+'" alt="'+esc(c.titre)+'" loading="lazy"><figcaption>'+esc(c.titre)+'</figcaption></figure>';
@@ -821,7 +848,7 @@ function avOri(d){
     +'<g class="o-c"><circle r="31" fill="#FFFBF2" stroke="'+V+'" stroke-width="3"/><image href="'+AV_LOGO+'" x="-25" y="-25" width="50" height="50"/></g></svg></div>';
 }
 /* Vidéo d'ouverture d'une bande dessinée : à la fin (ou en cas d'échec), elle laisse la place à la planche. */
-["ended","error"].forEach(ev=>document.addEventListener(ev,e=>{const v=e.target;if(!v||!v.classList)return;if(v.classList.contains("bdv"))v.parentNode.classList.add("fin");if(v.classList.contains("ouv"))v.remove();if(v.classList.contains("evv"))avEvEnd()},true));
+["ended","error"].forEach(ev=>document.addEventListener(ev,e=>{const v=e.target;if(!v||!v.classList)return;if(v.classList.contains("bdv")||v.classList.contains("cav"))v.parentNode.classList.add("fin");if(v.classList.contains("ouv"))v.remove();if(v.classList.contains("evv"))avEvEnd()},true));
 /* Vidéo générique d'ouverture d'une goutte : indiquer ici son chemin (elle doit finir sur un aplat crème #FFFBF2).
    Vide : pas de vidéo. Elle ne joue qu'au clic, jamais pour une case qui a sa propre vidéo, ni en mouvement réduit. */
 const AV_OUV="";
@@ -829,13 +856,16 @@ const AV_OUV="";
 document.addEventListener("click",e=>{
   if(e.target.closest("[data-ev]")){avEv(true);return}
   if(e.target.closest(".av-ev")){avEvEnd();return}
-  const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG")e.target.classList.toggle("zz");else z.remove();return}
+  if(e.target.classList&&e.target.classList.contains("cav")){e.target.pause();e.target.parentNode.classList.add("fin");return}
+  const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG"&&e.target.parentNode===z)e.target.classList.toggle("zz");else if(!e.target.closest(".bdc"))z.remove();return}
+  const ca=e.target.closest(".ap-ca .carte");if(ca){const d=document.createElement("div");d.className="bdz";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-label",ca.getAttribute("aria-label"));
+    d.innerHTML='<button type="button">Fermer</button><div class="bdc"></div>';const k=ca.cloneNode(true);k.removeAttribute("aria-label");k.tabIndex=-1;k.style.animation="none";d.lastChild.appendChild(k);document.body.appendChild(d);d.querySelector("button").focus();return}
   const a=e.target.closest(".ap-bd a");if(!a)return;e.preventDefault();
   const im=a.querySelector("img"),d=document.createElement("div");d.className="bdz";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-label",im.alt);
   d.innerHTML='<button type="button">Fermer</button><img src="'+esc(a.getAttribute("href"))+'" alt="'+esc(im.alt)+'"><p>Touchez l\'image pour zoomer.</p>';
   document.body.appendChild(d);d.querySelector("button").focus();
 });
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){const z=document.querySelector(".bdz");if(z)z.remove();else avEvEnd()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){const z=document.querySelector(".bdz");if(z)z.remove();else{avEvEnd();const v=document.querySelector("#avPanel .cav");if(v&&!v.parentNode.classList.contains("fin")){v.pause();v.parentNode.classList.add("fin")}}}});
 /* Jours d'événement : le 1er et le 25 décembre, une vidéo du sapin joue une fois par appareil à l'arrivée sur la page (muette),
    dans son propre cadre, puis s'efface. Elle n'ouvre aucune goutte. Pas en mouvement réduit ; se passe d'un toucher ou avec Échap. */
 const AV_EV={1:["video/sapin-1er-decembre.mp4","Levée de quarantaine : le lot de décembre est libéré."],25:["video/sapin-25-decembre.mp4","Dernière dose. Le Père Noël a signé la libération."]};
@@ -849,6 +879,12 @@ function avEv(force){
   $("#avTree").insertAdjacentHTML("beforeend",'<div class="av-ev" role="group" aria-label="'+esc(ev[1])+'"><video class="evv" src="'+ev[0]+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video><p>'+esc(ev[1])+'</p><button class="go" type="button">Passer</button></div>');
   avEv.t=setTimeout(avEvEnd,10000);
 }
+/* Case de type « cartes » : {"jour": n, "type": "cartes", "titre": "(facultatif) titre sous les cartes", "credit": "(facultatif)",
+   "cartes": [{"image": "img/….webp", "titre": "Titre court", "texte": "(facultatif) une ligne", "symbole": "(facultatif, sinon le numéro du jour)", "alt": "(facultatif) description de l'image"}]}
+   Une à trois cartes. Image : portrait 580 x 630 px environ (rapport 0,92), WebP ou JPEG, recadrée en « cover » dans la fenêtre du gabarit ;
+   garder le sujet au centre. Titre : 22 caractères au plus pour tenir sur une ligne. Texte : 34 caractères au plus. Symbole : un à deux caractères. */
+const AV_BOOSTER="video/booster-cartes.mp4",AV_GABARIT="img/carte-gabarit.webp";
+function avCarte(k,d){return '<button class="carte" type="button" aria-label="Voir en grand : '+esc(k.titre||"carte")+'"><img class="cg" src="'+AV_GABARIT+'" alt="">'+(k.image?'<img class="ci" src="'+esc(k.image)+'" alt="'+esc(k.alt||k.titre||"")+'">':'')+'<span class="cm" aria-hidden="true">'+esc(k.symbole||String(d))+'</span><span class="cb"><b>'+esc(k.titre||"")+'</b>'+(k.texte?'<small>'+esc(k.texte)+'</small>':'')+'</span></button>'}
 function avLocked(d){
   const j=avDays(d);
   return avHead("lock","Goutte du "+avDate(d),"Sous scellé")+'<p class="ap-p">Libération prévue le '+avDate(d)+(j>1?", dans "+j+" jours":"")+'. Ne pas dépasser la dose prescrite : le Père Noël surveille les stocks.</p>';
@@ -872,7 +908,7 @@ function avOpen(d,viaBtn){
   const g=$('#avTree [data-d="'+d+'"]');
   if(g){if(!viaBtn)g.focus({preventScroll:true});if(first){g.classList.add("pop","fill");g.style.setProperty("--d",".05s");const b=g.getBBox();$("#avTree svg").insertAdjacentHTML("beforeend",avBurst(b.x+b.width/2,b.y+b.height/2,d===25?56:46))}}
   $("#avPanel").innerHTML=avContent(d);
-  if(AV_OUV&&!(AVENT[d-1]||{}).video&&!matchMedia("(prefers-reduced-motion:reduce)").matches)$("#avPanel").insertAdjacentHTML("afterbegin",'<video class="ouv" src="'+esc(AV_OUV)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>');
+  if(AV_OUV&&!(AVENT[d-1]||{}).video&&(AVENT[d-1]||{}).type!=="cartes"&&!matchMedia("(prefers-reduced-motion:reduce)").matches)$("#avPanel").insertAdjacentHTML("afterbegin",'<video class="ouv" src="'+esc(AV_OUV)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>');
   const au=$("#avPanel audio");if(au)au.play().catch(()=>{});
   if(matchMedia("(max-width:860px)").matches)$("#avPanel").scrollIntoView({block:"nearest",behavior:"smooth"});
 }
