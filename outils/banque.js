@@ -69,6 +69,7 @@ function controler(b) {
           if (!Array.isArray(c.reponses) || !c.reponses.length || c.reponses.some(x => typeof x !== 'string' || !norm(x).replace(/[^a-z0-9]/g, ''))) e.push(o + 'réponses acceptées manquantes');
         } else e.push(o + 'saisie inconnue');
       });
+      if (E.amorces !== undefined && (!Array.isArray(E.amorces) || E.amorces.some(a => !a || !Number.isInteger(a.n) || a.n < 1 || a.n > 25 || typeof a.titre !== 'string' || !a.titre || typeof a.texte !== 'string' || !a.texte))) e.push(ou + 'amorces : jour, titre et texte attendus');
       if (/—/.test(JSON.stringify(E))) e.push(ou + 'tiret cadratin');
     }
   }

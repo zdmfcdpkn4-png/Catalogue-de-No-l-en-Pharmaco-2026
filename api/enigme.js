@@ -236,6 +236,8 @@ function attribuer(V, k) {
 // et les deux suivants, comme une porte ; close sans avoir été résolue, sa révélation sort d'office, sans point.
 // Banque : { titre, denouement, enigmes: [ { k, n: jour de décembre, titre, enonce, saisie: 'choix' | 'texte',
 //   options (choix), bonne: indice (choix), reponses: [textes acceptés] (texte), revelation, elimine, source, pts } ] }.
+// Amorce (facultative) : amorces: [ { n: jour, titre, texte, fiche: vrai si elle dévoile la fiche de suivi } ]. Chacune sort
+// pour le joueur qui a joué la porte de ce jour (une porte lancée compte), et pour tous quand cette porte est close.
 // Ce que le serveur garde par joueur : x: { k: { v: sa réponse, t: heure, ok: juste ou non } }.
 // Les points vont à la brigade, jamais au classement individuel.
 const normRep = s => norm(s).replace(/[^a-z0-9]/g, '');
@@ -270,6 +272,7 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
     return o;
   });
   const o = { titre: E.titre, fiction: true, max: E.enigmes.reduce((t, c) => t + c.pts, 0), enigmes };
+  if (E.amorces) o.amorces = E.amorces.filter(a => tout || (jour >= a.n && (etatDe(a.n, jour) === 'close' || Boolean(j && j.r[a.n]))));
   if (s) o.points = pointsEnq(E, S, jour, false)[j.b];
   // Le dénouement : quand les énigmes du dernier jour sont toutes sues de la brigade (résolues ou closes).
   const fin = Math.max(...E.enigmes.map(c => c.n));
