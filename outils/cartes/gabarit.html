@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Titre;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-800-normal.woff2)}
+@font-face{font-family:Corps;font-weight:500;src:url(node_modules/@fontsource/fira-sans-extra-condensed/files/fira-sans-extra-condensed-latin-500-normal.woff2)}
+@font-face{font-family:Corps;font-weight:500;font-style:italic;src:url(node_modules/@fontsource/fira-sans-extra-condensed/files/fira-sans-extra-condensed-latin-500-italic.woff2)}
+@font-face{font-family:Corps;font-weight:600;src:url(node_modules/@fontsource/fira-sans-extra-condensed/files/fira-sans-extra-condensed-latin-600-normal.woff2)}
+@font-face{font-family:Corps;font-weight:700;src:url(node_modules/@fontsource/fira-sans-extra-condensed/files/fira-sans-extra-condensed-latin-700-normal.woff2)}
+:root{--laiton:#d2a757;--laiton2:#8a6427;--fond:#1f3a42;--fond2:#14262c;--creme:#fbe9c8;--or:#f3c44f;--encre:#2a1a10}
+html,body{margin:0;background:transparent}
+.carte{position:relative;width:680px;height:1024px;border-radius:30px;overflow:hidden;font-family:Corps,sans-serif;color:var(--creme);
+  background:radial-gradient(120% 80% at 50% 35%,#2f5560 0%,var(--fond) 55%,var(--fond2) 100%)}
+.carte.lieu{--fond:#22384a;--accent:#5cc0d8}.carte.objet{--fond:#2b3640;--accent:#e9a64a}.carte.personnage{--accent:#e98fc6}
+.cadre{position:absolute;inset:14px;border-radius:22px;border:3px solid var(--laiton);box-shadow:inset 0 0 0 2px var(--laiton2),0 0 0 2px #0008}
+.plaque{position:absolute;top:24px;height:40px;display:flex;align-items:center;gap:8px;padding:0 16px 0 6px;border-radius:10px;
+  background:linear-gradient(#3a2a1c,#22180f);border:2px solid var(--laiton);font-weight:700;font-size:21px;letter-spacing:.5px;color:#f6dcae}
+.plaque.g{left:26px}.plaque.d{right:26px;padding:0 16px}
+.plaque svg{width:30px;height:30px}
+.titre{position:absolute;left:30px;right:30px;top:72px;height:62px;display:grid;place-items:center}
+.titre span{grid-area:1/1;position:relative;font-family:Titre;font-size:50px;line-height:1;white-space:nowrap;letter-spacing:.3px}
+.titre .c{z-index:0;-webkit-text-stroke:8px var(--encre);color:var(--encre);filter:drop-shadow(0 3px 0 #0007)}
+.titre .r{z-index:1;background:linear-gradient(90deg,#ee5a4a 0%,#f39a3d 28%,#55b6dc 55%,#5cc6a6 78%,#9bd05a 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sous{position:absolute;left:30px;right:30px;top:136px;text-align:center;font-weight:600;font-size:25px;color:var(--or);
+  text-shadow:0 0 3px var(--encre),0 2px 0 var(--encre),0 0 6px var(--encre)}
+.fen{position:absolute;left:34px;top:174px;width:612px;height:612px;border-radius:16px;overflow:hidden;border:3px solid var(--laiton);
+  box-shadow:0 0 0 2px var(--laiton2),0 6px 16px #0009;background:#000}
+.fen>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bulle{position:absolute;display:grid;place-items:center;color:#161616;font-weight:600;text-align:center;line-height:1.08;box-sizing:border-box}
+.bulle div{max-width:100%}
+.calque{position:absolute;pointer-events:none}
+.texte{position:absolute;left:40px;right:40px;top:798px;height:96px;display:flex;flex-direction:column;justify-content:center;gap:4px;text-align:center}
+.texte p{margin:0;font-weight:500;line-height:1.18;text-shadow:0 0 3px var(--encre),0 2px 0 var(--encre)}
+.texte .cit{font-style:italic;color:var(--or)}
+.stats{position:absolute;left:120px;right:120px;top:902px;height:94px;border-radius:12px;border:3px solid var(--laiton);
+  background:linear-gradient(#1a2b30,#0f1b1f);box-shadow:inset 0 0 0 2px #000a;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px}
+.stats div{font-weight:600;font-size:21px;line-height:1.15;color:#9fd7cf;letter-spacing:.3px;white-space:nowrap}
+.stats b{font-weight:700;color:var(--or)}.stats .r b{color:#ee6a5a}.stats .o b{color:#f3c44f}.stats .v b{color:#7fd6a0}
+.stats svg{width:19px;height:19px;vertical-align:-2px;margin-left:2px}
+.engr{position:absolute;width:56px;height:56px;opacity:.95}
+.micro{position:absolute;bottom:16px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:1.5px;color:#d2a75799}
+</style></head><body>
+<div id="c" class="carte"></div>
+<script>
+const ICONES={
+ personnage:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#d2a757"/><circle cx="12" cy="9" r="3.6" fill="#2a1a10"/><path d="M5.5 19c.8-3.6 3.4-5.4 6.5-5.4s5.7 1.8 6.5 5.4" fill="#2a1a10"/></svg>',
+ lieu:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#d2a757"/><path d="M12 4.5a5 5 0 0 0-5 5c0 3.8 5 9.5 5 9.5s5-5.7 5-9.5a5 5 0 0 0-5-5z" fill="#2a1a10"/><circle cx="12" cy="9.6" r="1.9" fill="#d2a757"/></svg>',
+ objet:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#d2a757"/><path d="M10 5h4v1.6h-.7v3.2l3.6 6.6a1.6 1.6 0 0 1-1.4 2.4H8.5a1.6 1.6 0 0 1-1.4-2.4l3.6-6.6V6.6H10z" fill="#2a1a10"/></svg>'};
+const ETOILE=(f)=>'<svg viewBox="0 0 24 24"><defs><linearGradient id="g'+f+'"><stop offset="'+f+'" stop-color="#f3c44f"/><stop offset="'+f+'" stop-color="#5a4a2a"/></linearGradient></defs><path d="M12 2.5l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17l-5.9 3.3 1.3-6.5L2.5 9.3l6.6-.8z" fill="url(#g'+f+')" stroke="#2a1a10" stroke-width="1.2"/></svg>';
+const etoiles=n=>[0,1,2,3].map(i=>ETOILE(Math.max(0,Math.min(1,n-i)))).join('');
+const ENGR='<svg viewBox="0 0 40 40"><g fill="#a9813f" stroke="#5c3f15" stroke-width="1"><path d="M20 3l3 4 5-1 1 5 5 2-2 4 3 4-4 3 1 5-5 1-2 5-4-2-4 3-3-4-5 1-1-5-5-2 2-4-3-4 4-3-1-5 5-1 2-5 4 2z"/></g><circle cx="20" cy="20" r="6" fill="#2a1a10" stroke="#d2a757" stroke-width="2"/></svg>';
+function ajuste(el,max,min){let t=max;el.style.fontSize=t+'px';while(t>min&&(el.scrollHeight>el.clientHeight+1||el.scrollWidth>el.clientWidth+1)){t-=.5;el.style.fontSize=t+'px'}}
+const fr=t=>String(t).replace(/\s+([?!:;»])/g,'\u202F$1').replace(/«\s+/g,'«\u202F');
+function rendre(C){
+  C=JSON.parse(JSON.stringify(C,(k,v)=>typeof v==='string'&&!['illus','style','html','type'].includes(k)?fr(v):v));
+  const c=document.getElementById('c');c.className='carte '+C.type;
+  const stat=s=>{const v=String(s[1]);return '<div class="'+(s[2]||'')+'">'+s[0]+' : <b>'+(v[0]==='*'?etoiles(+v.slice(1)):v)+'</b></div>'};
+  c.innerHTML='<div class="cadre"></div>'
+   +'<div class="plaque g">'+ICONES[C.type]+C.etiquette+'</div><div class="plaque d">'+C.coin+'</div>'
+   +'<div class="titre"><span class="c">'+C.titre+'</span><span class="r">'+C.titre+'</span></div>'
+   +'<div class="sous">'+C.sousTitre+'</div>'
+   +'<div class="fen"><img src="'+C.illus+'">'
+     +(C.bulles||[]).map((b,i)=>{const z=C.zones[i],k=b.k||.76,w=z[2]*k,h=z[3]*k,x=z[0]+(z[2]-w)/2,y=Math.max(z[1]+(z[3]-h)/2,1.2);return '<div class="bulle" style="left:'+x+'%;top:'+y+'%;width:'+w+'%;height:'+(Math.min(h,z[1]+z[3]-y-1.5))+'%"><div>'+b.t+'</div></div>'}).join('')
+     +(C.calques||[]).map(k=>'<div class="calque" style="'+k.style+'">'+k.html+'</div>').join('')
+   +'</div>'
+   +'<div class="texte"><p class="t">'+C.texte+'</p>'+(C.citation?'<p class="cit">'+C.citation+'</p>':'')+'</div>'
+   +'<div class="stats">'+C.stats.map(stat).join('')+'</div>'
+   +'<div class="engr" style="left:4px;bottom:4px">'+ENGR+'</div><div class="engr" style="right:4px;bottom:4px">'+ENGR+'</div>'
+   +(C.micro?'<div class="micro">'+C.micro+'</div>':'');
+  // ajustements : titre sur une ligne, bulles et texte dans leur boîte
+  const ts=c.querySelectorAll('.titre span');let f=50;ts.forEach(s=>s.style.fontSize=f+'px');
+  while(f>30&&ts[1].offsetWidth>600){f-=1;ts.forEach(s=>s.style.fontSize=f+'px')}
+  c.querySelectorAll('.bulle').forEach(b=>ajuste(b,22,11));
+  const tx=c.querySelector('.texte');let t=23;tx.style.fontSize=t+'px';while(t>15&&tx.scrollHeight>tx.clientHeight+1){t-=.5;tx.style.fontSize=t+'px'}
+  const st=c.querySelector('.stats');
+  return document.fonts.ready;
+}
+window.rendre=rendre;
+</script></body></html>
