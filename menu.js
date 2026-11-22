@@ -35,13 +35,14 @@
   // La tranche du jeton : onze disques empilés entre la face et le dos.
   const TRANCHE = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5].map(z => '<span class="pm-t" style="--z:' + z + 'px"></span>').join("");
   const n = typeof G !== "undefined" && Array.isArray(G) ? G.length : 0;
-  // bientot : la page n'est pas encore ouverte ; une étiquette de travers le dit sous le bouton, avec son motif, jusqu'au jour « ouvre ».
+  // pancarte : la page n'est pas encore ouverte ; une étiquette de travers le dit sous le bouton, jusqu'au jour « ouvre » (sans date : jusqu'à son retrait).
+  // bientot : motif en petit sous l'étiquette ; seul, l'étiquette dit « Bientôt disponible ».
   // sel : la section qui doit exister pour que le bouton s'affiche ; img : la déclinaison du logo ; fond : la teinte du disque.
   const PAGES = [
     { id: "catalogue", href: "#", t: "Catalogue", s: n ? n + " jeux à prescrire" : "Les jeux à prescrire", img: "menu-catalogue.webp", fond: "#F59A62" },
-    { id: "sapin", href: "#sapin", t: "Sapin de l'Avent", s: "Une dose par jour", sel: "#avent", img: "menu-sapin.webp", fond: "#BFE3C9", bientot: "lot en quarantaine", ouvre: "2026-12-01" },
-    { id: "pharmacogames", href: "#pharmacogames", t: "Pharmacogames", s: "Le concours à points", sel: "#pharmacogames", img: "menu-pharmacogames.webp", fond: "#B9A6F0", bientot: "libération en cours", ouvre: "2026-12-01" },
-    { id: "vote", href: "#vote", t: "Palmarès", s: "Votez pour votre jeu", sel: "#vote", img: "menu-palmares.webp", fond: "#F2E39A" },
+    { id: "sapin", href: "#sapin", t: "Sapin de l'Avent", s: "Une dose par jour", sel: "#avent", img: "menu-sapin.webp", fond: "#BFE3C9", pancarte: "En quarantaine", ouvre: "2026-12-01" },
+    { id: "pharmacogames", href: "#pharmacogames", t: "Pharmacogames", s: "Le concours à points", sel: "#pharmacogames", img: "menu-pharmacogames.webp", fond: "#B9A6F0", pancarte: "En attente de libération", ouvre: "2026-12-01" },
+    { id: "vote", href: "#vote", t: "Palmarès", s: "Votez pour votre jeu", sel: "#vote", img: "menu-palmares.webp", fond: "#F2E39A", pancarte: "Jury sous hotte" },
     // plein : la face est une image entière (autocollant détouré, avec son propre contour), sans logo ni accessoire.
     // haut : pastille à part, en haut à droite de l'en-tête (dans le coin libre sur ordinateur ; sous le titre quand l'écran est trop étroit pour l'aligner avec lui). Elle mène à la fiche d'identification du joueur.
     { id: "pharmacomeeple", href: "#pharmacomeeple", t: "Pharmacomeeple", s: "Votre fiche et votre brigade", sel: "#pharmacogames", img: "emblemes/pharmacomeeple.webp", plein: true, fond: "#BFE3F2", bientot: "lot en quarantaine", ouvre: "2026-11-26", haut: true },
@@ -50,7 +51,7 @@
   // ce n'est qu'un affichage, la vraie barrière reste le serveur.
   let auj = "";
   try { auj = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); } catch (e) { auj = new Date().toISOString().slice(0, 10); }
-  const attendu = p => !!p.bientot && (!p.ouvre || auj < p.ouvre);
+  const attendu = p => !!(p.bientot || p.pancarte) && (!p.ouvre || auj < p.ouvre);
 
   const st = document.createElement("style");
   st.textContent = `
@@ -114,7 +115,7 @@
   nav.setAttribute("aria-label", "Les quatre pages du site");
   const bouton = p => '<a href="' + p.href + '" data-page="' + p.id + '"' + (p.sel && !q(p.sel) ? ' class="att"' : "") + '><span class="pm-d" style="--fond:' + p.fond + '">'
     + '<span class="pm-o"></span><span class="pm-j"><span class="pm-f' + (p.plein ? " plein" : "") + '"><img src="img/' + p.img + '" alt="" width="224" height="224" decoding="async">' + (p.plein ? "" : PLUS[p.id]) + "</span>" + TRANCHE
-    + '<span class="pm-v" style="--fond:' + p.fond + '">' + DOS[p.id] + "</span></span></span><b>" + p.t + "</b><small>" + p.s + "</small>" + (attendu(p) ? '<em class="pm-s">Bientôt disponible<i>' + p.bientot + "</i></em>" : "") + "</a>";
+    + '<span class="pm-v" style="--fond:' + p.fond + '">' + DOS[p.id] + "</span></span></span><b>" + p.t + "</b><small>" + p.s + "</small>" + (attendu(p) ? '<em class="pm-s">' + (p.pancarte || "Bientôt disponible") + (p.bientot ? "<i>" + p.bientot + "</i>" : "") + "</em>" : "") + "</a>";
   nav.innerHTML = PAGES.filter(p => !p.haut).map(bouton).join("");
   ancre.insertAdjacentElement("afterend", nav);
   const haut = document.createElement("nav");
