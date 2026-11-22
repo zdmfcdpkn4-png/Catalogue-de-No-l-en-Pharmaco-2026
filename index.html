@@ -295,7 +295,7 @@ footer{padding:26px 0 34px;font-size:.86rem}
 @keyframes dshake{20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
 .adv-tree .n1{font:600 15px var(--mono);fill:#26076D}
 .adv-tree .n2{font:800 17px var(--display);fill:#26076D}
-.adv-panel{min-width:0;padding:16px 18px 18px;background:var(--surface);color:var(--on-surface);border:3px solid var(--line);border-radius:18px;box-shadow:6px 6px 0 var(--shadow)}
+.adv-panel{position:relative;min-width:0;padding:16px 18px 18px;background:var(--surface);color:var(--on-surface);border:3px solid var(--line);border-radius:18px;box-shadow:6px 6px 0 var(--shadow)}
 .ap-h{display:flex;align-items:center;gap:12px}
 .ap-ic{flex:0 0 auto;display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--mu);border:3px solid var(--line)}
 .avi{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -355,6 +355,7 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .adv-panel .ap-bd img{display:block;width:100%;height:100%;max-height:none;object-fit:contain;border:0;border-radius:0;background:none}
 .ap-bd .bdv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;background:#DDD0EC;animation:bdvOut .5s 12s forwards}
 .ap-bd.fin .bdv{animation:bdvOut2 .5s forwards}
+.adv-panel .ouv{position:absolute;inset:0;z-index:2;width:100%;height:100%;object-fit:cover;border-radius:15px;background:#FFFBF2;pointer-events:none;animation:bdvOut .5s 10s forwards}
 @keyframes bdvOut{to{opacity:0;visibility:hidden}}
 @keyframes bdvOut2{to{opacity:0;visibility:hidden}}
 @media (prefers-reduced-motion:reduce){.ap-bd a,.ap-bd.fin a{animation:none}.ap-bd .bdv{display:none}}
@@ -450,7 +451,7 @@ footer{padding:26px 0 34px;font-size:.86rem}
   <p class="adv-back"><a class="go" href="#">Retour au catalogue</a></p>
   <div class="adv-head">
     <h2 id="avent-t">Le sapin <span>de l'Avent</span></h2>
-    <p class="adv-intro">Une dose par jour du 1<sup>er</sup> au 25 décembre : une chanson, une image, une citation ou un origami. Chaque goutte reste sous scellé jusqu'à sa date.</p>
+    <p class="adv-intro">Posologie : une goutte par jour, du 1<sup>er</sup> au 25 décembre. Composition : secret de fabrication. Chaque goutte reste sous scellé jusqu'à sa date.</p>
   </div>
   <div class="adv-body">
     <div class="adv-tree" id="avTree"></div>
@@ -766,10 +767,10 @@ function avNext(){
 }
 function avIntro(){
   const n=avNow();
-  if(n===0)return avHead("lock","Sapin sous scellé","Ouverture le 01/12")+'<p class="ap-p">Une goutte s\'ouvre chaque jour jusqu\'à Noël. Touchez une goutte pour connaître sa date.</p>'+avNext();
+  if(n===0)return avHead("lock","Sapin sous scellé","Ouverture le 01/12")+'<p class="ap-p">Lot en quarantaine jusqu\'au 1er décembre. Inutile de secouer le sapin, on a essayé. Touchez une goutte pour connaître sa date de libération.</p>'+avNext();
   if(n>25)return avHead("citation","Les 25 doses sont délivrées","Traitement terminé")+'<p class="ap-p">Touchez une goutte pour revoir sa surprise.</p>';
-  if(AVO.has(n))return avContent(n);
-  return avHead("wait","Dose du "+avDate(n),"Dose du jour")+'<p class="ap-p">Votre goutte du jour vous attend.</p><button class="go main" type="button" data-av="'+n+'">Ouvrir la goutte du jour</button>'+avNext();
+  if(AVO.has(n))return avHead("wait","Dose du "+avDate(n),"Déjà délivrée")+'<p class="ap-p">Dose du jour déjà délivrée. Touchez la goutte pour une seconde administration.</p><button class="go main" type="button" data-av="'+n+'">Revoir la dose du jour</button>'+avNext();
+  return avHead("wait","Dose du "+avDate(n),"Dose du jour")+'<p class="ap-p">Votre dose du jour est prête. Contenu : surprise.</p><button class="go main" type="button" data-av="'+n+'">Ouvrir la goutte du jour</button>'+avNext();
 }
 function avContent(d){
   const c=AVENT[d-1]||{},t=c.type;
@@ -814,7 +815,10 @@ function avOri(d){
     +'<g class="o-c"><circle r="31" fill="#FFFBF2" stroke="'+V+'" stroke-width="3"/><image href="'+AV_LOGO+'" x="-25" y="-25" width="50" height="50"/></g></svg></div>';
 }
 /* Vidéo d'ouverture d'une bande dessinée : à la fin (ou en cas d'échec), elle laisse la place à la planche. */
-["ended","error"].forEach(ev=>document.addEventListener(ev,e=>{const v=e.target;if(v&&v.classList&&v.classList.contains("bdv"))v.parentNode.classList.add("fin")},true));
+["ended","error"].forEach(ev=>document.addEventListener(ev,e=>{const v=e.target;if(!v||!v.classList)return;if(v.classList.contains("bdv"))v.parentNode.classList.add("fin");if(v.classList.contains("ouv"))v.remove()},true));
+/* Vidéo générique d'ouverture d'une goutte : indiquer ici son chemin (elle doit finir sur un aplat crème #FFFBF2).
+   Vide : pas de vidéo. Elle ne joue qu'au clic, jamais pour une case qui a sa propre vidéo, ni en mouvement réduit. */
+const AV_OUV="";
 /* Lecture en grand : la planche reste ouverte par-dessus la page jusqu'au bouton Fermer (ou Échap). */
 document.addEventListener("click",e=>{
   const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG")e.target.classList.toggle("zz");else z.remove();return}
@@ -826,7 +830,7 @@ document.addEventListener("click",e=>{
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){const z=document.querySelector(".bdz");if(z)z.remove()}});
 function avLocked(d){
   const j=avDays(d);
-  return avHead("lock","Goutte du "+avDate(d),"Sous scellé")+'<p class="ap-p">Elle s\'ouvrira le '+avDate(d)+(j>1?", dans "+j+" jours":"")+'. Pas d\'ouverture anticipée : la date fait foi.</p>';
+  return avHead("lock","Goutte du "+avDate(d),"Sous scellé")+'<p class="ap-p">Libération prévue le '+avDate(d)+(j>1?", dans "+j+" jours":"")+'. Ne pas dépasser la dose prescrite : le Père Noël surveille les stocks.</p>';
 }
 /* Vue séparée : #sapin affiche le sapin sous l'en-tête et masque le catalogue ; tout autre lien rend le catalogue. */
 function avView(){
@@ -847,6 +851,7 @@ function avOpen(d,viaBtn){
   const g=$('#avTree [data-d="'+d+'"]');
   if(g){if(!viaBtn)g.focus({preventScroll:true});if(first){g.classList.add("pop","fill");g.style.setProperty("--d",".05s");const b=g.getBBox();$("#avTree svg").insertAdjacentHTML("beforeend",avBurst(b.x+b.width/2,b.y+b.height/2,d===25?56:46))}}
   $("#avPanel").innerHTML=avContent(d);
+  if(AV_OUV&&!(AVENT[d-1]||{}).video&&!matchMedia("(prefers-reduced-motion:reduce)").matches)$("#avPanel").insertAdjacentHTML("afterbegin",'<video class="ouv" src="'+esc(AV_OUV)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>');
   const au=$("#avPanel audio");if(au)au.play().catch(()=>{});
   if(matchMedia("(max-width:860px)").matches)$("#avPanel").scrollIntoView({block:"nearest",behavior:"smooth"});
 }
