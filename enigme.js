@@ -409,7 +409,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (location.hash === "#enigme") history.replaceState(null, "", "#pharmacogames"); // ancienne adresse de la page
     const on = location.hash === "#pharmacogames" || location.hash === "#pharmacomeeple";
     sec.hidden = !on;
-    if (!on) { if (enFiche) { enFiche = false; if (E) panneau(); } return; } // en quittant la page, la fiche ouverte se referme
+    if (!on) { if (enTirage) devoiler(); if (enFiche) { enFiche = false; if (E) panneau(); } return; } // en quittant la page, la fiche ouverte se referme
     versFiche = location.hash === "#pharmacomeeple";
     document.querySelectorAll("#avent,.ind,.bar,main").forEach(e => { e.hidden = true; });
     sec.scrollIntoView({ block: "start" });
@@ -488,7 +488,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (enJeu) { enJeu(); enJeu = null; }
     clearInterval(tic); echeance = {};
     relecture = "";
-    E = null; enFiche = false;
+    E = null; enFiche = false; enTirage = false;
     q("#egBody").hidden = true; q("#egRank").hidden = true; q("#egBanner").hidden = true;
     q("#egGate").hidden = false;
     q("#egNotice").open = true;
@@ -496,7 +496,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   }
 
   async function charger(msg) {
-    if (occupe || enJeu) return;
+    if (occupe || enJeu || enTirage) return; // pendant le tirage, rien ne rafraîchit la page : la brigade ne se dévoile qu'à la révélation
     occupe = true;
     let r;
     // Entré par la liste sans fiche encore : on redemande par le nom, au cas où la fiche aurait été créée sur un autre appareil.
@@ -609,7 +609,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       pseudo: mem.prenom || E.suggestion || "", avatar: P.a, brigade: P.b,
       // Entré par la liste, sans fiche encore : la fiche demande aussi le pseudo.
       choisirPseudo: !mem.prenom && Boolean(mem.nom), nom: mem.nom,
-      versCarnet: E.choix && E.choix.etat === "ouvert" ? () => { enFiche = false; carnet(); } : undefined,
+      versCarnet: E.choix && E.choix.etat === "ouvert" ? () => { devoiler(); enFiche = false; carnet(); } : undefined,
       renommer: async neuf => {
         let r;
         try { r = await call({ code: mem.code, prenom: mem.prenom, action: "renommer", pseudo: neuf }); } catch (e) { r = { status: 0, j: {} }; }
@@ -634,13 +634,23 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         if (r.status === 403 && r.j.error === "complet") return { ok: false, message: "Le calendrier affiche complet : plus de place pour un nouveau joueur." };
         if (r.status !== 200 || !r.j.profil) return { ok: false };
         E = r.j;
-        majBrigades(); identite(); grille(); rang();
+        // Brigade tout juste tirée : la page ne la montre nulle part (en-tête, classement) avant la révélation de la fiche,
+        // qui vient après la vidéo du tirage. Une retouche, elle, se voit tout de suite.
+        if (P.b === undefined) enTirage = true; else devoiler();
         const b = E.profil.b, ligne = (E.brigades || []).find(x => x.b === b);
         return { ok: true, brigade: b, effectif: ligne ? ligne.n : 0 };
       },
-      onFin: msg => { enFiche = false; panneau(msg); },
+      reveler: devoiler,
+      onFin: msg => { devoiler(); enFiche = false; panneau(msg); },
     });
     q("#egPanel").scrollIntoView({ block: "nearest" });
+  }
+  // enTirage : la brigade vient d'être tirée et n'est pas encore révélée. devoiler() met la page à jour une fois la révélation faite.
+  let enTirage = false;
+  function devoiler() {
+    enTirage = false;
+    if (!E) return;
+    majBrigades(); identite(); grille(); rang();
   }
 
   function grille() {

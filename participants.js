@@ -207,6 +207,7 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
      o.renommer(pseudo) : en retouche seulement, promesse de { ok: true } ou { ok: false, message } pour changer de pseudo.
      o.choisirPseudo : à la création, la fiche demande aussi le pseudo (entrée par la liste des participants) ; o.nom est alors
        le nom choisi dans la liste, o.pseudo la suggestion, et enregistrer(avatar, pseudo) reçoit le pseudo retenu.
+     o.reveler() : appelé au moment où la brigade tirée s'affiche, après la vidéo du tirage ; rien ne doit la montrer avant.
      o.onFin() : la fiche est refermée (validée ou abandonnée). */
   // Vidéo générique du tirage, jouée entre la validation de la fiche et la révélation de la brigade. Tant que `src` est
   // vide, ou si la vidéo ne se charge pas, ne démarre pas ou dure trop, ou si le joueur préfère moins de mouvement,
@@ -308,6 +309,7 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
       const B = BRIGADES[r.brigade];
       if (!B) return o.onFin();
       jouerTirage(el, () => {
+      if (o.reveler) o.reveler(); // la page peut maintenant montrer la brigade : pas avant, la vidéo du tirage vient de finir
       el.innerHTML = '<div class="pp"><p class="ap-m">Affectation · tirage équilibré par le serveur</p><h3 tabindex="-1" id="ppTitre">' + h(B.nom) + "</h3>"
         + '<div class="pp-carte" style="background:' + B.fond + '"><div class="pp-apercu pp-pop">' + avatar(a, { brigade: r.brigade }) + "</div>"
         + "<div>" + emblemeSvg(r.brigade) + "<b>" + h(o.pseudo) + "</b><small>" + h(B.nom) + (r.effectif ? " · " + r.effectif + (r.effectif > 1 ? " membres" : " membre") : "") + "</small></div></div>"
