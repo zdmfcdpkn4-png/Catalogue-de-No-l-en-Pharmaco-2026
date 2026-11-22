@@ -329,7 +329,9 @@ function composer(E, graine) {
   const melange = L => { const A = L.slice(), o = []; while (A.length) o.push(A.splice(Math.floor(rnd() * A.length), 1)[0]); return o; };
   const coupable = {}, innocents = {};
   for (const c of [...new Set(E.fiches.map(f => f.cat))]) { const F = melange(E.fiches.filter(f => f.cat === c)); coupable[c] = F[0]; innocents[c] = F.slice(1); }
-  const indices = melange(Object.keys(coupable).flatMap(c => R.cartes[coupable[c].id].indices)), logiques = melange(R.logiques);
+  // Indices : ceux de chaque carte coupable gardent leur ordre (du plus flou au plus net) ; seules les catégories s'entremêlent.
+  const files = Object.keys(coupable).map(c => R.cartes[coupable[c].id].indices.slice());
+  const indices = melange(files.flatMap((f, i) => f.map(() => i))).map(i => files[i].shift()), logiques = melange(R.logiques);
   const devinette = f => { const noms = E.fiches.filter(x => x.cat === f.cat).map(x => x.nom); return Object.assign({}, R.cartes[f.id].devinette, { saisie: 'choix', options: noms, bonne: noms.indexOf(f.nom) }); };
   const enigmes = R.plan.map(s => {
     const base = { k: s.k, n: s.n, pts: s.pts };
