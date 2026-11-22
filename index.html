@@ -376,8 +376,11 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .carte .cb{position:absolute;left:8%;top:77.2%;width:84%;height:15.6%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2%;overflow:hidden;text-align:center;line-height:1.1}
 .carte .cb b{font-weight:800;font-size:12px;font-size:6.6cqw}
 .carte .cb small{font-size:9px;font-size:4.5cqw}
-.bdz .bdc{width:min(100%,440px);margin:0 auto}
-.bdz .carte{width:100%;cursor:default}
+.carte .cp{inset:0;width:100%;height:100%;object-fit:contain;border-radius:4.5% / 3%}
+.bdz .bdc{width:min(100%,440px);margin:0 auto;cursor:zoom-in}
+.bdz .bdc.pl{width:min(100%,560px)}
+.bdz .bdc.zz{width:200%;max-width:1200px;cursor:zoom-out}
+.bdz .carte{width:100%;cursor:inherit}
 @media (prefers-reduced-motion:reduce){.ap-ca .carte,.ap-ca.fin .carte{animation:none}}
 /* Lever de rideau des jours d'événement (1er et 25 décembre) : une courte vidéo dans son cadre, par-dessus le sapin, puis fondu */
 .av-ev{position:absolute;z-index:3;inset:0;margin:auto;width:min(100%,560px);height:fit-content;padding:10px 10px 12px;background:var(--surface);color:var(--on-surface);border:3px solid var(--line);border-radius:16px;box-shadow:6px 6px 0 var(--shadow);text-align:center;cursor:pointer;animation:apIn .4s cubic-bezier(.16,1,.3,1) both;transition:opacity .5s}
@@ -857,9 +860,9 @@ document.addEventListener("click",e=>{
   if(e.target.closest("[data-ev]")){avEv(true);return}
   if(e.target.closest(".av-ev")){avEvEnd();return}
   if(e.target.classList&&e.target.classList.contains("cav")){e.target.pause();e.target.parentNode.classList.add("fin");return}
-  const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG"&&e.target.parentNode===z)e.target.classList.toggle("zz");else if(!e.target.closest(".bdc"))z.remove();return}
+  const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG"&&e.target.parentNode===z)e.target.classList.toggle("zz");else{const c=e.target.closest(".bdc");if(c)c.classList.toggle("zz");else z.remove()}return}
   const ca=e.target.closest(".ap-ca .carte");if(ca){const d=document.createElement("div");d.className="bdz";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-label",ca.getAttribute("aria-label"));
-    d.innerHTML='<button type="button">Fermer</button><div class="bdc"></div>';const k=ca.cloneNode(true);k.removeAttribute("aria-label");k.tabIndex=-1;k.style.animation="none";d.lastChild.appendChild(k);document.body.appendChild(d);d.querySelector("button").focus();return}
+    d.innerHTML='<button type="button">Fermer</button><div class="bdc'+(ca.classList.contains("pl")?' pl':'')+'"></div><p>Touchez la carte pour zoomer.</p>';const k=ca.cloneNode(true);k.removeAttribute("aria-label");k.tabIndex=-1;k.style.animation="none";d.querySelector(".bdc").appendChild(k);document.body.appendChild(d);d.querySelector("button").focus();return}
   const a=e.target.closest(".ap-bd a");if(!a)return;e.preventDefault();
   const im=a.querySelector("img"),d=document.createElement("div");d.className="bdz";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-label",im.alt);
   d.innerHTML='<button type="button">Fermer</button><img src="'+esc(a.getAttribute("href"))+'" alt="'+esc(im.alt)+'"><p>Touchez l\'image pour zoomer.</p>';
@@ -881,10 +884,13 @@ function avEv(force){
 }
 /* Case de type « cartes » : {"jour": n, "type": "cartes", "titre": "(facultatif) titre sous les cartes", "credit": "(facultatif)",
    "cartes": [{"image": "img/….webp", "titre": "Titre court", "texte": "(facultatif) une ligne", "symbole": "(facultatif, sinon le numéro du jour)", "alt": "(facultatif) description de l'image"}]}
+   Carte déjà dessinée en entier (cadre, titre et texte dans l'image) : {"image": "img/….webp", "pleine": true, "alt": "description et texte de la carte", "titre": "(facultatif, sert de nom à l'écran)"} ;
+   l'image s'affiche seule, sans gabarit ni texte superposé. Format conseillé : 680 x 1024 px (rapport 0,664, celui du gabarit), 1020 x 1536 px si le texte est fin, WebP.
    Une à trois cartes. Image : portrait 580 x 630 px environ (rapport 0,92), WebP ou JPEG, recadrée en « cover » dans la fenêtre du gabarit ;
    garder le sujet au centre. Titre : 22 caractères au plus pour tenir sur une ligne. Texte : 34 caractères au plus. Symbole : un à deux caractères. */
 const AV_BOOSTER="video/booster-cartes.mp4",AV_GABARIT="img/carte-gabarit.webp";
-function avCarte(k,d){return '<button class="carte" type="button" aria-label="Voir en grand : '+esc(k.titre||"carte")+'"><img class="cg" src="'+AV_GABARIT+'" alt="">'+(k.image?'<img class="ci" src="'+esc(k.image)+'" alt="'+esc(k.alt||k.titre||"")+'">':'')+'<span class="cm" aria-hidden="true">'+esc(k.symbole||String(d))+'</span><span class="cb"><b>'+esc(k.titre||"")+'</b>'+(k.texte?'<small>'+esc(k.texte)+'</small>':'')+'</span></button>'}
+function avCarte(k,d){if(k.pleine)return '<button class="carte pl" type="button" aria-label="Voir en grand : '+esc(k.titre||k.alt||"carte")+'"><img class="cp" src="'+esc(k.image)+'" alt="'+esc(k.alt||k.titre||"")+'"></button>';
+  return '<button class="carte" type="button" aria-label="Voir en grand : '+esc(k.titre||"carte")+'"><img class="cg" src="'+AV_GABARIT+'" alt="">'+(k.image?'<img class="ci" src="'+esc(k.image)+'" alt="'+esc(k.alt||k.titre||"")+'">':'')+'<span class="cm" aria-hidden="true">'+esc(k.symbole||String(d))+'</span><span class="cb"><b>'+esc(k.titre||"")+'</b>'+(k.texte?'<small>'+esc(k.texte)+'</small>':'')+'</span></button>'}
 function avLocked(d){
   const j=avDays(d);
   return avHead("lock","Goutte du "+avDate(d),"Sous scellé")+'<p class="ap-p">Libération prévue le '+avDate(d)+(j>1?", dans "+j+" jours":"")+'. Ne pas dépasser la dose prescrite : le Père Noël surveille les stocks.</p>';
