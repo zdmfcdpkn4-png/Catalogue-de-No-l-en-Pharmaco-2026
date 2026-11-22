@@ -211,7 +211,7 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
   // Vidéo générique du tirage, jouée entre la validation de la fiche et la révélation de la brigade. Tant que `src` est
   // vide, ou si la vidéo ne se charge pas, ne démarre pas ou dure trop, ou si le joueur préfère moins de mouvement,
   // la révélation suit sans attendre. Fond crème : la vidéo se termine sur un flash de cette teinte.
-  const tirage = { src: "", attente: 12000 };
+  const tirage = { src: "video/tirage-brigade.mp4", attente: 12000 };
   function jouerTirage(el, suite) {
     let fait = false;
     const fin = () => { if (!fait) { fait = true; clearTimeout(garde); suite(); } };
