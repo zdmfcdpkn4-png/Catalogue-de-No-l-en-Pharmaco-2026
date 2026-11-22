@@ -419,6 +419,9 @@
     cv.className = "pj-cv";
     cv.tabIndex = 0;
     cv.setAttribute("role", "application");
+    // Sur téléphone, un appui long ou répété ne doit ni sélectionner le jeu ni ouvrir le menu copier / coller.
+    cv.style.userSelect = cv.style.webkitUserSelect = "none"; cv.style.webkitTouchCallout = "none";
+    for (const t of ["selectstart", "contextmenu"]) cv.addEventListener(t, e => e.preventDefault());
     el.innerHTML = "";
     el.appendChild(cv);
     const ctx = cv.getContext("2d");
@@ -2243,7 +2246,12 @@
     if (opt.essai) opt.essai(s);                                                                       // pour le banc d'essai : l'état du jeu
     let clos = false, minuterie = 0;
     const logo = new Image(); logo.src = opt.logo || "img/logo-pharmacotechnie.webp";               // le logo de l'unité, sur le colis
-    const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } appuiHaies(s, true); };
+    // Sur téléphone, un appui long (le grand saut) ou un double appui (le salto) ne doit ouvrir ni sélection de texte, ni menu
+    // « copier / coller », ni loupe : rien n'est sélectionnable dans la zone de jeu tant que la partie dure, et le geste par défaut du doigt est annulé.
+    const STYLES = ["userSelect", "webkitUserSelect", "webkitTouchCallout", "webkitTapHighlightColor"], avantStyles = STYLES.map(k => el.style[k]);
+    for (const k of STYLES) cv.style[k] = el.style[k] = k === "webkitTapHighlightColor" ? "transparent" : "none";
+    const rien = e => e.preventDefault(), deselect = () => { try { const sel = window.getSelection && window.getSelection(); if (sel && sel.rangeCount) sel.removeAllRanges(); } catch (_) { } };
+    const appui = e => { e.preventDefault(); deselect(); cv.focus({ preventScroll: true }); try { cv.setPointerCapture(e.pointerId); } catch (_) { } appuiHaies(s, true); };
     const lache = () => appuiHaies(s, false);
     const clavier = (e, v) => {
       if (e.key !== " " && e.key !== "Spacebar" && e.key !== "ArrowUp") return;
@@ -2253,10 +2261,13 @@
     };
     const enfonce = e => clavier(e, true), leve = e => clavier(e, false), menu = e => e.preventDefault();
     cv.addEventListener("pointerdown", appui); cv.addEventListener("contextmenu", menu);
+    cv.addEventListener("touchstart", rien, { passive: false }); cv.addEventListener("touchend", rien, { passive: false }); cv.addEventListener("selectstart", rien); cv.addEventListener("dblclick", rien);
     window.addEventListener("pointerup", lache); window.addEventListener("pointercancel", lache);
     window.addEventListener("keydown", enfonce); window.addEventListener("keyup", leve); window.addEventListener("blur", lache);
     const retirer = () => {
       cv.removeEventListener("pointerdown", appui); cv.removeEventListener("contextmenu", menu);
+      cv.removeEventListener("touchstart", rien); cv.removeEventListener("touchend", rien); cv.removeEventListener("selectstart", rien); cv.removeEventListener("dblclick", rien);
+      STYLES.forEach((k, i) => { el.style[k] = avantStyles[i]; });
       window.removeEventListener("pointerup", lache); window.removeEventListener("pointercancel", lache);
       window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
     };
@@ -5159,7 +5170,7 @@
       haies: b => [[String(Math.round(b) / 10).replace(".", ",") + " m", "d'avance"]],
       penalty: (b, n) => [[n, n > 1 ? "buts" : "but"]],
     };
-    const STYLE = ".pj-fin{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px 12px;box-sizing:border-box;background:rgba(38,7,109,.86);border-radius:inherit;color:#FFFBF2;text-align:center;overflow:hidden;cursor:pointer;container-type:size;animation:pj-fin-in .35s ease-out both}"
+    const STYLE = ".pj-fin{position:absolute;inset:0;z-index:5;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px 12px;box-sizing:border-box;background:rgba(38,7,109,.86);border-radius:inherit;color:#FFFBF2;text-align:center;overflow:hidden;cursor:pointer;container-type:size;animation:pj-fin-in .35s ease-out both}"
       + ".pj-fin-logo{position:relative;width:min(62%,250px);width:min(62cqw,52cqh,250px);aspect-ratio:1;border-radius:50%;background:#FFFBF2;flex:none;animation:pj-fin-pop .5s cubic-bezier(.3,1.5,.5,1) both}"
       + ".pj-fin-logo img{position:absolute;inset:1.5%;width:97%;height:97%;object-fit:contain;animation:pj-fin-tourne 6s ease-in-out infinite alternate}"
       + ".pj-fin-note{position:absolute;left:50%;top:50%;width:48%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:#26076D;border:4px solid #EBD56B;box-sizing:border-box;display:flex;align-items:center;justify-content:center;color:#EBD56B;font-weight:800;line-height:1}"

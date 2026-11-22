@@ -67,8 +67,16 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   // 5. Téléphone de 320 px, au doigt, joueur automatique.
   const tel = await ouvrir({ viewport: { width: 320, height: 568 }, deviceScaleFactor: 2, hasTouch: true }, 296);
   await lancer(tel, 20); await tel.evaluate(() => window.pilote(true, 'touch')); await tel.waitForTimeout(1200); await tel.screenshot({ path: dir + '/haies-8-telephone-320.png' });
+  // 5 bis. Vrai doigt (écran tactile émulé) : l'appui fait sauter, son geste par défaut est annulé (pas de sélection ni de menu
+  //         copier / coller sur un appui long), et rien n'est sélectionnable dans la zone de jeu.
+  await tel.evaluate(() => { window.pilote(false); window.tactile = { avant: window.etat.sauts, annule: null }; document.querySelector('.pj-cv').addEventListener('touchstart', e => setTimeout(() => { window.tactile.annule = e.defaultPrevented; })); });
+  await tel.waitForFunction(() => window.etat.sol && window.etat.arret <= 0, null, { polling: 'raf' });
+  const bt = await tel.locator('.pj-cv').boundingBox(); await tel.touchscreen.tap(bt.x + bt.width / 2, bt.y + bt.height / 2); await tel.waitForTimeout(120);
+  const tactile = await tel.evaluate(() => { const c = document.querySelector('.pj-cv'), z = document.querySelector('#z'); return { saut: window.etat.sauts > window.tactile.avant, gesteAnnule: window.tactile.annule, selection: [getComputedStyle(c).userSelect, getComputedStyle(z).userSelect, c.style.webkitTouchCallout] }; });
+  await tel.evaluate(() => window.pilote(true, 'touch'));
   const telephone = [await fin(tel), await etat(tel), await tel.evaluate(() => document.documentElement.scrollWidth)];
   await tel.screenshot({ path: dir + '/haies-9-telephone-320-fin.png' });
+  const apresPartie = await tel.evaluate(() => getComputedStyle(document.querySelector('#z')).userSelect);   // la sélection redevient possible une fois la partie rendue
   // 6. Mouvement réduit : décor fixe.
   const sobre = await ouvrir({ viewport: { width: 390, height: 460 }, deviceScaleFactor: 2, reducedMotion: 'reduce' });
   await lancer(sobre, 12); await sobre.evaluate(() => window.pilote(true)); await sobre.waitForTimeout(4200); await sobre.screenshot({ path: dir + '/haies-10-mouvement-reduit.png' });
@@ -76,6 +84,6 @@ const html = `<!doctype html><meta charset="utf-8"><style>${ff}body{margin:0;pad
   // 7. Largeur PC.
   const pc = await ouvrir({ viewport: { width: 1280, height: 800 } }, 640);
   await lancer(pc, 9); await pc.evaluate(() => window.pilote(true)); await pc.waitForTimeout(5000); await pc.screenshot({ path: dir + '/haies-11-pc.png' });
-  console.log(JSON.stringify({ souris, clavier, salto, immobile, telephone, reduit, pc: await fin(pc), appelsApresArret: apresArret, appelsApresArretPendantLaFin: apresArretFin, erreurs: errs }, null, 1));
+  console.log(JSON.stringify({ souris, clavier, salto, tactile, apresPartie, immobile, telephone, reduit, pc: await fin(pc), appelsApresArret: apresArret, appelsApresArretPendantLaFin: apresArretFin, erreurs: errs }, null, 1));
   await b.close();
 })();
