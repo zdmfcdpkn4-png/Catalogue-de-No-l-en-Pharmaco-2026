@@ -1,7 +1,7 @@
 // Pharmacogames de Noël (ex-grande énigme) : 25 portes, une par jour du 1er au 25 décembre 2026 (heure de Paris).
 // Chaque porte reste ouverte son jour, le lendemain et le surlendemain.
 // Trois sortes de portes : une question seule (qcm, dose), une case de cinq questions sur un thème (quiz),
-// un jeu d'adresse (jeu). Dans une case de cinq questions, elles s'enchaînent, chacune avec son chrono.
+// un jeu d'adresse (jeu), ou plusieurs jeux d'adresse dans la même porte (duo, la finale). Dans une case de cinq questions, elles s'enchaînent, chacune avec son chrono.
 // Questions : l'énoncé ne sort du serveur qu'au lancement du chrono, et la réponse doit arriver avant sa fin.
 // Une seule tentative. Jeux d'adresse : le navigateur renvoie une note de 0 à 10 et un score brut, deux tentatives,
 // la meilleure compte. À la clôture, les points d'un jeu d'adresse viennent du rang : 10 au premier, 1 au dernier.
@@ -18,21 +18,33 @@ const DELAI = 2; // jours d'ouverture après le jour de la porte
 const GRACE = 4; // secondes tolérées après la fin du chrono d'une question, pour le trajet réseau
 const JEU_MIN = 3, JEU_MARGE = 45; // une note de jeu n'est acceptée ni trop tôt ni trop longtemps après le départ
 // Score brut le plus haut qu'un jeu puisse rendre : au-delà, la note est refusée.
-const PLAFOND = { bowling: 50, tir: 40, flipper: 20000, tennis: 10099, labyrinthe: 1000, pastilles: 3000, penalty: 1500, etageres: 600, basket: 300, volley: 10099, haies: 4400, twirling: 600, tour: 6500, seringue: 1800, minigolf: 2000 };
+const PLAFOND = { bowling: 50, tir: 40, flipper: 20000, tennis: 10099, labyrinthe: 1000, pastilles: 3000, penalty: 1500, etageres: 600, basket: 300, volley: 10099, haies: 4400, twirling: 600, tour: 6500, seringue: 1800, minigolf: 2000, badminton: 3000 };
 const JOUR1 = Date.UTC(2026, 11, 1);
 const PRENOM = /^\p{L}+(?:[-']\p{L}+)*$/u;
 // Participants : cinq brigades, tirées par le serveur ; un avatar est trois numéros [couleur, coiffe, accessoire],
 // chacun sous le nombre de choix de sa liste (les listes sont dessinées dans participants.js : garder les longueurs accordées).
 const NB_BRIGADES = 5;
 const AVATAR = [8, 8, 8];
-// Devise et jeu emblème d'une brigade : chaque membre vote du 26 novembre au 7 décembre, puis le choix est figé.
+// Paramètres d'une brigade (nom, emblème, devise, jeu emblème) : chaque membre vote du 26 novembre au 10 décembre,
+// puis tout est figé. Les brigades sont tirées sans nom (« Brigade 1 » à « Brigade 5 »). L'emblème est un numéro de la liste
+// EMBLEMES de participants.js. Le nom est un texte : l'un des noms proposés par la page, ou celui qu'un membre propose.
+// Ni un nom (accents et casse ignorés) ni un emblème ne peuvent être portés par deux brigades (voir attribuer).
 // La devise est un numéro de la liste DEVISES de participants.js ; le jeu emblème, le nom d'un jeu du catalogue
 // (même contrôle que le vote du palmarès : la page ne montre que les noms qu'elle connaît).
 // L'identification (fiche, avatar, tirage de la brigade, changement de pseudo) ouvre le 26 novembre, avant le calendrier :
 // c'est le jour -4 (le jour 1 est le 1er décembre). Le vote de la devise et du jeu emblème ouvre le même jour.
 const FICHE_JOUR = -4;
 const NB_DEVISES = 20;
-const CHOIX_FIN = 7;
+const NB_EMBLEMES = 30;
+const TITRE = /^\p{L}[\p{L}\p{N} .'-]{2,39}$/u;
+const titreOk = t => typeof t === 'string' && TITRE.test(t) && !/^brigade \d+$/i.test(t); // « Brigade 3 » reste un nom provisoire
+const CHOIX_FIN = 10;
+// Liste des participants, fournie par l'administration : un fichier à part du magasin privé, jamais dans le dépôt.
+// Elle ne sort du serveur qu'avec le code d'équipe. Sans liste, la saisie libre du prénom reste la règle.
+const FILE_LISTE = 'participants.json';
+const MAX_LISTE = 300;
+const NOM_LISTE = /^\p{L}[\p{L} .'-]{1,39}$/u;
+const propre = s => String(s).replace(/’/g, "'").replace(/\s+/g, ' ').trim();
 const avatarOk = a => Array.isArray(a) && a.length === AVATAR.length && a.every((v, i) => Number.isInteger(v) && v >= 0 && v < AVATAR[i]);
 // Tirage équilibré : la brigade la moins fournie, au hasard entre les ex aequo. Les effectifs ne diffèrent jamais de plus d'un.
 function tirer(joueurs) {
@@ -74,7 +86,8 @@ const dateDe = n => new Date(JOUR1 + (n - 1) * 864e5).toISOString().slice(0, 10)
 const etatDe = (n, jour) => (jour < n ? 'avenir' : jour <= n + DELAI ? 'ouverte' : 'close');
 
 // Ce que le serveur garde par joueur : { p: nom affiché, t: heure d'inscription, r: { porte: réponses },
-//   a: avatar [couleur, coiffe, accessoire], b: brigade de 0 à 4, d: sa voix pour la devise, g: sa voix pour le jeu emblème }. `a` et `b` manquent chez un joueur d'avant les brigades :
+//   a: avatar [couleur, coiffe, accessoire], b: brigade de 0 à 4, d, g, n, e: ses voix pour la devise, le jeu emblème,
+//   le nom et l'emblème de sa brigade, l: son nom dans la liste des participants (absent en saisie libre) }. `a` et `b` manquent chez un joueur d'avant les brigades :
 //   la brigade lui est tirée à sa prochaine ouverture de porte, l'avatar quand il remplit sa fiche.
 // Ce que le serveur garde par joueur et par porte.
 //   question : { d: départ du chrono, v: réponse, t: heure de la réponse }   (v absent : chrono lancé, pas de réponse)
@@ -86,11 +99,29 @@ const meilleure = r => Math.max(0, ...r.e.map(a => (a.s === undefined ? 0 : a.s)
 const perf = r => (r ? Math.max(0, ...r.e.map(a => (a.s === undefined ? 0 : a.b !== undefined ? a.b : a.s))) : 0);
 // Rangs d'un jeu d'adresse : seuls ceux qui ont marqué sont classés (N joueurs). Le premier a 10 points, le dernier 1,
 // les autres sont répartis régulièrement ; les ex aequo partagent rang et points ; un joueur seul a 10. Sans rien marquer : 0.
-function rangs(q, joueurs) {
-  const L = Object.keys(joueurs).map(cle => [cle, perf(joueurs[cle].r[q.n])]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
+// `i` désigne un des jeux d'une porte à plusieurs jeux (duo) : chacun a son propre classement.
+function rangs(q, joueurs, i) {
+  const de = r => (i === undefined ? r : r && r.g && r.g[i]);
+  const L = Object.keys(joueurs).map(cle => [cle, perf(de(joueurs[cle].r[q.n]))]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]);
   const N = L.length, M = {};
   let rang = 0;
   L.forEach((x, i) => { if (!i || x[1] !== L[i - 1][1]) rang = i + 1; M[x[0]] = { rang, sur: N, pts: N === 1 ? 10 : 1 + Math.round(9 * (N - rang) / (N - 1)) }; });
+  return M;
+}
+// Porte à plusieurs jeux (duo, la finale) : { g: [ { e: [tentatives] }, … ] }, un par jeu, joués dans l'ordre.
+// Chaque jeu est classé à part et rapporte ses points au rang ; la porte vaut leur somme (20 points pour deux jeux).
+// Jeu en cours : le premier dont les tentatives ne sont pas toutes lancées. Vaut le nombre de jeux quand tout est lancé.
+function rangDuo(q, r) {
+  const g = (r && r.g) || [];
+  for (let i = 0; i < q.jeux.length; i++) if (!g[i] || g[i].e.length < q.jeux[i].essais) return i;
+  return q.jeux.length;
+}
+// Rangs d'une porte, jeu ou duo : par joueur { pts, rang, sur } ; pour un duo, pts est la somme et `d` le détail par jeu.
+function rangsPorte(q, joueurs) {
+  if (q.type === 'jeu') return rangs(q, joueurs);
+  if (q.type !== 'duo') return null;
+  const D = q.jeux.map((c, i) => rangs(q, joueurs, i)), M = {};
+  D.forEach((m, i) => { for (const cle of Object.keys(m)) { const x = M[cle] || (M[cle] = { pts: 0, d: [] }); x.pts += m[cle].pts; x.d[i] = m[cle]; } });
   return M;
 }
 // Case de cinq questions : 2 points par question, soit 10 au plus. Bon flacon : 2. Dosage : 2 à 2 près, 1 à 10 près.
@@ -123,6 +154,14 @@ async function lire() {
   if (!r || r.statusCode !== 200) return { joueurs: {}, etag: null };
   return { joueurs: JSON.parse(await new Response(r.stream).text()), etag: r.blob.etag };
 }
+async function lireListe() {
+  const r = await get(FILE_LISTE, { access: 'private', useCache: false });
+  if (!r || r.statusCode !== 200) return [];
+  const o = JSON.parse(await new Response(r.stream).text());
+  return Array.isArray(o.noms) ? o.noms : [];
+}
+// Le nom de la liste tel qu'il y est écrit, ou rien s'il n'y est pas.
+const dansListe = (liste, nom) => (typeof nom === 'string' ? liste.find(x => norm(x) === norm(propre(nom))) : undefined);
 // Écriture conditionnelle : refusée si le fichier a changé depuis la lecture (deux réponses simultanées).
 function ecrire(joueurs, etag) {
   const opts = { access: 'private', contentType: 'application/json', cacheControlMaxAge: 60 };
@@ -147,7 +186,7 @@ async function modifier(fn) {
 }
 
 function classement(B, joueurs, jour) {
-  const closes = B.portes.filter(q => etatDe(q.n, jour) === 'close').map(q => [q, q.type === 'jeu' ? rangs(q, joueurs) : null]);
+  const closes = B.portes.filter(q => etatDe(q.n, jour) === 'close').map(q => [q, rangsPorte(q, joueurs)]);
   const L = Object.keys(joueurs).map(cle => {
     const j = joueurs[cle];
     let pts = 0;
@@ -177,17 +216,38 @@ function classementSuivi(B, joueurs, jour) {
 // close : un inscrit qui ne joue pas ne pèse pas sur sa brigade. `n` reste l'effectif. Les ex aequo partagent le rang.
 // Devise et jeu emblème : l'option la plus soutenue par les membres ; à égalité, la première de la liste (devise)
 // ou de l'alphabet (jeux). `voix` donne le détail des voix à la brigade `mienne` seulement.
+// Nom et emblème (`titre`, `embleme`) : attribués sans doublon entre brigades, voir attribuer. Sans attribution,
+// la brigade garde son nom provisoire « Brigade N » : c'est la page qui l'écrit.
+// Attribution sans doublon : chaque option va à la brigade qui la soutient le plus. On range toutes les paires
+// (brigade, option) par voix décroissantes ; à égalité, la brigade qui compte le plus de votants passe d'abord,
+// puis la brigade de plus petit numéro, puis l'option la plus haute dans la liste (ou dans l'alphabet, pour un nom). Chaque paire est servie si la brigade
+// n'a encore rien et si l'option est libre : une brigade devancée retombe donc sur son choix suivant.
+function attribuer(V, k) {
+  const P = [];
+  V.forEach((v, b) => { const tot = Object.values(v[k]).reduce((s, x) => s + x, 0); for (const o of Object.keys(v[k])) P.push({ b, o, c: v[k][o], tot }); });
+  const ordre = (x, y) => (isNaN(x) || isNaN(y) ? (x < y ? -1 : x > y ? 1 : 0) : x - y);
+  P.sort((x, y) => y.c - x.c || y.tot - x.tot || x.b - y.b || ordre(x.o, y.o));
+  const R = {}, pris = new Set();
+  for (const x of P) if (R[x.b] === undefined && !pris.has(x.o)) { R[x.b] = x.o; pris.add(x.o); }
+  return R;
+}
 function brigades(L, joueurs, mienne) {
   const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, actifs: 0, pts: 0, moy: 0 }));
   for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; if (x.cl) T[x.b].actifs++; }
   for (const t of T) t.moy = t.actifs ? Math.round(t.pts / t.actifs * 10) / 10 : 0;
-  const V = T.map(() => ({ d: {}, g: {} }));
+  // nn : les voix pour le nom, regroupées sans accents ni casse ; n : les mêmes voix telles que les membres les ont écrites.
+  const V = Array.from({ length: NB_BRIGADES }, () => ({ d: {}, g: {}, n: {}, e: {}, nn: {} }));
   for (const cle of Object.keys(joueurs)) {
     const j = joueurs[cle], v = V[j.b];
     if (!v) continue;
     if (j.d !== undefined) v.d[j.d] = (v.d[j.d] || 0) + 1;
     if (j.g !== undefined) v.g[j.g] = (v.g[j.g] || 0) + 1;
+    if (typeof j.n === 'string') { v.n[j.n] = (v.n[j.n] || 0) + 1; v.nn[norm(j.n)] = (v.nn[norm(j.n)] || 0) + 1; }
+    if (j.e !== undefined) v.e[j.e] = (v.e[j.e] || 0) + 1;
   }
+  const titres = attribuer(V, 'nn'), emblemes = attribuer(V, 'e');
+  // Le nom s'écrit comme la brigade qui le porte l'a le plus souvent écrit.
+  const graphie = (v, c) => Object.keys(v.n).filter(x => norm(x) === c).sort((x, y) => v.n[y] - v.n[x] || (x < y ? -1 : 1))[0];
   const tries = (o, tri) => Object.keys(o).sort((x, y) => o[y] - o[x] || tri(x, y));
   for (const t of T) {
     const v = V[t.b], d = tries(v.d, (x, y) => x - y)[0];
@@ -195,7 +255,9 @@ function brigades(L, joueurs, mienne) {
     // Les cinq jeux les plus soutenus, dans l'ordre : la page retient le premier qui est au catalogue,
     // si bien qu'un nom inconnu (appel direct, jeu retiré ou renommé) ne prive pas la brigade de son emblème.
     t.jeux = tries(v.g, (x, y) => (x < y ? -1 : x > y ? 1 : 0)).slice(0, 5);
-    if (t.b === mienne) t.voix = v;
+    if (titres[t.b] !== undefined) t.titre = graphie(v, titres[t.b]);
+    if (emblemes[t.b] !== undefined) t.embleme = Number(emblemes[t.b]);
+    if (t.b === mienne) t.voix = { d: v.d, g: v.g, n: v.n, e: v.e };
   }
   T.sort((x, y) => y.moy - x.moy || x.b - y.b);
   let rang = 0;
@@ -210,6 +272,7 @@ function vue(q, etat, r, tout, maintenant, rg) {
   if (etat === 'avenir' && !tout) return o;
   const clos = etat === 'close' || tout;
   if (q.type === 'quiz') return vueQuiz(o, q, etat, r, clos, maintenant);
+  if (q.type === 'duo') return vueDuo(o, q, etat, r, clos, rg);
   Object.assign(o, { type: q.type, titre: q.titre, duree: q.duree, essais: q.type === 'jeu' ? q.essais : 1 });
   if (q.type === 'jeu') {
     Object.assign(o, { jeu: q.jeu, question: q.question, ill: q.ill });
@@ -265,17 +328,42 @@ function vueQuiz(o, q, etat, r, clos, maintenant) {
   return o;
 }
 
+// Porte à plusieurs jeux. Ouverte : la page reçoit le jeu en cours comme une porte de jeu ordinaire, avec `duo` pour dire
+// où l'on en est et les notes des jeux déjà faits. Tout lancé : type duo, `fini`. Close ou en relecture : type duo et
+// chaque jeu avec sa règle, son mot de la fin et, à la clôture, son rang et ses points.
+function vueDuo(o, q, etat, r, clos, rg) {
+  const nb = q.jeux.length, g = (r && r.g) || [];
+  const notes = i => (g[i] ? { scores: g[i].e.map(a => (a.s === undefined ? null : a.s)), meilleur: meilleure(g[i]) } : {});
+  if (clos) {
+    Object.assign(o, { type: 'duo', titre: q.titre, ill: q.ill, nb });
+    o.jeux = q.jeux.map((c, i) => {
+      const x = Object.assign({ jeu: c.jeu, titre: c.titre, duree: c.duree, essais: c.essais, question: c.question, ill: c.ill, explication: c.explication, source: c.source }, notes(i));
+      const d = rg && rg.d[i];
+      if (r && etat === 'close') { x.pts = d ? d.pts : 0; if (d) { x.rang = d.rang; x.sur = d.sur; } }
+      return x;
+    });
+    if (r && etat === 'close') o.pts = rg ? rg.pts : 0;
+    return o;
+  }
+  const k = rangDuo(q, r);
+  if (k >= nb) return Object.assign(o, { type: 'duo', titre: q.titre, ill: q.ill, nb, fini: true, jeux: q.jeux.map((c, i) => Object.assign({ titre: c.titre }, notes(i))) });
+  const c = q.jeux[k];
+  return Object.assign(o, { type: 'jeu', titre: q.titre, duree: c.duree, essais: c.essais, jeu: c.jeu, question: c.question, ill: c.ill },
+    notes(k), { duo: { i: k + 1, nb, titre: c.titre, avant: q.jeux.slice(0, k).map((x, i) => Object.assign({ titre: x.titre }, notes(i))) } });
+}
+
 function etat(B, joueurs, cle, jour, maintenant) {
   const j = cle ? joueurs[cle] : null;
   const portes = B.portes.map(q => {
     const e = etatDe(q.n, jour);
-    return vue(q, e, j && j.r[q.n], false, maintenant, j && q.type === 'jeu' && e === 'close' ? rangs(q, joueurs)[cle] : undefined);
+    return vue(q, e, j && j.r[q.n], false, maintenant, j && (q.type === 'jeu' || q.type === 'duo') && e === 'close' ? rangsPorte(q, joueurs)[cle] : undefined);
   });
   const L = classementSuivi(B, joueurs, jour);
   return {
     jour,
     prenom: j ? j.p : undefined,
-    profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b, d: j.d, g: j.g } : undefined,
+    profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b, d: j.d, g: j.g, n: j.n, e: j.e } : undefined,
+    nom: j ? j.l : undefined,
     fiche: { etat: jour < FICHE_JOUR ? 'avenir' : 'ouvert', ouvre: dateDe(FICHE_JOUR) },
     choix: { etat: jour < FICHE_JOUR ? 'avenir' : jour <= CHOIX_FIN ? 'ouvert' : 'fige', ferme: dateDe(CHOIX_FIN) },
     portes,
@@ -314,12 +402,45 @@ async function handler(req, res) {
         return { ok: J => ({ ok: true, retire: true, classement: classement(B, J, jour) }) };
       }));
     }
+    // Liste des participants : l'administration la remplace (tableau de noms) ou la relit ("lire").
+    // Un nom : 2 à 40 caractères, lettres, espaces, points, apostrophes et traits d'union ; pas de doublon.
+    if (admin && b.participants !== undefined) {
+      if (b.participants !== 'lire') {
+        const N = Array.isArray(b.participants) ? b.participants.map(x => (typeof x === 'string' ? propre(x) : '')) : null;
+        if (!N || N.length > MAX_LISTE || N.some(x => !NOM_LISTE.test(x)) || new Set(N.map(norm)).size !== N.length) return res.status(400).json({ error: 'participants' });
+        await put(FILE_LISTE, JSON.stringify({ noms: N }), { access: 'private', contentType: 'application/json', cacheControlMaxAge: 60, allowOverwrite: true });
+      }
+      const liste = await lireListe(), { joueurs } = await lire();
+      const pris = Object.keys(joueurs).filter(c => joueurs[c].l).map(c => ({ nom: joueurs[c].l, pseudo: joueurs[c].p }));
+      return res.status(200).json({ ok: true, participants: liste, pris, horsListe: Object.keys(joueurs).filter(c => !joueurs[c].l).map(c => joueurs[c].p) });
+    }
+    // Modération : l'administration efface un nom de brigade proposé par un membre (toutes les voix qui le portent).
+    if (admin && typeof b.effacerTitre === 'string') {
+      const c = norm(propre(b.effacerTitre));
+      return res.status(200).json(await modifier(joueurs => {
+        const L = Object.keys(joueurs).filter(x => typeof joueurs[x].n === 'string' && norm(joueurs[x].n) === c);
+        if (!L.length) return { fin: () => ({ ok: true, efface: 0 }) };
+        L.forEach(x => { delete joueurs[x].n; });
+        return { ok: () => ({ ok: true, efface: L.length }) };
+      }));
+    }
     // Code d'administration seul : relecture des 25 portes, solutions comprises. Rien ne s'enregistre.
     if (!equipe) {
       const { joueurs } = await lire();
       return res.status(200).json({ relecture: true, jour, portes: B.portes.map(q => vue(q, etatDe(q.n, jour), null, true, maintenant)), total: 0, classement: classement(B, joueurs, jour) });
     }
 
+    // La liste des participants, pour le menu déroulant de l'entrée : elle ne sort qu'ici, avec le code d'équipe.
+    if (b.action === 'liste') return res.status(200).json({ liste: (await lireListe()).slice().sort((x, y) => x.localeCompare(y, 'fr')) });
+    // Entrée par un nom de la liste : la fiche déjà créée sous ce nom, ou l'invitation à la créer (`nouveau`).
+    if (b.action === 'entrer') {
+      const nom = dansListe(await lireListe(), b.nom);
+      if (!nom) return res.status(400).json({ error: 'nom' });
+      const { joueurs } = await lire(), c = Object.keys(joueurs).find(x => joueurs[x].l && norm(joueurs[x].l) === norm(nom));
+      if (c) return res.status(200).json(etat(B, joueurs, c, jour, maintenant));
+      const mot = nom.split(/[ .]/)[0], libre = mot.length >= 2 && mot.length <= 24 && PRENOM.test(mot) && !joueurs[norm(mot)];
+      return res.status(200).json({ ...etat(B, joueurs, null, jour, maintenant), nouveau: true, nom, suggestion: libre ? mot : '' });
+    }
     // Sans prénom : le calendrier et le classement, sans fiche personnelle.
     if (b.prenom === undefined) return res.status(200).json(etat(B, (await lire()).joueurs, null, jour, maintenant));
     const prenom = typeof b.prenom === 'string' ? b.prenom.trim().replace(/’/g, "'") : '';
@@ -330,10 +451,19 @@ async function handler(req, res) {
       // Sous scellé jusqu'au 26 novembre : ni fiche ni tirage avant.
       if (jour < FICHE_JOUR) return res.status(403).json({ error: 'scellee' });
       if (!avatarOk(b.avatar)) return res.status(400).json({ error: 'avatar' });
+      // Avec `nom` : la fiche est créée pour ce nom de la liste, qui ne peut être pris qu'une fois ; `prenom` est le pseudo choisi.
+      const nom = b.nom === undefined ? undefined : dansListe(await lireListe(), b.nom);
+      if (b.nom !== undefined && !nom) return res.status(400).json({ error: 'nom' });
       const s = await modifier(joueurs => {
+        if (nom) {
+          const c = Object.keys(joueurs).find(x => joueurs[x].l && norm(joueurs[x].l) === norm(nom));
+          if (c && c !== cle) return { fin: () => ({ code: 409, corps: { error: 'nom' } }) };      // ce nom a déjà sa fiche, sous un autre pseudo
+          if (!c && joueurs[cle]) return { fin: () => ({ code: 409, corps: { error: 'pris' } }) }; // ce pseudo est porté par un autre joueur
+        }
         if (!joueurs[cle]) {
           if (Object.keys(joueurs).length >= MAX_JOUEURS) return { fin: () => ({ code: 403, corps: { error: 'complet' } }) };
           joueurs[cle] = { p: prenom, t: maintenant, r: {} };
+          if (nom) joueurs[cle].l = nom;
         }
         const j = joueurs[cle];
         j.a = b.avatar.slice();
@@ -360,11 +490,14 @@ async function handler(req, res) {
       });
       return res.status(s.code).json(s.corps);
     }
-    // Voix d'un membre pour la devise et le jeu emblème de sa brigade : ouvert du 26 novembre au 7 décembre, modifiable d'ici là.
+    // Voix d'un membre pour le nom, l'emblème, la devise et le jeu emblème de sa brigade : ouvert du 26 novembre au 10 décembre, modifiable d'ici là.
     if (b.action === 'brigade') {
       if (jour < FICHE_JOUR || jour > CHOIX_FIN) return res.status(403).json({ error: jour < FICHE_JOUR ? 'scellee' : 'fige' });
       const d = b.devise, g = typeof b.jeu === 'string' ? b.jeu.trim() : b.jeu;
-      if (d === undefined && g === undefined) return res.status(400).json({ error: 'choix' });
+      const ti = typeof b.titre === 'string' ? propre(b.titre) : b.titre, em = b.embleme;
+      if (d === undefined && g === undefined && ti === undefined && em === undefined) return res.status(400).json({ error: 'choix' });
+      if (ti !== undefined && !titreOk(ti)) return res.status(400).json({ error: 'titre' });
+      if (em !== undefined && !(Number.isInteger(em) && em >= 0 && em < NB_EMBLEMES)) return res.status(400).json({ error: 'embleme' });
       if (d !== undefined && !(Number.isInteger(d) && d >= 0 && d < NB_DEVISES)) return res.status(400).json({ error: 'devise' });
       if (g !== undefined && (typeof g !== 'string' || !g || g.length > 80 || /[\u0000-\u001f<>]/.test(g))) return res.status(400).json({ error: 'jeu' });
       const s = await modifier(joueurs => {
@@ -372,6 +505,8 @@ async function handler(req, res) {
         if (!j || j.b === undefined) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
         if (d !== undefined) j.d = d;
         if (g !== undefined) j.g = g;
+        if (ti !== undefined) j.n = ti;
+        if (em !== undefined) j.e = em;
         return { ok: J => ({ code: 200, corps: { ok: true, ...etat(B, J, cle, jour, maintenant) } }) };
       });
       return res.status(s.code).json(s.corps);
@@ -402,6 +537,12 @@ async function handler(req, res) {
           if (r.e.length >= q.essais) return refus(409, 'essais');
           jeton = crypto.randomBytes(8).toString('hex');
           r.e.push({ d: maintenant, k: jeton });
+        } else if (q.type === 'duo') {
+          const r = j.r[q.n] || (j.r[q.n] = { g: [] });
+          const k = rangDuo(q, r);
+          if (k >= q.jeux.length) return refus(409, 'essais');
+          jeton = crypto.randomBytes(8).toString('hex');
+          (r.g[k] || (r.g[k] = { e: [] })).e.push({ d: maintenant, k: jeton });
         } else if (q.type === 'quiz') {
           const r = j.r[q.n] || (j.r[q.n] = { q: [] });
           const k = rangQuiz(q, r, maintenant);
@@ -414,17 +555,20 @@ async function handler(req, res) {
         }
         return { ok: J => ({ code: 200, corps: { ok: true, jeton, ...vu(J) } }) };
       });
-    } else if (q.type === 'jeu') {
-      // Note d'une tentative de jeu, calculée par le navigateur.
+    } else if (q.type === 'jeu' || q.type === 'duo') {
+      // Note d'une tentative de jeu, calculée par le navigateur. Dans une porte à plusieurs jeux, le jeton dit de quel jeu il s'agit.
       if (!Number.isInteger(b.score) || b.score < 0 || b.score > 10 || typeof b.jeton !== 'string') return res.status(400).json({ error: 'reponse' });
-      if (b.brut !== undefined && (!Number.isInteger(b.brut) || b.brut < 0 || b.brut > (PLAFOND[q.jeu] || 0))) return res.status(400).json({ error: 'reponse' });
+      if (b.brut !== undefined && (!Number.isInteger(b.brut) || b.brut < 0)) return res.status(400).json({ error: 'reponse' });
       sortie = await modifier(joueurs => {
         const r = joueurs[cle] && joueurs[cle].r[q.n];
-        const a = r && r.e.find(x => x.k === b.jeton);
+        const G = !r ? [] : q.type === 'duo' ? r.g : [r];
+        const i = G.findIndex(g => g && g.e.some(x => x.k === b.jeton));
+        const c = q.type === 'duo' ? q.jeux[i] : q, a = i < 0 ? null : G[i].e.find(x => x.k === b.jeton);
         if (!a) return refus(403, 'nondemarre');
+        if (b.brut !== undefined && b.brut > (PLAFOND[c.jeu] || 0)) return { fin: () => ({ code: 400, corps: { error: 'reponse' } }) };
         if (a.s !== undefined) return refus(409, 'deja');
         const dt = (maintenant - a.d) / 1000;
-        if (dt < JEU_MIN || dt > q.duree + JEU_MARGE) return refus(403, 'delai');
+        if (dt < JEU_MIN || dt > c.duree + JEU_MARGE) return refus(403, 'delai');
         a.s = b.score; a.t = maintenant;
         if (b.brut !== undefined) a.b = b.brut;
         return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };

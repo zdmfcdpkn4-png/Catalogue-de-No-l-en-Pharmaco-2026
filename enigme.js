@@ -42,16 +42,43 @@
 
   const NOTICE = `<details class="eg-panel eg-notice" id="egNotice" open><summary>Notice des Pharmacogames : à lire avant la première prise</summary>
 <ol class="eg-rules">
-<li><b>Composition.</b> 25 portes, une par jour du 1<sup>er</sup> au 25 décembre : dix cases de cinq questions illustrées, chacune sur un thème du jeu de société, et quinze vrais jeux d'adresse.</li>
+<li><b>Composition.</b> 25 portes, une par jour du 1<sup>er</sup> au 25 décembre : dix cases de cinq questions illustrées, chacune sur un thème du jeu de société, quatorze portes de jeu d'adresse et, le 25, une finale à deux jeux.</li>
 <li><b>Chrono.</b> Les cinq questions d'une case s'enchaînent, chacune avec son chrono : 30 ou 40 secondes, annoncées avant le départ. L'énoncé ne s'affiche qu'au lancement du chrono. Une seule tentative par question, et pas le temps d'aller chercher la réponse ailleurs.</li>
 <li><b>Barème des questions.</b> Chaque question vaut 2 points, soit 10 par case. Le bon flacon : 2 points. Au dosage, entre 0 et 100 : 2 points à 2 près de la cible, 1 point à 10 près.</li>
-<li><b>Jeux d'adresse.</b> Deux tentatives chronométrées, la meilleure compte. La note sur 10 affichée après la partie vous situe ; les points, eux, viennent du classement de la porte à sa clôture : 10 points pour le premier, 1 pour le dernier, les autres répartis entre les deux. Sans rien marquer : 0 point.</li>
+<li><b>Jeux d'adresse.</b> Deux tentatives chronométrées, la meilleure compte. La note sur 10 affichée après la partie vous situe ; les points, eux, viennent du classement de la porte à sa clôture : 10 points pour le premier, 1 pour le dernier, les autres répartis entre les deux. Sans rien marquer : 0 point. La finale du 25 enchaîne deux jeux, classés chacun à part : elle vaut jusqu'à 20 points.</li>
 <li><b>Délai de péremption.</b> Une porte reste ouverte trois jours : le sien, le lendemain et le surlendemain jusqu'à minuit. Les week-ends se rattrapent.</li>
 <li><b>Libération des résultats.</b> Bonne réponse, points et classement sortent à la clôture de la porte. D'ici là, tout reste sous scellé, et on ne souffle rien au voisin.</li>
 </ol>
 <p class="eg-fx">Effet indésirable très fréquent : consultation compulsive du classement.</p></details>`;
   const SCEAU = '<svg class="eg-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5l2.2 2 3-.3.7 2.9 2.6 1.5-1.2 2.7 1.2 2.7-2.6 1.5-.7 2.9-3-.3-2.2 2-2.2-2-3 .3-.7-2.9L1.5 13l1.2-2.7L1.5 7.6l2.6-1.5.7-2.9 3 .3z" fill="currentColor"/><path d="M6.4 10.3l2.4 2.4 4.6-4.9" fill="none" stroke="#26076D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const CADENAS = '<svg class="eg-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="3.5" y="9" width="13" height="9.5" rx="2.5" fill="currentColor"/></svg>';
+  // Symbole d'une porte ouverte : un par jeu d'adresse, un pour les cases de questions, un pour la finale. Dessins originaux,
+  // repère de 24 sur 24, trait et aplats du logo. Une porte sous scellé n'en porte jamais : le serveur ne dit pas ce qu'elle cache.
+  const SYMBOLES = {
+    bowling: '<circle cx="8" cy="16" r="5" fill="#EC7739"/><circle cx="6.6" cy="14.4" r="0.8" fill="#26076D" stroke="none"/><circle cx="9" cy="14" r="0.8" fill="#26076D" stroke="none"/><rect x="15" y="9" width="6" height="12" rx="1.6" fill="#FFFBF2"/><path d="M15 14.5h6"/><rect x="16.4" y="5.5" width="3.2" height="3.5" fill="#26076D"/>',
+    tir: '<circle cx="12" cy="12" r="9" fill="#FFFBF2"/><circle cx="12" cy="12" r="5.6" fill="#E5B4D9"/><circle cx="12" cy="12" r="2.2" fill="#EC7739"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>',
+    flipper: '<path d="M2.5 13.5l7.5 4.6-1.2 2.2-7-3.6z" fill="#EC7739"/><path d="M21.5 13.5l-7.5 4.6 1.2 2.2 7-3.6z" fill="#EC7739"/><circle cx="12" cy="7.5" r="3.4" fill="#ECD567"/>',
+    tennis: '<ellipse cx="9.5" cy="9" rx="5.6" ry="6.6" fill="#FFFBF2"/><path d="M6 4.5v9M9.5 2.6v12.8M13 4.5v9M4.4 7h10.2M4.4 11h10.2" stroke-width="1"/><path d="M13.2 14.4l5.6 6.4" stroke-width="2.8"/><circle cx="19" cy="6" r="2.5" fill="#ECD567"/>',
+    labyrinthe: '<rect x="3" y="3" width="18" height="18" rx="2" fill="#FFFBF2"/><path d="M7 7h10v10H9.5v-6H14v3"/>',
+    basket: '<circle cx="12" cy="5.2" r="3.7" fill="#EC7739"/><path d="M6 11.5l2.6 9h6.8l2.6-9z" fill="#FFFBF2"/><path d="M9.4 11.5l1.3 9M14.6 11.5l-1.3 9M7 15h10" stroke-width="1"/><ellipse cx="12" cy="11.5" rx="6.4" ry="1.7" fill="#ECD567"/>',
+    penalty: '<path d="M3 20V6h18v14" stroke-width="2.4"/><path d="M7.5 6v9M12 6v6M16.5 6v9M3 10.5h18" stroke-width="1"/><circle cx="12" cy="17.5" r="3.2" fill="#FFFBF2"/><circle cx="12" cy="17.5" r="1" fill="#26076D" stroke="none"/>',
+    volley: '<circle cx="12" cy="12" r="9.5" fill="#ECD567"/><path d="M12 2.5c-1.5 3.5-1 7 1.5 10M13.5 12.5c3.5-1 6-.5 7.5 1.5M13.5 12.5c-1 3.5-3.5 6-7 7M3 9.5c3 1.5 6 1.5 9-.5" stroke-width="1.4"/>',
+    haies: '<path d="M6.5 9l-2 12M17.5 9l2 12M2.5 21h4M17.5 21h4"/><rect x="3" y="5" width="18" height="4.4" rx="1" fill="#FFFBF2"/><path d="M7.5 5v4.4M12 5v4.4M16.5 5v4.4" stroke="#EC7739" stroke-width="2.6" stroke-linecap="butt"/><rect x="3" y="5" width="18" height="4.4" rx="1"/>',
+    etageres: '<rect x="3" y="3" width="18" height="18" rx="1.5" fill="#FFFBF2"/><path d="M3 9.2h18M3 15.2h18"/><rect x="5.5" y="5" width="4" height="4.2" fill="#EC7739"/><rect x="12" y="11.4" width="5.5" height="3.8" fill="#B9A6F0"/><rect x="6.5" y="17" width="3.6" height="4" fill="#ECD567"/><rect x="14.5" y="5.8" width="3" height="3.4" fill="#E5B4D9"/>',
+    pastilles: '<circle cx="7.5" cy="8.5" r="4.6" fill="#E5B4D9"/><path d="M4.6 11.4l5.8-5.8" stroke-width="1.1"/><circle cx="16.5" cy="8.5" r="4.6" fill="#ECD567"/><path d="M13.6 11.4l5.8-5.8" stroke-width="1.1"/><circle cx="12" cy="16.5" r="4.6" fill="#EC7739"/><path d="M9.1 19.4l5.8-5.8" stroke-width="1.1"/>',
+    twirling: '<path d="M4.5 9.5c2.5-4.5 5.5 1.5 8.5-1.500s3-4 6.5-2" stroke="#EC7739" stroke-width="2.2"/><path d="M5.5 19.500L18.5 5.5" stroke-width="2.2"/><circle cx="5" cy="20" r="2.2" fill="#FFFBF2"/><circle cx="19" cy="5" r="2.2" fill="#FFFBF2"/>',
+    tour: '<rect x="6.5" y="15.5" width="11" height="6" rx="1" fill="#EC7739"/><rect x="8" y="9.8" width="8.5" height="5.7" rx="1" fill="#ECD567"/><rect x="10" y="4.6" width="5.5" height="5.2" rx="1" fill="#E5B4D9"/><path d="M3.5 21.500h17"/>',
+    seringue: '<g transform="rotate(45 12 12)"><path d="M12 .5v4M9.3 .5h5.400M12 18.500v5"/><rect x="8.7" y="5.5" width="6.6" height="13" rx="1.2" fill="#FFFBF2"/><rect x="8.7" y="11.5" width="6.6" height="7" rx="1.2" fill="#EC7739"/><path d="M7 5.500h10"/></g>',
+    minigolf: '<ellipse cx="8" cy="19.5" rx="5.5" ry="2" fill="#26076D"/><path d="M8 19V3"/><path d="M8 3.200l9 3.3-9 3.300z" fill="#EC7739"/><circle cx="18.5" cy="17.5" r="2.7" fill="#FFFBF2"/>',
+    badminton: '<path d="M9.8 13.200L13.5 2.500l8 8-10.7 3.700z" fill="#FFFBF2"/><path d="M11.5 13.400l4.8-8.200M12.6 14.300l7-4.3" stroke-width="1"/><circle cx="8" cy="16" r="3.8" fill="#EC7739"/>',
+    quiz: '<rect x="5.5" y="8" width="13" height="13.5" rx="2.8" fill="#FFFBF2"/><rect x="8.8" y="2.8" width="6.4" height="5.2" rx="1" fill="#26076D"/><path d="M9.7 12.600a2.4 2.4 0 1 1 3.5 2.100c-.9.5-1.2 1-1.2 1.8" stroke-width="2"/><circle cx="12" cy="19" r="1.15" fill="#26076D" stroke="none"/>',
+    duo: '<path d="M12 2.200l3 6.2 6.8.800-5 4.7 1.3 6.700L12 17.300l-6.1 3.3 1.3-6.7-5-4.7 6.8-.8z" fill="#ECD567"/>',
+    de: '<rect x="4" y="4" width="16" height="16" rx="3.5" fill="#ECD567"/><circle cx="8.5" cy="8.5" r="1.3" fill="#26076D" stroke="none"/><circle cx="15.5" cy="8.5" r="1.3" fill="#26076D" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="#26076D" stroke="none"/><circle cx="8.5" cy="15.5" r="1.3" fill="#26076D" stroke="none"/><circle cx="15.5" cy="15.5" r="1.3" fill="#26076D" stroke="none"/>',
+  };
+  const symbole = p => {
+    const k = p.duo || p.type === "duo" ? "duo" : p.type === "jeu" ? (SYMBOLES[p.jeu] ? p.jeu : "de") : "quiz";
+    return '<span class="eg-sym"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="#26076D" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">' + SYMBOLES[k] + "</svg></span>";
+  };
 
   const CSS = `
 .eg [hidden]{display:none!important}
@@ -61,8 +88,9 @@
 .eg-gate{max-width:420px;margin-top:18px}
 .eg-panel h3{margin:0;font-weight:800;font-size:1.3rem;line-height:1.1}
 .eg-panel label{display:block;margin:14px 0 5px;font:600 .72rem var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
-.eg-gate input{display:block;width:100%;min-height:46px;font:700 1rem var(--display);color:var(--on-surface);background:#fff;border:2.5px solid var(--line);border-radius:12px;padding:8px 10px}
+.eg-gate input,.eg-gate select{display:block;width:100%;min-height:46px;font:700 1rem var(--display);color:var(--on-surface);background:#fff;border:2.5px solid var(--line);border-radius:12px;padding:8px 10px}
 .eg-hint{margin:8px 0 0;font-size:.82rem;color:var(--muted)}
+.eg-warn{margin:12px 0 0;padding:10px 12px;border:2.5px solid var(--line);border-radius:12px;background:#F8EFC0;color:#26076D;font-weight:700;font-size:.9rem;line-height:1.35}
 .eg-d{margin:10px 0 0;font-size:1rem}
 .eg-msg{margin:12px 0 0;font-size:.95rem;font-weight:800}
 .eg-msg:empty{display:none}
@@ -102,6 +130,24 @@
 .eg-cell.ok.max .eg-door{background:radial-gradient(120% 90% at 30% 14%,#fffbe3 0 14%,#f6e79a 42%,#ECD567 100%)}
 .eg-cell.ko .eg-door{color:var(--muted);background:var(--foil-b);box-shadow:none}
 .eg-cell.rl .eg-door{background:var(--tF)}
+/* Porte ouverte (.op) : le battant pivote à gauche avec le numéro, l'intérieur éclairé porte le symbole, l'état reste en bas.
+   Une courte vidéo « la porte s'ouvre » pourra se poser dans .eg-door.op, par-dessus .eg-sym, à la première ouverture. */
+.eg-door.op{grid-template-columns:31% minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;padding:0;align-items:stretch;justify-items:stretch;animation:none}
+.eg-door.op::after{content:none}
+.eg-door.op b{position:relative;grid-column:1;grid-row:1;display:grid;place-items:center;padding-top:34%;font-size:1.3em;background:var(--surface);border-right:2.5px solid var(--line);transform-origin:0 50%;transform:perspective(60px) rotateY(24deg);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.eg-door.op b::after{content:"";position:absolute;right:9%;top:66%;width:20%;aspect-ratio:1;border-radius:50%;background:currentColor;opacity:.55}
+.eg-sym{grid-column:2;grid-row:1;display:grid;place-items:center;min-width:0;min-height:0;padding:16% 5% 0 0}
+.eg-sym svg{display:block;width:100%;height:100%;max-width:3.5em;max-height:3.5em;overflow:visible}
+.eg-door.op small{grid-column:1/3;grid-row:2;justify-content:center;padding:2px 1px 3px;border-top:2.5px solid var(--line);background:var(--surface);position:relative}
+@media(hover:hover){.eg-cell:hover .eg-door.op b{transform:perspective(60px) rotateY(46deg)}}
+@media(max-width:360px){.eg-door.op{grid-template-columns:34% minmax(0,1fr)}.eg-door.op b{font-size:1.12em;letter-spacing:-.04em}}
+.eg-cell.ou .eg-door.op{box-shadow:3px 3px 0 var(--shadow);animation:egPulse 1.9s ease-in-out infinite}
+.eg-cell.sc .eg-door.op{color:var(--on-surface);background:var(--tI)}
+.eg-cell.sc .eg-door.op b,.eg-cell.sc .eg-door.op small{color:var(--pressed-on);background:var(--pressed)}
+.eg-cell.ok .eg-door.op b{background:var(--tE)}
+.eg-cell.ko .eg-door.op b,.eg-cell.ko .eg-door.op small{background:var(--foil-a)}
+.eg-cell.ko .eg-sym{opacity:.45;filter:grayscale(1)}
+.eg-cell.rl .eg-door.op b,.eg-cell.rl .eg-door.op small{background:var(--surface)}
 .eg-cell.sel .eg-door{outline:3.5px solid #EC7739;outline-offset:2px;transform:translateY(-2px)}
 .eg-cell:focus-visible{outline:0}
 .eg-cell:focus-visible .eg-door{outline:3.5px solid var(--focus);outline-offset:2px}
@@ -269,7 +315,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 @media(min-width:861px){.eg-rules{grid-template-columns:1fr 1fr;gap:11px 30px}.eg-rbody.duo{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}}
 @media(max-width:860px){.eg-body{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:480px){.eg-sheet{padding:10px 8px 12px}.eg-grid{gap:8px 6px}.eg-notice{padding:6px 12px}.eg-notice[open]{padding-bottom:14px}.eg-panel{padding:14px 14px 16px}}
-@media(prefers-reduced-motion:reduce){.eg-brig summary i{transition:none}.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door{animation:none}.eg-door{transition:none}}`;
+@media(prefers-reduced-motion:reduce){.eg-brig summary i{transition:none}.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door,.eg-cell.ou .eg-door.op{animation:none}.eg-door,.eg-door.op b{transition:none}}`;
 
   function init() {
     const st = document.createElement("style");
@@ -283,12 +329,13 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     sec.setAttribute("aria-labelledby", "pharmacogames-t");
     sec.innerHTML = '<p class="adv-back"><a class="go" href="#">Retour au catalogue</a></p>'
       + '<div class="adv-head"><h2 id="pharmacogames-t">Pharmacogames <span>de Noël</span></h2>'
-      + '<p class="adv-intro">Le concours de l\'équipe, chacun pour soi : 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, cinq questions au chrono sur un thème du jeu de société (quatre flacons au choix, ou une dose à estimer entre 0 et 100) ou un vrai jeu d\'adresse. Chaque porte vaut 10 points. Pour élire votre jeu préféré, c\'est au <a href="#vote">Palmarès</a>.</p></div>'
+      + '<p class="adv-intro">Le concours de l\'équipe, chacun pour soi : 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, cinq questions au chrono sur un thème du jeu de société (quatre flacons au choix, ou une dose à estimer entre 0 et 100) ou un vrai jeu d\'adresse. Chaque porte vaut 10 points, la finale du 25 en vaut 20. Pour élire votre jeu préféré, c\'est au <a href="#vote">Palmarès</a>.</p></div>'
       + NOTICE
       + '<form class="eg-panel eg-gate" id="egGate" novalidate><h3>Entrer dans le calendrier</h3>'
-      + '<label for="egPrenom">Pseudo ou prénom</label><input id="egPrenom" type="text" autocomplete="given-name" maxlength="24" required>'
       + '<label for="egCode">Code d\'équipe</label><input id="egCode" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" required>'
-      + '<p class="eg-hint">Même nom, même fiche, sur tous vos appareils : vos réponses sont gardées par le serveur de l\'équipe. Deux collègues du même prénom ? Ajoutez une initiale collée, par exemple CamilleB. Avatar et brigade se règlent à votre première porte.</p>'
+      + '<div id="egListe" hidden><label for="egNom">Votre nom</label><select id="egNom"></select></div>'
+      + '<div id="egLibre"><label for="egPrenom">Pseudo ou prénom</label><input id="egPrenom" type="text" autocomplete="given-name" maxlength="24" required></div>'
+      + '<p class="eg-hint">Même nom, même fiche, sur tous vos appareils : vos réponses sont gardées par le serveur de l\'équipe. Deux collègues du même prénom ? Ajoutez une initiale collée, par exemple CamilleB. Avatar et brigade se règlent à la création de votre fiche.</p>'
       + '<p class="eg-msg err" id="egGateMsg" role="status"></p><button class="go main" type="submit">Ouvrir mon calendrier</button></form>'
       + '<p class="eg-banner" id="egBanner" hidden>Mode relecture : les 25 portes s\'affichent avec leur solution. Rien n\'est enregistré.</p>'
       + '<div class="eg-body" id="egBody" hidden>'
@@ -318,6 +365,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (ancre) ancre.insertAdjacentElement("afterend", a);
 
     q("#egGate").addEventListener("submit", entrer);
+    q("#egCode").addEventListener("change", () => chercherListe(q("#egCode").value.trim()));
+    q("#egNom").addEventListener("change", () => { q("#egLibre").hidden = q("#egNom").value !== "*"; dire("#egGateMsg", ""); });
     q("#egGrid").addEventListener("click", e => {
       const c = e.target.closest(".eg-cell");
       if (!c) return;
@@ -329,9 +378,11 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       if (o) noter(Number(o.dataset.v));
       else if (s) { const r = q("#egRange"); r.value = Math.max(0, Math.min(100, Number(r.value) + Number(s.dataset.d))); noter(Number(r.value)); }
       else if (e.target.closest("#egSend")) envoyer();
-      else if (e.target.closest("#egStart")) lancer();
-      else if (e.target.closest("#egPlay")) jouer(true);
+      else if (e.target.closest("#egStart")) avertir("#egStart", lancer);
+      else if (e.target.closest("#egPlay")) avertir("#egPlay", () => jouer(true));
+      else if (e.target.closest("#egNon")) panneau();
       else if (e.target.closest("#egTry")) jouer(false);
+      else if (e.target.closest("[data-try]")) jouer(false, Number(e.target.closest("[data-try]").dataset.try));
     });
     q("#egPanel").addEventListener("input", e => { if (e.target.id === "egRange") noter(Number(e.target.value)); });
     q("#egChange").addEventListener("click", sortir);
@@ -358,11 +409,43 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (location.hash === "#enigme") history.replaceState(null, "", "#pharmacogames"); // ancienne adresse de la page
     const on = location.hash === "#pharmacogames" || location.hash === "#pharmacomeeple";
     sec.hidden = !on;
-    if (!on) { if (enFiche) { enFiche = false; if (E) panneau(); } return; } // en quittant la page, la fiche ouverte se referme
+    if (!on) { if (enTirage) devoiler(); if (enFiche) { enFiche = false; if (E) panneau(); } return; } // en quittant la page, la fiche ouverte se referme
     versFiche = location.hash === "#pharmacomeeple";
     document.querySelectorAll("#avent,.ind,.bar,main").forEach(e => { e.hidden = true; });
     sec.scrollIntoView({ block: "start" });
-    if (relecture || (mem.prenom && mem.code)) charger();
+    if (relecture || ((mem.prenom || mem.nom) && mem.code)) charger();
+    else if (q("#egCode").value.trim()) chercherListe(q("#egCode").value.trim());
+  }
+  // Liste des participants : elle n'arrive du serveur qu'avec le bon code d'équipe. Quand elle existe, l'entrée se fait par
+  // un menu déroulant (avec « Je ne suis pas dans la liste » pour la saisie libre) ; sans liste, la saisie libre reste seule.
+  // liste : null tant qu'on ne sait pas, [] s'il n'y en a pas ; listeCode : le code avec lequel on l'a demandée.
+  let liste = null, listeCode = "";
+  async function chercherListe(code) {
+    if (!code || code === listeCode) return;
+    let r;
+    try { r = await call({ code, action: "liste" }); } catch (e) { r = { status: 0, j: {} }; }
+    if (r.status !== 200) { liste = null; return; }
+    listeCode = code;
+    liste = Array.isArray(r.j.liste) ? r.j.liste : [];
+    const sel = q("#egNom"), avec = liste.length > 0;
+    sel.innerHTML = '<option value="">Choisir dans la liste</option>' + liste.map(n => '<option value="' + h(n) + '">' + h(n) + "</option>").join("") + '<option value="*">Je ne suis pas dans la liste</option>';
+    if (mem.nom && liste.includes(mem.nom)) sel.value = mem.nom;
+    q("#egListe").hidden = !avec;
+    q("#egLibre").hidden = avec && sel.value !== "*";
+  }
+  // Entrée par un nom de la liste : la fiche existe déjà (on la retrouve, avec son pseudo), ou elle reste à créer.
+  async function entrerParNom(code, nom) {
+    let r;
+    try { r = await call({ code, action: "entrer", nom }); } catch (x) { r = { status: 0, j: {} }; }
+    if (r.status === 400) { listeCode = ""; return dire("#egGateMsg", "Ce nom n'est plus dans la liste. Choisissez-le de nouveau.", "err"); }
+    if (r.status !== 200) return dire("#egGateMsg", "Le serveur ne répond pas. Réessayez dans un instant.", "err");
+    relecture = "";
+    mem.code = code; mem.nom = nom;
+    if (r.j.prenom) mem.prenom = r.j.prenom; else delete mem.prenom;
+    save();
+    dire("#egGateMsg", "");
+    if (r.j.nouveau) versFiche = true; // première visite : la fiche s'ouvre d'elle-même
+    recevoir(r.j);
   }
   // Pastille « Pharmacomeeple » : une fois le joueur entré, sa fiche d'identification s'ouvre (création ou retouche).
   // Avant l'ouverture de l'identification (le 26 novembre), rien ne s'ouvre : la mention « sous scellé » en tête du calendrier suffit.
@@ -379,6 +462,12 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     const p = q("#egPrenom").value.trim().replace(/’/g, "'"), code = q("#egCode").value.trim();
     if (!code) return dire("#egGateMsg", "Le code d'équipe est demandé : il circule dans l'unité.", "err");
     dire("#egGateMsg", "Ouverture…", "ok");
+    await chercherListe(code);
+    if (liste && liste.length && listeCode === code) {
+      const nom = q("#egNom").value;
+      if (!nom) { q("#egNom").focus(); return dire("#egGateMsg", "Choisissez votre nom dans la liste, ou « Je ne suis pas dans la liste ».", "err"); }
+      if (nom !== "*") return entrerParNom(code, nom);
+    }
     let r;
     // Un prénom mal formé n'empêche pas la relecture : le serveur tranche d'après le code.
     try { r = await call(p.length >= 2 && p.length <= 24 && PRENOM.test(p) ? { code, prenom: p } : { code }); } catch (x) { r = { status: 0, j: {} }; }
@@ -388,7 +477,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     else {
       if (!(p.length >= 2 && p.length <= 24 && PRENOM.test(p))) return dire("#egGateMsg", "Un pseudo ou un prénom en un seul mot, de 2 à 24 lettres, sans espace ni chiffre.", "err");
       relecture = "";
-      mem.prenom = p; mem.code = code;
+      mem.prenom = p; mem.code = code; delete mem.nom;
       save();
     }
     dire("#egGateMsg", "");
@@ -399,19 +488,21 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (enJeu) { enJeu(); enJeu = null; }
     clearInterval(tic); echeance = {};
     relecture = "";
-    E = null; enFiche = false;
+    E = null; enFiche = false; enTirage = false;
     q("#egBody").hidden = true; q("#egRank").hidden = true; q("#egBanner").hidden = true;
     q("#egGate").hidden = false;
     q("#egNotice").open = true;
-    q("#egPrenom").focus();
+    (q("#egLibre").hidden ? q("#egNom") : q("#egPrenom")).focus();
   }
 
   async function charger(msg) {
-    if (occupe || enJeu) return;
+    if (occupe || enJeu || enTirage) return; // pendant le tirage, rien ne rafraîchit la page : la brigade ne se dévoile qu'à la révélation
     occupe = true;
     let r;
-    try { r = await call(relecture ? { code: relecture } : { code: mem.code, prenom: mem.prenom }); } catch (e) { r = { status: 0, j: {} }; }
+    // Entré par la liste sans fiche encore : on redemande par le nom, au cas où la fiche aurait été créée sur un autre appareil.
+    try { r = await call(relecture ? { code: relecture } : mem.prenom ? { code: mem.code, prenom: mem.prenom } : mem.nom ? { code: mem.code, action: "entrer", nom: mem.nom } : { code: mem.code }); } catch (e) { r = { status: 0, j: {} }; }
     occupe = false;
+    if (r.status === 200 && !relecture && !mem.prenom && r.j.prenom) { mem.prenom = r.j.prenom; save(); }
     if (r.status === 401 || r.status === 400) { if (!relecture) { delete mem.code; save(); } sortir(); return dire("#egGateMsg", "Code d'équipe à ressaisir.", "err"); }
     if (r.status !== 200) return E ? dire("#egMsg", "Le serveur ne répond pas. Réessayez dans un instant.", "err") : dire("#egGateMsg", "Le serveur ne répond pas. Réessayez dans un instant.", "err");
     recevoir(r.j, msg);
@@ -419,7 +510,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 
   // Une porte ouverte reste « à faire » tant que la question n'a pas reçu de réponse ou qu'il reste une tentative de jeu.
   const tentatives = p => (p.scores || []).length;
-  const aFaire = p => p.etat === "ouverte" && (p.type === "jeu" ? tentatives(p) < p.essais : p.type === "quiz" ? !p.fini : p.rep === undefined && !p.hors);
+  const aFaire = p => p.etat === "ouverte" && (p.type === "jeu" ? tentatives(p) < p.essais : p.type === "quiz" || p.type === "duo" ? !p.fini : p.rep === undefined && !p.hors);
   // Porte montrée d'office : la plus ancienne encore à faire, sinon la dernière ouverte, sinon la dernière close.
   function parDefaut() {
     if (relecture) return 1;
@@ -440,7 +531,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egRank").hidden = false;
     q("#egBanner").hidden = !relecture;
     if (premier) { q("#egNotice").open = false; choix = parDefaut(); brouillon = null; aConfirmer = false; }
-    q("#egWho").textContent = relecture ? "Relecture" : mem.prenom;
+    q("#egWho").textContent = relecture ? "Relecture" : mem.prenom || mem.nom || "";
+    majBrigades();
     identite();
     grille();
     panneau(msg, cls);
@@ -453,10 +545,12 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   const chargerParticipants = () => new Promise((ok, ko) => {
     if (window.PharmacoParticipants) return ok();
     const sc = document.createElement("script");
-    sc.src = "participants.js"; sc.onload = () => (window.PharmacoParticipants ? ok() : ko()); sc.onerror = ko;
+    sc.src = "participants.js"; sc.onload = () => { majBrigades(); return window.PharmacoParticipants ? ok() : ko(); }; sc.onerror = ko;
     document.head.appendChild(sc);
   });
   const fiche = () => !relecture && E && E.profil && E.profil.a;
+  // Nom et emblème votés par les brigades : participants.js les reporte dans ses brigades, pour tout ce qui les affiche.
+  const majBrigades = () => { if (window.PharmacoParticipants && E) window.PharmacoParticipants.maj(E.brigades); };
   // En tête du calendrier : l'avatar devant le nom, la brigade dessous. Le texte de #egWho reste le nom seul.
   function identite() {
     const P = !relecture && E && E.profil, bouton = q("#egAvatar");
@@ -479,7 +573,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       if (B) q("#egBrig").innerHTML = W.embleme(P.b) + "<span>" + h(B.nom) + (devise ? " · « " + h(devise) + " »" : "") + "</span>";
     }).catch(() => {});
   }
-  // Carnet de brigade : membres, devise et jeu emblème, et la voix du joueur tant que le vote est ouvert (serveur : du 26 novembre au 7 décembre).
+  // Carnet de brigade : membres, nom, emblème, devise et jeu emblème, et les voix du joueur tant que le vote est ouvert (serveur : du 26 novembre au 10 décembre).
   async function carnet() {
     if (relecture || occupe || enJeu || !fiche()) return;
     try { await chargerParticipants(); } catch (e) { return dire("#egMsg", "Le carnet de brigade ne s'est pas chargé. Vérifiez la connexion et réessayez.", "err"); }
@@ -487,17 +581,17 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     enFiche = true;
     clearInterval(tic);
     window.PharmacoParticipants.brigade(q("#egPanel"), {
-      pseudo: mem.prenom, brigade: b, ligne: ligne(), moi: E.profil, choix: E.choix,
+      pseudo: mem.prenom, brigade: b, ligne: ligne(), lignes: () => E.brigades || [], moi: E.profil, choix: E.choix,
       membres: (E.classement || []).filter(x => x.b === b).sort((x, y) => x.p.localeCompare(y.p, "fr")),
       jeux: typeof G !== "undefined" ? G : [], familles: typeof CATS !== "undefined" ? CATS : {},
       voter: async v => {
         let r;
-        try { r = await call({ code: mem.code, prenom: mem.prenom, action: "brigade", devise: v.devise, jeu: v.jeu }); } catch (e) { r = { status: 0, j: {} }; }
-        if (r.status === 403 && r.j.error === "fige") return { ok: false, message: "Trop tard : devise et jeu emblème sont scellés depuis la fin de la première semaine." };
+        try { r = await call({ code: mem.code, prenom: mem.prenom, action: "brigade", titre: v.titre, embleme: v.embleme, devise: v.devise, jeu: v.jeu }); } catch (e) { r = { status: 0, j: {} }; }
+        if (r.status === 403 && r.j.error === "fige") return { ok: false, message: "Trop tard : les paramètres de la brigade sont scellés." };
         if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "Le vote de la brigade est encore sous scellé." };
         if (r.status !== 200 || !r.j.profil) return { ok: false };
         E = r.j;
-        identite();
+        majBrigades(); identite(); rang();
         return { ok: true, ligne: ligne(), moi: E.profil };
       },
       onFin: () => { enFiche = false; panneau(); },
@@ -512,7 +606,10 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     enFiche = true;
     clearInterval(tic);
     window.PharmacoParticipants.fiche(q("#egPanel"), {
-      pseudo: mem.prenom, avatar: P.a, brigade: P.b,
+      pseudo: mem.prenom || E.suggestion || "", avatar: P.a, brigade: P.b,
+      // Entré par la liste, sans fiche encore : la fiche demande aussi le pseudo.
+      choisirPseudo: !mem.prenom && Boolean(mem.nom), nom: mem.nom,
+      versCarnet: E.choix && E.choix.etat === "ouvert" ? () => { devoiler(); enFiche = false; carnet(); } : undefined,
       renommer: async neuf => {
         let r;
         try { r = await call({ code: mem.code, prenom: mem.prenom, action: "renommer", pseudo: neuf }); } catch (e) { r = { status: 0, j: {} }; }
@@ -526,45 +623,61 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         identite(); grille(); rang();
         return { ok: true };
       },
-      enregistrer: async a => {
+      enregistrer: async (a, pseudo) => {
         let r;
-        try { r = await call({ code: mem.code, prenom: mem.prenom, action: "profil", avatar: a }); } catch (e) { r = { status: 0, j: {} }; }
+        try { r = await call({ code: mem.code, prenom: pseudo || mem.prenom, action: "profil", avatar: a, nom: pseudo ? mem.nom : undefined }); } catch (e) { r = { status: 0, j: {} }; }
+        if (r.status === 409 && r.j.error === "pris") return { ok: false, message: "Ce pseudo est déjà porté par un autre joueur. Ajoutez une initiale collée, par exemple " + pseudo + "B." };
+        if (r.status === 409) return { ok: false, message: "Ce nom de la liste a déjà sa fiche. Revenez à l'entrée et choisissez-le de nouveau pour la retrouver." };
+        if (r.status === 400 && r.j.error === "prenom") return { ok: false, message: "Un pseudo en un seul mot, de 2 à 24 lettres, sans espace ni chiffre." };
+        if (r.status === 200 && r.j.profil && pseudo) { mem.prenom = pseudo; save(); q("#egWho").textContent = pseudo; q("#egPrenom").value = pseudo; }
         if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "La fiche d'identification est encore sous scellé." };
         if (r.status === 403 && r.j.error === "complet") return { ok: false, message: "Le calendrier affiche complet : plus de place pour un nouveau joueur." };
         if (r.status !== 200 || !r.j.profil) return { ok: false };
         E = r.j;
-        identite(); grille(); rang();
+        // Brigade tout juste tirée : la page ne la montre nulle part (en-tête, classement) avant la révélation de la fiche,
+        // qui vient après la vidéo du tirage. Une retouche, elle, se voit tout de suite.
+        if (P.b === undefined) enTirage = true; else devoiler();
         const b = E.profil.b, ligne = (E.brigades || []).find(x => x.b === b);
         return { ok: true, brigade: b, effectif: ligne ? ligne.n : 0 };
       },
-      onFin: msg => { enFiche = false; panneau(msg); },
+      reveler: devoiler,
+      onFin: msg => { devoiler(); enFiche = false; panneau(msg); },
     });
     q("#egPanel").scrollIntoView({ block: "nearest" });
+  }
+  // enTirage : la brigade vient d'être tirée et n'est pas encore révélée. devoiler() met la page à jour une fois la révélation faite.
+  let enTirage = false;
+  function devoiler() {
+    enTirage = false;
+    if (!E) return;
+    majBrigades(); identite(); grille(); rang();
   }
 
   function grille() {
     q("#egGrid").innerHTML = E.portes.map(p => {
       let k, lab, dit;
-      if (relecture) { k = "rl"; lab = p.type === "qcm" ? "QCM" : p.type === "jeu" ? "Jeu" : p.type === "quiz" ? "5 Q" : "Dose"; dit = "relecture"; }
+      if (relecture) { k = "rl"; lab = p.type === "qcm" ? "QCM" : p.type === "jeu" ? "Jeu" : p.type === "duo" ? "2 jeux" : p.type === "quiz" ? "5 Q" : "Dose"; dit = "relecture"; }
       else if (p.etat === "avenir") { k = "av"; lab = CADENAS; dit = "sous scellé jusqu'au " + jour(dt(p.ouvre)); }
       else if (p.etat === "ouverte") {
         if (p.type === "jeu") {
           const nb = tentatives(p);
-          if (!nb) { k = "ou"; lab = "Ouverte"; dit = "jeu d'adresse ouvert"; }
+          if (!nb && p.duo && p.duo.i > 1) { k = "ou"; lab = (p.duo.i - 1) + "/" + p.duo.nb; dit = pl(p.duo.i - 1, "jeu joué", "jeux joués") + " sur " + p.duo.nb; }
+          else if (!nb) { k = "ou"; lab = "Ouverte"; dit = p.duo ? "finale ouverte, deux jeux d'adresse" : "jeu d'adresse ouvert"; }
           else if (nb < p.essais) { k = "ou"; lab = p.meilleur + "/10"; dit = "note " + p.meilleur + " sur 10, une tentative restante"; }
           else { k = "sc"; lab = SCEAU + p.meilleur + "/10"; dit = "note scellée, " + p.meilleur + " sur 10"; }
-        } else if (p.type === "quiz") { k = "sc"; lab = SCEAU + "Scellée"; dit = "cinq questions jouées, réponses scellées"; }
+        } else if (p.type === "duo") { k = "sc"; lab = SCEAU + "Scellée"; dit = "finale jouée, notes scellées"; }
+        else if (p.type === "quiz") { k = "sc"; lab = SCEAU + "Scellée"; dit = "cinq questions jouées, réponses scellées"; }
         else if (p.quiz && p.reste === undefined) { k = "ou"; lab = p.quiz.i > 1 ? (p.quiz.i - 1) + "/" + p.quiz.nb : "Ouverte"; dit = p.quiz.i > 1 ? pl(p.quiz.i - 1, "question jouée", "questions jouées") + " sur " + p.quiz.nb : "ouverte, cinq questions à faire"; }
         else if (p.rep !== undefined) { k = "sc"; lab = SCEAU + "Scellée"; dit = "réponse scellée"; }
         else if (p.hors) { k = "ko"; lab = "Hors délai"; dit = "chrono écoulé sans réponse"; }
         else if (p.reste !== undefined) { k = "ou"; lab = "Chrono"; dit = "chrono en cours"; }
         else { k = "ou"; lab = "Ouverte"; dit = "ouverte, à faire"; }
-      } else { const f = p.pts !== undefined; k = f ? "ok" + (p.pts === 10 ? " max" : "") : "ko"; lab = f ? "+" + p.pts : "Manquée"; dit = f ? pl(p.pts, "point", "points") : "manquée"; }
+      } else { const f = p.pts !== undefined; k = f ? "ok" + (p.pts === (p.type === "duo" ? 10 * p.nb : 10) ? " max" : "") : "ko"; lab = f ? "+" + p.pts : "Manquée"; dit = f ? pl(p.pts, "point", "points") : "manquée"; }
       return '<button class="eg-cell ' + k + (p.n === choix ? " sel" : "") + '" type="button" data-n="' + p.n + '" aria-pressed="' + (p.n === choix) + '" aria-label="' + h("Porte " + p.n + " : " + dit) + '">'
-        + '<span class="eg-door"><b>' + p.n + "</b><small>" + lab + "</small></span></button>";
+        + '<span class="eg-door' + (k === "av" ? "" : " op") + '">' + (k === "av" ? "" : symbole(p)) + "<b>" + p.n + "</b><small>" + lab + "</small></span></button>";
     }).join("");
     const clos = E.portes.filter(p => p.etat === "close").length;
-    const att = E.portes.filter(p => p.etat === "ouverte" && (p.rep !== undefined || tentatives(p) > 0 || p.type === "quiz" || (p.quiz && p.quiz.i > 1))).length;
+    const att = E.portes.filter(p => p.etat === "ouverte" && (p.rep !== undefined || tentatives(p) > 0 || p.type === "quiz" || p.type === "duo" || (p.quiz && p.quiz.i > 1) || (p.duo && p.duo.i > 1))).length;
     q("#egScore").textContent = relecture ? "25 portes à relire, solutions comprises."
       : "Total : " + pl(E.total, "point", "points") + " · " + pl(clos, "porte close", "portes closes") + (att ? " · " + pl(att, "résultat scellé en attente", "résultats scellés en attente") : "");
   }
@@ -582,7 +695,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   const LETTRES = ["A", "B", "C", "D"];
   const flacon = (o, i, tag, cls, note) => "<" + tag + ' class="eg-opt' + (cls ? " " + cls : "") + '"' + (tag === "button" ? ' type="button" data-v="' + i + '" aria-pressed="false"' : "") + "><i>" + LETTRES[i] + "</i>"
     + (o.img ? '<img src="img/' + h(o.img) + '" alt="" loading="lazy">' : "") + "<span>" + fr(o.t) + (note ? "<em>" + note + "</em>" : "") + "</span></" + tag + ">";
-  const forme = p => (p.type === "quiz" ? "cinq questions" : (p.quiz ? "question " + p.quiz.i + " sur " + p.quiz.nb + " · " : "") + (p.type === "qcm" ? "quatre flacons" : p.type === "jeu" ? "jeu d'adresse" : "dosage de 0 à 100"));
+  const forme = p => (p.type === "quiz" ? "cinq questions" : p.type === "duo" ? "finale, deux jeux d'adresse" : (p.quiz ? "question " + p.quiz.i + " sur " + p.quiz.nb + " · " : "") + (p.type === "qcm" ? "quatre flacons" : p.type === "jeu" ? "jeu d'adresse" : "dosage de 0 à 100"));
 
   function saisie(p) {
     const fin = '<p class="eg-hint">Une seule prise par ' + (p.quiz ? "question" : "porte") + ' : la réponse est définitive. Si le chrono tombe à zéro, la proposition affichée part telle quelle.</p>'
@@ -626,7 +739,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     } else {
       const ouverte = p.etat === "ouverte" && !relecture;
       html = '<p class="ap-m">Porte ' + p.n + " · " + jour(dt(p.ouvre)) + " · " + forme(p) + "</p><h3>" + fr(p.titre) + "</h3>"
-        + (p.quiz && p.quiz.titre ? '<p class="ap-m">Question ' + p.quiz.i + " sur " + p.quiz.nb + " · " + fr(p.quiz.titre) + "</p>" : "");
+        + (p.quiz && p.quiz.titre ? '<p class="ap-m">Question ' + p.quiz.i + " sur " + p.quiz.nb + " · " + fr(p.quiz.titre) + "</p>" : "")
+        + (p.duo ? '<p class="ap-m">Jeu ' + p.duo.i + " sur " + p.duo.nb + " · " + fr(p.duo.titre) + "</p>" : "");
       const enonce = () => '<div class="eg-ill" id="egJeu">' + p.ill + '</div><p class="eg-q">' + fr(p.question) + "</p>";
       if (p.type === "jeu") {
         const nb = tentatives(p);
@@ -634,12 +748,22 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         if (relecture) html += '<p class="eg-hint">Chrono de ' + p.duree + " s, " + pl(p.essais, "tentative", "tentatives") + ', la meilleure compte.</p><button class="go main" type="button" id="egTry">Essayer le jeu, sans rien enregistrer</button>'
           + '<p class="eg-ex">' + fr(p.explication) + "</p>" + origine(p);
         else if (ouverte) {
+          if (p.duo) html += p.duo.avant.map(a => '<div class="eg-seal">' + SCEAU + "<span><small>" + fr(a.titre) + " : note scellée</small><b>" + (a.meilleur || 0) + " / 10</b></span></div>").join("");
           html += essaisFaits(p);
-          if (nb < p.essais) html += '<p class="eg-hint">Chrono de ' + p.duree + " s par tentative. " + pl(p.essais, "tentative", "tentatives") + ", la meilleure compte ; une tentative lancée est décomptée, même interrompue. Clôture le " + jour(dt(p.ferme)) + ' à minuit : les points viennent alors du classement de la porte, de 10 pour le premier à 1 pour le dernier.</p>'
+          if (nb < p.essais) html += '<p class="eg-hint">Chrono de ' + p.duree + " s par tentative. " + pl(p.essais, "tentative", "tentatives") + ", la meilleure compte ; une tentative lancée est décomptée, même interrompue. Clôture le " + jour(dt(p.ferme)) + ' à minuit : les points viennent alors du classement ' + (p.duo ? "de chacun des " + p.duo.nb + " jeux" : "de la porte") + ', de 10 pour le premier à 1 pour le dernier.</p>'
             + '<button class="go main" type="button" id="egPlay">Lancer la tentative ' + (nb + 1) + " sur " + p.essais + "</button>";
           else html += '<div class="eg-seal">' + SCEAU + "<span><small>Note scellée</small><b>" + p.meilleur + " / 10</b></span></div>"
             + '<p class="eg-d">Vos points seront libérés à la clôture de la porte : rendez-vous le ' + jour(dt(p.ferme, 1)) + ".</p>";
         } else html += essaisFaits(p) + '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (p.pts !== undefined ? (p.rang ? "Rang " + p.rang + " sur " + p.sur + " : " : "") + "+" + pl(p.pts, "point", "points") : "Porte manquée : 0 point") + '</p><p class="eg-ex">' + fr(p.explication) + "</p>" + origine(p);
+      } else if (p.type === "duo") {
+        // Finale à deux jeux : tout joué (notes scellées), ou close ou en relecture (chaque jeu, sa règle et son résultat).
+        if (p.fini) html += '<div class="eg-ill">' + p.ill + "</div>" + p.jeux.map(c => '<div class="eg-seal">' + SCEAU + "<span><small>" + fr(c.titre) + " : note scellée</small><b>" + (c.meilleur || 0) + " / 10</b></span></div>").join("")
+          + '<p class="eg-d">Vos points seront libérés à la clôture de la porte : rendez-vous le ' + jour(dt(p.ferme, 1)) + ".</p>";
+        else html += (relecture ? "" : '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (p.pts !== undefined ? "Total de la finale : +" + pl(p.pts, "point", "points") + " sur " + 10 * p.nb : "Porte manquée : 0 point") + "</p>")
+          + p.jeux.map((c, i) => '<section class="eg-sub"><p class="ap-m">Jeu ' + (i + 1) + " sur " + p.nb + " · jeu d'adresse</p><h4>" + fr(c.titre) + '</h4><div class="eg-ill" id="egJeu' + i + '">' + c.ill + '</div><p class="eg-q">' + fr(c.question) + "</p>"
+            + (relecture ? '<p class="eg-hint">Chrono de ' + c.duree + " s, " + pl(c.essais, "tentative", "tentatives") + ', la meilleure compte.</p><button class="go main" type="button" data-try="' + i + '">Essayer le jeu, sans rien enregistrer</button>'
+              : essaisFaits(c) + (p.pts !== undefined ? '<p class="eg-pts' + (c.pts ? "" : " zero") + '">' + (c.rang ? "Rang " + c.rang + " sur " + c.sur + " : " : "") + "+" + pl(c.pts || 0, "point", "points") + "</p>" : ""))
+            + '<p class="eg-ex">' + fr(c.explication) + "</p>" + origine(c) + "</section>").join("");
       } else if (p.type === "quiz") {
         // Case de cinq questions : toutes jouées (réponses scellées), ou close (les cinq solutions).
         if (!p.qs) html += '<div class="eg-ill">' + p.ill + '</div><div class="eg-seal">' + SCEAU + "<span><small>Case jouée</small><b>" + pl(p.scellees, "réponse scellée", "réponses scellées") + " sur " + p.nb + "</b></span></div>"
@@ -686,6 +810,19 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   }
 
   // Lancement du chrono d'une question : le serveur note l'heure et livre l'énoncé.
+  // Avant tout lancement : rappel des essais restants, puis validation. Le premier appui avertit, le second lance.
+  function avertir(sel, fn) {
+    const b = q(sel), p = E.portes[choix - 1];
+    if (!b || !p) return;
+    if (b.dataset.ok || !fiche()) return fn(); // pas encore identifié : la fiche passe d'abord, rien n'est lancé
+    const reste = p.type === "jeu" ? p.essais - tentatives(p) : 1;
+    const msg = p.type === "jeu"
+      ? (reste > 1 ? "Il vous reste " + pl(reste, "tentative", "tentatives") + " sur " + p.essais + " pour ce jeu." : "C'est votre dernière tentative pour ce jeu.") + " Dès le lancement, elle est décomptée, même interrompue."
+      : "Une seule tentative pour cette question : le chrono de " + p.duree + " s part au lancement et ne s'arrête plus, même si vous quittez la page.";
+    b.dataset.ok = "1"; b.textContent = "Je confirme, je lance";
+    b.insertAdjacentHTML("beforebegin", '<p class="eg-warn" role="alert">' + msg + "</p>");
+    b.insertAdjacentHTML("afterend", '<button class="go" type="button" id="egNon">Pas maintenant</button>');
+  }
   async function lancer() {
     const p = E.portes[choix - 1];
     if (!p || occupe) return;
@@ -743,9 +880,10 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   });
   const patience = ms => new Promise(r => setTimeout(r, ms));
   // reel : la tentative compte et sa note part au serveur ; sinon c'est un essai libre de la relecture.
-  async function jouer(reel) {
-    const p = E.portes[choix - 1];
-    if (!p || p.type !== "jeu" || enJeu || occupe) return;
+  // i : en relecture d'une finale à deux jeux, celui des deux qu'on essaie.
+  async function jouer(reel, i) {
+    const P = E.portes[choix - 1], p = P && P.type === "duo" ? P.jeux[i] : P;
+    if (!p || (P.type !== "jeu" && P.type !== "duo") || !p.jeu || enJeu || occupe) return;
     if (reel && !fiche()) return identifier(); // première porte : on s'identifie d'abord, aucune tentative n'est décomptée
     occupe = true;
     try { await chargerJeux(); } catch (e) { occupe = false; return dire("#egMsg", "Le jeu ne s'est pas chargé. Vérifiez la connexion et réessayez : aucune tentative n'a été décomptée.", "err"); }
@@ -761,7 +899,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       jeton = r.j.jeton; E = r.j; grille();
     }
     occupe = false;
-    const zone = q("#egJeu"), bouton = q("#egPlay") || q("#egTry");
+    const zone = q(P.type === "duo" ? "#egJeu" + i : "#egJeu"), bouton = P.type === "duo" ? q('[data-try="' + i + '"]') : q("#egPlay") || q("#egTry");
     if (bouton) bouton.hidden = true;
     zone.classList.add("jeu");
     dire("#egMsg", "");
@@ -831,7 +969,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     fiche.hidden = !(me && clos);
     if (me && clos) {
       const pairs = L.filter(x => x.rang === me.rang).length - 1, dessus = L.filter(x => x.pts > me.pts).pop(), der = closes[closes.length - 1];
-      const att = E.portes.filter(p => p.etat === "ouverte" && (p.rep !== undefined || tentatives(p) > 0 || p.type === "quiz" || (p.quiz && p.quiz.i > 1))).length;
+      const att = E.portes.filter(p => p.etat === "ouverte" && (p.rep !== undefined || tentatives(p) > 0 || p.type === "quiz" || p.type === "duo" || (p.quiz && p.quiz.i > 1) || (p.duo && p.duo.i > 1))).length;
       const lignes = [];
       if (dessus) lignes.push("À <b>" + pl(dessus.pts - me.pts, "point", "points") + "</b> du " + ord(dessus.rang) + " rang.");
       else if (!me.pts) lignes.push("Aucun point distribué pour l'instant : tout reste à jouer.");
