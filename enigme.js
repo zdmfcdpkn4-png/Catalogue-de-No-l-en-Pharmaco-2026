@@ -319,6 +319,22 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 .eg-marche .eg-row>span{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:2px 5px;max-width:100%}
 .eg-marche .eg-av{width:44px;height:44px}
 .eg-marche .eg-up{margin-left:0}
+/* Remise des prix : la scène filmée du classement final, les lauréats posés sur les marches */
+.eg-scene{margin-top:14px}
+.eg-scene-c{position:relative;width:100%;max-width:360px;margin:0 auto;aspect-ratio:3/4;background:var(--pressed);border:3px solid var(--line);border-radius:18px;box-shadow:6px 6px 0 var(--shadow);overflow:hidden;container-type:inline-size}
+.eg-scene-c video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}
+.eg-face{position:absolute;display:grid;justify-items:center;align-content:center;gap:2px;padding:0 3px;overflow:hidden;text-align:center;color:var(--on-surface);font-weight:800;font-size:10px;font-size:max(10px,3.7cqw);line-height:1.1;opacity:0;transition:opacity .7s}
+.eg-face.f1{left:35%;top:49%;width:28%;height:21.5%}
+.eg-face.f2{left:8.5%;top:56.5%;width:24%;height:13%}
+.eg-face.f3{left:66%;top:57%;width:24%;height:12.5%}
+.eg-scene.fin .eg-face{opacity:1}
+.eg-face>span{display:flex;justify-content:center;gap:2px;max-width:100%}
+.eg-face b{display:block;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:800}
+.eg-rank .eg-face .eg-av{width:22px;width:max(20px,9cqw);height:auto;aspect-ratio:1}
+.eg-rank .eg-face.f1 .eg-av{width:30px;width:max(26px,12cqw)}
+.eg-scene-b{display:flex;flex-wrap:wrap;justify-content:center;gap:0 14px;margin:8px 0 0}
+.eg-scene-b .go{margin-right:0}
+.eg-scene-r{margin:8px 0 0}
 /* Classement des brigades */
 .eg-brigs{margin-top:14px}
 .eg-brigs h4{margin:0;font-weight:800;font-size:1.05rem;line-height:1.2}
@@ -356,7 +372,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 .eg-ouv.off{opacity:0;pointer-events:none;transition-duration:.45s}
 .eg-ouv video{display:block;width:min(86vw,62vh,420px);aspect-ratio:1;border-radius:22px;background:#EC7739;box-shadow:0 14px 40px rgba(0,0,0,.4)}
 .eg-ouv:focus-visible video{outline:3.5px solid var(--focus);outline-offset:3px}
-@media(prefers-reduced-motion:reduce){.eg-brig summary i{transition:none}.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door,.eg-cell.ou .eg-door.op{animation:none}.eg-door,.eg-door.op b{transition:none}}`;
+@media(prefers-reduced-motion:reduce){.eg-face{transition:none}.eg-brig summary i{transition:none}.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door,.eg-cell.ou .eg-door.op{animation:none}.eg-door,.eg-door.op b{transition:none}}`;
 
   function init() {
     const st = document.createElement("style");
@@ -389,7 +405,11 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<aside class="eg-panel" id="egPanel" aria-live="polite"></aside>'
       + "</div>"
       + '<div class="eg-panel eg-rank" id="egRank" hidden><div class="eg-rhead"><h3>Classement des Pharmacogames</h3><p class="eg-sum" id="egSum"></p></div>'
-      + '<p class="eg-d" id="egRankMsg"></p><section class="eg-brigs" id="egBrigs" aria-labelledby="egBrigsT" hidden><h4 id="egBrigsT">Classement des brigades</h4><p id="egBrigsS"></p><ol id="egBrigsL"></ol></section>'
+      + '<p class="eg-d" id="egRankMsg"></p>'
+      + '<section class="eg-scene" id="egScene" aria-label="Remise des prix" hidden><div class="eg-scene-c" id="egSceneC" aria-hidden="true"><div class="eg-face f1"></div><div class="eg-face f2"></div><div class="eg-face f3"></div></div>'
+      + '<p class="eg-scene-b"><button class="go" type="button" id="egScenePasser">Passer</button><button class="linkbtn" type="button" id="egSceneRejouer" hidden>Revoir</button><button class="linkbtn" type="button" id="egSceneReplier" hidden>Replier la scène</button></p></section>'
+      + '<p class="eg-scene-r" id="egSceneR" hidden><button class="linkbtn" type="button" id="egSceneRevoir">Revoir la remise des prix</button></p>'
+      + '<section class="eg-brigs" id="egBrigs" aria-labelledby="egBrigsT" hidden><h4 id="egBrigsT">Classement des brigades</h4><p id="egBrigsS"></p><ol id="egBrigsL"></ol></section>'
       + '<div class="eg-rbody" id="egRBody">'
       + '<div class="eg-rcol" id="egCol"><section class="eg-lib" id="egLib" aria-live="polite" hidden></section><section class="eg-moi" id="egMoi" aria-label="Ma fiche" hidden></section>'
       + '<ol class="eg-pod" id="egPod" aria-label="Podium" hidden></ol></div>'
@@ -431,6 +451,10 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egAvatar").addEventListener("click", () => { if (!enJeu && brouillon === null && !q("#egTime")) identifier(); });
     q("#egBrigade").addEventListener("click", () => { if (!enJeu && brouillon === null && !q("#egTime")) carnet(); });
     q("#egTout").addEventListener("click", () => { toutVoir = !toutVoir; rang(); });
+    q("#egScenePasser").addEventListener("click", () => sceneFin(true));
+    q("#egSceneRejouer").addEventListener("click", sceneJouer);
+    q("#egSceneRevoir").addEventListener("click", sceneJouer);
+    q("#egSceneReplier").addEventListener("click", () => sceneEtat("replie"));
     q("#egBrigsL").addEventListener("toggle", e => { const b = e.target.dataset && e.target.dataset.b; if (b !== undefined) brigOuvertes[e.target.open ? "add" : "delete"](b); }, true);
     q("#egLib").addEventListener("click", e => { if (e.target.id === "egVu") { vuLib(); rang(); } });
     q("#egReload").addEventListener("click", () => charger("Calendrier à jour."));
@@ -1032,6 +1056,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         + '</ul><div class="eg-socle"><span class="sr">Rang </span><b>' + n + "</b><span>" + pl(T[0].pts, "point", "points") + (T.length > 1 ? '<span class="sr"> chacun, ex aequo</span>' : "") + "</span></div></li>";
     }).join("");
 
+    scene(clos === 25 && podium && !relecture, tete, av);
+
     // Suite : lignes fines, sans barre. Liste longue : repliée autour des premiers et du joueur, dépliable.
     const suite = podium ? L.filter(x => !tete.includes(x)) : L, iMoi = suite.indexOf(me), long = suite.length > 8;
     let trou = false;
@@ -1049,6 +1075,64 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     const tete2 = !lib.hidden || !fiche.hidden || podium;
     q("#egCol").hidden = !tete2;
     q("#egRBody").classList.toggle("duo", tete2);
+  }
+
+  // Remise des prix, au classement final seulement (les 25 portes closes) : une courte vidéo muette (rideau, projecteurs,
+  // trophée, podium aux marches vides), puis les lauréats du podium apparaissent sur les marches. Jouée une fois par appareil,
+  // avec de quoi la passer, la revoir et la replier. Pas de scène si l'appareil demande moins de mouvement ; si la vidéo
+  // ne se charge pas, la scène disparaît sans message : le podium et le classement habituels restent en dessous.
+  const SCENE = { src: "video/hall-of-fame.mp4", attente: 8000 };
+  let sceneOu = "", sceneGarde = 0;
+  const sceneVideo = () => q("#egSceneC video");
+
+  function sceneEtat(e) {
+    sceneOu = e;
+    clearTimeout(sceneGarde);
+    const v = sceneVideo(), vue = e === "joue" || e === "fin";
+    if (v && e !== "joue") v.pause();
+    q("#egScene").hidden = !vue;
+    q("#egScene").classList.toggle("fin", e === "fin");
+    q("#egScenePasser").hidden = e !== "joue";
+    q("#egSceneRejouer").hidden = q("#egSceneReplier").hidden = e !== "fin";
+    q("#egSceneR").hidden = e !== "replie";
+  }
+
+  function sceneFin(passe) {
+    const v = sceneVideo();
+    // Passer : on saute à la dernière image, le podium illuminé ; si la durée n'est pas encore connue, dès qu'elle l'est.
+    const fond = () => { try { if (isFinite(v.duration)) v.currentTime = Math.max(0, v.duration - 0.05); } catch (e) {} };
+    if (passe && v) { v.pause(); if (isFinite(v.duration)) fond(); else v.addEventListener("durationchange", () => { if (sceneOu === "fin") fond(); }, { once: true }); }
+    if (!mem.scene) { mem.scene = 1; save(); }
+    sceneEtat("fin");
+  }
+
+  function sceneJouer() {
+    let v = sceneVideo();
+    if (!v) {
+      v = document.createElement("video");
+      v.muted = true; v.playsInline = true; v.preload = "auto";
+      v.setAttribute("muted", ""); v.setAttribute("playsinline", "");
+      v.addEventListener("ended", () => { if (sceneOu === "joue") sceneFin(); });
+      v.addEventListener("error", () => { if (sceneOu === "joue") sceneEtat("panne"); });
+      v.addEventListener("playing", () => clearTimeout(sceneGarde));
+      v.src = SCENE.src;
+      q("#egSceneC").prepend(v);
+    }
+    sceneEtat("joue");
+    try { v.currentTime = 0; } catch (e) {}
+    sceneGarde = setTimeout(() => { if (sceneOu === "joue") sceneEtat("panne"); }, SCENE.attente);
+    const p = v.play();
+    if (p && p.catch) p.catch(() => { if (sceneOu === "joue") sceneEtat("panne"); });
+  }
+
+  function scene(finale, tete, av) {
+    if (!finale || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) { if (sceneOu) sceneEtat(""); return; }
+    // Sur chaque marche : le meeple et le pseudo du lauréat ; à plusieurs sur la marche, les meeples et « ex aequo ».
+    [1, 2, 3].forEach(n => {
+      const T = tete.filter(x => x.rang === n);
+      q("#egSceneC .f" + n).innerHTML = !T.length ? "" : "<span>" + T.slice(0, 3).map(av).join("") + "</span><b>" + (T.length === 1 ? h(T[0].p) : T.length + " ex aequo") + "</b>";
+    });
+    if (!sceneOu) { if (mem.scene) sceneEtat("replie"); else sceneJouer(); }
   }
 
   // Classement des cinq brigades, au-dessus du classement individuel : rang et moyenne par membre actif (portes closes
