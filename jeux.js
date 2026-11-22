@@ -860,7 +860,7 @@
   }
   function flipper(el, opt) {
     const duree = opt.duree || 60, { cv, ctx, xDe, liberer } = monter(el, F_H);
-    cv.style.touchAction = "none";
+    cv.style.touchAction = "none"; cv.style.userSelect = cv.style.webkitUserSelect = "none"; cv.style.webkitTouchCallout = "none"; cv.style.webkitTapHighlightColor = "transparent";
     cv.setAttribute("aria-label", "Le flipper du préparatoire. Batteur gauche : flèche gauche, touche S ou moitié gauche de l'écran. Batteur droit : flèche droite, touche L ou moitié droite. Secouer la table, trois fois par partie : barre d'espace, ou toucher l'afficheur en haut.");
     const s = creerFlipper(), media = q => typeof matchMedia === "function" && matchMedia(q).matches, tactile = media("(pointer: coarse)"), calme = media("(prefers-reduced-motion: reduce)");
     const logo = new Image(); logo.src = api._logo;
@@ -869,17 +869,35 @@
     const doigts = new Map(), touches = { g: false, d: false };
     const maj = () => { let g = touches.g, d = touches.d; doigts.forEach(c => { if (c === "g") g = true; else d = true; }); s.g = g; s.d = d; };
     const secouer = () => { if (secouerFlipper(s)) { doigts.clear(); touches.g = touches.d = false; eclair = 0.3; if (!calme) secousse = 0.3; } };
-    const appui = e => { e.preventDefault(); cv.focus({ preventScroll: true }); const r = cv.getBoundingClientRect(); if ((e.clientY - r.top) / r.height * F_H < 47) { secouer(); return; } try { cv.setPointerCapture(e.pointerId); } catch (_) { } doigts.set(e.pointerId, xDe(e) < W / 2 ? "g" : "d"); maj(); };
+    // Au doigt, un relâchement peut ne jamais être signalé (appui long, geste du système) et le batteur resterait levé.
+    // On ne compte donc pas les appuis et les relâchements : à chaque événement tactile, on relit la liste des doigts encore posés.
+    let auDoigt = false; const enHaut = y => { const r = cv.getBoundingClientRect(); return (y - r.top) / r.height * F_H < 47; };
+    const tactiles = e => {
+      auDoigt = true;
+      if (e.cancelable) e.preventDefault();
+      if (e.type === "touchstart") for (const d of e.changedTouches) if (enHaut(d.clientY)) secouer();
+      doigts.clear();
+      for (const d of e.touches) if (d.target === cv && !enHaut(d.clientY)) doigts.set("t" + d.identifier, xDe(d) < W / 2 ? "g" : "d");
+      maj();
+    };
+    const survol = e => { if (e.pointerType === "mouse" && !e.buttons && doigts.has(e.pointerId)) relache(e); };
+    const appui = e => { if (auDoigt && e.pointerType === "touch") return; e.preventDefault(); cv.focus({ preventScroll: true }); const r = cv.getBoundingClientRect(); if ((e.clientY - r.top) / r.height * F_H < 47) { secouer(); return; } try { cv.setPointerCapture(e.pointerId); } catch (_) { } doigts.set(e.pointerId, xDe(e) < W / 2 ? "g" : "d"); maj(); };
     const relache = e => { doigts.delete(e.pointerId); maj(); };
     const cote = e => { const k = e.key; return k === "ArrowLeft" || k === "s" || k === "S" ? "g" : k === "ArrowRight" || k === "l" || k === "L" ? "d" : null; };
     const enfonce = e => { if ((e.key === " " || e.key === "ArrowUp") && !e.repeat && !/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(e.target && e.target.tagName || "")) { e.preventDefault(); secouer(); return; } const c = cote(e); if (!c || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target && e.target.tagName || "")) return; e.preventDefault(); touches[c] = true; maj(); };
     const leve = e => { const c = cote(e); if (c) { touches[c] = false; maj(); } };
     const lache = () => { doigts.clear(); touches.g = touches.d = false; maj(); };
+    const cache = () => { if (document.hidden) lache(); };
+    const TACT = ["touchstart", "touchmove", "touchend", "touchcancel"];
     const menu = e => e.preventDefault();
-    cv.addEventListener("pointerdown", appui); cv.addEventListener("pointerup", relache); cv.addEventListener("pointercancel", relache); cv.addEventListener("lostpointercapture", relache); cv.addEventListener("contextmenu", menu);
+    cv.addEventListener("pointerdown", appui); cv.addEventListener("pointerup", relache); cv.addEventListener("pointercancel", relache); cv.addEventListener("lostpointercapture", relache); cv.addEventListener("pointermove", survol); cv.addEventListener("contextmenu", menu);
+    TACT.forEach(n => cv.addEventListener(n, tactiles, { passive: false })); window.addEventListener("touchend", tactiles); window.addEventListener("touchcancel", tactiles);
+    window.addEventListener("pointerup", relache); document.addEventListener("visibilitychange", cache);
     window.addEventListener("keydown", enfonce); window.addEventListener("keyup", leve); window.addEventListener("blur", lache);
     const retirer = () => {
-      cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointerup", relache); cv.removeEventListener("pointercancel", relache); cv.removeEventListener("lostpointercapture", relache); cv.removeEventListener("contextmenu", menu);
+      cv.removeEventListener("pointerdown", appui); cv.removeEventListener("pointerup", relache); cv.removeEventListener("pointercancel", relache); cv.removeEventListener("lostpointercapture", relache); cv.removeEventListener("pointermove", survol); cv.removeEventListener("contextmenu", menu);
+      TACT.forEach(n => cv.removeEventListener(n, tactiles)); window.removeEventListener("touchend", tactiles); window.removeEventListener("touchcancel", tactiles);
+      window.removeEventListener("pointerup", relache); document.removeEventListener("visibilitychange", cache);
       window.removeEventListener("keydown", enfonce); window.removeEventListener("keyup", leve); window.removeEventListener("blur", lache);
     };
     const COUL = [O, P, V, G], FETE = [O, Y, P, V, C];
