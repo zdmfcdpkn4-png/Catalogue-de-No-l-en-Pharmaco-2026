@@ -315,7 +315,7 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
 // l'enquête à partir d'elle. Par catégorie de fiches : un coupable, des innocents éliminés un à un par leur devinette, un
 // dernier innocent qui reste en lice. Les énigmes de logique livrent les indices des trois cartes coupables.
 // Réservoir : { cartes: { id: { devinette: { titre, enonce }, indices: [textes], preuve, vue: jour de présentation } },
-//   logiques: [ énigmes sans révélation ], plan: [ { k, n, pts, r: 'carte' | 'indice' | 'final', cat, titre } ],
+//   logiques: [ énigmes sans révélation ], plan: [ { k, n, pts, r: 'carte' | 'indice' | 'final', cat, titre, enonce } ] (au dénouement, l'énoncé vient du plan, jamais de la devinette de la carte coupable),
 //   denouement: texte à trous ({Catégorie} : le nom ; {catégorie} : le nom, initiale en minuscule) }.
 // La relecture montre le réservoir, jamais le tirage. En date simulée (essais de l'administration), la graine est fixe
 // et rien n'est gardé : le vrai tirage reste intact.
@@ -339,7 +339,7 @@ function composer(E, graine) {
       const I = innocents[s.cat], i = Math.max(0, I.findIndex(f => !(R.cartes[f.id].vue > s.n))), f = I.splice(i, 1)[0];
       return Object.assign(base, devinette(f), { revelation: f.nom + ' est hors de cause.', elimine: f.id });
     }
-    if (s.r === 'final') return Object.assign(base, devinette(coupable[s.cat]), s.titre ? { titre: s.titre } : {}, { revelation: R.cartes[coupable[s.cat].id].preuve });
+    if (s.r === 'final') return Object.assign(base, devinette(coupable[s.cat]), s.titre ? { titre: s.titre } : {}, { enonce: s.enonce || '' }, { revelation: R.cartes[coupable[s.cat].id].preuve });
     return Object.assign(base, logiques.shift(), { revelation: indices.shift() });
   });
   const nom = c => { const C = Object.keys(coupable).find(x => x.toLowerCase() === c.toLowerCase()), n = C && coupable[C].nom; return !n ? '{' + c + '}' : c[0] === c[0].toLowerCase() ? n[0].toLowerCase() + n.slice(1) : n; };
