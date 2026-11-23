@@ -6,7 +6,9 @@ en bande que les notices du sapin et des Pharmacogames. Validée par lui le 24/1
 bien observer trouvera plus encore… »), ni date de parution des cartes.
 
 **À poser par la session Enquête** dans le bloc de l'enquête (`enquete.js`, section `#egEnquete`). Emplacement proposé : en tête du bloc,
-dans un `<details>` repliable comme la notice des Pharmacogames, ouvert à la première visite puis replié.
+dans un `<details>` repliable comme la notice des Pharmacogames, mais **déplié à chaque ouverture du bloc de l'enquête**
+(consigne du pharmacien, 24/11, pour l'enquête uniquement) : attribut `open` dans le HTML, et ne jamais le replier par script
+(contrairement à `#egNotice`, que `enigme.js` replie après la création de la fiche). Le joueur peut le replier lui-même.
 Copier les SVG en `img/notice-enquete-1.svg` à `img/notice-enquete-6.svg`.
 
 ## Pose
