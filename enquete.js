@@ -14,7 +14,9 @@
    suivi devient l'album de la brigade : une vignette par fiche, de face (img/enquete/vignettes/<id>.webp) dès que le
    jour courant atteint `vue`, de dos (img/enquete/vignettes/dos.webp) avant ; sans image, un pavé de repli. Une carte
    parue s'ouvre en grand au toucher (img/enquete/<id>.webp), un second toucher la double. Carte éliminée : tampon
-   « Hors de cause » sur la vignette et en grand, nom lisible avec la mention en dessous. Le jour courant vient de
+   « Hors de cause » sur la vignette et en grand, nom lisible avec la mention en dessous. Animations, une fois par
+   appareil (localStorage) : arrivée des cartes reçues à la première vue du classeur, coup de tampon sur une carte
+   nouvellement éliminée ; aucune avec prefers-reduced-motion. Le jour courant vient de
    `enquete.jour`, sinon de l'option `jour()`, sinon du jour de la dernière énigme ouverte ou close.
    Dé d'aide : `de` (1 à 6) sur une énigme, le même pour toute la brigade ; à 3 ou plus, `aide: {forme, texte, cle}`.
    Formes : clair, miroir (retourné ici par CSS), envers, morse (table repliable), decalage (`cle` rangs) ; toute autre
@@ -129,7 +131,15 @@ button.enq-v{cursor:zoom-in}
 .enq-zi{position:relative}
 .enq-zi.x::after{font-size:2rem;font-size:10.5cqw;border-width:6px;border-radius:10px;background:rgba(244,233,207,.3);text-shadow:0 0 6px #F4E9CF,0 0 2px #F4E9CF}
 .enq-zi{container-type:inline-size}
-@media (prefers-reduced-motion:no-preference){.enq-e{transition:background .2s}}
+@media (prefers-reduced-motion:no-preference){.enq-e{transition:background .2s}
+.enq-cols.alb li.arr{animation:enqArr .6s cubic-bezier(.2,.8,.3,1.08) var(--d,0s) backwards}
+.enq-cols.alb li.x.tam .enq-v::after{animation:enqTam .5s cubic-bezier(.3,1.3,.5,1) var(--dt,0s) backwards}
+.enq-cols.alb li.x.tam .enq-v img{animation:enqTer .35s ease-out calc(var(--dt,0s) + .3s) backwards}
+.enq-cols.alb li.x.tam>small{animation:enqMen .3s ease-out calc(var(--dt,0s) + .3s) backwards}}
+@keyframes enqArr{from{opacity:0;transform:translate(var(--dx,0px),-70px) rotate(var(--r,0deg)) scale(.8)}}
+@keyframes enqTam{from{opacity:0;transform:translate(-50%,-50%) rotate(-32deg) scale(2.6)}60%{opacity:1;transform:translate(-50%,-50%) rotate(-16deg) scale(.9)}}
+@keyframes enqTer{from{filter:none}}
+@keyframes enqMen{from{opacity:0}}
 `;
   const style = () => {
     if (document.getElementById("enqCss")) return;
@@ -229,13 +239,52 @@ button.enq-v{cursor:zoom-in}
         const j = aujourdhui(), recue = f => !Number.isInteger(f.vue) || j >= f.vue, id = f => encodeURIComponent(String(f.id));
         return '<p class="enq-alb">' + pl(F.filter(recue).length, "carte reçue", "cartes reçues") + " sur " + F.length + "." + (F.every(recue) ? "" : " Les autres paraîtront dans le sapin.") + "</p>"
           + '<div class="enq-cols alb">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(f =>
-            "<li" + (hors.has(f.id) ? ' class="x"' : "") + ">" + (recue(f)
+            '<li data-f="' + h(f.id) + '"' + (recue(f) ? " data-recue" : "") + (hors.has(f.id) ? ' class="x"' : "") + ">" + (recue(f)
               ? '<button type="button" class="enq-v" data-carte="' + h(f.id) + '" aria-label="Voir en grand : ' + h(f.nom) + (hors.has(f.id) ? ", hors de cause" : "") + '"><span aria-hidden="true">' + h(f.nom) + '</span><img src="img/enquete/vignettes/' + id(f) + '.webp" alt="" loading="lazy"></button>'
               : '<div class="enq-v dos" data-id="' + h(f.id) + '"><span aria-hidden="true">?</span><img src="img/enquete/vignettes/dos.webp" alt="" loading="lazy"></div>')
             + "<span>" + h(f.nom) + "</span>" + (hors.has(f.id) ? "<small>Hors de cause</small>" : recue(f) ? "" : "<small>Carte à venir</small>") + "</li>").join("") + "</ul></div>").join("") + "</div>";
       }
       return '<div class="enq-cols">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(f =>
         '<li' + (hors.has(f.id) ? ' class="x"' : "") + '><i aria-hidden="true">' + (hors.has(f.id) ? "×" : "") + "</i><div><span>" + h(f.nom) + "</span>" + (hors.has(f.id) ? "<small>Hors de cause</small>" : "") + "</div></li>").join("") + "</ul></div>").join("") + "</div>";
+    };
+
+    // Animations de l'album, une fois par appareil : les cartes reçues viennent se ranger à la première vue du classeur,
+    // le tampon s'abat sur une carte nouvellement hors de cause. Simple habillage : l'état final est celui des styles de
+    // base, l'animation ne fait que partir d'ailleurs ; sans mouvement demandé (prefers-reduced-motion), rien ne bouge.
+    const CLE = "pharmacoEnqueteAlbum";
+    let vu = null, guets = [];
+    const memoire = () => {
+      if (vu) return vu;
+      let o = null;
+      try { o = JSON.parse(localStorage.getItem(CLE) || "null"); } catch (e) { o = null; }
+      vu = { v: new Set(o && Array.isArray(o.v) ? o.v : []), x: new Set(o && Array.isArray(o.x) ? o.x : []) };
+      return vu;
+    };
+    const garder = () => { try { localStorage.setItem(CLE, JSON.stringify({ v: [...vu.v], x: [...vu.x] })); } catch (e) { /* mémoire du seul chargement */ } };
+    const guetter = (cible, f, marge) => {
+      if (!("IntersectionObserver" in window)) return f();
+      const o = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { o.disconnect(); f(); } }, { rootMargin: marge || "0px 0px -15% 0px" });
+      o.observe(cible); guets.push(o);
+    };
+    const animer = () => {
+      guets.forEach(o => o.disconnect()); guets = [];
+      const alb = el.querySelector(".enq-cols.alb");
+      if (!alb) return;
+      const V = memoire(), L = [...alb.querySelectorAll("li[data-f]")];
+      const neuves = L.filter(li => li.hasAttribute("data-recue") && !V.v.has(li.dataset.f));
+      const tampon = (li, retard) => { li.style.setProperty("--dt", retard + "s"); li.classList.add("tam"); V.x.add(li.dataset.f); };
+      if (neuves.length) guetter(alb, () => {
+        const b = alb.getBoundingClientRect(), mi = b.left + b.width / 2;
+        neuves.forEach((li, i) => {
+          const r = li.getBoundingClientRect(), dx = Math.round((mi - (r.left + r.width / 2)) * 0.6);
+          li.style.setProperty("--dx", dx + "px"); li.style.setProperty("--r", (-dx / 12).toFixed(1) + "deg"); li.style.setProperty("--d", (i * 0.05).toFixed(2) + "s");
+          li.classList.add("arr"); V.v.add(li.dataset.f);
+          if (li.classList.contains("x") && !V.x.has(li.dataset.f)) tampon(li, i * 0.05 + 0.55);
+        });
+        garder();
+      });
+      L.filter(li => li.classList.contains("x") && !V.x.has(li.dataset.f) && !neuves.includes(li))
+        .forEach(li => guetter(li, () => { tampon(li, 0.1); garder(); }, "0px 0px -25% 0px"));
     };
 
     function rendre() {
@@ -274,6 +323,7 @@ button.enq-v{cursor:zoom-in}
           + '</ol><p class="enq-next">Seules les énigmes closes comptent ici.</p></section>';
       }
       el.className = "enq"; el.hidden = false; el.innerHTML = s;
+      animer();
       if (repere) { const f = el.querySelector(repere); if (f) f.focus({ preventScroll: true }); }
     }
 
