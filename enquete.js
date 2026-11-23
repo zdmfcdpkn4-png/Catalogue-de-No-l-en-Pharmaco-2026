@@ -22,6 +22,10 @@
    Formes : clair, miroir (retourné ici par CSS), envers, morse (table repliable), decalage (`cle` rangs) ; toute autre
    forme s'affiche telle quelle.
    Énigme `libre` : sa révélation est un texte d'ambiance, sans étiquette « Indice » et hors du carnet d'indices.
+   Notice : une BD en six cases (img/notice-enquete-1.svg à 6) en tête du bloc, dès que la fiche de suivi est acquise,
+   dans un volet aux classes de la notice des Pharmacogames (`.eg-notice`, `.eg-bd`, stylées par enigme.js). Le volet est
+   déplié à chaque ouverture du bloc et aucun script ne le replie : seul le joueur le fait, et son choix tient tant que
+   le bloc reste affiché. Ses textes disent la règle du jeu, jamais le contenu de l'enquête.
    Révélation décalée : à la clôture, sans `revelation` mais avec `attente` (date), la page annonce « Révélation le … ».
 
    window.PharmacoEnquete.monter(element, {
@@ -51,10 +55,22 @@
     code: "Code d'équipe refusé.",
   };
 
+  const CASES = [
+    "Case 1, Le mystère. Trois cartes, un personnage, un lieu et un objet, sous une loupe : « Six personnages, six lieux, six objets… et un seul trio coupable. À la brigade de le démasquer ! »",
+    "Case 2, L'album. Des cartes vont du sapin à l'album orange de la brigade : « Les cartes tombent du sapin et se rangent dans l'album de la brigade. Ouvrez l'œil. »",
+    "Case 3, L'énigme du jour. Le flacon glisse son bulletin dans une urne, à côté d'une carte énigme : « Du 4 au 24, une énigme par jour. Je réponds dans les Pharmacogames : une seule fois, c'est définitif. »",
+    "Case 4, La majorité. Trois jours au calendrier, trois membres de la brigade dont deux d'accord : « Trois jours pour répondre. À la clôture, la réponse majoritaire de la brigade l'emporte. »",
+    "Case 5, Révélation. Une carte tamponnée « Hors de cause » et une horloge marquée « +1 jour » : « Juste : une carte hors de cause ou un indice, dès la clôture. Faux : la révélation arrive un jour après. »",
+    "Case 6, Le 25, on accuse. Le flacon désigne trois cartes face cachée : « On désigne le coupable, le lieu et l'objet. Et qui sait bien observer trouvera plus encore… »",
+  ];
+  const NOTICE = '<summary>Notice de l\'enquête : à lire avant d\'ouvrir l\'album</summary><p class="eg-bd-aide" id="enqBdAide">Mode d\'emploi en six cases : faites glisser.</p>'
+    + '<div class="eg-bd" role="region" aria-labelledby="enqBdAide" tabindex="0">' + CASES.map((a, i) => '<img src="img/notice-enquete-' + (i + 1) + '.svg" alt="' + h(a) + '" width="400" height="300" loading="lazy">').join("") + "</div>";
+
   const CSS = `
 .enq{--eq-fond:#0F3D40;--eq-fonce:#0A2B2E;--eq-laiton:#C9A24B;--eq-clair:#F4E9CF;--eq-encre:#16302F;--eq-ok:#2E7D5B;--eq-ko:#A8472F;
   margin-top:18px;padding:16px;border:3px solid var(--eq-laiton);border-radius:16px;background:var(--eq-fond);color:var(--eq-clair);text-align:left}
 .enq *{box-sizing:border-box}
+.enq>.eg-notice{margin:0 0 14px}
 .enq h3{margin:0;font-weight:800;font-size:1.3rem;line-height:1.15;color:var(--eq-laiton)}
 .enq h4{margin:0 0 8px;font-weight:800;font-size:1rem;color:var(--eq-laiton)}
 .enq-fic{display:inline-block;margin:6px 0 0;padding:2px 8px;border:1.5px solid var(--eq-laiton);border-radius:99px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}
@@ -159,6 +175,11 @@ button.enq-v{cursor:zoom-in}
     let opts = options || {};
     style();
     let Q = null, occupe = false;
+    // La notice et le corps du bloc sont deux nœuds durables : le corps est redessiné à chaque état reçu, la notice jamais,
+    // pour que le volet reste comme le joueur l'a laissé. Bloc caché : les deux sont retirés ; bloc rouvert : volet déplié.
+    const notice = document.createElement("details"), corps = document.createElement("div");
+    notice.className = "eg-panel eg-notice"; notice.id = "enqNotice"; notice.innerHTML = NOTICE;
+    const cacher = () => { el.hidden = true; el.replaceChildren(); };
     const saisie = {}, confirme = {}, erreur = {};
     const peut = () => (opts.peutRepondre ? Boolean(opts.peutRepondre()) : true);
 
@@ -288,13 +309,13 @@ button.enq-v{cursor:zoom-in}
     };
 
     function rendre() {
-      if (!Q) { el.hidden = true; el.innerHTML = ""; return; }
+      if (!Q) return cacher();
       const actif = document.activeElement && el.contains(document.activeElement) ? document.activeElement : null;
       const repere = actif ? (actif.id ? "#" + actif.id : actif.dataset.rep ? '[data-rep="' + actif.dataset.rep + '"]' : actif.dataset.envoi ? '[data-envoi="' + actif.dataset.envoi + '"]' : actif.dataset.carte ? '[data-carte="' + actif.dataset.carte + '"]' : "") : "";
       const L = Q.enigmes || [], aVenir = L.filter(e => e.etat === "avenir");
       // Amorce : sans le champ, tout s'affiche ; avec, on ne montre que ce que les étapes reçues autorisent.
       const amorce = Array.isArray(Q.amorces), A = amorce ? Q.amorces.slice().sort((a, b) => b.n - a.n) : [];
-      if (amorce && !A.length) { el.hidden = true; el.innerHTML = ""; return; }
+      if (amorce && !A.length) return cacher();
       const devoile = !amorce || A.some(a => a.n >= 2), enJeu = !amorce || A.some(a => a.fiche);
       const vues = enJeu ? L.filter(e => e.etat !== "avenir") : [];
       const aFaire = vues.filter(e => e.etat === "ouverte" && !e.repondu), scellees = vues.filter(e => e.etat === "ouverte" && e.repondu), closes = vues.filter(e => e.etat === "close");
@@ -322,7 +343,9 @@ button.enq-v{cursor:zoom-in}
           "<li" + (x.b === moi ? ' class="me"' : "") + "><span>" + h(opts.brigade ? opts.brigade(x.b) : "Brigade " + (x.b + 1)) + "</span><b>" + pl(x.points, "point", "points") + "</b></li>").join("")
           + '</ol><p class="enq-next">Seules les énigmes closes comptent ici.</p></section>';
       }
-      el.className = "enq"; el.hidden = false; el.innerHTML = s;
+      el.className = "enq"; el.hidden = false; corps.innerHTML = s;
+      if (!corps.isConnected) { notice.open = true; el.replaceChildren(notice, corps); }
+      notice.hidden = !enJeu;
       animer();
       if (repere) { const f = el.querySelector(repere); if (f) f.focus({ preventScroll: true }); }
     }

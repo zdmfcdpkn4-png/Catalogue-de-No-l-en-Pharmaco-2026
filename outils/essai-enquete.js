@@ -16,11 +16,17 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
   // Le fichier ne doit porter aucun texte du scénario : ni constante de titre ou de fiches, ni nom propre entre guillemets.
   ok(!/const (CRIME|FICHES|TITRE)\b/.test(source) && !/nom: "/.test(source) && !/\u2014/.test(source), 'enquete.js ne déclare ni titre, ni fiche, ni tiret cadratin');
 
+  // La notice reprend les classes de la notice des Pharmacogames : leurs règles sont lues dans enigme.js, les couleurs
+  // du site (variables de index.html) sont remplacées par des valeurs d'essai.
+  const regles = fs.readFileSync(path.join(racine, 'enigme.js'), 'utf8').split('\n').filter(l => /^\.eg-(notice|bd|panel\{)/.test(l) || /^@media.*\.eg-(bd|notice)/.test(l)).join('\n').replace(/\\\\/g, '\\');
+  const habit = ':root{--surface:#FFFBF2;--on-surface:#26076D;--line:#26076D;--shadow:#26076D;--mu:#F3D95B;--muted:#5B4A8A}' + regles;
+  ok(/\.eg-bd\{[^}]*overflow-x:auto/.test(regles) && /\.eg-notice>summary/.test(regles), 'enigme.js porte bien les styles de la notice que le bloc réutilise');
   const nav = await chromium.launch();
   const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
   const erreurs = [];
   page.on('pageerror', e => erreurs.push(e.message));
   await page.setContent('<!doctype html><html lang="fr"><meta charset="utf-8"><body style="margin:0;font-family:sans-serif"><section id="zone"></section></body></html>');
+  await page.addStyleTag({ content: habit });
   await page.addScriptTag({ path: path.join(racine, 'enquete.js') });
   await page.evaluate(() => {
     const cats = ['Personnages', 'Lieux', 'Objets'];
@@ -126,6 +132,20 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
   ok(t2.includes('Affaire factice') && t2.includes('Le synopsis.') && await page.locator('.enq-cols').count() === 0 && await page.locator('.enq-l').count() === 0, 'étape 2 : titre et synopsis, ni fiche ni énigme');
   await amorce(3);
   ok(await page.locator('.enq-cols li').count() === 18 && (await txt('.enq-am')).includes('Tableaux factices') && await page.locator('li[data-k="5"]').count() === 1, 'étape 3 : fiche de suivi et énigmes');
+  // Notice en BD : en tête du bloc dès l'étape de la fiche, dépliée, jamais repliée par le script.
+  const N = '#zone > details#enqNotice';
+  ok(await page.locator(N).isVisible() && await page.locator('#zone > :first-child').evaluate(n => n.id === 'enqNotice' && n.open) && await page.locator(N + ' .eg-bd img').count() === 6
+    && (await page.locator(N + ' .eg-bd img').evaluateAll(L => L.map(i => i.getAttribute('src')).join())) === [1, 2, 3, 4, 5, 6].map(i => 'img/notice-enquete-' + i + '.svg').join()
+    && (await page.locator(N + ' .eg-bd img').evaluateAll(L => L.every((i, n) => i.alt.startsWith('Case ' + (n + 1) + ',') && i.alt.length > 60))), 'notice : en tête du bloc, dépliée, six cases dans l\'ordre avec leur texte alternatif');
+  ok(await page.locator(N + ' .eg-bd').evaluate(n => n.getAttribute('role') === 'region' && n.tabIndex === 0 && Boolean(document.getElementById(n.getAttribute('aria-labelledby')))), 'notice : bande nommée et atteignable au clavier');
+  await page.click(N + ' > summary');
+  await page.evaluate(() => window.S.bloc.maj(window.S.Q));
+  ok(await page.locator(N).evaluate(n => !n.open), 'notice : repliée par le joueur, elle le reste quand l\'état est redessiné');
+  await page.evaluate(() => { window.S.bloc.maj(null); window.S.bloc.maj(window.S.Q); });
+  ok(await page.locator(N).evaluate(n => n.open), 'notice : dépliée de nouveau à chaque ouverture du bloc');
+  await amorce(2);
+  ok(await page.locator(N).isHidden() && (await zone()).indexOf('Notice') < 0, 'notice : absente tant que la fiche de suivi n\'est pas acquise');
+  await amorce(3);
   await page.screenshot({ path: path.join(dossier, '4-amorce.png'), fullPage: true });
   await page.evaluate(() => { const Q = window.S.Q; delete Q.amorces; delete Q.titre; delete Q.fiches; window.S.bloc.maj(Q); });
   ok(await page.locator('#zone h3').count() === 0 && await page.locator('.enq-cols').count() === 0 && await page.locator('li[data-k="5"]').count() === 1, 'sans titre ni fiches envoyés : rien n\'est inventé par la page');
@@ -181,8 +201,10 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
   const pixel = Buffer.from('UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==', 'base64');
   const demandes = [];
   await page.route('**/img/enquete/**/*.webp', r => { demandes.push(r.request().url().split('/img/enquete/')[1]); r.fulfill({ contentType: 'image/webp', body: pixel }); });
+  await page.route('**/img/notice-enquete-*.svg', r => r.fulfill({ contentType: 'image/svg+xml', body: fs.readFileSync(path.join(racine, 'img', r.request().url().split('/').pop())) }));
   await page.route('http://essai.invalid/', r => r.fulfill({ contentType: 'text/html', body: '<!doctype html><html lang="fr"><meta charset="utf-8"><body><section id="zone"></section></body></html>' }));
   await page.goto('http://essai.invalid/');
+  await page.addStyleTag({ content: habit });
   await page.addScriptTag({ path: path.join(racine, 'enquete.js') });
   await page.evaluate(() => {
     const fiches = [{ id: 'f01', cat: 'Personnages', nom: 'Personnage factice 1', vue: 1 }, { id: 'f02', cat: 'Personnages', nom: 'Personnage factice 2', vue: 20 }];
@@ -203,12 +225,25 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
   await page.click('.enq-zoom [data-fin]');
   ok(await page.locator('.enq-zoom').count() === 0, 'le bouton « Fermer » referme la carte');
   await page.screenshot({ path: path.join(dossier, '6-album-images.png'), fullPage: true });
+  // La notice avec ses vraies images, aux trois largeurs : pas de débordement de page, une case à la fois sur téléphone, trois sur grand écran.
+  const mesure = [];
+  for (const w of [320, 390, 1280]) {
+    await page.setViewportSize({ width: w, height: 844 });
+    await page.locator('#enqNotice .eg-bd img').first().scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => [...document.querySelectorAll('#enqNotice img')].every(i => i.complete && i.naturalWidth > 0));
+    mesure.push(await page.evaluate(() => { const b = document.querySelector('#enqNotice .eg-bd'), i = b.querySelector('img'); return { page: document.documentElement.scrollWidth <= window.innerWidth, vues: b.clientWidth / i.offsetWidth, glisse: b.scrollWidth > b.clientWidth, forme: i.offsetWidth / i.offsetHeight }; }));
+    await page.locator('#enqNotice').screenshot({ path: path.join(dossier, '8-notice-' + w + '.png') });
+  }
+  ok(mesure.every(m => m.page && m.glisse && Math.abs(m.forme - 4 / 3) < 0.02) && mesure[0].vues < 1.3 && mesure[1].vues < 1.3 && mesure[2].vues > 2.9, 'notice à 320, 390 et 1280 px : pas de débordement, images entières, une case visible sur téléphone et trois sur grand écran ' + JSON.stringify(mesure.map(m => +m.vues.toFixed(2))));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => window.scrollTo(0, 0));
   // Animations de l'album : arrivée des cartes à la première vue, tampon des cartes nouvellement éliminées, une fois par appareil.
   const albumAnime = async (nom, elimine) => page.evaluate(([nom, elimine]) => {
     const z = document.createElement('section'); z.id = nom; document.body.prepend(z);
     const fiches = [1, 2, 3, 4, 5, 6].map(i => ({ id: 'a' + i, cat: 'Personnages', nom: 'Personnage factice ' + i, vue: i < 6 ? 1 : 20 }));
     const enigmes = elimine.map((id, i) => ({ k: i + 1, jour: 1, etat: 'close', titre: 'Factice', enonce: 'Énoncé.', saisie: 'texte', resolue: true, revelation: 'Hors de cause.', elimine: id }));
     const b = window.PharmacoEnquete.monter(z, { jour: () => 5 }); b.maj({ fiches, enigmes }); window.anim = { b, fiches, enigmes };
+    z.querySelector('.enq-cols.alb').scrollIntoView(); // la notice précède l'album : on l'amène à l'écran, comme un joueur qui fait défiler
   }, [nom, elimine]);
   const memo = () => page.evaluate(() => JSON.parse(localStorage.getItem('pharmacoEnqueteAlbum') || 'null'));
   await page.evaluate(() => localStorage.clear());
