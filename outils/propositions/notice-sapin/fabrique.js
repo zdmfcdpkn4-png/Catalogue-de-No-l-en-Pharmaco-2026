@@ -38,7 +38,8 @@ function cas(c) {
 module.exports = { cas, flacon, goutte, sapin, rayons, etoile, porte, cartes, V, O, J, R, C, VI, S, F };
 if (require.main === module) {
   const opt = n => { try { return require(n); } catch (e) { return {}; } };
-  const P = Object.assign({}, require('./pistes.js'), require('./pg.js'), opt('./enq.js'));
-  for (const [nom, liste] of Object.entries(P)) liste.forEach((c, i) => fs.writeFileSync(`${__dirname}/${nom}-${i + 1}.svg`, cas({ ...c, id: nom + i })));
+  const P = Object.assign({}, require('./pistes.js'), require('./pg.js'), opt('../notice-enquete/enq.js'));
+  const dossier = { enq: `${__dirname}/../notice-enquete` };
+  for (const [nom, liste] of Object.entries(P)) liste.forEach((c, i) => fs.writeFileSync(`${dossier[nom] || __dirname}/${nom}-${i + 1}.svg`, cas({ ...c, id: nom + i })));
   console.log('ok');
 }
