@@ -67,6 +67,28 @@
     return { status: r.status, j };
   };
 
+  // Booster de l'enquête dans le sapin : les cartes d'un jour de décembre, pour le joueur mémorisé sur cet appareil.
+  // PharmacoBooster.cartes(jour) rend une promesse de { identifie, cartes }. Sans code d'équipe, sans fiche ou sans brigade :
+  // identifie faux, aucune carte (le sapin montre alors des cartes de dos). Sinon, dans l'ordre : l'énigme de ce jour
+  // ({ type: "enigme", k, jour, titre, texte, options, finale }), puis les révélations parues ce jour-là pour sa brigade
+  // ({ type: "revelation", k, titre, texte, elimine: { id, nom } si elle innocente une carte }). Tout vient du serveur,
+  // qui ne livre un texte qu'à l'étape qui le dévoile : rien n'est écrit ici.
+  window.PharmacoBooster = {
+    async cartes(jour) {
+      const vide = { identifie: false, cartes: [] };
+      if (!mem.code || !mem.prenom || !Number.isInteger(jour)) return vide;
+      let r;
+      try { r = await call({ code: mem.code, prenom: mem.prenom }); } catch (e) { return vide; }
+      if (r.status !== 200 || !r.j.profil || r.j.profil.b === undefined) return vide;
+      const Q = r.j.enquete, C = [], date = "2026-12-" + String(jour).padStart(2, "0");
+      if (!Q || !Array.isArray(Q.enigmes)) return { identifie: true, cartes: C };
+      const nom = id => ((Q.fiches || []).find(f => f.id === id) || {}).nom || "";
+      for (const e of Q.enigmes) if (e.jour === jour && !e.quete && e.enonce) C.push({ type: "enigme", k: e.k, jour: e.jour, titre: e.titre || "", texte: e.enonce, options: Array.isArray(e.options) ? e.options : undefined, finale: e.k > 21 });
+      for (const e of Q.enigmes) if (e.revelation && e.paru === date) C.push({ type: "revelation", k: e.k, titre: e.titre || "", texte: e.revelation, elimine: e.elimine ? { id: e.elimine, nom: nom(e.elimine) } : undefined });
+      return { identifie: true, cartes: C };
+    },
+  };
+
   fetch(API, { cache: "no-store" }).then(r => (r.ok ? r.json() : null)).then(j => { if (j && j.ready) init(); }).catch(() => {});
 
   // Dates : le serveur parle en AAAA-MM-JJ, heure de Paris.
