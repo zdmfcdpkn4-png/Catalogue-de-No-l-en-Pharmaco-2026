@@ -383,6 +383,16 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .bdz .bdn{position:fixed;z-index:1;top:10px;left:10px;display:flex;align-items:center;gap:8px;font-weight:800;color:#FFFBF2}
 .bdz .bdn button{width:42px;height:42px;padding:0;display:grid;place-items:center;color:#26076D;background:#ECD567;border:3px solid #26076D;border-radius:50%;cursor:pointer}
 .bdz .bdn button:disabled{opacity:.35;cursor:default}
+/* Booster de l'enquête (du 4 au 25) : sous la surprise du jour ; ses cartes viennent du concours (window.PharmacoBooster), jamais de ce fichier. */
+.ap-bo{margin-top:16px;padding-top:4px;border-top:2px dashed var(--line)}
+.carte.dos{cursor:default}
+.carte.en{aspect-ratio:768/1376;border-radius:5% / 3%;background:#F3E3BE}
+.carte.en .ct{position:absolute;left:24.5%;top:33%;width:51%;height:42.5%;display:flex;flex-direction:column;justify-content:center;gap:.5em;overflow:hidden;text-align:center;font-family:Georgia,"Times New Roman",serif;font-size:8px;font-size:4.2cqw;line-height:1.2;color:#3A2410;overflow-wrap:anywhere}
+.carte.en .ct b{font-size:1.05em;letter-spacing:.04em;text-transform:uppercase}
+.carte.en.sf{box-shadow:inset 0 0 0 3px #3A2410}.carte.en.sf .cg{display:none}.carte.en.sf .ct{left:9%;top:8%;width:82%;height:84%}
+.carte.hc .tp{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-14deg);padding:.15em .45em;border:.14em solid #C62828;border-radius:.3em;color:#C62828;font-weight:800;font-size:18px;font-size:11cqw;line-height:1.1;text-transform:uppercase;white-space:nowrap;text-shadow:0 0 .2em #FFFBF2,0 0 .2em #FFFBF2}
+.bo-tx b{display:block}.bo-tx ul{margin:6px 0 0;padding-left:1.2em}
+.bdz .bdc.en{width:min(100%,360px)}
 .bdz .bdc{width:min(100%,440px);margin:0 auto;cursor:zoom-in}
 .bdz .bdc.pl{width:min(100%,560px)}
 .bdz .bdc.zz{width:200%;max-width:1200px;cursor:zoom-out}
@@ -821,13 +831,13 @@ function avContent(d){
     +(c.audio?'<audio class="ap-audio" controls preload="auto" src="'+esc(c.audio)+'" aria-label="'+esc(c.titre)+'"></audio>':'')
     +(c.lien?'<a class="go main" href="'+esc(c.lien)+'" target="_blank" rel="noopener">Écouter</a>':'');
   else if(t==="cartes"){const mv=!matchMedia("(prefers-reduced-motion:reduce)").matches,L=c.cartes||[];
-    h+='<div class="ap-ca'+(mv?'':' fin')+'"><div class="cas">'+L.map((k,i)=>avCarte(k,d,i)).join("")+'</div>'+(L.length>1?'<button class="cn p" type="button" data-cn="-1" aria-label="Carte précédente" disabled>'+AV_FL[0]+'</button><button class="cn n" type="button" data-cn="1" aria-label="Carte suivante">'+AV_FL[1]+'</button><span class="cc" aria-live="polite">1/'+L.length+'</span>':'')+(mv?'<video class="cav" src="'+esc(c.video||AV_BOOSTER)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div>'
+    h+='<div class="ap-ca'+(mv?'':' fin')+'"><div class="cas">'+L.map((k,i)=>avCarte(k,d,i)).join("")+'</div>'+avCaNav(L.length)+(mv?'<video class="cav" src="'+esc(c.video||AV_BOOSTER)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div>'
       +(c.titre?'<p class="ap-t">'+esc(c.titre)+'</p>':'')+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+(c.texte?'<p class="ap-p">'+esc(c.texte)+'</p>':'')+(c.lien?'<a class="go" href="'+esc(c.lien)+'">'+esc(c.bouton||"Voir")+'</a>':'')+'<p class="ap-src">'+(L.length>1?'Faites glisser ou utilisez les flèches pour voir les '+L.length+' cartes. ':'')+'Touchez une carte pour la voir en grand.</p>'}
   else if(t==="bd")h+='<div class="ap-bd'+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'':' fin')+'"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="Lire en grand : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'<video class="bdv" src="'+esc(c.video)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div>'
     +'<p class="ap-t">'+esc(c.titre)+'</p>'+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+'<p class="ap-src">Touchez la planche pour la lire en grand.</p>';
   else if(t==="image")h+='<figure><img src="'+esc(c.image)+'" alt="'+esc(c.titre)+'" loading="lazy"><figcaption>'+esc(c.titre)+'</figcaption></figure>';
   else if(t==="origami")h+=avOri(d)+(c.texte?'<p class="ap-p">'+esc(c.texte)+'</p>':'')+'<button class="go" type="button" data-replay>Replier et rejouer</button>';
-  return h+avNext();
+  return h+avBo(d)+avNext();
 }
 /* Origami : poche carrée (4 rabats en triangle, embout en haut, connecteurs en bas) qui se déplie en fleur de gouttes. */
 const AV_LOGO="img/logo-pharmacotechnie.webp";
@@ -857,7 +867,8 @@ function avOri(d){
     +'<g class="o-c"><circle r="31" fill="#FFFBF2" stroke="'+V+'" stroke-width="3"/><image href="'+AV_LOGO+'" x="-25" y="-25" width="50" height="50"/></g></svg></div>';
 }
 /* Vidéo d'ouverture d'une bande dessinée : à la fin (ou en cas d'échec), elle laisse la place à la planche. */
-["ended","error"].forEach(ev=>document.addEventListener(ev,e=>{const v=e.target;if(!v||!v.classList)return;if(v.classList.contains("bdv")||v.classList.contains("cav"))v.parentNode.classList.add("fin");if(v.classList.contains("ouv"))v.remove();if(v.classList.contains("evv"))avEvEnd()},true));
+["ended","error"].forEach(ev=>document.addEventListener(ev,e=>{const v=e.target;if(!v||!v.classList)return;if(v.classList.contains("bdv")||v.classList.contains("cav"))v.parentNode.classList.add("fin");if(v.classList.contains("ouv"))v.remove();if(v.classList.contains("evv"))avEvEnd();
+  if(ev==="error"&&v.classList.contains("cg")&&v.parentNode.classList.contains("en")){if(/carte-revelation/.test(v.src))v.src=AV_ENQ+"carte-enigme.webp";else v.parentNode.classList.add("sf")}},true));
 /* Vidéo générique d'ouverture d'une goutte : indiquer ici son chemin (elle doit finir sur un aplat crème #FFFBF2).
    Vide : pas de vidéo. Elle ne joue qu'au clic, jamais pour une case qui a sa propre vidéo, ni en mouvement réduit. */
 const AV_OUV="";
@@ -867,8 +878,9 @@ document.addEventListener("click",e=>{
   if(e.target.closest(".av-ev")){avEvEnd();return}
   if(e.target.classList&&e.target.classList.contains("cav")){e.target.pause();e.target.parentNode.classList.add("fin");return}
   const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG"&&e.target.parentNode===z)e.target.classList.toggle("zz");else{const nb=e.target.closest("[data-bn]"),c=e.target.closest(".bdc");if(nb)avCaZ(z._s,z._i+ +nb.dataset.bn);else if(c)c.classList.toggle("zz");else avZ()}return}
+  const bo=e.target.closest("[data-bo]");if(bo){avBoOpen(bo);return}
   const cn=e.target.closest(".ap-ca .cn");if(cn){const s=cn.parentNode.querySelector(".cas");avCa(s,avCaI(s)+ +cn.dataset.cn);return}
-  const ca=e.target.closest(".ap-ca .carte");if(ca){avCaZ(ca.parentNode,[...ca.parentNode.children].indexOf(ca));return}
+  const ca=e.target.closest(".ap-ca .carte:not(.dos)");if(ca){avCaZ(ca.parentNode,[...ca.parentNode.children].indexOf(ca));return}
   const a=e.target.closest(".ap-bd a");if(!a)return;e.preventDefault();
   const im=a.querySelector("img"),d=document.createElement("div");d.className="bdz";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-label",im.alt);
   d.innerHTML='<button type="button">Fermer</button><img src="'+esc(a.getAttribute("href"))+'" alt="'+esc(im.alt)+'"><p>Touchez l\'image pour zoomer.</p>';
@@ -883,11 +895,11 @@ function avCaZ(s,i){
   if(neuf){z=document.createElement("div");z.className="bdz";z.setAttribute("role","dialog");z.setAttribute("aria-modal","true");z._s=s;
     z.innerHTML='<button type="button">Fermer</button><div class="bdc"></div>'+(n>1?'<div class="bdn"><button type="button" data-bn="-1" aria-label="Carte précédente">'+AV_FL[0]+'</button><span aria-live="polite"></span><button type="button" data-bn="1" aria-label="Carte suivante">'+AV_FL[1]+'</button></div>':'')+'<p>Touchez la carte pour zoomer.</p>';document.body.appendChild(z)}
   z._i=i;z._o=ca;z.setAttribute("aria-label",ca.getAttribute("aria-label"));
-  const b=z.querySelector(".bdc"),k=ca.cloneNode(true);b.className="bdc"+(ca.classList.contains("pl")?" pl":"");k.removeAttribute("aria-label");k.tabIndex=-1;k.style.animation="none";b.replaceChildren(k);
+  const b=z.querySelector(".bdc"),k=ca.cloneNode(true);b.className="bdc"+(ca.classList.contains("pl")?" pl":"")+(ca.classList.contains("en")?" en":"");k.removeAttribute("aria-label");k.tabIndex=-1;k.style.animation="none";b.replaceChildren(k);
   if(n>1){z.querySelector(".bdn span").textContent=(i+1)+"/"+n;z.querySelector('[data-bn="-1"]').disabled=i===0;z.querySelector('[data-bn="1"]').disabled=i===n-1;avCa(s,i)}
   if(neuf)z.querySelector("button").focus();
 }
-document.addEventListener("scroll",e=>{const s=e.target;if(!s.classList||!s.classList.contains("cas"))return;const o=s.parentNode,c=o.querySelector(".cc");if(!c)return;const i=avCaI(s),n=s.children.length;c.textContent=(i+1)+"/"+n;o.querySelector(".cn.p").disabled=i===0;o.querySelector(".cn.n").disabled=i===n-1},true);
+document.addEventListener("scroll",e=>{const s=e.target;if(s.classList&&s.classList.contains("cas"))avCaMaj(s)},true);
 document.addEventListener("focusin",e=>{const k=e.target.closest&&e.target.closest(".ap-ca .carte");if(k)avCa(k.parentNode,[...k.parentNode.children].indexOf(k))});
 document.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"||e.key==="ArrowRight"){const z=document.querySelector(".bdz"),v=e.key==="ArrowLeft"?-1:1,k=document.activeElement.closest(".ap-ca .carte");if(z){if(z._s)avCaZ(z._s,z._i+v)}else if(k){const o=v<0?k.previousElementSibling:k.nextElementSibling;if(o)o.focus()}return}
   if(e.key==="Escape"){const z=document.querySelector(".bdz");if(z)avZ();else{avEvEnd();const v=document.querySelector("#avPanel .cav");if(v&&!v.parentNode.classList.contains("fin")){v.pause();v.parentNode.classList.add("fin")}}}});
@@ -913,6 +925,39 @@ function avEv(force){
 const AV_FL=["M15 5l-7 7 7 7","M9 5l7 7-7 7"].map(d=>'<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="'+d+'" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'),AV_BOOSTER="video/booster-cartes.mp4",AV_GABARIT="img/carte-gabarit.webp";
 function avCarte(k,d,i){if(k.pleine)return '<button class="carte pl" type="button" aria-label="Voir en grand : '+esc(k.titre||k.alt||"carte")+'"><img class="cp"'+(i?' loading="lazy" decoding="async"':'')+' src="'+esc(k.image)+'" alt="'+esc(k.alt||k.titre||"")+'"></button>';
   return '<button class="carte" type="button" aria-label="Voir en grand : '+esc(k.titre||"carte")+'"><img class="cg" src="'+AV_GABARIT+'" alt="">'+(k.image?'<img class="ci" src="'+esc(k.image)+'" alt="'+esc(k.alt||k.titre||"")+'">':'')+'<span class="cm" aria-hidden="true">'+esc(k.symbole||String(d))+'</span><span class="cb"><b>'+esc(k.titre||"")+'</b>'+(k.texte?'<small>'+esc(k.texte)+'</small>':'')+'</span></button>'}
+function avCaNav(n){return n>1?'<button class="cn p" type="button" data-cn="-1" aria-label="Carte précédente" disabled>'+AV_FL[0]+'</button><button class="cn n" type="button" data-cn="1" aria-label="Carte suivante">'+AV_FL[1]+'</button><span class="cc" aria-live="polite">1/'+n+'</span>':''}
+/* Booster de l'enquête : du 4 au 25 décembre, sous la surprise du jour. Rien n'est demandé avant le clic. Le contenu vient de
+   window.PharmacoBooster.cartes(jour), fourni par enigme.js : { identifie, cartes }. Sans lui (artefact) ou sans identification : deux cartes de dos.
+   Cartes reçues : { type: "enigme", k, titre, texte, options } ou { type: "revelation", k, titre, texte, elimine: { id, nom } }. Tout texte reçu est échappé. */
+const AV_ENQ="img/enquete/";
+function avBo(d){return d>=4&&d<=25?'<div class="ap-bo"><p class="ap-t">Le booster de l\'enquête</p><p class="ap-src">Un booster est resté collé au fond de la goutte.</p><button class="go" type="button" data-bo="'+d+'">Ouvrir le booster</button></div>':''}
+function avBoCarte(k){
+  if(k.type==="revelation"&&k.elimine&&/^[a-z0-9-]+$/.test(k.elimine.id||""))return '<button class="carte pl hc" type="button" aria-label="Voir en grand : '+esc(k.elimine.nom||"carte")+', hors de cause"><img class="cp" src="'+AV_ENQ+k.elimine.id+'.webp" alt="'+esc((k.elimine.nom||"Carte")+", hors de cause")+'"><span class="tp" aria-hidden="true">Hors de cause</span></button>';
+  const rv=k.type==="revelation";
+  return '<button class="carte en" type="button" aria-label="Voir en grand : '+esc(k.titre||(rv?"révélation":"énigme"))+'"><img class="cg" src="'+AV_ENQ+(rv?"carte-revelation":"carte-enigme")+'.webp" alt=""><span class="ct"><b>'+esc(rv?(k.titre||"Révélation"):"Jour "+(k.k==null?"":k.k))+'</b><span>'+esc(k.texte||"")+'</span>'+(k.options||[]).map(x=>'<span>'+esc(x)+'</span>').join("")+'</span></button>';
+}
+function avFit(c){for(let v=5.6;v>=2.6;v-=.2){c.style.fontSize=v.toFixed(1)+"cqw";if(c.scrollHeight<=c.clientHeight+1)break}}
+function avCaMaj(s){
+  const o=s.parentNode,i=avCaI(s),n=s.children.length,c=o.querySelector(".cc");
+  if(c){c.textContent=(i+1)+"/"+n;o.querySelector(".cn.p").disabled=i===0;o.querySelector(".cn.n").disabled=i===n-1}
+  const x=o.parentNode.querySelector(".bo-tx"),k=s._tx&&s._tx[i];if(!x||!k||x._i===i)return;x._i=i;x.textContent="";
+  if(k.titre){const b=document.createElement("b");b.textContent=k.titre;x.appendChild(b)}
+  x.appendChild(document.createTextNode(k.texte||""));
+  if(k.options&&k.options.length){const u=document.createElement("ul");k.options.forEach(v=>{const l=document.createElement("li");l.textContent=v;u.appendChild(l)});x.appendChild(u)}
+}
+async function avBoOpen(btn){
+  const d=+btn.dataset.bo,o=btn.parentNode,mv=!matchMedia("(prefers-reduced-motion:reduce)").matches;
+  o.innerHTML='<p class="ap-t">Le booster de l\'enquête</p><div class="ap-ca'+(mv?'':' fin')+'"><div class="cas"></div>'+(mv?'<video class="cav" src="'+AV_BOOSTER+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div><div class="bo-su"></div>';
+  let r=null;try{if(window.PharmacoBooster)r=await window.PharmacoBooster.cartes(d)}catch(e){}
+  if(!o.isConnected)return;
+  const s=o.querySelector(".cas"),su=o.querySelector(".bo-su"),L=r&&r.identifie?(r.cartes||[]):null;
+  if(!L){s.innerHTML=('<span class="carte pl dos"><img class="cp" src="'+AV_ENQ+'dos.webp" alt="Carte de dos"></span>').repeat(2);
+    su.innerHTML='<p class="ap-p">Identifiez-vous aux Pharmacogames pour retourner vos cartes.</p><a class="go" href="#pharmacogames">S\'identifier</a>'}
+  else if(!L.length){o.innerHTML='<p class="ap-t">Le booster de l\'enquête</p><p class="ap-p">Rien de neuf au dossier aujourd\'hui.</p>';return}
+  else{s.innerHTML=L.map(avBoCarte).join("");s._tx=L.map(k=>({titre:k.type==="enigme"?"Jour "+(k.k==null?"":k.k)+(k.titre?" · "+k.titre:""):(k.titre||"Révélation"),texte:k.texte,options:k.options}));
+    su.innerHTML='<p class="ap-p bo-tx" aria-live="polite"></p>'+(L.some(k=>k.type==="enigme")?'<a class="go" href="#pharmacogames">Répondre dans les Pharmacogames</a>':'')+'<p class="ap-src">'+(L.length>1?'Faites glisser ou utilisez les flèches pour voir les '+L.length+' cartes. ':'')+'Touchez une carte pour la voir en grand.</p>'}
+  s.insertAdjacentHTML("afterend",avCaNav(s.children.length));s.querySelectorAll(".ct").forEach(avFit);avCaMaj(s);
+}
 function avLocked(d){
   const j=avDays(d);
   return avHead("lock","Goutte du "+avDate(d),"Sous scellé")+'<p class="ap-p">Libération prévue le '+avDate(d)+(j>1?", dans "+j+" jours":"")+'. Ne pas dépasser la dose prescrite : le Père Noël surveille les stocks.</p>';
