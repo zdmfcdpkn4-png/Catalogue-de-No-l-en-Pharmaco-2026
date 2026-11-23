@@ -42,7 +42,7 @@
     { id: "catalogue", href: "#", t: "Catalogue", s: n ? n + " jeux à prescrire" : "Les jeux à prescrire", img: "menu-catalogue.webp", fond: "#F59A62" },
     { id: "sapin", href: "#sapin", t: "Sapin de l'Avent", s: "Une dose par jour", sel: "#avent", img: "menu-sapin.webp", fond: "#BFE3C9", pancarte: "En quarantaine", ouvre: "2026-12-01" },
     { id: "pharmacogames", href: "#pharmacogames", t: "Pharmacogames", s: "Le concours à points", sel: "#pharmacogames", img: "menu-pharmacogames.webp", fond: "#B9A6F0", pancarte: "En attente de libération", ouvre: "2026-12-01" },
-    { id: "vote", href: "#vote", t: "Palmarès", s: "Votez pour votre jeu", sel: "#vote", img: "menu-palmares.webp", fond: "#F2E39A", pancarte: "Jury sous hotte" },
+    { id: "vote", href: "#vote", t: "Palmarès", s: "Votez pour votre jeu", sel: "#vote", img: "menu-palmares.webp", fond: "#F2E39A", pancarte: "Jury sous hotte", ouvre: "2026-12-02" },
     // plein : la face est une image entière (autocollant détouré, avec son propre contour), sans logo ni accessoire.
     // haut : pastille à part, en haut à droite de l'en-tête (dans le coin libre sur ordinateur ; sous le titre quand l'écran est trop étroit pour l'aligner avec lui). Elle mène à la fiche d'identification du joueur.
     { id: "pharmacomeeple", href: "#pharmacomeeple", t: "Pharmacomeeple", s: "Votre fiche et votre brigade", sel: "#pharmacogames", img: "emblemes/pharmacomeeple.webp", plein: true, fond: "#BFE3F2", bientot: "lot en quarantaine", ouvre: "2026-11-26", haut: true },

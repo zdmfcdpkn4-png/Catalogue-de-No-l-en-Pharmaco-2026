@@ -38,9 +38,14 @@ async function lireListe() {
   return Array.isArray(o.noms) ? o.noms.filter(x => typeof x === 'string') : [];
 }
 
+// Ouverture du vote : le 2 décembre 2026, heure de Paris. Avant, le classement se lit mais aucun vote n'est pris
+// (403 `scellee`), sauf avec le code d'administration (votes d'essai). `maintenant` se remplace dans les bancs.
+const OUVRE = '2026-12-02';
+const PARIS = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' });
+
 const liste = votes => Object.values(votes).sort((a, b) => a.t - b.t);
 
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'GET') return res.status(200).json({ ready: ready() });
   if (req.method !== 'POST') {
@@ -56,7 +61,7 @@ module.exports = async (req, res) => {
   try {
     // Sans prénom : simple lecture du classement.
     const L = await lireListe();
-    if (b.prenom === undefined) return res.status(200).json({ votes: liste((await readVotes()).votes), liste: L.slice().sort((x, y) => x.localeCompare(y, 'fr')) });
+    if (b.prenom === undefined) return res.status(200).json({ votes: liste((await readVotes()).votes), liste: L.slice().sort((x, y) => x.localeCompare(y, 'fr')), ouvre: PARIS.format(handler.maintenant()) < OUVRE ? OUVRE : undefined });
 
     let prenom = typeof b.prenom === 'string' ? b.prenom.trim().replace(/’/g, "'") : '';
     const jeu = typeof b.jeu === 'string' ? b.jeu.trim() : '';
@@ -64,7 +69,9 @@ module.exports = async (req, res) => {
     const retrait = b.retirer === true; // retrait d'un vote : le jeu n'est pas demandé
     if (!retrait && (!jeu || jeu.length > 80 || /[\u0000-\u001f]/.test(jeu))) return res.status(400).json({ error: 'jeu' });
     const cle = norm(prenom);
-    if (!retrait && L.length && !(typeof b.admin === 'string' && process.env.ADMIN_CODE && crypto.timingSafeEqual(digest(norm(b.admin.trim())), digest(norm(process.env.ADMIN_CODE.trim()))))) {
+    const admin = typeof b.admin === 'string' && Boolean(process.env.ADMIN_CODE) && crypto.timingSafeEqual(digest(norm(b.admin.trim())), digest(norm(process.env.ADMIN_CODE.trim())));
+    if (!retrait && !admin && PARIS.format(handler.maintenant()) < OUVRE) return res.status(403).json({ error: 'scellee', ouvre: OUVRE });
+    if (!retrait && L.length && !admin) {
       const dans = L.find(x => norm(x) === cle);
       if (!dans) return res.status(400).json({ error: 'liste' });
       prenom = dans;
@@ -104,3 +111,5 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'serveur' });
   }
 };
+handler.maintenant = () => new Date();
+module.exports = handler;

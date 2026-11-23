@@ -184,6 +184,7 @@
       } else if (r.status === 401) { delete mem.code; save(); show(false); }
       else if (r.status === 400 && r.j.error === "liste") { say("#vtMsg", "Ce prénom n'est pas dans la liste des participants. Prévenez l'équipe de pharmacotechnie.", "err"); load(); }
       else if (r.status === 400 && r.j.error === "prenom") say("#vtMsg", "Un seul prénom, sans espace ni chiffre (trait d'union accepté).", "err");
+      else if (r.status === 403 && r.j.error === "scellee") say("#vtMsg", "Jury sous hotte : le vote ouvre le 2 décembre.", "warn");
       else if (r.status === 403) say("#vtMsg", "Le vote est complet.", "err");
       else say("#vtMsg", "Vote impossible pour l'instant. Réessayez dans un instant.", "err");
     });
