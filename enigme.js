@@ -89,6 +89,33 @@
     },
   };
 
+  // Contrôle d'accès du sapin : le sapin demande le code d'équipe, puis le joueur touche son avatar. Simple affichage :
+  // le contenu du sapin est public, la barrière des jeux reste le serveur. La mémoire est celle du concours (même appareil,
+  // même joueur dans le sapin et aux Pharmacogames).
+  //   identite()           : { pseudo } si un joueur est mémorisé sur cet appareil avec son code, sinon null.
+  //   joueurs(code)        : promesse de { joueurs: [{ pseudo, avatar, brigade }] } (ceux qui ont une fiche, par ordre
+  //                          alphabétique), ou de { erreur: "code" | "serveur" }. Le code n'est gardé qu'après choisir().
+  //   choisir(code, pseudo): mémorise le joueur ; rend son identité.
+  //   oublier()            : oublie le joueur de cet appareil (le code d'équipe reste).
+  //   dessin(avatar, brigade) : promesse du SVG de l'avatar (participants.js, chargé à la demande).
+  window.PharmacoAcces = {
+    identite: () => (mem.code && mem.prenom ? { pseudo: mem.prenom } : null),
+    async joueurs(code) {
+      let r;
+      try { r = await call({ code: String(code || "").trim() }); } catch (e) { return { erreur: "serveur" }; }
+      if (r.status === 401 || r.j.relecture) return { erreur: "code" };
+      if (r.status !== 200) return { erreur: "serveur" };
+      return { joueurs: (r.j.classement || []).filter(x => Array.isArray(x.a) && x.b !== undefined).map(x => ({ pseudo: x.p, avatar: x.a, brigade: x.b })).sort((x, y) => x.pseudo.localeCompare(y.pseudo, "fr")) };
+    },
+    choisir(code, pseudo) {
+      if (!code || !pseudo) return null;
+      mem.code = String(code).trim(); mem.prenom = String(pseudo); delete mem.nom; save();
+      return { pseudo: mem.prenom };
+    },
+    oublier() { delete mem.prenom; delete mem.nom; save(); },
+    dessin: (avatar, brigade) => chargerParticipants().then(() => window.PharmacoParticipants.avatar(avatar, { brigade })),
+  };
+
   fetch(API, { cache: "no-store" }).then(r => (r.ok ? r.json() : null)).then(j => { if (j && j.ready) init(); }).catch(() => {});
 
   // Dates : le serveur parle en AAAA-MM-JJ, heure de Paris.
