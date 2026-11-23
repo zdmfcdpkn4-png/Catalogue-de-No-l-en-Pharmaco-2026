@@ -13,6 +13,18 @@
   try { mem = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { mem = {}; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} };
   let votes = [], aConfirmer = "", sec;
+  // Liste fermée des participants : elle arrive du serveur avec le classement (code d'équipe exigé). Quand elle existe,
+  // le prénom se choisit dans un menu ; sans liste, la saisie libre reste. Le prénom mémorisé vaut s'il est dans la liste.
+  let noms = [];
+  function lister() {
+    const sel = q("#vtNom"), avec = noms.length > 0;
+    if (avec && sel.options.length !== noms.length + 1) {
+      const garde = sel.value || noms.find(n => mem.prenom && norm(n) === norm(mem.prenom)) || "";
+      sel.innerHTML = '<option value="">Choisir dans la liste</option>' + noms.map(n => '<option value="' + h(n) + '">' + h(n) + "</option>").join("");
+      sel.value = garde;
+    }
+    sel.hidden = !avec; q("#vtPrenom").hidden = avec; q("#vtHint").hidden = avec;
+  }
 
   const call = async body => {
     const r = await fetch(API, { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -113,7 +125,8 @@
       + '<form class="vt-panel" id="vtForm" novalidate hidden><h3>Votre vote</h3>'
       + '<p class="vt-mine" id="vtMine" hidden></p>'
       + '<label for="vtPrenom">Votre prénom</label><input id="vtPrenom" type="text" autocomplete="given-name" maxlength="24" required>'
-      + '<p class="vt-hint">Un seul prénom, sans espace. Un homonyme dans l\'équipe ? Ajoutez une initiale : Marie-L.</p>'
+      + '<select id="vtNom" aria-label="Votre prénom" hidden></select>'
+      + '<p class="vt-hint" id="vtHint">Un seul prénom, sans espace. Un homonyme dans l\'équipe ? Ajoutez une initiale : Marie-L.</p>'
       + '<label for="vtJeu">Votre jeu favori</label><select id="vtJeu" required><option value="">Choisir un jeu</option>' + options + "</select>"
       + '<div class="vt-prev" id="vtPrev" hidden></div>'
       + '<p class="vt-msg" id="vtMsg" role="status"></p><button class="go main" type="submit" id="vtBtn">Voter</button></form>'
@@ -141,14 +154,15 @@
       say("#vtGateMsg", "", "");
       let r;
       try { r = await call({ code }); } catch (err) { r = { status: 0, j: {} }; }
-      if (r.status === 200) { mem.code = code; save(); q("#vtCode").value = ""; votes = r.j.votes || []; show(true); render(); }
+      if (r.status === 200) { mem.code = code; save(); q("#vtCode").value = ""; votes = r.j.votes || []; if (Array.isArray(r.j.liste)) noms = r.j.liste; show(true); render(); }
       else if (r.status === 401) say("#vtGateMsg", "Code inconnu. Demandez-le à l'équipe de pharmacotechnie.", "err");
       else say("#vtGateMsg", "Le vote ne répond pas. Réessayez dans un instant.", "err");
     });
 
     q("#vtForm").addEventListener("submit", async e => {
       e.preventDefault();
-      const prenom = q("#vtPrenom").value.trim(), jeu = q("#vtJeu").value, btn = q("#vtBtn");
+      const prenom = (noms.length ? q("#vtNom").value : q("#vtPrenom").value).trim(), jeu = q("#vtJeu").value, btn = q("#vtBtn");
+      if (noms.length && !prenom) return say("#vtMsg", "Choisissez votre prénom dans la liste.", "err");
       if (prenom.length < 2 || prenom.length > 24 || !/^\p{L}+(?:[-'’]\p{L}+)*$/u.test(prenom))
         return say("#vtMsg", "Un seul prénom, sans espace ni chiffre (trait d'union accepté).", "err");
       if (!jeu) return say("#vtMsg", "Choisissez un jeu dans la liste.", "err");
@@ -166,14 +180,16 @@
       } else if (r.status === 409) {
         aConfirmer = cle;
         btn.textContent = "Remplacer ce vote";
-        say("#vtMsg", r.j.prenom + " a déjà voté pour " + r.j.jeu + ". Si c'est vous, validez de nouveau pour remplacer ce vote. Sinon, ajoutez une initiale à votre prénom.", "warn");
+        say("#vtMsg", r.j.prenom + " a déjà voté pour " + r.j.jeu + ". Si c'est vous, validez de nouveau pour remplacer ce vote." + (noms.length ? "" : " Sinon, ajoutez une initiale à votre prénom."), "warn");
       } else if (r.status === 401) { delete mem.code; save(); show(false); }
+      else if (r.status === 400 && r.j.error === "liste") { say("#vtMsg", "Ce prénom n'est pas dans la liste des participants. Prévenez l'équipe de pharmacotechnie.", "err"); load(); }
       else if (r.status === 400 && r.j.error === "prenom") say("#vtMsg", "Un seul prénom, sans espace ni chiffre (trait d'union accepté).", "err");
       else if (r.status === 403) say("#vtMsg", "Le vote est complet.", "err");
       else say("#vtMsg", "Vote impossible pour l'instant. Réessayez dans un instant.", "err");
     });
 
     q("#vtPrenom").addEventListener("input", reset);
+    q("#vtNom").addEventListener("change", reset);
     q("#vtJeu").addEventListener("change", () => { reset(); preview(); });
     q("#vtRefresh").addEventListener("click", () => load());
     window.addEventListener("hashchange", view);
@@ -220,6 +236,7 @@
     show(true);
     if (r.status !== 200) return say("#vtMsg", "Le classement ne répond pas. Réessayez dans un instant.", "err");
     votes = r.j.votes || [];
+    if (Array.isArray(r.j.liste)) noms = r.j.liste;
     render();
   }
 
@@ -272,6 +289,7 @@
     mine.hidden = !mien;
     if (mien) mine.textContent = mien.p + ", votre vote actuel : " + mien.g + ".";
     if (!q("#vtPrenom").value && mem.prenom) q("#vtPrenom").value = mem.prenom;
+    lister();
     if (!q("#vtJeu").value && mien && BY.has(mien.g)) { q("#vtJeu").value = mien.g; preview(); }
 
     if (flash) {

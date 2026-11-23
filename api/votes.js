@@ -1,6 +1,9 @@
 // Vote du jeu favori de l'équipe.
 // Un vote par prénom, enregistré dans un seul fichier JSON privé (Vercel Blob).
 // Tout passe par le code d'équipe (variable VOTE_CODE) : lecture du classement, vote et retrait d'un vote.
+// Liste fermée : si l'administration a chargé une liste de participants (participants.json, voir api/enigme.js), le vote
+// n'est accepté que pour un prénom de cette liste, enregistré sous son orthographe (400 `liste` sinon), sauf avec le code
+// d'administration (votes d'essai des contrôles). La liste ne sort qu'avec le code d'équipe. Les votes déjà là restent.
 const crypto = require('crypto');
 const { get, put } = require('@vercel/blob');
 
@@ -28,6 +31,13 @@ function writeVotes(votes, etag) {
   return put(FILE, JSON.stringify(votes), etag ? { ...opts, ifMatch: etag } : { ...opts, allowOverwrite: false });
 }
 
+async function lireListe() {
+  const r = await get('participants.json', { access: 'private', useCache: false });
+  if (!r || r.statusCode !== 200) return [];
+  const o = JSON.parse(await new Response(r.stream).text());
+  return Array.isArray(o.noms) ? o.noms.filter(x => typeof x === 'string') : [];
+}
+
 const liste = votes => Object.values(votes).sort((a, b) => a.t - b.t);
 
 module.exports = async (req, res) => {
@@ -45,14 +55,20 @@ module.exports = async (req, res) => {
 
   try {
     // Sans prénom : simple lecture du classement.
-    if (b.prenom === undefined) return res.status(200).json({ votes: liste((await readVotes()).votes) });
+    const L = await lireListe();
+    if (b.prenom === undefined) return res.status(200).json({ votes: liste((await readVotes()).votes), liste: L.slice().sort((x, y) => x.localeCompare(y, 'fr')) });
 
-    const prenom = typeof b.prenom === 'string' ? b.prenom.trim().replace(/’/g, "'") : '';
+    let prenom = typeof b.prenom === 'string' ? b.prenom.trim().replace(/’/g, "'") : '';
     const jeu = typeof b.jeu === 'string' ? b.jeu.trim() : '';
     if (prenom.length < 2 || prenom.length > 24 || !PRENOM.test(prenom)) return res.status(400).json({ error: 'prenom' });
     const retrait = b.retirer === true; // retrait d'un vote : le jeu n'est pas demandé
     if (!retrait && (!jeu || jeu.length > 80 || /[\u0000-\u001f]/.test(jeu))) return res.status(400).json({ error: 'jeu' });
     const cle = norm(prenom);
+    if (!retrait && L.length && !(typeof b.admin === 'string' && process.env.ADMIN_CODE && crypto.timingSafeEqual(digest(norm(b.admin.trim())), digest(norm(process.env.ADMIN_CODE.trim()))))) {
+      const dans = L.find(x => norm(x) === cle);
+      if (!dans) return res.status(400).json({ error: 'liste' });
+      prenom = dans;
+    }
 
     let echec;
     for (let essai = 0; essai < 12; essai++) {

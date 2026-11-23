@@ -428,7 +428,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 
     q("#egGate").addEventListener("submit", entrer);
     q("#egCode").addEventListener("change", () => chercherListe(q("#egCode").value.trim()));
-    q("#egNom").addEventListener("change", () => { q("#egLibre").hidden = q("#egNom").value !== "*"; dire("#egGateMsg", ""); });
+    q("#egNom").addEventListener("change", () => dire("#egGateMsg", ""));
     q("#egGrid").addEventListener("click", e => {
       const c = e.target.closest(".eg-cell");
       if (!c) return;
@@ -485,7 +485,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     else if (q("#egCode").value.trim()) chercherListe(q("#egCode").value.trim());
   }
   // Liste des participants : elle n'arrive du serveur qu'avec le bon code d'équipe. Quand elle existe, l'entrée se fait par
-  // un menu déroulant (avec « Je ne suis pas dans la liste » pour la saisie libre) ; sans liste, la saisie libre reste seule.
+  // un menu déroulant, sans saisie libre (liste fermée : le serveur refuse une fiche hors liste) ; sans liste, la saisie libre reste seule.
   // liste : null tant qu'on ne sait pas, [] s'il n'y en a pas ; listeCode : le code avec lequel on l'a demandée.
   let liste = null, listeCode = "";
   async function chercherListe(code) {
@@ -496,10 +496,10 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     listeCode = code;
     liste = Array.isArray(r.j.liste) ? r.j.liste : [];
     const sel = q("#egNom"), avec = liste.length > 0;
-    sel.innerHTML = '<option value="">Choisir dans la liste</option>' + liste.map(n => '<option value="' + h(n) + '">' + h(n) + "</option>").join("") + '<option value="*">Je ne suis pas dans la liste</option>';
+    sel.innerHTML = '<option value="">Choisir dans la liste</option>' + liste.map(n => '<option value="' + h(n) + '">' + h(n) + "</option>").join("");
     if (mem.nom && liste.includes(mem.nom)) sel.value = mem.nom;
     q("#egListe").hidden = !avec;
-    q("#egLibre").hidden = avec && sel.value !== "*";
+    q("#egLibre").hidden = avec;
   }
   // Entrée par un nom de la liste : la fiche existe déjà (on la retrouve, avec son pseudo), ou elle reste à créer.
   async function entrerParNom(code, nom) {
@@ -533,8 +533,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     await chercherListe(code);
     if (liste && liste.length && listeCode === code) {
       const nom = q("#egNom").value;
-      if (!nom) { q("#egNom").focus(); return dire("#egGateMsg", "Choisissez votre nom dans la liste, ou « Je ne suis pas dans la liste ».", "err"); }
-      if (nom !== "*") return entrerParNom(code, nom);
+      if (!nom) { q("#egNom").focus(); return dire("#egGateMsg", "Choisissez votre nom dans la liste. Il n'y est pas ? Prévenez l'équipe de pharmacotechnie.", "err"); }
+      return entrerParNom(code, nom);
     }
     let r;
     // Un prénom mal formé n'empêche pas la relecture : le serveur tranche d'après le code.

@@ -41,7 +41,9 @@ const TITRE = /^\p{L}[\p{L}\p{N} .'-]{2,39}$/u;
 const titreOk = t => typeof t === 'string' && TITRE.test(t) && !/^brigade \d+$/i.test(t); // « Brigade 3 » reste un nom provisoire
 const CHOIX_FIN = 10;
 // Liste des participants, fournie par l'administration : un fichier à part du magasin privé, jamais dans le dépôt.
-// Elle ne sort du serveur qu'avec le code d'équipe. Sans liste, la saisie libre du prénom reste la règle.
+// Elle ne sort du serveur qu'avec le code d'équipe. Sans liste, la saisie libre du prénom reste la règle. Avec une liste,
+// elle est fermée : une fiche ne se crée que pour un nom de la liste (403 `liste` sinon), sauf avec le code d'administration
+// (joueurs d'essai des contrôles). Les fiches déjà créées restent valables.
 const FILE_LISTE = 'participants.json';
 const MAX_LISTE = 300;
 const NOM_LISTE = /^\p{L}[\p{L} .'-]{1,39}$/u;
@@ -686,6 +688,7 @@ async function handler(req, res) {
       // Avec `nom` : la fiche est créée pour ce nom de la liste, qui ne peut être pris qu'une fois ; `prenom` est le pseudo choisi.
       const nom = b.nom === undefined ? undefined : dansListe(await lireListe(), b.nom);
       if (b.nom !== undefined && !nom) return res.status(400).json({ error: 'nom' });
+      const fermee = !nom && !admin && (await lireListe()).length > 0;
       const s = await modifier(joueurs => {
         if (nom) {
           const c = Object.keys(joueurs).find(x => joueurs[x].l && norm(joueurs[x].l) === norm(nom));
@@ -693,6 +696,7 @@ async function handler(req, res) {
           if (!c && joueurs[cle]) return { fin: () => ({ code: 409, corps: { error: 'pris' } }) }; // ce pseudo est porté par un autre joueur
         }
         if (!joueurs[cle]) {
+          if (fermee) return { fin: () => ({ code: 403, corps: { error: 'liste' } }) };
           if (Object.keys(joueurs).length >= MAX_JOUEURS) return { fin: () => ({ code: 403, corps: { error: 'complet' } }) };
           joueurs[cle] = { p: prenom, t: maintenant, r: {} };
           if (nom) joueurs[cle].l = nom;
@@ -786,10 +790,12 @@ async function handler(req, res) {
     if (b.action === 'ouvrir') {
       // Lancement du chrono d'une question, ou d'une tentative de jeu.
       let jeton;
+      const fermee = !admin && (await lireListe()).length > 0;
       sortie = await modifier(joueurs => {
         const v = verrou(B, joueurs[cle], q.n, jour);
         if (v) return refus(403, v.verrou);
         if (!joueurs[cle]) {
+          if (fermee) return refus(403, 'liste');
           if (Object.keys(joueurs).length >= MAX_JOUEURS) return { fin: () => ({ code: 403, corps: { error: 'complet' } }) };
           joueurs[cle] = { p: prenom, t: maintenant, r: {} };
         }
