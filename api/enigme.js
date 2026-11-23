@@ -272,8 +272,20 @@ function acquise(c, u) {
   const L = Object.entries(u.v).sort((a, b) => b[1] - a[1] || u.t[a[0]] - u.t[b[0]]);
   return c.saisie === 'choix' ? Number(L[0][0]) === c.bonne : L[0][0] === '=';
 }
-// Points d'enquête de chaque brigade : les énigmes closes dont la réponse majoritaire est juste.
-const pointsEnq = (E, S, jour) => S.map(s => E.enigmes.reduce((t, c) => t + (etatDe(c.n, jour) === 'close' && acquise(c, s[c.k]) ? c.pts : 0), 0));
+// Quête secondaire (`quete: true`) : une énigme de longue durée, ouverte du jour `n` au jour `fin` compris, sans retard de
+// révélation. Avec `prime`, la brigade dont la bonne réponse retenue a été déposée la première (ex aequo : toutes) reçoit
+// ces points en plus de `pts`.
+const etatEnq = (c, jour) => (Number.isInteger(c.fin) ? (jour < c.n ? 'avenir' : jour > c.fin ? 'close' : 'ouverte') : etatDe(c.n, jour));
+const finEnq = c => (Number.isInteger(c.fin) ? c.fin : c.n + DELAI);
+// Les brigades qui touchent la prime d'une énigme close : celles qui l'ont acquise le plus tôt.
+function primees(c, S, jour) {
+  if (!c.prime || etatEnq(c, jour) !== 'close') return [];
+  const cle = c.saisie === 'choix' ? String(c.bonne) : '=';
+  const T = S.map(s => (acquise(c, s[c.k]) ? s[c.k].t[cle] : Infinity)), min = Math.min(...T);
+  return min === Infinity ? [] : T.map((t, b) => (t === min ? b : -1)).filter(b => b >= 0);
+}
+// Points d'enquête de chaque brigade : les énigmes closes dont la réponse majoritaire est juste, plus les primes.
+const pointsEnq = (E, S, jour) => S.map((s, b) => E.enigmes.reduce((t, c) => t + (etatEnq(c, jour) === 'close' && acquise(c, s[c.k]) ? c.pts + (primees(c, S, jour).includes(b) ? c.prime : 0) : 0), 0));
 // Ce qu'un joueur voit de l'enquête : l'énoncé à l'ouverture, sa propre réponse, le nombre de réponses de sa brigade ;
 // à la clôture seulement, le résultat et la révélation ; les réponses attendues en relecture seulement (`tout`).
 function vueEnquete(E, joueurs, cle, jour, tout) {
@@ -288,9 +300,10 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
   if (libre || A.some(a => a.n > premiere)) o.titre = E.titre;
   if (!libre && !A.some(a => a.fiche)) { o.enigmes = []; return o; }
   if (E.fiches) o.fiches = E.fiches;
-  o.max = E.enigmes.reduce((t, c) => t + c.pts, 0);
+  o.max = E.enigmes.reduce((t, c) => t + c.pts + (c.prime || 0), 0);
   o.enigmes = E.enigmes.map(c => {
-    const e = etatDe(c.n, jour), x = { k: c.k, jour: c.n, etat: e, ouvre: dateDe(c.n), ferme: dateDe(c.n + DELAI), resultat: dateDe(c.n + DELAI + 1), pts: c.pts };
+    const e = etatEnq(c, jour), x = { k: c.k, jour: c.n, etat: e, ouvre: dateDe(c.n), ferme: dateDe(finEnq(c)), resultat: dateDe(finEnq(c) + 1), pts: c.pts };
+    if (c.quete) Object.assign(x, { quete: true, prime: c.prime || 0 });
     if (e === 'avenir' && !tout) return x;
     Object.assign(x, { titre: c.titre, enonce: c.enonce, saisie: c.saisie });
     if (c.saisie === 'choix') x.options = c.options;
@@ -303,9 +316,10 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
       // Avec un retard (`retard`, en jours), la révélation sort à la clôture pour la brigade dont la réponse retenue est
       // juste, et plus tard pour les autres ; jamais de retard au dénouement.
       const juste = Boolean(s) && acquise(c, s[c.k]);
-      if (tout || !E.retard || c.final || juste || etatDe(c.n + E.retard, jour) === 'close') Object.assign(x, { revelation: c.revelation, elimine: c.elimine, source: c.source }, c.libre ? { libre: true } : {});
+      if (tout || !E.retard || c.final || c.quete || juste || etatDe(c.n + E.retard, jour) === 'close') Object.assign(x, { revelation: c.revelation, elimine: c.elimine, source: c.source }, c.libre ? { libre: true } : {});
       else x.attente = dateDe(c.n + DELAI + 1 + E.retard);
       if (s && e === 'close') x.resolue = juste;
+      if (s && e === 'close' && c.prime) x.premiere = primees(c, S, jour).includes(j.b);
       if (a && e === 'close') x.juste = justeEnq(c, a.v);
     }
     if (tout) { if (c.saisie === 'choix') x.bonne = c.bonne; else x.reponses = c.reponses; }
@@ -763,7 +777,7 @@ async function handler(req, res) {
     if (b.action === 'enquete') {
       const c = B.enquete && Number.isInteger(b.k) ? B.enquete.enigmes.find(x => x.k === b.k) : null;
       if (!c) return res.status(400).json({ error: 'enigme' });
-      const e = etatDe(c.n, jour);
+      const e = etatEnq(c, jour);
       if (e !== 'ouverte') return res.status(403).json({ error: e === 'avenir' ? 'scellee' : 'close' });
       const v = typeof b.reponse === 'string' ? b.reponse.trim() : b.reponse;
       if (c.saisie === 'choix' ? !(Number.isInteger(v) && v >= 0 && v < c.options.length) : !(typeof v === 'string' && normRep(v) && v.length <= 80 && !/[\u0000-\u001f<>]/.test(v))) return res.status(400).json({ error: 'reponse' });

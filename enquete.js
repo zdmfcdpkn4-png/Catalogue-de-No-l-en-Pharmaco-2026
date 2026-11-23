@@ -153,7 +153,7 @@ button.enq-v{cursor:zoom-in}
     const peut = () => (opts.peutRepondre ? Boolean(opts.peutRepondre()) : true);
 
     const revelation = e => (e.revelation
-      ? '<p class="enq-rev"><b>' + (e.elimine ? "Carte éliminée" : e.libre ? "Rien de neuf au dossier" : e.k > 21 ? "Pièce à conviction" : "Indice") + "</b>" + nl(e.revelation) + "</p>"
+      ? '<p class="enq-rev"><b>' + (e.quete ? "Quête secondaire" : e.elimine ? "Carte éliminée" : e.libre ? "Rien de neuf au dossier" : e.k > 21 ? "Pièce à conviction" : "Indice") + "</b>" + nl(e.revelation) + "</p>"
       : e.attente && dateDe(e.attente) ? '<p class="enq-rev"><b>Révélation</b>Révélation le ' + dateDe(e.attente) + ".</p>" : "");
 
     // Le dé de la brigade pour cette énigme, dessiné face visible, et l'aide qu'il donne à partir de 3.
@@ -195,13 +195,13 @@ button.enq-v{cursor:zoom-in}
     // Lendemain du dernier jour d'ouverture (J+2) : `resultat` si le serveur le donne, sinon calculé pour un jour de décembre.
     const cloture = e => (e.resultat !== undefined ? dateDe(e.resultat) : Number.isInteger(e.jour) && e.jour + 3 <= 31 ? dateDe(e.jour + 3) : "");
     const carte = e => {
-      const finale = e.k > 21;
-      let s = '<li class="enq-e" data-k="' + e.k + '"><h5><small>' + (finale ? "Dénouement" : "Énigme " + e.k) + (dateDe(e.jour) ? " · " + dateDe(e.jour) : "") + "</small>" + fr(e.titre || "") + "</h5>";
+      const finale = e.k > 21 && !e.quete;
+      let s = '<li class="enq-e" data-k="' + e.k + '"><h5><small>' + (e.quete ? "Quête secondaire" + (e.etat !== "close" && dateDe(e.ferme) ? " · jusqu'au " + dateDe(e.ferme) : "") : (finale ? "Dénouement" : "Énigme " + e.k) + (dateDe(e.jour) ? " · " + dateDe(e.jour) : "")) + "</small>" + fr(e.titre || "") + "</h5>";
       if (e.enonce) s += "<p>" + nl(e.enonce) + "</p>";
       if (e.etat !== "close") s += de(e);
       if (e.etat === "close") {
         s += e.resolue
-          ? '<p class="enq-etat ok">Énigme acquise : la réponse majoritaire de la brigade était la bonne.' + (e.repondu ? (e.juste ? " La vôtre aussi." : " La vôtre ne l'était pas.") : "") + "</p>"
+          ? '<p class="enq-etat ok">Énigme acquise : la réponse majoritaire de la brigade était la bonne.' + (e.quete && e.prime ? (e.premiere ? " Votre brigade a été la première : prime de " + pl(e.prime, "point", "points") + "." : " Une autre brigade a été plus rapide : pas de prime.") : "") + (e.repondu ? (e.juste ? " La vôtre aussi." : " La vôtre ne l'était pas.") : "") + "</p>"
           : '<p class="enq-etat ko">Énigme non acquise : réponse majoritaire fausse ou aucune réponse. ' + (e.revelation ? "Révélation d'office, sans point." : "Pas de point.") + "</p>";
         s += revelation(e);
       } else if (e.repondu) {
@@ -249,7 +249,7 @@ button.enq-v{cursor:zoom-in}
       const devoile = !amorce || A.some(a => a.n >= 2), enJeu = !amorce || A.some(a => a.fiche);
       const vues = enJeu ? L.filter(e => e.etat !== "avenir") : [];
       const aFaire = vues.filter(e => e.etat === "ouverte" && !e.repondu), scellees = vues.filter(e => e.etat === "ouverte" && e.repondu), closes = vues.filter(e => e.etat === "close");
-      const indices = closes.filter(e => e.revelation && !e.elimine && !e.libre && e.k <= 21);
+      const indices = closes.filter(e => e.revelation && !e.elimine && !e.libre && !e.quete && e.k <= 21);
       const max = Q.max || 30, moi = opts.mienne ? opts.mienne() : undefined, commence = vues.length > 0;
       let s = "";
       if (devoile && Q.titre) s += "<h3>" + fr(Q.titre) + "</h3>" + (Q.fiction !== false ? '<p class="enq-fic">Fiction</p>' : "");
