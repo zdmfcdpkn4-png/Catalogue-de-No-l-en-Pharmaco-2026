@@ -12,16 +12,24 @@ sapin verrouillé par le code d'équipe puis un clic sur son avatar.
 
 ## 2. BD : cinq cases, un SVG par case
 
-Une planche unique serait illisible à 320 px (texte vers 6 px) : chaque case est un SVG 400 x 300, à empiler en une colonne
-sur téléphone, deux colonnes au-delà de 700 px. Exemple de pose :
+Validé par le pharmacien le 24/11, avec une présentation qui demande moins de défilement : les cases sont posées dans une
+**bande qu'on fait glisser** (une case visible à la fois sur téléphone, trois côte à côte sur grand écran), comme la notice
+des Pharmacogames dans `enigme.js` (classes `.eg-bd`). Une planche unique serait illisible à 320 px (texte vers 6 px).
+Copier les SVG en `img/bd-sapin-1.svg` à `img/bd-sapin-5.svg`. Exemple de pose :
 
 ```html
-<div class="av-bd" role="list" aria-label="Mode d'emploi du sapin en cinq cases">
-  <img role="listitem" src="img/bd-sapin-1.svg" alt="…texte alternatif ci-dessous…" width="400" height="300">
+<p class="av-bd-aide" id="avBdAide">Mode d'emploi en cinq cases : faites glisser.</p>
+<div class="av-bd" role="region" aria-labelledby="avBdAide" tabindex="0">
+  <img src="img/bd-sapin-1.svg" alt="…texte alternatif ci-dessous…" width="400" height="300" loading="lazy">
   …
 </div>
-<style>.av-bd{display:grid;gap:10px;margin-top:14px}.av-bd img{width:100%;height:auto;display:block}
-@media(min-width:700px){.av-bd{grid-template-columns:1fr 1fr}}</style>
+<style>
+.av-bd-aide{margin:6px 0 8px;font-size:.84rem;font-weight:700}
+.av-bd{display:grid;grid-auto-flow:column;grid-auto-columns:88%;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;padding:2px 2px 8px}
+.av-bd img{display:block;width:100%;height:auto;scroll-snap-align:start}
+.av-bd:focus-visible{outline:3px solid #26076D;outline-offset:2px}
+@media(min-width:861px){.av-bd{grid-auto-columns:calc((100% - 20px) / 3)}}
+</style>
 ```
 
 | Fichier | Titre | Bulle | Texte alternatif |
@@ -47,4 +55,4 @@ Inchangés : déjà courts et dans le ton (quarantaine, dose du jour, déjà dé
 
 ## Régénérer
 
-`node outils/propositions/notice-sapin/fabrique.js` (dessins dans `fabrique.js`, textes dans `pistes.js`). Style repris de `img/bd-clandestin-en-zac.svg`. Aucune image générée par un service payant.
+`node outils/propositions/notice-sapin/fabrique.js` (dessins dans `fabrique.js`, textes du sapin dans `pistes.js`, textes de la notice des Pharmacogames dans `pg.js` : ses `pg-N.svg` se copient en `img/notice-pharmacogames-N.svg`). Style repris de `img/bd-clandestin-en-zac.svg`. Aucune image générée par un service payant.

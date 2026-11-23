@@ -7,14 +7,14 @@ const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const flacon = (x, y, k = 0.62, h = 'ok', fond = R) => `<g transform="translate(${x} ${y}) scale(${k})"><rect x="-41" y="-49" width="90" height="124" rx="16" fill="${V}"/><rect x="-45" y="-55" width="90" height="124" rx="16" fill="${C}" ${S}/><path d="M-42 12q14-9 28 0t28 0t28 0V55q0 11-11 11h-62q-11 0-11-11z" fill="${fond}"/><rect x="-45" y="-55" width="90" height="124" rx="16" fill="none" ${S}/><rect x="-20" y="-78" width="40" height="24" fill="${C}" ${S}/><rect x="-26" y="-92" width="52" height="16" rx="5" fill="${O}" ${S}/>`
   + (h === 'zen' ? `<path d="M-24-14q8 6 16 0M8-14q8 6 16 0" fill="none" ${S}/>` : `<circle cx="-16" cy="-14" r="9" fill="#fff" stroke="${V}" stroke-width="4"/><circle cx="16" cy="-14" r="9" fill="#fff" stroke="${V}" stroke-width="4"/><circle cx="-14" cy="-12" r="4" fill="${V}"/><circle cx="18" cy="-12" r="4" fill="${V}"/>`)
   + (h === 'wow' ? `<ellipse cx="0" cy="10" rx="7" ry="9" fill="${V}"/>` : `<path d="M-12 6q12 10 24 0" fill="none" ${S}/>`) + '</g>';
-const goutte = (x, y, k, fill, extra = '') => `<path transform="translate(${x} ${y}) scale(${k})" d="M0-22C8-10 14-2 14 7a14 14 0 0 1-28 0c0-9 6-17 14-29z" fill="${fill}" ${S} ${extra}/>`;
+const goutte = (x, y, k, fill, sw = 5) => `<path transform="translate(${x} ${y}) scale(${k})" d="M0-22C8-10 14-2 14 7a14 14 0 0 1-28 0c0-9 6-17 14-29z" fill="${fill}" ${S.replace('stroke-width="5"', 'stroke-width="' + sw + '"')}/>`;
 // Sapin de gouttes (5 rangs), cadenas optionnel, goutte du jour en surbrillance
 const sapin = (x, y, opt = {}) => {
   const k0 = opt.k || 0.8; let g = `<g transform="translate(${x} ${y}) scale(${k0})"><rect x="-9" y="62" width="18" height="18" fill="${O}" ${S}/>`;
   const rangs = [[1, -62], [2, -36], [3, -10], [4, 16], [5, 42]]; let i = 0;
   const cols = [J, R, VI, O, C];
   for (const [n, yy] of rangs) for (let k = 0; k < n; k++) { i++; const xx = (k - (n - 1) / 2) * 26;
-    g += goutte(xx, yy, 0.62, i === opt.jour ? J : cols[i % 5], i === opt.jour ? 'stroke-width="6"' : ''); }
+    g += goutte(xx, yy, 0.62, i === opt.jour ? J : cols[i % 5], i === opt.jour ? 7 : 5); }
   if (opt.jour) { const P = {10: [39, 16]}[opt.jour]; if (P) g += rayons(P[0], P[1], 16); }
   if (opt.cadenas) g += `<g transform="translate(0 4)"><path d="M-14 0v-10a14 14 0 0 1 28 0V0" fill="none" stroke="${V}" stroke-width="7"/><rect x="-22" y="0" width="44" height="34" rx="7" fill="${O}" ${S}/><circle cx="0" cy="15" r="4" fill="${V}"/></g>`;
   return g + '</g>';
@@ -37,7 +37,7 @@ function cas(c) {
 }
 module.exports = { cas, flacon, goutte, sapin, rayons, etoile, porte, cartes, V, O, J, R, C, VI, S, F };
 if (require.main === module) {
-  const P = require('./pistes.js');
+  const P = Object.assign({}, require('./pistes.js'), require('./pg.js'));
   for (const [nom, liste] of Object.entries(P)) liste.forEach((c, i) => fs.writeFileSync(`${__dirname}/${nom}-${i + 1}.svg`, cas({ ...c, id: nom + i })));
   console.log('ok');
 }
