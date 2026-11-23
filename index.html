@@ -377,6 +377,12 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .carte .cb b{font-weight:800;font-size:12px;font-size:6.6cqw}
 .carte .cb small{font-size:9px;font-size:4.5cqw}
 .carte .cp{inset:0;width:100%;height:100%;object-fit:contain;border-radius:4.5% / 3%}
+.ap-ca .cn{position:absolute;z-index:1;top:50%;width:32px;height:32px;margin-top:-16px;padding:0;display:grid;place-items:center;color:#26076D;background:#ECD567;border:3px solid #26076D;border-radius:50%;box-shadow:2px 2px 0 #26076D;cursor:pointer}
+.ap-ca .cn.p{left:3px}.ap-ca .cn.n{right:3px}.ap-ca .cn:disabled{opacity:.3;cursor:default}
+.ap-ca .cc{position:absolute;z-index:1;bottom:5px;left:50%;transform:translateX(-50%);padding:1px 10px;font-weight:800;font-size:.8rem;color:#26076D;background:#FFFBF2;border:2px solid #26076D;border-radius:999px}
+.bdz .bdn{position:fixed;z-index:1;top:10px;left:10px;display:flex;align-items:center;gap:8px;font-weight:800;color:#FFFBF2}
+.bdz .bdn button{width:42px;height:42px;padding:0;display:grid;place-items:center;color:#26076D;background:#ECD567;border:3px solid #26076D;border-radius:50%;cursor:pointer}
+.bdz .bdn button:disabled{opacity:.35;cursor:default}
 .bdz .bdc{width:min(100%,440px);margin:0 auto;cursor:zoom-in}
 .bdz .bdc.pl{width:min(100%,560px)}
 .bdz .bdc.zz{width:200%;max-width:1200px;cursor:zoom-out}
@@ -815,8 +821,8 @@ function avContent(d){
     +(c.audio?'<audio class="ap-audio" controls preload="auto" src="'+esc(c.audio)+'" aria-label="'+esc(c.titre)+'"></audio>':'')
     +(c.lien?'<a class="go main" href="'+esc(c.lien)+'" target="_blank" rel="noopener">Écouter</a>':'');
   else if(t==="cartes"){const mv=!matchMedia("(prefers-reduced-motion:reduce)").matches,L=(c.cartes||[]).slice(0,3);
-    h+='<div class="ap-ca'+(mv?'':' fin')+'"><div class="cas">'+L.map(k=>avCarte(k,d)).join("")+'</div>'+(mv?'<video class="cav" src="'+esc(c.video||AV_BOOSTER)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div>'
-      +(c.titre?'<p class="ap-t">'+esc(c.titre)+'</p>':'')+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+'<p class="ap-src">'+(L.length>1?'Faites glisser pour voir les '+L.length+' cartes. ':'')+'Touchez une carte pour la voir en grand.</p>'}
+    h+='<div class="ap-ca'+(mv?'':' fin')+'"><div class="cas">'+L.map(k=>avCarte(k,d)).join("")+'</div>'+(L.length>1?'<button class="cn p" type="button" data-cn="-1" aria-label="Carte précédente" disabled>'+AV_FL[0]+'</button><button class="cn n" type="button" data-cn="1" aria-label="Carte suivante">'+AV_FL[1]+'</button><span class="cc" aria-live="polite">1/'+L.length+'</span>':'')+(mv?'<video class="cav" src="'+esc(c.video||AV_BOOSTER)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div>'
+      +(c.titre?'<p class="ap-t">'+esc(c.titre)+'</p>':'')+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+'<p class="ap-src">'+(L.length>1?'Faites glisser ou utilisez les flèches pour voir les '+L.length+' cartes. ':'')+'Touchez une carte pour la voir en grand.</p>'}
   else if(t==="bd")h+='<div class="ap-bd'+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'':' fin')+'"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="Lire en grand : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'<video class="bdv" src="'+esc(c.video)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div>'
     +'<p class="ap-t">'+esc(c.titre)+'</p>'+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+'<p class="ap-src">Touchez la planche pour la lire en grand.</p>';
   else if(t==="image")h+='<figure><img src="'+esc(c.image)+'" alt="'+esc(c.titre)+'" loading="lazy"><figcaption>'+esc(c.titre)+'</figcaption></figure>';
@@ -860,15 +866,31 @@ document.addEventListener("click",e=>{
   if(e.target.closest("[data-ev]")){avEv(true);return}
   if(e.target.closest(".av-ev")){avEvEnd();return}
   if(e.target.classList&&e.target.classList.contains("cav")){e.target.pause();e.target.parentNode.classList.add("fin");return}
-  const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG"&&e.target.parentNode===z)e.target.classList.toggle("zz");else{const c=e.target.closest(".bdc");if(c)c.classList.toggle("zz");else z.remove()}return}
-  const ca=e.target.closest(".ap-ca .carte");if(ca){const d=document.createElement("div");d.className="bdz";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-label",ca.getAttribute("aria-label"));
-    d.innerHTML='<button type="button">Fermer</button><div class="bdc'+(ca.classList.contains("pl")?' pl':'')+'"></div><p>Touchez la carte pour zoomer.</p>';const k=ca.cloneNode(true);k.removeAttribute("aria-label");k.tabIndex=-1;k.style.animation="none";d.querySelector(".bdc").appendChild(k);document.body.appendChild(d);d.querySelector("button").focus();return}
+  const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG"&&e.target.parentNode===z)e.target.classList.toggle("zz");else{const nb=e.target.closest("[data-bn]"),c=e.target.closest(".bdc");if(nb)avCaZ(z._s,z._i+ +nb.dataset.bn);else if(c)c.classList.toggle("zz");else avZ()}return}
+  const cn=e.target.closest(".ap-ca .cn");if(cn){const s=cn.parentNode.querySelector(".cas");avCa(s,avCaI(s)+ +cn.dataset.cn);return}
+  const ca=e.target.closest(".ap-ca .carte");if(ca){avCaZ(ca.parentNode,[...ca.parentNode.children].indexOf(ca));return}
   const a=e.target.closest(".ap-bd a");if(!a)return;e.preventDefault();
   const im=a.querySelector("img"),d=document.createElement("div");d.className="bdz";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-label",im.alt);
   d.innerHTML='<button type="button">Fermer</button><img src="'+esc(a.getAttribute("href"))+'" alt="'+esc(im.alt)+'"><p>Touchez l\'image pour zoomer.</p>';
-  document.body.appendChild(d);d.querySelector("button").focus();
+  d._o=a;document.body.appendChild(d);d.querySelector("button").focus();
 });
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){const z=document.querySelector(".bdz");if(z)z.remove();else{avEvEnd();const v=document.querySelector("#avPanel .cav");if(v&&!v.parentNode.classList.contains("fin")){v.pause();v.parentNode.classList.add("fin")}}}});
+/* Cartes une par une : flèches et compteur dans le panneau et dans la vue en grand, flèches du clavier, retour du focus à la fermeture. */
+function avZ(){const z=document.querySelector(".bdz");if(!z)return;z.remove();if(z._o&&z._o.isConnected)z._o.focus({preventScroll:true})}
+function avCa(s,i){const k=s.children;i=Math.max(0,Math.min(k.length-1,i));s.scrollTo({left:k[i].offsetLeft-(s.clientWidth-k[i].offsetWidth)/2,behavior:matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth"});return i}
+function avCaI(s){const k=s.children;return k.length<2?0:Math.max(0,Math.min(k.length-1,Math.round(s.scrollLeft/(k[1].offsetLeft-k[0].offsetLeft))))}
+function avCaZ(s,i){
+  const n=s.children.length;i=Math.max(0,Math.min(n-1,i));let z=document.querySelector(".bdz");if(z&&z._i===i)return;const ca=s.children[i],neuf=!z;
+  if(neuf){z=document.createElement("div");z.className="bdz";z.setAttribute("role","dialog");z.setAttribute("aria-modal","true");z._s=s;
+    z.innerHTML='<button type="button">Fermer</button><div class="bdc"></div>'+(n>1?'<div class="bdn"><button type="button" data-bn="-1" aria-label="Carte précédente">'+AV_FL[0]+'</button><span aria-live="polite"></span><button type="button" data-bn="1" aria-label="Carte suivante">'+AV_FL[1]+'</button></div>':'')+'<p>Touchez la carte pour zoomer.</p>';document.body.appendChild(z)}
+  z._i=i;z._o=ca;z.setAttribute("aria-label",ca.getAttribute("aria-label"));
+  const b=z.querySelector(".bdc"),k=ca.cloneNode(true);b.className="bdc"+(ca.classList.contains("pl")?" pl":"");k.removeAttribute("aria-label");k.tabIndex=-1;k.style.animation="none";b.replaceChildren(k);
+  if(n>1){z.querySelector(".bdn span").textContent=(i+1)+"/"+n;z.querySelector('[data-bn="-1"]').disabled=i===0;z.querySelector('[data-bn="1"]').disabled=i===n-1;avCa(s,i)}
+  if(neuf)z.querySelector("button").focus();
+}
+document.addEventListener("scroll",e=>{const s=e.target;if(!s.classList||!s.classList.contains("cas"))return;const o=s.parentNode,c=o.querySelector(".cc");if(!c)return;const i=avCaI(s),n=s.children.length;c.textContent=(i+1)+"/"+n;o.querySelector(".cn.p").disabled=i===0;o.querySelector(".cn.n").disabled=i===n-1},true);
+document.addEventListener("focusin",e=>{const k=e.target.closest&&e.target.closest(".ap-ca .carte");if(k)avCa(k.parentNode,[...k.parentNode.children].indexOf(k))});
+document.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"||e.key==="ArrowRight"){const z=document.querySelector(".bdz"),v=e.key==="ArrowLeft"?-1:1,k=document.activeElement.closest(".ap-ca .carte");if(z){if(z._s)avCaZ(z._s,z._i+v)}else if(k){const o=v<0?k.previousElementSibling:k.nextElementSibling;if(o)o.focus()}return}
+  if(e.key==="Escape"){const z=document.querySelector(".bdz");if(z)avZ();else{avEvEnd();const v=document.querySelector("#avPanel .cav");if(v&&!v.parentNode.classList.contains("fin")){v.pause();v.parentNode.classList.add("fin")}}}});
 /* Jours d'événement : le 1er et le 25 décembre, une vidéo du sapin joue une fois par appareil à l'arrivée sur la page (muette),
    dans son propre cadre, puis s'efface. Elle n'ouvre aucune goutte. Pas en mouvement réduit ; se passe d'un toucher ou avec Échap. */
 const AV_EV={1:["video/sapin-1er-decembre.mp4","Levée de quarantaine : le lot de décembre est libéré."],25:["video/sapin-25-decembre.mp4","Dernière dose. Le Père Noël a signé la libération."]};
@@ -888,7 +910,7 @@ function avEv(force){
    l'image s'affiche seule, sans gabarit ni texte superposé. Format conseillé : 680 x 1024 px (rapport 0,664, celui du gabarit), 1020 x 1536 px si le texte est fin, WebP.
    Une à trois cartes. Image : portrait 580 x 630 px environ (rapport 0,92), WebP ou JPEG, recadrée en « cover » dans la fenêtre du gabarit ;
    garder le sujet au centre. Titre : 22 caractères au plus pour tenir sur une ligne. Texte : 34 caractères au plus. Symbole : un à deux caractères. */
-const AV_BOOSTER="video/booster-cartes.mp4",AV_GABARIT="img/carte-gabarit.webp";
+const AV_FL=["M15 5l-7 7 7 7","M9 5l7 7-7 7"].map(d=>'<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="'+d+'" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'),AV_BOOSTER="video/booster-cartes.mp4",AV_GABARIT="img/carte-gabarit.webp";
 function avCarte(k,d){if(k.pleine)return '<button class="carte pl" type="button" aria-label="Voir en grand : '+esc(k.titre||k.alt||"carte")+'"><img class="cp" src="'+esc(k.image)+'" alt="'+esc(k.alt||k.titre||"")+'"></button>';
   return '<button class="carte" type="button" aria-label="Voir en grand : '+esc(k.titre||"carte")+'"><img class="cg" src="'+AV_GABARIT+'" alt="">'+(k.image?'<img class="ci" src="'+esc(k.image)+'" alt="'+esc(k.alt||k.titre||"")+'">':'')+'<span class="cm" aria-hidden="true">'+esc(k.symbole||String(d))+'</span><span class="cb"><b>'+esc(k.titre||"")+'</b>'+(k.texte?'<small>'+esc(k.texte)+'</small>':'')+'</span></button>'}
 function avLocked(d){
