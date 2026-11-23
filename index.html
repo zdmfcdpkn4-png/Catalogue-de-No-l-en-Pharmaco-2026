@@ -383,6 +383,13 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .bdz .bdn{position:fixed;z-index:1;top:10px;left:10px;display:flex;align-items:center;gap:8px;font-weight:800;color:#FFFBF2}
 .bdz .bdn button{width:42px;height:42px;padding:0;display:grid;place-items:center;color:#26076D;background:#ECD567;border:3px solid #26076D;border-radius:50%;cursor:pointer}
 .bdz .bdn button:disabled{opacity:.35;cursor:default}
+/* Ticket à gratter : {"jour": n, "type": "ticket", "titre": "(facultatif)", "texte": "le vœu caché"}. Une couche argentée dessinée
+   sur un canevas s'efface au doigt ou à la souris ; le bouton « Révéler » sert au clavier et à qui ne veut pas gratter. */
+.ap-tk{position:relative;margin:14px 0 0;min-height:150px;display:grid;place-items:center;border:3px dashed var(--line);border-radius:12px;background:#FFF6D8;overflow:hidden}
+.ap-tk .tk-x{margin:0;padding:18px 16px;text-align:center;font-weight:800;font-size:1.1rem;line-height:1.3;color:#26076D}
+.ap-tk .tk-c{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair;transition:opacity .5s}
+.ap-tk.vu .tk-c{opacity:0;pointer-events:none}
+@media (prefers-reduced-motion:reduce){.ap-tk .tk-c{transition:none}}
 /* Booster de l'enquête (du 4 au 25) : sous la surprise du jour ; ses cartes viennent du concours (window.PharmacoBooster), jamais de ce fichier. */
 .ap-bo{margin-top:16px;padding-top:4px;border-top:2px dashed var(--line)}
 .carte.dos{cursor:default}
@@ -393,6 +400,33 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .carte.hc .tp{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-14deg);padding:.15em .45em;border:.14em solid #C62828;border-radius:.3em;color:#C62828;font-weight:800;font-size:18px;font-size:11cqw;line-height:1.1;text-transform:uppercase;white-space:nowrap;text-shadow:0 0 .2em #FFFBF2,0 0 .2em #FFFBF2}
 .bo-tx b{display:block}.bo-tx ul{margin:6px 0 0;padding-left:1.2em}
 .bdz .bdc.en{width:min(100%,360px)}
+/* Notice du sapin en cinq cases : bande à faire glisser sur téléphone, grille au-delà. Repliée dès qu'une goutte a été ouverte. */
+.av-bd{margin:12px 0 0}
+.av-bd summary{display:inline-block;padding:5px 12px;font-weight:800;font-size:.85rem;color:var(--on-surface);background:var(--surface);border:3px solid var(--line);border-radius:999px;cursor:pointer}
+.av-bd>div{display:flex;gap:10px;margin-top:10px;padding-bottom:6px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.av-bd img{flex:0 0 min(82%,330px);width:min(82%,330px);height:auto;display:block;scroll-snap-align:center}
+@media(min-width:700px){.av-bd>div{display:grid;grid-template-columns:repeat(3,1fr);overflow:visible}.av-bd img{width:100%}}
+@media(min-width:1040px){.av-bd>div{grid-template-columns:repeat(5,1fr)}}
+/* Contrôle d'accès du sapin : code d'équipe, puis un clic sur son avatar (window.PharmacoAcces, fourni par enigme.js).
+   Simple affichage, pas une sécurité : le contenu du sapin est public. Sans ce module (artefact), le sapin reste ouvert. */
+.adv-tree.verr>svg{opacity:.35;filter:saturate(.5) blur(1.5px);pointer-events:none}
+.av-lock{position:absolute;z-index:3;inset:0;margin:auto;width:min(100%,420px);height:fit-content;max-height:100%;overflow:auto;padding:14px 14px 16px;background:var(--surface);color:var(--on-surface);border:3px solid var(--line);border-radius:16px;box-shadow:6px 6px 0 var(--shadow);text-align:center}
+.av-lock .lk-tag{display:inline-block;padding:2px 10px;font-weight:800;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:#26076D;background:#ECD567;border:2px solid #26076D;border-radius:999px}
+.av-lock h3{margin:8px 0 4px;font-size:1.25rem}.av-lock p{margin:0 0 8px;font-size:.92rem}
+.av-lock label{display:block;font-weight:800;font-size:.9rem}
+.av-lock input{display:block;width:100%;max-width:240px;margin:6px auto 0;padding:9px 10px;font:inherit;font-size:1rem;text-align:center;color:#26076D;background:#FFFBF2;border:3px solid var(--line);border-radius:10px}
+.av-lock .lk-er{min-height:1.2em;margin:6px 0 0;font-weight:800;color:#B3261E}
+.av-lock .go{margin:10px 0 0}
+.lk-gr{display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:8px 4px;margin:8px 0;max-height:230px;overflow-y:auto;padding:2px}
+.lk-av{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;padding:4px 2px;font:inherit;font-size:.74rem;font-weight:800;color:inherit;background:none;border:0;border-radius:10px;cursor:pointer}
+.lk-av:hover,.lk-av:focus-visible{background:#ECD567;color:#26076D}
+.lk-av span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lk-im{display:grid;place-items:center;width:52px;height:52px;overflow:hidden;font-weight:800;color:#26076D;background:#DDD0EC;border:3px solid var(--line);border-radius:50%}
+.lk-im svg{display:block;width:100%;height:100%}
+.av-moi{position:absolute;z-index:2;top:4px;left:4px;display:flex;align-items:center;gap:6px;max-width:calc(100% - 8px);padding:3px 10px 3px 3px;font-size:.8rem;font-weight:800;color:var(--on-surface);background:var(--surface);border:3px solid var(--line);border-radius:999px;box-shadow:3px 3px 0 var(--shadow)}
+.av-moi .lk-im{width:30px;height:30px;border-width:2px;font-size:.8rem}
+.av-moi b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.av-moi button{padding:0;font:inherit;font-weight:400;text-decoration:underline;color:inherit;background:none;border:0;cursor:pointer}
 .bdz .bdc{width:min(100%,440px);margin:0 auto;cursor:zoom-in}
 .bdz .bdc.pl{width:min(100%,560px)}
 .bdz .bdc.zz{width:200%;max-width:1200px;cursor:zoom-out}
@@ -499,8 +533,18 @@ footer{padding:26px 0 34px;font-size:.86rem}
   <p class="adv-back"><a class="go" href="#">Retour au catalogue</a></p>
   <div class="adv-head">
     <h2 id="avent-t">Le sapin <span>de l'Avent</span></h2>
-    <p class="adv-intro">Posologie : une goutte par jour, du 1<sup>er</sup> au 25 décembre. Composition : secret de fabrication. Chaque goutte reste sous scellé jusqu'à sa date.</p>
+    <p class="adv-intro">Posologie : une goutte par jour, du 1<sup>er</sup> au 25 décembre. Mode d'emploi en cinq prises :</p>
   </div>
+  <details class="av-bd" id="avNotice" open>
+    <summary>Mode d'emploi en cinq cases</summary>
+    <div role="list" aria-label="Mode d'emploi du sapin en cinq cases">
+      <img role="listitem" src="img/notice-sapin-1.svg" alt="Le flacon a saisi le code d'équipe, masqué par des points, puis clique sur son avatar en forme de meeple : « Code d'équipe, puis un clic sur mon avatar : accès libéré. »" width="400" height="300" loading="lazy">
+      <img role="listitem" src="img/notice-sapin-2.svg" alt="Le flacon secoue un sapin de gouttes fermé par un cadenas : « Sapin sous scellé jusqu'au 1er décembre. J'ai secoué : rien. »" width="400" height="300" loading="lazy">
+      <img role="listitem" src="img/notice-sapin-3.svg" alt="Le flacon touche la goutte du jour, dorée et rayonnante, dans le sapin : « Chaque jour, une goutte est libérée. Je touche la mienne. »" width="400" height="300" loading="lazy">
+      <img role="listitem" src="img/notice-sapin-4.svg" alt="La goutte s'ouvre en étoile ; le flacon, bouche cousue, garde le secret : « Ce qu'il y a dedans ? Secret de fabrication. Je ne dirai rien. »" width="400" height="300" loading="lazy">
+      <img role="listitem" src="img/notice-sapin-5.svg" alt="Le flacon court vers la porte du jour des Pharmacogames : « Goutte ouverte : la porte du jour des Pharmacogames m'attend ! »" width="400" height="300" loading="lazy">
+    </div>
+  </details>
   <div class="adv-body">
     <div class="adv-tree" id="avTree"></div>
     <aside class="adv-panel" id="avPanel" aria-live="polite"></aside>
@@ -739,11 +783,11 @@ function pensee(){
 /* ---------- Sapin de l'Avent ----------
    Une goutte par jour du 1er au 25 décembre 2026, déverrouillée selon la date de l'appareil ;
    les gouttes ouvertes sont mémorisées dans le navigateur. Contenu : outils/calendrier_avent.json. */
-const AVENT=[{"jour": 1, "type": "chanson", "titre": "Noël en Pharmaco", "audio": "audio/noel-en-pharmaco.mp3", "pochette": "img/logo-pharmacotechnie.webp"}, {"jour": 2, "type": "origami", "texte": "Pliée en poche, dépliée en fleur."}, {"jour": 3, "type": "cartes", "texte": "Vos 18 cartes sont rangées dans l'album de votre brigade, aux Pharmacogames.", "lien": "#pharmacogames", "bouton": "Ouvrir l'album", "cartes": [{"image": "img/enquete/lyse.webp", "pleine": true, "alt": "Carte personnage : Inspectrice Anna Lyse"}, {"image": "img/enquete/tiseptique.webp", "pleine": true, "alt": "Carte personnage : Madame Anne Tiseptique"}, {"image": "img/enquete/erique.webp", "pleine": true, "alt": "Carte personnage : Professeur Eugène Érique"}, {"image": "img/enquete/lule.webp", "pleine": true, "alt": "Carte personnage : Docteur Roger Lule"}, {"image": "img/enquete/yngue.webp", "pleine": true, "alt": "Carte personnage : Capitaine Spencer Yngue"}, {"image": "img/enquete/mine.webp", "pleine": true, "alt": "Carte personnage : Mademoiselle Vita Mine"}, {"image": "img/enquete/bureau.webp", "pleine": true, "alt": "Carte lieu : Le Bureau des Pharmaciens"}, {"image": "img/enquete/preparatoire.webp", "pleine": true, "alt": "Carte lieu : Le Préparatoire"}, {"image": "img/enquete/decontamination.webp", "pleine": true, "alt": "Carte lieu : La Salle de Décontamination"}, {"image": "img/enquete/pause.webp", "pleine": true, "alt": "Carte lieu : La Salle de Pause"}, {"image": "img/enquete/production.webp", "pleine": true, "alt": "Carte lieu : La Salle de Production"}, {"image": "img/enquete/stockage.webp", "pleine": true, "alt": "Carte lieu : La Zone de Stockage"}, {"image": "img/enquete/etiqueteuse.webp", "pleine": true, "alt": "Carte objet : L'Étiqueteuse"}, {"image": "img/enquete/flacon.webp", "pleine": true, "alt": "Carte objet : Le Flacon Mystérieux"}, {"image": "img/enquete/glaciere.webp", "pleine": true, "alt": "Carte objet : La Glacière de Transport"}, {"image": "img/enquete/mortier.webp", "pleine": true, "alt": "Carte objet : Le Mortier"}, {"image": "img/enquete/ordonnancier.webp", "pleine": true, "alt": "Carte objet : L'Ordonnancier"}, {"image": "img/enquete/tampon.webp", "pleine": true, "alt": "Carte objet : Le Tampon Dateur"}]}, {"jour": 4}, {"jour": 5}, {"jour": 6}, {"jour": 7, "type": "bd", "titre": "Clandestin en ZAC", "image": "img/bd-clandestin-en-zac.svg", "video": "video/cygne-bd.mp4", "alt": "Bande dessinée en six cases. Alerte en ZAC : un flacon surprend une particule clandestine, « Choisis ton supplice : une partie contre… » La Perfusion lente : « Je réfléchis… Mon tour dure 45 minutes. » Le Rappel de lot : « Attends, je rappelle mon coup. Et le précédent. Et celui d'avant. » Le Prescripteur : « Toi, tu joues ça. Toi, ça. Laissez, je joue pour tout le monde. » Le Double Contrôle : « Je recompte les points. Deux fois. Par joueur. Par manche. » Le verdict, la particule saute dans le fût DASRI : « Tout bien pesé… je choisis l'incinération ! »", "credit": "Librement inspiré d'une planche de Martin Vidberg (Philimag, octobre 2026)"}, {"jour": 8}, {"jour": 9}, {"jour": 10}, {"jour": 11}, {"jour": 12}, {"jour": 13}, {"jour": 14}, {"jour": 15}, {"jour": 16}, {"jour": 17}, {"jour": 18}, {"jour": 19}, {"jour": 20}, {"jour": 21}, {"jour": 22}, {"jour": 23}, {"jour": 24}, {"jour": 25}];
+const AVENT=[{"jour": 1, "type": "chanson", "titre": "Noël en Pharmaco", "audio": "audio/noel-en-pharmaco.mp3", "pochette": "img/logo-pharmacotechnie.webp"}, {"jour": 2, "type": "bd", "titre": "Clandestin en ZAC", "image": "img/bd-clandestin-en-zac.svg", "video": "video/cygne-bd.mp4", "alt": "Bande dessinée en six cases. Alerte en ZAC : un flacon surprend une particule clandestine, « Choisis ton supplice : une partie contre… » La Perfusion lente : « Je réfléchis… Mon tour dure 45 minutes. » Le Rappel de lot : « Attends, je rappelle mon coup. Et le précédent. Et celui d'avant. » Le Prescripteur : « Toi, tu joues ça. Toi, ça. Laissez, je joue pour tout le monde. » Le Double Contrôle : « Je recompte les points. Deux fois. Par joueur. Par manche. » Le verdict, la particule saute dans le fût DASRI : « Tout bien pesé… je choisis l'incinération ! »", "credit": "Librement inspiré d'une planche de Martin Vidberg (Philimag, octobre 2026)"}, {"jour": 3, "type": "cartes", "texte": "Vos 18 cartes sont rangées dans l'album de votre brigade, aux Pharmacogames.", "lien": "#pharmacogames", "bouton": "Ouvrir l'album", "cartes": [{"image": "img/enquete/lyse.webp", "pleine": true, "alt": "Carte personnage : Inspectrice Anna Lyse"}, {"image": "img/enquete/tiseptique.webp", "pleine": true, "alt": "Carte personnage : Madame Anne Tiseptique"}, {"image": "img/enquete/erique.webp", "pleine": true, "alt": "Carte personnage : Professeur Eugène Érique"}, {"image": "img/enquete/lule.webp", "pleine": true, "alt": "Carte personnage : Docteur Roger Lule"}, {"image": "img/enquete/yngue.webp", "pleine": true, "alt": "Carte personnage : Capitaine Spencer Yngue"}, {"image": "img/enquete/mine.webp", "pleine": true, "alt": "Carte personnage : Mademoiselle Vita Mine"}, {"image": "img/enquete/bureau.webp", "pleine": true, "alt": "Carte lieu : Le Bureau des Pharmaciens"}, {"image": "img/enquete/preparatoire.webp", "pleine": true, "alt": "Carte lieu : Le Préparatoire"}, {"image": "img/enquete/decontamination.webp", "pleine": true, "alt": "Carte lieu : La Salle de Décontamination"}, {"image": "img/enquete/pause.webp", "pleine": true, "alt": "Carte lieu : La Salle de Pause"}, {"image": "img/enquete/production.webp", "pleine": true, "alt": "Carte lieu : La Salle de Production"}, {"image": "img/enquete/stockage.webp", "pleine": true, "alt": "Carte lieu : La Zone de Stockage"}, {"image": "img/enquete/etiqueteuse.webp", "pleine": true, "alt": "Carte objet : L'Étiqueteuse"}, {"image": "img/enquete/flacon.webp", "pleine": true, "alt": "Carte objet : Le Flacon Mystérieux"}, {"image": "img/enquete/glaciere.webp", "pleine": true, "alt": "Carte objet : La Glacière de Transport"}, {"image": "img/enquete/mortier.webp", "pleine": true, "alt": "Carte objet : Le Mortier"}, {"image": "img/enquete/ordonnancier.webp", "pleine": true, "alt": "Carte objet : L'Ordonnancier"}, {"image": "img/enquete/tampon.webp", "pleine": true, "alt": "Carte objet : Le Tampon Dateur"}]}, {"jour": 4, "type": "origami", "texte": "Pliée en poche, dépliée en fleur."}, {"jour": 5}, {"jour": 6}, {"jour": 7, "type": "ticket", "titre": "Ticket de libération", "texte": "Vœu en préparation."}, {"jour": 8}, {"jour": 9}, {"jour": 10}, {"jour": 11}, {"jour": 12}, {"jour": 13}, {"jour": 14}, {"jour": 15}, {"jour": 16}, {"jour": 17}, {"jour": 18}, {"jour": 19}, {"jour": 20}, {"jour": 21}, {"jour": 22}, {"jour": 23}, {"jour": 24}, {"jour": 25}];
 const AV_ROWS=[[12,3,19],[7,22,1,15,10],[17,5,24,8,13,2,20],[11,23,4,16,6,21,9,14,18]],AV_Y=[186,268,350,432],AV_KEY="pharmacotechnie-avent-2026";
-const AV_T={chanson:"Chanson",image:"Image",citation:"Citation",origami:"Origami",bd:"Bande dessinée",cartes:"Cartes"};
+const AV_T={chanson:"Chanson",image:"Image",citation:"Citation",origami:"Origami",bd:"Bande dessinée",cartes:"Cartes",ticket:"Ticket à gratter"};
 const AV_C={lock:"#D9CEF5",ready:"#F59A62",today:"#ECD567",open:"#E5B4D9"};
-const AV_IC={cartes:'<rect x="4" y="6" width="11" height="15" rx="2"/><path d="M8 3h10a2 2 0 0 1 2 2v13"/>',bd:'<path d="M4 5h16v11H11l-5 4v-4H4z"/><path d="M8 9h8M8 12h5"/>',origami:'<path d="M4 4h16v16H4z"/><path d="M4 4l16 16M20 4 4 20"/>',chanson:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 17-5-5-9 8"/>',citation:'<path d="M4 18c2.5-1 4-3.4 4-7V6H4v5h4M14 18c2.5-1 4-3.4 4-7V6h-4v5h4"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',wait:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
+const AV_IC={ticket:'<path d="M3 8a2 2 0 0 0 0 4v4h18v-4a2 2 0 0 0 0-4V6H3z"/><path d="M9 6v10" stroke-dasharray="2 2"/>',cartes:'<rect x="4" y="6" width="11" height="15" rx="2"/><path d="M8 3h10a2 2 0 0 1 2 2v13"/>',bd:'<path d="M4 5h16v11H11l-5 4v-4H4z"/><path d="M8 9h8M8 12h5"/>',origami:'<path d="M4 4h16v16H4z"/><path d="M4 4l16 16M20 4 4 20"/>',chanson:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',image:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="m20 17-5-5-9 8"/>',citation:'<path d="M4 18c2.5-1 4-3.4 4-7V6H4v5h4M14 18c2.5-1 4-3.4 4-7V6h-4v5h4"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',wait:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
 const AVO=new Set();
 try{JSON.parse(localStorage.getItem(AV_KEY)||"[]").forEach(n=>AVO.add(n))}catch(e){}
 function avSave(){try{localStorage.setItem(AV_KEY,JSON.stringify([...AVO]))}catch(e){}}
@@ -835,6 +879,7 @@ function avContent(d){
       +(c.titre?'<p class="ap-t">'+esc(c.titre)+'</p>':'')+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+(c.texte?'<p class="ap-p">'+esc(c.texte)+'</p>':'')+(c.lien?'<a class="go" href="'+esc(c.lien)+'">'+esc(c.bouton||"Voir")+'</a>':'')+'<p class="ap-src">'+(L.length>1?'Faites glisser ou utilisez les flèches pour voir les '+L.length+' cartes. ':'')+'Touchez une carte pour la voir en grand.</p>'}
   else if(t==="bd")h+='<div class="ap-bd'+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'':' fin')+'"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="Lire en grand : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'<video class="bdv" src="'+esc(c.video)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div>'
     +'<p class="ap-t">'+esc(c.titre)+'</p>'+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+'<p class="ap-src">Touchez la planche pour la lire en grand.</p>';
+  else if(t==="ticket")h+='<div class="ap-tk"><p class="tk-x" aria-hidden="true">'+esc(c.texte||"")+'</p><canvas class="tk-c" aria-hidden="true"></canvas></div><p class="ap-t">'+esc(c.titre||"Ticket à gratter")+'</p><p class="ap-src tk-n">Grattez la zone argentée du doigt ou de la souris.</p><button class="go" type="button" data-tk>Révéler</button>';
   else if(t==="image")h+='<figure><img src="'+esc(c.image)+'" alt="'+esc(c.titre)+'" loading="lazy"><figcaption>'+esc(c.titre)+'</figcaption></figure>';
   else if(t==="origami")h+=avOri(d)+(c.texte?'<p class="ap-p">'+esc(c.texte)+'</p>':'')+'<button class="go" type="button" data-replay>Replier et rejouer</button>';
   return h+avBo(d)+avNext();
@@ -878,6 +923,8 @@ document.addEventListener("click",e=>{
   if(e.target.closest(".av-ev")){avEvEnd();return}
   if(e.target.classList&&e.target.classList.contains("cav")){e.target.pause();e.target.parentNode.classList.add("fin");return}
   const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG"&&e.target.parentNode===z)e.target.classList.toggle("zz");else{const nb=e.target.closest("[data-bn]"),c=e.target.closest(".bdc");if(nb)avCaZ(z._s,z._i+ +nb.dataset.bn);else if(c)c.classList.toggle("zz");else avZ()}return}
+  const lk=e.target.closest("[data-lk]");if(lk){avLkClic(lk);return}
+  if(e.target.closest("[data-tk]")){avTkVu($("#avPanel .ap-tk"));return}
   const bo=e.target.closest("[data-bo]");if(bo){avBoOpen(bo);return}
   const cn=e.target.closest(".ap-ca .cn");if(cn){const s=cn.parentNode.querySelector(".cas");avCa(s,avCaI(s)+ +cn.dataset.cn);return}
   const ca=e.target.closest(".ap-ca .carte:not(.dos)");if(ca){avCaZ(ca.parentNode,[...ca.parentNode.children].indexOf(ca));return}
@@ -900,6 +947,8 @@ function avCaZ(s,i){
   if(neuf)z.querySelector("button").focus();
 }
 document.addEventListener("scroll",e=>{const s=e.target;if(s.classList&&s.classList.contains("cas"))avCaMaj(s)},true);
+document.addEventListener("submit",e=>{if(e.target.classList&&e.target.classList.contains("av-lock")){e.preventDefault();avLkCode(e.target)}});
+document.addEventListener("DOMContentLoaded",()=>{avAcces(matchMedia("(hover:hover)").matches?1:0);if($("#avNotice")&&AVO.size)$("#avNotice").open=false});
 document.addEventListener("focusin",e=>{const k=e.target.closest&&e.target.closest(".ap-ca .carte");if(k)avCa(k.parentNode,[...k.parentNode.children].indexOf(k))});
 document.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"||e.key==="ArrowRight"){const z=document.querySelector(".bdz"),v=e.key==="ArrowLeft"?-1:1,k=document.activeElement.closest(".ap-ca .carte");if(z){if(z._s)avCaZ(z._s,z._i+v)}else if(k){const o=v<0?k.previousElementSibling:k.nextElementSibling;if(o)o.focus()}return}
   if(e.key==="Escape"){const z=document.querySelector(".bdz");if(z)avZ();else{avEvEnd();const v=document.querySelector("#avPanel .cav");if(v&&!v.parentNode.classList.contains("fin")){v.pause();v.parentNode.classList.add("fin")}}}});
@@ -958,6 +1007,64 @@ async function avBoOpen(btn){
     su.innerHTML='<p class="ap-p bo-tx" aria-live="polite"></p>'+(L.some(k=>k.type==="enigme")?'<a class="go" href="#pharmacogames">Répondre dans les Pharmacogames</a>':'')+'<p class="ap-src">'+(L.length>1?'Faites glisser ou utilisez les flèches pour voir les '+L.length+' cartes. ':'')+'Touchez une carte pour la voir en grand.</p>'}
   s.insertAdjacentHTML("afterend",avCaNav(s.children.length));s.querySelectorAll(".ct").forEach(avFit);avCaMaj(s);
 }
+/* Contrôle d'accès : tant que personne n'est identifié sur l'appareil, les gouttes ne s'ouvrent pas. Rien n'est demandé au serveur
+   avant « Lever le scellé ». Le code d'équipe n'est gardé que par PharmacoAcces.choisir(). Si le serveur ne répond pas, le sapin s'ouvre sans identification. */
+let avCode="",avJou=null,avLibre=false,avMoiSvg="";
+function avEvApres(){if(!matchMedia("(prefers-reduced-motion:reduce)").matches)avEv(true)}
+function avVerr(){const A=window.PharmacoAcces;return !!A&&!avLibre&&!A.identite()}
+function avMoi(v){try{if(v===undefined)return JSON.parse(localStorage.getItem(AV_KEY+"-moi")||"null");v?localStorage.setItem(AV_KEY+"-moi",JSON.stringify(v)):localStorage.removeItem(AV_KEY+"-moi")}catch(e){}return null}
+function avIni(p){return esc(String(p||"?").trim().charAt(0).toUpperCase())}
+function avAcces(foc){
+  const t=$("#avTree"),A=window.PharmacoAcces;if(!t||$("#avent").hidden)return;let o=t.querySelector(".av-lock"),m=t.querySelector(".av-moi");
+  if(!avVerr()){
+    if(o)o.remove();t.classList.remove("verr");const id=A&&A.identite();
+    if(!id){if(m)m.remove();return}
+    if(m&&m.dataset.p===id.pseudo)return;if(m)m.remove();
+    t.insertAdjacentHTML("beforeend",'<div class="av-moi" data-p="'+esc(id.pseudo)+'"><span class="lk-im" aria-hidden="true">'+avIni(id.pseudo)+'</span><b>'+esc(id.pseudo)+'</b><button type="button" data-lk="changer">changer</button></div>');
+    const im=t.querySelector(".av-moi .lk-im"),k=avMoi();
+    if(avMoiSvg)im.innerHTML=avMoiSvg;else if(k&&k.pseudo===id.pseudo&&k.avatar)Promise.resolve(A.dessin(k.avatar,k.brigade)).then(s=>{if(typeof s!=="string")return;avMoiSvg=s;const i=$("#avTree .av-moi .lk-im");if(i)i.innerHTML=s}).catch(()=>{});
+    return;
+  }
+  if(m)m.remove();t.classList.add("verr");avEvEnd(true);
+  if(!o){t.insertAdjacentHTML("beforeend",'<form class="av-lock" novalidate><span class="lk-tag">Sapin sous scellé</span><h3>Réservé à l\'équipe</h3><label>Code d\'équipe<input type="password" name="code" autocomplete="off" autocapitalize="none" spellcheck="false"></label><p class="lk-er" role="alert"></p><button class="go main" type="submit">Lever le scellé</button></form>');
+    $("#avPanel").innerHTML=avHead("lock","Sapin sous scellé","Réservé à l'équipe")+'<p class="ap-p">Le code d\'équipe, puis un clic sur votre avatar : le scellé saute.</p>';o=t.querySelector(".av-lock")}
+  if(foc){const i=o.querySelector("input,.lk-av,a");if(i)i.focus({preventScroll:foc!==2})}
+}
+async function avLkCode(f){
+  const A=window.PharmacoAcces,i=f.querySelector("input"),er=f.querySelector(".lk-er"),b=f.querySelector("button");if(!A||!i)return;
+  const c=i.value.trim();if(!c){er.textContent="Saisissez le code d'équipe.";i.focus();return}
+  b.disabled=true;er.textContent="";let r;try{r=await A.joueurs(c)}catch(e){r={erreur:"serveur"}}
+  if(!f.isConnected)return;b.disabled=false;
+  if(r&&r.erreur==="code"){er.textContent="Code d'équipe inconnu";i.select();i.focus();return}
+  if(!r||r.erreur){avLibre=true;avAcces();$("#avPanel").innerHTML=avHead("wait","Le serveur ne répond pas","Sapin ouvert")+'<p class="ap-p">Le serveur ne répond pas : le sapin s\'ouvre sans identification. Touchez une goutte.</p>';avEvApres();return}
+  avCode=c;avJou=r.joueurs||[];avLkJou(f);
+}
+function avLkJou(f){
+  const A=window.PharmacoAcces;
+  f.innerHTML='<span class="lk-tag">Scellé levé</span><h3>Qui êtes-vous ?</h3>'+(avJou.length?'<p>Touchez votre avatar pour entrer.</p><div class="lk-gr">'+avJou.map((j,n)=>'<button class="lk-av" type="button" data-lk="'+n+'"><span class="lk-im" aria-hidden="true">'+avIni(j.pseudo)+'</span><span>'+esc(j.pseudo)+'</span></button>').join("")+'</div>':'')+'<p>Pas encore d\'avatar ? <a href="#pharmacomeeple">Créez votre Pharmacomeeple</a></p>';
+  avJou.forEach((j,n)=>{Promise.resolve(A.dessin(j.avatar,j.brigade)).then(s=>{const b=f.querySelector('[data-lk="'+n+'"] .lk-im');if(b&&typeof s==="string")b.innerHTML=s}).catch(()=>{})});
+  const p=f.querySelector(".lk-av,a");if(p)p.focus({preventScroll:true});
+}
+function avLkClic(b){
+  const A=window.PharmacoAcces,t=$("#avTree");if(!A)return;
+  if(b.dataset.lk==="changer"){A.oublier();avMoi(null);avMoiSvg="";avAcces();const f=t.querySelector(".av-lock");if(f&&avCode&&avJou)avLkJou(f);else avAcces(1);return}
+  const j=avJou&&avJou[+b.dataset.lk];if(!j||!A.choisir(avCode,j.pseudo))return;
+  avMoi({pseudo:j.pseudo,avatar:j.avatar,brigade:j.brigade});const s=b.querySelector(".lk-im svg");avMoiSvg=s?s.outerHTML:"";
+  avAcces();$("#avPanel").innerHTML=avIntro();avEvApres();const g=$('#avTree [data-d="'+avNow()+'"]')||$("#avPanel .go");if(g)g.focus({preventScroll:true});
+}
+function avTkVu(o){if(!o||o.classList.contains("vu"))return;o.classList.add("vu");const x=o.querySelector(".tk-x");x.removeAttribute("aria-hidden");x.setAttribute("role","status");const b=$("#avPanel [data-tk]"),n=$("#avPanel .tk-n");if(b)b.remove();if(n)n.remove()}
+function avTk(){
+  const o=$("#avPanel .ap-tk"),c=o&&o.querySelector("canvas");if(!c)return;
+  const r=c.getBoundingClientRect(),q=Math.min(2,devicePixelRatio||1),W=c.width=Math.max(1,Math.round(r.width*q)),H=c.height=Math.max(1,Math.round(r.height*q)),x=c.getContext("2d");
+  const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,"#C9CCD6");g.addColorStop(.5,"#EEF0F5");g.addColorStop(1,"#AEB2C0");x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.fillStyle="rgba(38,7,109,.5)";x.font="800 "+Math.round(15*q)+"px sans-serif";x.textAlign="center";x.textBaseline="middle";x.fillText("Grattez ici",W/2,H/2);
+  x.globalCompositeOperation="destination-out";x.lineWidth=30*q;x.lineCap=x.lineJoin="round";let on=false,px=0,py=0;
+  const pt=e=>{const b=c.getBoundingClientRect();return [(e.clientX-b.left)*W/b.width,(e.clientY-b.top)*H/b.height]};
+  const fin=()=>{if(!on)return;on=false;let d;try{d=x.getImageData(0,0,W,H).data}catch(e){return}let v=0,n=0;for(let i=3;i<d.length;i+=64){n++;if(d[i]<40)v++}if(v/n>.5)avTkVu(o)};
+  c.addEventListener("pointerdown",e=>{on=true;[px,py]=pt(e);try{c.setPointerCapture(e.pointerId)}catch(z){}x.beginPath();x.arc(px,py,15*q,0,7);x.fill();e.preventDefault()});
+  c.addEventListener("pointermove",e=>{if(!on)return;const [a,b]=pt(e);x.beginPath();x.moveTo(px,py);x.lineTo(a,b);x.stroke();px=a;py=b});
+  ["pointerup","pointercancel","pointerleave"].forEach(k=>c.addEventListener(k,fin));
+}
 function avLocked(d){
   const j=avDays(d);
   return avHead("lock","Goutte du "+avDate(d),"Sous scellé")+'<p class="ap-p">Libération prévue le '+avDate(d)+(j>1?", dans "+j+" jours":"")+'. Ne pas dépasser la dose prescrite : le Père Noël surveille les stocks.</p>';
@@ -966,10 +1073,11 @@ function avLocked(d){
 function avView(){
   const on=location.hash==="#sapin";
   $("#avent").hidden=!on;document.querySelectorAll(".ind,.bar,main").forEach(e=>e.hidden=on);
-  if(on){const t=$("#avTree");t.classList.remove("casc");void t.offsetWidth;t.classList.add("casc");clearTimeout(avView.t);avView.t=setTimeout(()=>t.classList.remove("casc"),4500);$("#avent").scrollIntoView({block:"start"});AVENT.forEach(c=>{if(avSt(c.jour)==="lock")return;if(c.pochette)new Image().src=c.pochette;if(c.type==="origami")new Image().src=AV_LOGO});avEv()}else{avHush();avEvEnd(true)}
+  if(on){const t=$("#avTree");t.classList.remove("casc");void t.offsetWidth;t.classList.add("casc");clearTimeout(avView.t);avView.t=setTimeout(()=>t.classList.remove("casc"),4500);$("#avent").scrollIntoView({block:"start"});AVENT.forEach(c=>{if(avSt(c.jour)==="lock")return;if(c.pochette)new Image().src=c.pochette;if(c.type==="origami")new Image().src=AV_LOGO});avAcces(matchMedia("(hover:hover)").matches?1:0);if(!avVerr())avEv()}else{avHush();avEvEnd(true)}
 }
 function avHush(){document.querySelectorAll("#avPanel audio").forEach(a=>a.pause())}
 function avOpen(d,viaBtn){
+  if(avVerr()){avAcces(2);return}
   avHush();
   if(avSt(d)==="lock"){
     $("#avPanel").innerHTML=avLocked(d);
@@ -982,8 +1090,9 @@ function avOpen(d,viaBtn){
   if(g){if(!viaBtn)g.focus({preventScroll:true});if(first){g.classList.add("pop","fill");g.style.setProperty("--d",".05s");const b=g.getBBox();$("#avTree svg").insertAdjacentHTML("beforeend",avBurst(b.x+b.width/2,b.y+b.height/2,d===25?56:46))}}
   $("#avPanel").innerHTML=avContent(d);
   if(AV_OUV&&!(AVENT[d-1]||{}).video&&(AVENT[d-1]||{}).type!=="cartes"&&!matchMedia("(prefers-reduced-motion:reduce)").matches)$("#avPanel").insertAdjacentHTML("afterbegin",'<video class="ouv" src="'+esc(AV_OUV)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>');
-  const au=$("#avPanel audio");if(au)au.play().catch(()=>{});
+  const au=$("#avPanel audio");if(au)au.play().catch(()=>{});avTk();
   if(matchMedia("(max-width:860px)").matches)$("#avPanel").scrollIntoView({block:"nearest",behavior:"smooth"});
+  avAcces();if($("#avNotice"))$("#avNotice").open=false;
 }
 const FACES={1:["c"],2:["tl","br"],3:["tl","c","br"],4:["tl","tr","bl","br"],5:["tl","tr","c","bl","br"],6:["tl","tr","ml","mr","bl","br"]};
 function setFace(n){document.querySelectorAll("#pips .pip").forEach(p=>p.classList.toggle("on",FACES[n].includes(p.dataset.k)))}
