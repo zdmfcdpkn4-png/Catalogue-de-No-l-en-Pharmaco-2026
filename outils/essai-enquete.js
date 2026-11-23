@@ -139,6 +139,8 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
     window.S.Q = { titre: 'Affaire factice', points: 0, max: 30, fiches, jour: 9, classement: [], enigmes: [
       { k: 1, jour: 4, etat: 'close', titre: 'Close juste', enonce: 'Énoncé.', saisie: 'texte', resolue: true, revelation: 'Carte factice hors de cause.', elimine: 'f01', de: 6 },
       { k: 2, jour: 5, etat: 'close', titre: 'Close en attente', enonce: 'Énoncé.', saisie: 'texte', resolue: false, attente: '2026-12-09' },
+      { k: 10, jour: 6, etat: 'close', titre: 'Close libre', enonce: 'Énoncé.', saisie: 'texte', resolue: true, libre: true, revelation: 'Texte factice sans rapport.' },
+      { k: 11, jour: 6, etat: 'close', titre: 'Close indice', enonce: 'Énoncé.', saisie: 'texte', resolue: true, revelation: 'Indice factice.' },
       o(3, 1), o(4, 3, { forme: 'clair', texte: 'Aide en clair.\nSuite.' }), o(5, 4, { forme: 'miroir', texte: 'Aide en miroir' }), o(6, 5, { forme: 'envers', texte: 'srevne' }),
       o(7, 6, { forme: 'morse', texte: '.- .. -.. . / -- --- .-. ... .' }), o(8, 5, { forme: 'decalage', texte: 'BJEF', cle: 1 }), o(9, 3, { forme: 'emoji', texte: 'Aide telle quelle' }),
     ] };
@@ -157,15 +159,25 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
   ok((await txt(li(9) + ' .enq-aide p')) === 'Aide telle quelle' && await page.locator(li(9) + ' .enq-aide small').count() === 0, 'forme inconnue : affichée telle quelle');
   const t2b = await txt('details ' + li(2));
   ok(t2b.includes('Révélation le 9 décembre') && t2b.includes('Pas de point') && !t2b.includes("d'office") && await page.locator('details ' + li(1) + ' .enq-de').count() === 0, 'révélation décalée : la date est annoncée, pas de révélation vide');
+  const carnet = await txt('.enq-ind');
+  ok(carnet.includes('Indice factice') && !carnet.includes('sans rapport') && (await txt('details ' + li(10) + ' .enq-rev b')) === 'Rien de neuf au dossier' && (await txt('details ' + li(11) + ' .enq-rev b')) === 'Indice', 'énigme libre : étiquette neutre, hors du carnet d\'indices');
   await page.waitForFunction(() => document.querySelectorAll('.enq-v img').length === 0);
   ok((await txt('#enqT2')) === 'Album de la brigade' && await page.locator('.enq-v').count() === 18 && await page.locator('.enq-v.dos').count() === 9 && (await txt('.enq-alb')).includes('9 cartes reçues sur 18'), 'album : dix-huit vignettes, de face jusqu\'au jour courant, de dos ensuite');
-  ok((await txt('.enq-v[data-id="f01"]')) === 'Personnage factice 1' && (await txt('.enq-v.dos')) === '?' && (await txt('.enq-cols.alb li:has(.dos)')).includes('Carte à venir'), 'album sans image : pavé de repli, nom au recto, point d\'interrogation au dos');
+  ok((await txt('.enq-v[data-carte="f01"]')) === 'Personnage factice 1' && (await txt('.enq-v.dos')) === '?' && (await txt('.enq-cols.alb li:has(.dos)')).includes('Carte à venir'), 'album sans image : pavé de repli, nom au recto, point d\'interrogation au dos');
   ok(await page.locator('.enq-cols.alb li.x').count() === 1 && (await txt('.enq-cols.alb li.x')).includes('Hors de cause'), 'album : la carte éliminée reste barrée');
+  const forme = await page.locator('.enq-v').first().evaluate(n => n.offsetWidth / n.offsetHeight);
+  ok(Math.abs(forme - 680 / 1024) < 0.02 && await page.locator('button.enq-v').count() === 9 && await page.locator('.enq-v.dos[data-carte]').count() === 0, 'album : vignettes au rapport des cartes, seules les cartes parues s\'ouvrent');
   await page.screenshot({ path: path.join(dossier, '5-de-aide-album.png'), fullPage: true });
+  // Sans image en grand : la fenêtre le dit, Échap la referme et rend le focus à la vignette.
+  await page.click('.enq-v[data-carte="f02"]');
+  await page.waitForFunction(() => document.querySelector('.enq-zoom p').textContent.includes('pas encore'));
+  ok(await page.locator('.enq-zoom .enq-zi').count() === 0 && (await page.locator('.enq-zoom').getAttribute('aria-label')) === 'Personnage factice 2', 'carte en grand sans image : dit, sans image cassée');
+  await page.keyboard.press('Escape');
+  ok(await page.locator('.enq-zoom').count() === 0 && await page.evaluate(() => document.activeElement.dataset.carte === 'f02'), 'Échap referme la carte et rend le focus à sa vignette');
   // Avec des images servies : la vignette porte img/enquete/<id>.webp, le dos img/enquete/dos.webp.
   const pixel = Buffer.from('UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==', 'base64');
   const demandes = [];
-  await page.route('**/img/enquete/*.webp', r => { demandes.push(r.request().url().split('/').pop()); r.fulfill({ contentType: 'image/webp', body: pixel }); });
+  await page.route('**/img/enquete/**/*.webp', r => { demandes.push(r.request().url().split('/img/enquete/')[1]); r.fulfill({ contentType: 'image/webp', body: pixel }); });
   await page.route('http://essai.invalid/', r => r.fulfill({ contentType: 'text/html', body: '<!doctype html><html lang="fr"><meta charset="utf-8"><body><section id="zone"></section></body></html>' }));
   await page.goto('http://essai.invalid/');
   await page.addScriptTag({ path: path.join(racine, 'enquete.js') });
@@ -174,7 +186,18 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
     window.PharmacoEnquete.monter(document.getElementById('zone'), { jour: () => 5 }).maj({ fiches, enigmes: [{ k: 1, jour: 4, etat: 'ouverte', titre: 'Factice', enonce: 'Énoncé.', saisie: 'texte' }] });
   });
   await page.waitForFunction(() => [...document.querySelectorAll('.enq-v img')].every(i => i.complete));
-  ok(await page.locator('.enq-v img').count() === 2 && demandes.sort().join() === 'dos.webp,f01.webp' && await page.locator('.enq-v.dos').count() === 1, 'album avec images : img/enquete/<id>.webp de face, dos.webp de dos, jour pris dans l\'option jour()');
+  ok(await page.locator('.enq-v img').count() === 2 && demandes.sort().join() === 'vignettes/dos.webp,vignettes/f01.webp' && await page.locator('.enq-v.dos').count() === 1, 'album avec images : img/enquete/vignettes/<id>.webp de face, dos.webp de dos, jour pris dans l\'option jour()');
+  await page.click('.enq-v[data-carte="f01"]');
+  await page.waitForFunction(() => { const i = document.querySelector('.enq-zoom img'); return i && i.complete; });
+  const l1 = await page.locator('.enq-zi').evaluate(n => n.offsetWidth);
+  await page.click('.enq-zi');
+  const l2 = await page.locator('.enq-zi').evaluate(n => n.offsetWidth);
+  ok(demandes.includes('f01.webp') && Math.abs(l2 - 2 * l1) <= 2 && (await page.locator('.enq-zi').getAttribute('aria-pressed')) === 'true', 'toucher une carte parue : image en grand img/enquete/<id>.webp, un second toucher la double');
+  await page.screenshot({ path: path.join(dossier, '7-carte-en-grand.png') });
+  await page.click('.enq-zi');
+  ok((await page.locator('.enq-zi').evaluate(n => n.offsetWidth)) === l1, 'un troisième toucher la ramène à sa taille');
+  await page.click('.enq-zoom [data-fin]');
+  ok(await page.locator('.enq-zoom').count() === 0, 'le bouton « Fermer » referme la carte');
   await page.screenshot({ path: path.join(dossier, '6-album-images.png'), fullPage: true });
   await page.evaluate(() => window.PharmacoEnquete.monter(document.getElementById('zone')).maj(null));
   ok(await page.locator('#zone').isHidden(), 'sans champ enquete : le bloc se cache');
