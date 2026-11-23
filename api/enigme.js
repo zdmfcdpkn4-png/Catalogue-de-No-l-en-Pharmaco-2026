@@ -318,6 +318,8 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
       const juste = Boolean(s) && acquise(c, s[c.k]);
       if (tout || !E.retard || c.final || c.quete || juste || etatDe(c.n + E.retard, jour) === 'close') Object.assign(x, { revelation: c.revelation, elimine: c.elimine, source: c.source }, c.libre ? { libre: true } : {});
       else x.attente = dateDe(c.n + DELAI + 1 + E.retard);
+      // `paru` : le jour où la révélation est sortie pour cette brigade (clôture, ou clôture plus le retard).
+      if (e === 'close') x.paru = dateDe(finEnq(c) + 1 + (!E.retard || c.final || c.quete || juste ? 0 : E.retard));
       if (s && e === 'close') x.resolue = juste;
       if (s && e === 'close' && c.prime) x.premiere = primees(c, S, jour).includes(j.b);
       if (a && e === 'close') x.juste = justeEnq(c, a.v);
