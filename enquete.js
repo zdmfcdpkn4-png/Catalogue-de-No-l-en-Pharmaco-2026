@@ -13,7 +13,8 @@
    des énigmes closes. Quand les fiches portent `vue` (jour de décembre où la carte paraît dans le sapin), la fiche de
    suivi devient l'album de la brigade : une vignette par fiche, de face (img/enquete/vignettes/<id>.webp) dès que le
    jour courant atteint `vue`, de dos (img/enquete/vignettes/dos.webp) avant ; sans image, un pavé de repli. Une carte
-   parue s'ouvre en grand au toucher (img/enquete/<id>.webp), un second toucher la double. Le jour courant vient de
+   parue s'ouvre en grand au toucher (img/enquete/<id>.webp), un second toucher la double. Carte éliminée : tampon
+   « Hors de cause » sur la vignette et en grand, nom lisible avec la mention en dessous. Le jour courant vient de
    `enquete.jour`, sinon de l'option `jour()`, sinon du jour de la dernière énigme ouverte ou close.
    Dé d'aide : `de` (1 à 6) sur une énigme, le même pour toute la brigade ; à 3 ou plus, `aide: {forme, texte, cle}`.
    Formes : clair, miroir (retourné ici par CSS), envers, morse (table repliable), decalage (`cle` rangs) ; toute autre
@@ -114,7 +115,8 @@
 .enq-v.dos{background:repeating-linear-gradient(45deg,var(--eq-fond) 0 8px,var(--eq-fonce) 8px 16px);color:var(--eq-laiton);font-size:1.6rem}
 .enq-v img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 button.enq-v{cursor:zoom-in}
-.enq-cols.alb li.x .enq-v{filter:grayscale(1);opacity:.55}
+.enq-cols.alb li.x span{text-decoration:none;opacity:1}
+.enq-cols.alb li.x .enq-v img,.enq-zi.x img{filter:grayscale(.7) brightness(.8)}
 .enq-zoom{position:fixed;inset:0;z-index:1000;overflow:auto;padding:64px 10px 24px;background:rgba(10,43,46,.96);color:#F4E9CF;text-align:center;-webkit-overflow-scrolling:touch}
 .enq-zoom>[data-fin]{position:fixed;top:10px;right:10px;z-index:1;min-height:44px;padding:8px 14px;border:2px solid #16302F;border-radius:8px;font:inherit;font-weight:800;background:#C9A24B;color:#16302F;cursor:pointer}
 .enq-zi{display:block;width:min(100%,440px);margin:0 auto;padding:0;border:0;background:none;cursor:zoom-in}
@@ -122,7 +124,11 @@ button.enq-v{cursor:zoom-in}
 .enq-zi img{display:block;width:100%;height:auto;aspect-ratio:680/1024;border:3px solid #C9A24B;border-radius:12px;background:#F4E9CF}
 .enq-zoom button:focus-visible{outline:3px solid #fff;outline-offset:2px}
 .enq-zoom p{margin:10px 0 0;font-size:.9rem}
-.enq-cols.alb li.x .enq-v::after{content:"";position:absolute;inset:0;background:linear-gradient(to top right,transparent 47%,var(--eq-ko) 47% 53%,transparent 53%)}
+.enq-v{container-type:inline-size}
+.enq-cols.alb li.x .enq-v::after,.enq-zi.x::after{content:"HORS\\A DE CAUSE";white-space:pre;position:absolute;left:50%;top:50%;width:84%;transform:translate(-50%,-50%) rotate(-18deg);padding:.2em 0;border:3px solid #A8472F;border-radius:5px;background:rgba(244,233,207,.92);color:#A8472F;font-size:.72rem;font-size:min(.72rem,10.5cqw);font-weight:900;letter-spacing:.05em;text-align:center;line-height:1.15;pointer-events:none}
+.enq-zi{position:relative}
+.enq-zi.x::after{font-size:2rem;font-size:10.5cqw;border-width:6px;border-radius:10px;background:rgba(244,233,207,.3);text-shadow:0 0 6px #F4E9CF,0 0 2px #F4E9CF}
+.enq-zi{container-type:inline-size}
 @media (prefers-reduced-motion:no-preference){.enq-e{transition:background .2s}}
 `;
   const style = () => {
@@ -224,7 +230,7 @@ button.enq-v{cursor:zoom-in}
         return '<p class="enq-alb">' + pl(F.filter(recue).length, "carte reçue", "cartes reçues") + " sur " + F.length + "." + (F.every(recue) ? "" : " Les autres paraîtront dans le sapin.") + "</p>"
           + '<div class="enq-cols alb">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(f =>
             "<li" + (hors.has(f.id) ? ' class="x"' : "") + ">" + (recue(f)
-              ? '<button type="button" class="enq-v" data-carte="' + h(f.id) + '" aria-label="Voir en grand : ' + h(f.nom) + '"><span aria-hidden="true">' + h(f.nom) + '</span><img src="img/enquete/vignettes/' + id(f) + '.webp" alt="" loading="lazy"></button>'
+              ? '<button type="button" class="enq-v" data-carte="' + h(f.id) + '" aria-label="Voir en grand : ' + h(f.nom) + (hors.has(f.id) ? ", hors de cause" : "") + '"><span aria-hidden="true">' + h(f.nom) + '</span><img src="img/enquete/vignettes/' + id(f) + '.webp" alt="" loading="lazy"></button>'
               : '<div class="enq-v dos" data-id="' + h(f.id) + '"><span aria-hidden="true">?</span><img src="img/enquete/vignettes/dos.webp" alt="" loading="lazy"></div>')
             + "<span>" + h(f.nom) + "</span>" + (hors.has(f.id) ? "<small>Hors de cause</small>" : recue(f) ? "" : "<small>Carte à venir</small>") + "</li>").join("") + "</ul></div>").join("") + "</div>";
       }
@@ -275,9 +281,9 @@ button.enq-v{cursor:zoom-in}
     const grand = id => {
       const f = (Q.fiches || []).find(x => String(x.id) === id);
       if (!f || document.querySelector(".enq-zoom")) return;
-      const d = document.createElement("div");
-      d.className = "enq-zoom"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", f.nom);
-      d.innerHTML = '<button type="button" data-fin="1">Fermer</button><button type="button" class="enq-zi" aria-pressed="false" aria-label="Doubler la taille de la carte"><img src="img/enquete/' + encodeURIComponent(id) + '.webp" alt="' + h(f.nom) + '"></button><p>Touchez la carte pour la doubler.</p>';
+      const d = document.createElement("div"), x = (Q.enigmes || []).some(e => e.elimine === f.id);
+      d.className = "enq-zoom"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", f.nom + (x ? ", hors de cause" : ""));
+      d.innerHTML = '<button type="button" data-fin="1">Fermer</button><button type="button" class="enq-zi' + (x ? " x" : "") + '" aria-pressed="false" aria-label="Doubler la taille de la carte"><img src="img/enquete/' + encodeURIComponent(id) + '.webp" alt="' + h(f.nom) + '"></button><p>' + (x ? "Hors de cause. " : "") + 'Touchez la carte pour la doubler.</p>';
       const fermer = () => { d.remove(); document.removeEventListener("keydown", touche, true); const v = [...el.querySelectorAll("[data-carte]")].find(x => x.dataset.carte === id); if (v) v.focus({ preventScroll: true }); };
       const touche = ev => {
         if (ev.key === "Escape") { ev.stopPropagation(); fermer(); }
@@ -288,7 +294,7 @@ button.enq-v{cursor:zoom-in}
         if (z) { z.setAttribute("aria-pressed", String(z.classList.toggle("zz"))); return; }
         if (ev.target === d || ev.target.closest("[data-fin]")) fermer();
       });
-      d.querySelector("img").addEventListener("error", () => { d.querySelector(".enq-zi").remove(); d.querySelector("p").textContent = "Cette carte n'a pas encore son image en grand."; });
+      d.querySelector("img").addEventListener("error", () => { d.querySelector(".enq-zi").remove(); d.querySelector("p").textContent = (x ? "Hors de cause. " : "") + "Cette carte n'a pas encore son image en grand."; });
       document.addEventListener("keydown", touche, true);
       document.body.appendChild(d);
       d.querySelector("button").focus();
