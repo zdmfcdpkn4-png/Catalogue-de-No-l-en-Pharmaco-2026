@@ -126,14 +126,8 @@
   const val = (p, v) => (p.type === "qcm" ? p.options[v].t : p.prefixe ? p.prefixe + String(v).padStart(2, "0") : v + (p.unite ? " " + p.unite : ""));
 
   const NOTICE = `<details class="eg-panel eg-notice" id="egNotice" open><summary>Notice des Pharmacogames : à lire avant la première prise</summary>
-<ol class="eg-rules">
-<li><b>Composition.</b> 25 portes, une par jour du 1<sup>er</sup> au 25 décembre : dix cases de cinq questions illustrées, chacune sur un thème du jeu de société, quatorze portes de jeu d'adresse et, le 25, une finale à deux jeux.</li>
-<li><b>Chrono.</b> Les cinq questions d'une case s'enchaînent, chacune avec son chrono : 30 ou 40 secondes, annoncées avant le départ. L'énoncé ne s'affiche qu'au lancement du chrono. Une seule tentative par question, et pas le temps d'aller chercher la réponse ailleurs.</li>
-<li><b>Barème des questions.</b> Chaque question vaut 2 points, soit 10 par case. Le bon flacon : 2 points. Au dosage, entre 0 et 100 : 2 points à 2 près de la cible, 1 point à 10 près.</li>
-<li><b>Jeux d'adresse.</b> Deux tentatives chronométrées, la meilleure compte. La note sur 10 affichée après la partie vous situe ; les points, eux, viennent du classement de la porte à sa clôture : 10 points pour le premier, 1 pour le dernier, les autres répartis entre les deux. Sans rien marquer : 0 point. La finale du 25 enchaîne deux jeux, classés chacun à part : elle vaut jusqu'à 20 points.</li>
-<li><b>Délai de péremption.</b> Une porte reste ouverte trois jours : le sien, le lendemain et le surlendemain jusqu'à minuit. Les week-ends se rattrapent.</li>
-<li><b>Libération des résultats.</b> Bonne réponse, points et classement sortent à la clôture de la porte. D'ici là, tout reste sous scellé, et on ne souffle rien au voisin.</li>
-</ol>
+<p class="eg-bd-aide" id="egBdAide">Mode d'emploi en six cases : faites glisser.</p>
+<div class="eg-bd" role="region" aria-labelledby="egBdAide" tabindex="0"><img src="img/notice-pharmacogames-1.svg" alt="Case 1, La fiche. Le flacon montre son avatar en forme de meeple et un badge de brigade : « Mon nom dans la liste, un pseudo, un avatar. Le sort me verse dans l'une des cinq brigades. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-2.svg" alt="Case 2, Le sapin d'abord. Une flèche va du sapin à la porte du jour : « La goutte du jour au sapin, puis les portes dans l'ordre. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-3.svg" alt="Case 3, Au chrono. Un chronomètre tourne à côté du flacon concentré : « Cinq questions, 30 ou 40 secondes chacune, une seule prise : 2 points. Dose : 2 points à 2 près, 1 à 10 près. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-4.svg" alt="Case 4, Jeux d'adresse. Une cible touchée et un podium : « Deux essais, le meilleur compte. Points au rang : 10 au premier, 1 au dernier. Le 25 : 20 points. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-5.svg" alt="Case 5, Sous scellé. Trois jours au calendrier et une enveloppe scellée : « Une porte reste ouverte trois jours. Réponses et points restent sous scellé jusqu'à la clôture. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-6.svg" alt="Case 6, En brigade. Trois meeples entourent le flacon : « Enquête en brigade : une réponse chacun, la majorité tranche. Jusqu'à 37 points pour l'équipe. »" width="400" height="300" loading="lazy"></div>
 <p class="eg-fx">Effet indésirable très fréquent : consultation compulsive du classement.</p></details>`;
   const SCEAU = '<svg class="eg-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5l2.2 2 3-.3.7 2.9 2.6 1.5-1.2 2.7 1.2 2.7-2.6 1.5-.7 2.9-3-.3-2.2 2-2.2-2-3 .3-.7-2.9L1.5 13l1.2-2.7L1.5 7.6l2.6-1.5.7-2.9 3 .3z" fill="currentColor"/><path d="M6.4 10.3l2.4 2.4 4.6-4.9" fill="none" stroke="#26076D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const CADENAS = '<svg class="eg-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="3.5" y="9" width="13" height="9.5" rx="2.5" fill="currentColor"/></svg>';
@@ -190,6 +184,11 @@
 .eg-rules li{position:relative;min-height:26px;padding-left:36px;font-size:.92rem;line-height:1.4}
 .eg-rules li::before{counter-increment:eg;content:counter(eg);position:absolute;left:0;top:-1px;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--pressed);color:var(--pressed-on);font:800 .82rem/1 var(--display)}
 .eg-rules b{font-weight:800}
+.eg-bd-aide{margin:6px 0 8px;font-size:.84rem;font-weight:700;color:var(--muted)}
+.eg-bd{display:grid;grid-auto-flow:column;grid-auto-columns:88%;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;padding:2px 2px 8px;border-radius:12px}
+.eg-bd img{display:block;width:100%;height:auto;scroll-snap-align:start}
+.eg-bd:focus-visible{outline:3px solid var(--line);outline-offset:2px}
+@media(min-width:861px){.eg-bd{grid-auto-columns:calc((100% - 20px) / 3)}}
 .eg-fx{margin:12px 0 0;padding:8px 11px;border:2.5px dashed var(--line);border-radius:12px;font-size:.86rem;font-weight:700}
 .eg-banner{margin:18px 0 0;padding:10px 14px;background:var(--mu);color:#26076D;border:3px solid var(--line);border-radius:14px;box-shadow:5px 5px 0 var(--shadow);font-weight:800}
 /* Calendrier : 25 portes */
