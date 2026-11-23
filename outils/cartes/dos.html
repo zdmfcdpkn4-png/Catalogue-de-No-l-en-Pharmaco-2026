@@ -1,0 +1,78 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><style>
+@font-face{font-family:Titre;src:url(node_modules/@fontsource/baloo-2/files/baloo-2-latin-800-normal.woff2)}
+@font-face{font-family:Corps;font-weight:600;src:url(node_modules/@fontsource/fira-sans-extra-condensed/files/fira-sans-extra-condensed-latin-600-normal.woff2)}
+body{margin:0;background:transparent}
+.dos{position:relative;width:680px;height:1024px;border-radius:30px;overflow:hidden;font-family:Corps}
+svg.tout{position:absolute;inset:0;width:100%;height:100%}
+</style></head><body><div id="d" class="dos"></div>
+<script>
+// Engrenage : roue dentée en chemin SVG (centre, rayon extérieur, nombre de dents, profondeur, rayon du moyeu)
+function roue(cx,cy,R,n,p,trou){const r=R-p,pts=[];for(let i=0;i<n;i++){const a=i/n*2*Math.PI,d=Math.PI/n;
+ const A=[a-d*.55,a-d*.35,a+d*.35,a+d*.55];pts.push([r,A[0]],[R,A[1]],[R,A[2]],[r,A[3]]);
+ const b=a+d;pts.push([r,b+d*.0])}
+ let s='M'+pts.map(([q,t])=>(cx+q*Math.cos(t)).toFixed(1)+' '+(cy+q*Math.sin(t)).toFixed(1)).join('L')+'Z';
+ if(trou) s+='M'+(cx+trou)+' '+cy+'a'+trou+' '+trou+' 0 1 0 '+(-2*trou)+' 0a'+trou+' '+trou+' 0 1 0 '+(2*trou)+' 0Z';
+ return s}
+function rayons(cx,cy,r1,r2,n,l){let s='';for(let i=0;i<n;i++){const a=i/n*2*Math.PI;s+='M'+(cx+r1*Math.cos(a))+' '+(cy+r1*Math.sin(a))+'L'+(cx+r2*Math.cos(a))+' '+(cy+r2*Math.sin(a))}return s}
+const DEFS=`<defs>
+ <linearGradient id="laiton" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7dc95"/><stop offset=".35" stop-color="#c8963f"/><stop offset=".55" stop-color="#fff0c0"/><stop offset=".7" stop-color="#a87728"/><stop offset="1" stop-color="#6e4a17"/></linearGradient>
+ <linearGradient id="cuivre" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3b48a"/><stop offset=".4" stop-color="#b8673a"/><stop offset=".6" stop-color="#ffd2b0"/><stop offset="1" stop-color="#6b3317"/></linearGradient>
+ <linearGradient id="holo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9ad5"/><stop offset=".18" stop-color="#ffe08a"/><stop offset=".36" stop-color="#9dffb5"/><stop offset=".54" stop-color="#8ae8ff"/><stop offset=".72" stop-color="#b9a2ff"/><stop offset=".9" stop-color="#ff9ad5"/><stop offset="1" stop-color="#ffe08a"/></linearGradient>
+ <linearGradient id="eclat" x1="0" y1="0" x2="1" y2="1"><stop offset=".38" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".75"/><stop offset=".62" stop-color="#fff" stop-opacity="0"/></linearGradient>
+ <radialGradient id="fond" cx=".5" cy=".42" r=".75"><stop offset="0" stop-color="#2f6468"/><stop offset=".55" stop-color="#1c3d43"/><stop offset="1" stop-color="#0f2226"/></radialGradient>
+ <radialGradient id="fondNuit" cx=".5" cy=".42" r=".8"><stop offset="0" stop-color="#2a2f55"/><stop offset=".6" stop-color="#171a33"/><stop offset="1" stop-color="#0b0c1a"/></radialGradient>
+ <pattern id="hex" width="80" height="70" patternUnits="userSpaceOnUse"><path d="M20 5l17 10v20L20 45 3 35V15z" fill="none" stroke="#d2a757" stroke-width="2"/><circle cx="60" cy="50" r="6" fill="none" stroke="#d2a757" stroke-width="2"/></pattern>
+ <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="2" seed="3"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .18 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+ <filter id="ombre"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity=".55"/></filter>
+</defs>`;
+function emblème(cx,cy,k){ // flacon + loupe au centre
+ return `<g transform="translate(${cx} ${cy}) scale(${k})">
+  <path d="M-14 -30h14v8h-2v14l14 26a6 6 0 0 1-5 9h-28a6 6 0 0 1-5-9l14-26v-14h-2z" transform="translate(-8 0)" fill="url(#cuivre)" stroke="#2a1a10" stroke-width="2.5"/>
+  <path d="M-27 13h22" stroke="#7fd6a0" stroke-width="5" transform="translate(-1 6)"/>
+  <circle cx="10" cy="-4" r="20" fill="#bfe8f0" fill-opacity=".3" stroke="url(#laiton)" stroke-width="5"/>
+  <path d="M24 10l18 18" stroke="url(#laiton)" stroke-width="8" stroke-linecap="round"/></g>`}
+function engr(cx,cy,R,n,mat,angle,opts={}){const p=opts.p||R*.16,t=opts.trou||R*.22;
+ return `<g transform="rotate(${angle} ${cx} ${cy})" filter="url(#ombre)">
+  <path d="${roue(cx,cy,R,n,p,t)}" fill="url(#${mat})" stroke="#3a2410" stroke-width="2" fill-rule="evenodd"/>
+  <circle cx="${cx}" cy="${cy}" r="${R-p-R*.12}" fill="none" stroke="#3a2410" stroke-opacity=".55" stroke-width="2"/>
+  ${opts.rayons?`<path d="${rayons(cx,cy,t*1.2,R-p-R*.14,opts.rayons)}" stroke="#3a2410" stroke-opacity=".5" stroke-width="${R*.07}" stroke-linecap="round"/>`:''}
+  ${opts.foil?`<path d="${roue(cx,cy,R,n,p,t)}" fill="url(#holo)" fill-rule="evenodd" style="mix-blend-mode:${opts.foil}" opacity="${opts.fo||.55}"/>`:''}
+ </g>`}
+function titre(y,taille,foil){return `<text x="340" y="${y}" text-anchor="middle" font-family="Titre" font-size="${taille}" fill="url(#${foil?'holo':'laiton'})" stroke="#2a1a10" stroke-width="7" paint-order="stroke" style="filter:url(#ombre)">Pharmaco-</text>
+ <text x="340" y="${y+taille*.92}" text-anchor="middle" font-family="Titre" font-size="${taille}" fill="url(#${foil?'holo':'laiton'})" stroke="#2a1a10" stroke-width="7" paint-order="stroke">Enquête</text>`}
+const cadre=(m)=>`<rect x="14" y="14" width="652" height="996" rx="22" fill="none" stroke="url(#${m})" stroke-width="5"/><rect x="34" y="34" width="612" height="956" rx="14" fill="none" stroke="url(#${m})" stroke-opacity=".7" stroke-width="2"/>`;
+const coins=(m,f)=>[[44,44,0],[636,44,20],[44,980,40],[636,980,10]].map(([x,y,a])=>engr(x,y,34,10,m,a,{foil:f,rayons:4})).join('');
+const V={
+ // 1 : mécanisme de laiton, trois roues engrenées, foil holographique en surimpression douce
+ laiton:()=>`<rect width="680" height="1024" fill="url(#fond)"/><rect width="680" height="1024" fill="url(#hex)" opacity=".1"/>
+  ${engr(470,250,120,16,'cuivre',8,{rayons:6,foil:'soft-light'})}
+  ${engr(215,560,92,13,'laiton',4,{rayons:5,foil:'soft-light'})}
+  ${engr(340,400,170,22,'laiton',0,{rayons:0,foil:'soft-light',fo:.6})}
+  <circle cx="340" cy="400" r="104" fill="#173a40" stroke="#3a2410" stroke-width="3"/><circle cx="340" cy="400" r="96" fill="none" stroke="url(#holo)" stroke-width="3"/>
+  ${emblème(340,400,2.2)}
+  ${titre(760,74,false)}
+  <text x="340" y="890" text-anchor="middle" font-family="Corps" font-weight="600" font-size="22" letter-spacing="4" fill="#d2a757">L’ENQUÊTE DES BRIGADES</text>
+  ${cadre('laiton')}${coins('laiton','soft-light')}
+  <rect width="680" height="1024" fill="url(#eclat)" style="mix-blend-mode:overlay" opacity=".55"/>`,
+ // 2 : holographique, fond nuit, roues et titre en foil arc-en-ciel
+ holo:()=>`<rect width="680" height="1024" fill="url(#fondNuit)"/><rect width="680" height="1024" fill="url(#hex)" opacity=".08"/>
+  ${engr(150,230,110,14,'holo',10,{rayons:5,foil:'overlay',fo:.5})}
+  ${engr(540,600,130,17,'holo',0,{rayons:6,foil:'overlay',fo:.5})}
+  ${engr(340,410,165,20,'laiton',5,{rayons:0,foil:'color',fo:.85})}
+  <circle cx="340" cy="410" r="102" fill="#14172d" stroke="#3a2410" stroke-width="3"/><circle cx="340" cy="410" r="94" fill="none" stroke="url(#holo)" stroke-width="4"/>
+  ${emblème(340,410,2.2)}
+  ${titre(770,76,true)}
+  <text x="340" y="900" text-anchor="middle" font-family="Corps" font-weight="600" font-size="22" letter-spacing="4" fill="url(#holo)">L’ENQUÊTE DES BRIGADES</text>
+  ${cadre('holo')}${coins('holo','overlay')}
+  <rect width="680" height="1024" fill="url(#eclat)" style="mix-blend-mode:screen" opacity=".35"/>`,
+ // 3 : lisible en petit : une seule grande roue, emblème énorme, titre court
+ icone:()=>`<rect width="680" height="1024" fill="url(#fond)"/>
+  ${engr(340,470,290,24,'laiton',4,{rayons:0,foil:'soft-light',fo:.65,p:42})}
+  <circle cx="340" cy="470" r="196" fill="#173a40" stroke="#3a2410" stroke-width="4"/><circle cx="340" cy="470" r="184" fill="none" stroke="url(#holo)" stroke-width="5"/>
+  ${emblème(340,470,4.3)}
+  <text x="340" y="905" text-anchor="middle" font-family="Titre" font-size="64" fill="url(#laiton)" stroke="#2a1a10" stroke-width="7" paint-order="stroke">Pharmaco-Enquête</text>
+  ${cadre('laiton')}${coins('laiton','soft-light')}
+  <rect width="680" height="1024" fill="url(#eclat)" style="mix-blend-mode:overlay" opacity=".5"/>`
+};
+window.dos=v=>{document.getElementById('d').innerHTML='<svg class="tout" viewBox="0 0 680 1024">'+DEFS+V[v]()+'</svg>';return document.fonts.ready};
+</script></body></html>
