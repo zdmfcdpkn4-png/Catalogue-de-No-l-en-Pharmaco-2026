@@ -11,12 +11,14 @@
    et les énigmes attendent une étape marquée `fiche`. Sans champ `amorces`, tout s'affiche.
    Fiche de suivi : `fiches` ([{id, cat, nom}], cat étant le libellé de la colonne), cochée d'après le champ `elimine`
    des énigmes closes. Quand les fiches portent `vue` (jour de décembre où la carte paraît dans le sapin), la fiche de
-   suivi devient l'album de la brigade : une vignette par fiche, de face (img/enquete/<id>.webp) dès que le jour courant
-   atteint `vue`, de dos (img/enquete/dos.webp) avant ; sans image, un pavé de repli. Le jour courant vient de
+   suivi devient l'album de la brigade : une vignette par fiche, de face (img/enquete/vignettes/<id>.webp) dès que le
+   jour courant atteint `vue`, de dos (img/enquete/vignettes/dos.webp) avant ; sans image, un pavé de repli. Une carte
+   parue s'ouvre en grand au toucher (img/enquete/<id>.webp), un second toucher la double. Le jour courant vient de
    `enquete.jour`, sinon de l'option `jour()`, sinon du jour de la dernière énigme ouverte ou close.
    Dé d'aide : `de` (1 à 6) sur une énigme, le même pour toute la brigade ; à 3 ou plus, `aide: {forme, texte, cle}`.
    Formes : clair, miroir (retourné ici par CSS), envers, morse (table repliable), decalage (`cle` rangs) ; toute autre
    forme s'affiche telle quelle.
+   Énigme `libre` : sa révélation est un texte d'ambiance, sans étiquette « Indice » et hors du carnet d'indices.
    Révélation décalée : à la clôture, sans `revelation` mais avec `attente` (date), la page annonce « Révélation le … ».
 
    window.PharmacoEnquete.monter(element, {
@@ -108,10 +110,18 @@
 .enq-cols.alb{grid-template-columns:1fr}
 .enq-cols.alb ul{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px 8px}
 .enq-cols.alb li{display:block;text-align:center;font-size:.8rem;line-height:1.25}
-.enq-v{position:relative;display:grid;place-items:center;aspect-ratio:9/16;margin:0 0 4px;padding:4px;border:2px solid var(--eq-laiton);border-radius:8px;overflow:hidden;background:var(--eq-clair);color:var(--eq-encre);font-weight:800;font-size:.72rem;overflow-wrap:anywhere}
+.enq-v{position:relative;display:grid;place-items:center;width:100%;aspect-ratio:680/1024;margin:0 0 4px;padding:4px;font-family:inherit;border:2px solid var(--eq-laiton);border-radius:8px;overflow:hidden;background:var(--eq-clair);color:var(--eq-encre);font-weight:800;font-size:.72rem;overflow-wrap:anywhere}
 .enq-v.dos{background:repeating-linear-gradient(45deg,var(--eq-fond) 0 8px,var(--eq-fonce) 8px 16px);color:var(--eq-laiton);font-size:1.6rem}
 .enq-v img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+button.enq-v{cursor:zoom-in}
 .enq-cols.alb li.x .enq-v{filter:grayscale(1);opacity:.55}
+.enq-zoom{position:fixed;inset:0;z-index:1000;overflow:auto;padding:64px 10px 24px;background:rgba(10,43,46,.96);color:#F4E9CF;text-align:center;-webkit-overflow-scrolling:touch}
+.enq-zoom>[data-fin]{position:fixed;top:10px;right:10px;z-index:1;min-height:44px;padding:8px 14px;border:2px solid #16302F;border-radius:8px;font:inherit;font-weight:800;background:#C9A24B;color:#16302F;cursor:pointer}
+.enq-zi{display:block;width:min(100%,440px);margin:0 auto;padding:0;border:0;background:none;cursor:zoom-in}
+.enq-zi.zz{width:200%;max-width:1200px;cursor:zoom-out}
+.enq-zi img{display:block;width:100%;height:auto;aspect-ratio:680/1024;border:3px solid #C9A24B;border-radius:12px;background:#F4E9CF}
+.enq-zoom button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.enq-zoom p{margin:10px 0 0;font-size:.9rem}
 .enq-cols.alb li.x .enq-v::after{content:"";position:absolute;inset:0;background:linear-gradient(to top right,transparent 47%,var(--eq-ko) 47% 53%,transparent 53%)}
 @media (prefers-reduced-motion:no-preference){.enq-e{transition:background .2s}}
 `;
@@ -137,7 +147,7 @@
     const peut = () => (opts.peutRepondre ? Boolean(opts.peutRepondre()) : true);
 
     const revelation = e => (e.revelation
-      ? '<p class="enq-rev"><b>' + (e.elimine ? "Carte éliminée" : e.k > 21 ? "Pièce à conviction" : "Indice") + "</b>" + nl(e.revelation) + "</p>"
+      ? '<p class="enq-rev"><b>' + (e.elimine ? "Carte éliminée" : e.libre ? "Rien de neuf au dossier" : e.k > 21 ? "Pièce à conviction" : "Indice") + "</b>" + nl(e.revelation) + "</p>"
       : e.attente && dateDe(e.attente) ? '<p class="enq-rev"><b>Révélation</b>Révélation le ' + dateDe(e.attente) + ".</p>" : "");
 
     // Le dé de la brigade pour cette énigme, dessiné face visible, et l'aide qu'il donne à partir de 3.
@@ -214,8 +224,8 @@
         return '<p class="enq-alb">' + pl(F.filter(recue).length, "carte reçue", "cartes reçues") + " sur " + F.length + "." + (F.every(recue) ? "" : " Les autres paraîtront dans le sapin.") + "</p>"
           + '<div class="enq-cols alb">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(f =>
             "<li" + (hors.has(f.id) ? ' class="x"' : "") + ">" + (recue(f)
-              ? '<div class="enq-v" data-id="' + h(f.id) + '"><span aria-hidden="true">' + h(f.nom) + '</span><img src="img/enquete/' + id(f) + '.webp" alt="" loading="lazy"></div>'
-              : '<div class="enq-v dos" data-id="' + h(f.id) + '"><span aria-hidden="true">?</span><img src="img/enquete/dos.webp" alt="" loading="lazy"></div>')
+              ? '<button type="button" class="enq-v" data-carte="' + h(f.id) + '" aria-label="Voir en grand : ' + h(f.nom) + '"><span aria-hidden="true">' + h(f.nom) + '</span><img src="img/enquete/vignettes/' + id(f) + '.webp" alt="" loading="lazy"></button>'
+              : '<div class="enq-v dos" data-id="' + h(f.id) + '"><span aria-hidden="true">?</span><img src="img/enquete/vignettes/dos.webp" alt="" loading="lazy"></div>')
             + "<span>" + h(f.nom) + "</span>" + (hors.has(f.id) ? "<small>Hors de cause</small>" : recue(f) ? "" : "<small>Carte à venir</small>") + "</li>").join("") + "</ul></div>").join("") + "</div>";
       }
       return '<div class="enq-cols">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(f =>
@@ -225,7 +235,7 @@
     function rendre() {
       if (!Q) { el.hidden = true; el.innerHTML = ""; return; }
       const actif = document.activeElement && el.contains(document.activeElement) ? document.activeElement : null;
-      const repere = actif ? (actif.id ? "#" + actif.id : actif.dataset.rep ? '[data-rep="' + actif.dataset.rep + '"]' : actif.dataset.envoi ? '[data-envoi="' + actif.dataset.envoi + '"]' : "") : "";
+      const repere = actif ? (actif.id ? "#" + actif.id : actif.dataset.rep ? '[data-rep="' + actif.dataset.rep + '"]' : actif.dataset.envoi ? '[data-envoi="' + actif.dataset.envoi + '"]' : actif.dataset.carte ? '[data-carte="' + actif.dataset.carte + '"]' : "") : "";
       const L = Q.enigmes || [], aVenir = L.filter(e => e.etat === "avenir");
       // Amorce : sans le champ, tout s'affiche ; avec, on ne montre que ce que les étapes reçues autorisent.
       const amorce = Array.isArray(Q.amorces), A = amorce ? Q.amorces.slice().sort((a, b) => b.n - a.n) : [];
@@ -233,7 +243,7 @@
       const devoile = !amorce || A.some(a => a.n >= 2), enJeu = !amorce || A.some(a => a.fiche);
       const vues = enJeu ? L.filter(e => e.etat !== "avenir") : [];
       const aFaire = vues.filter(e => e.etat === "ouverte" && !e.repondu), scellees = vues.filter(e => e.etat === "ouverte" && e.repondu), closes = vues.filter(e => e.etat === "close");
-      const indices = closes.filter(e => e.revelation && !e.elimine && e.k <= 21);
+      const indices = closes.filter(e => e.revelation && !e.elimine && !e.libre && e.k <= 21);
       const max = Q.max || 30, moi = opts.mienne ? opts.mienne() : undefined, commence = vues.length > 0;
       let s = "";
       if (devoile && Q.titre) s += "<h3>" + fr(Q.titre) + "</h3>" + (Q.fiction !== false ? '<p class="enq-fic">Fiction</p>' : "");
@@ -261,6 +271,29 @@
       if (repere) { const f = el.querySelector(repere); if (f) f.focus({ preventScroll: true }); }
     }
 
+    // Une carte parue en grand, par-dessus la page : un toucher la double, « Fermer » ou Échap la referme.
+    const grand = id => {
+      const f = (Q.fiches || []).find(x => String(x.id) === id);
+      if (!f || document.querySelector(".enq-zoom")) return;
+      const d = document.createElement("div");
+      d.className = "enq-zoom"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", f.nom);
+      d.innerHTML = '<button type="button" data-fin="1">Fermer</button><button type="button" class="enq-zi" aria-pressed="false" aria-label="Doubler la taille de la carte"><img src="img/enquete/' + encodeURIComponent(id) + '.webp" alt="' + h(f.nom) + '"></button><p>Touchez la carte pour la doubler.</p>';
+      const fermer = () => { d.remove(); document.removeEventListener("keydown", touche, true); const v = [...el.querySelectorAll("[data-carte]")].find(x => x.dataset.carte === id); if (v) v.focus({ preventScroll: true }); };
+      const touche = ev => {
+        if (ev.key === "Escape") { ev.stopPropagation(); fermer(); }
+        else if (ev.key === "Tab" && !d.contains(ev.target)) { ev.preventDefault(); d.querySelector("button").focus(); }
+      };
+      d.addEventListener("click", ev => {
+        const z = ev.target.closest(".enq-zi");
+        if (z) { z.setAttribute("aria-pressed", String(z.classList.toggle("zz"))); return; }
+        if (ev.target === d || ev.target.closest("[data-fin]")) fermer();
+      });
+      d.querySelector("img").addEventListener("error", () => { d.querySelector(".enq-zi").remove(); d.querySelector("p").textContent = "Cette carte n'a pas encore son image en grand."; });
+      document.addEventListener("keydown", touche, true);
+      document.body.appendChild(d);
+      d.querySelector("button").focus();
+    };
+
     const lire = k => {
       const e = (Q.enigmes || []).find(x => x.k === k);
       if (!e) return undefined;
@@ -279,6 +312,7 @@
       const b = ev.target.closest("button");
       if (!b || !Q) return;
       if (b.dataset.fiche) return opts.identifier && opts.identifier();
+      if (b.dataset.carte) return grand(b.dataset.carte);
       if (b.dataset.rep) {
         const k = Number(b.dataset.rep), v = lire(k);
         erreur[k] = v === undefined ? "Choisissez ou écrivez d'abord votre réponse." : "";
