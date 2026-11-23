@@ -281,7 +281,7 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
   const libre = tout || !E.amorces;
   if (!libre && !A.length) return undefined;
   const premiere = E.amorces ? Math.min(...E.amorces.map(a => a.n)) : 0;
-  const o = { fiction: true };
+  const o = { fiction: true, jour };
   if (E.amorces) o.amorces = A;
   if (libre || A.some(a => a.n > premiere)) o.titre = E.titre;
   if (!libre && !A.some(a => a.fiche)) { o.enigmes = []; return o; }
@@ -301,7 +301,7 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
       // Avec un retard (`retard`, en jours), la révélation sort à la clôture pour la brigade dont la réponse retenue est
       // juste, et plus tard pour les autres ; jamais de retard au dénouement.
       const juste = Boolean(s) && acquise(c, s[c.k]);
-      if (tout || !E.retard || c.final || juste || etatDe(c.n + E.retard, jour) === 'close') Object.assign(x, { revelation: c.revelation, elimine: c.elimine, source: c.source });
+      if (tout || !E.retard || c.final || juste || etatDe(c.n + E.retard, jour) === 'close') Object.assign(x, { revelation: c.revelation, elimine: c.elimine, source: c.source }, c.libre ? { libre: true } : {});
       else x.attente = dateDe(c.n + DELAI + 1 + E.retard);
       if (s && e === 'close') x.resolue = juste;
       if (a && e === 'close') x.juste = justeEnq(c, a.v);
@@ -376,7 +376,7 @@ function composerGrille(E, graine) {
       return Object.assign(base, { id: x.id || f.id, niveau: x.niveau || 1, meca: x.meca, titre: x.titre, enonce: x.enonce, aides: x.aides, saisie: 'choix', options: N, bonne: N.indexOf(f.nom), revelation: f.nom + ' est hors de cause.', elimine: f.id });
     }
     if (s.r === 'final') { const f = fiche(coupable[s.cat]), N = noms(s.cat); return Object.assign(base, { final: true, titre: s.titre, enonce: s.enonce || '', saisie: 'choix', options: N, bonne: N.indexOf(f.nom), revelation: R.cartes[f.id].preuve }); }
-    const x = pose[s.k], e = Object.assign(base, x, { k: s.k, n: s.n, pts: s.pts, revelation: s.r === 'attribut' ? I[s.k].texte : R.libre || '' });
+    const x = pose[s.k], e = Object.assign(base, x, { k: s.k, n: s.n, pts: s.pts, revelation: s.r === 'attribut' ? I[s.k].texte : R.libre || '' }, s.r === 'libre' ? { libre: true } : {});
     for (const c of ['apres', 'requiert', 'meta', 'famille', 'solution', 'prerequis']) delete e[c];
     return e;
   });
