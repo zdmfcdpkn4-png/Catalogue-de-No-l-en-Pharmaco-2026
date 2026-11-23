@@ -19,7 +19,11 @@
    Dé d'aide : `de` (1 à 6) sur une énigme, le même pour toute la brigade ; à 3 ou plus, `aide: {forme, texte, cle}`.
    Formes : clair, miroir (retourné ici par CSS), envers, morse (table repliable), decalage (`cle` rangs) ; toute autre
    forme s'affiche telle quelle.
-   Énigme `libre` : sa révélation est un texte d'ambiance, sans étiquette « Indice » et hors du carnet d'indices.
+   Vocabulaire de la page : la question du jour est un « défi » ; ce qu'il révèle à sa clôture est une « carte indice ».
+   Carte indice : dessinée en CSS au thème des cartes (fond sarcelle sombre, liseré doré, engrenages aux coins), elle
+   innocente une fiche (« Hors de cause » et son nom) ou verse une pièce au dossier (le texte de la révélation) ; tant
+   que la brigade l'attend (`attente`), elle reste de dos. Les cartes reçues forment la collection, dans l'ordre.
+   L'accusation, la quête secondaire et le défi `libre` (texte d'ambiance) gardent une révélation simple, hors collection.
    Révélation décalée : à la clôture, sans `revelation` mais avec `attente` (date), la page annonce « Révélation le … ».
 
    window.PharmacoEnquete.monter(element, {
@@ -41,10 +45,10 @@
   const MORSE = "A.- B-... C-.-. D-.. E. F..-. G--. H.... I.. J.--- K-.- L.-.. M-- N-. O--- P.--. Q--.- R.-. S... T- U..- V...- W.-- X-..- Y-.-- Z--.. 0----- 1.---- 2..--- 3...-- 4....- 5..... 6-.... 7--... 8---.. 9----.".split(" ");
 
   const REFUS = {
-    scellee: "Cette énigme est encore sous scellé.",
-    close: "Cette énigme est close : les réponses ne sont plus reçues.",
+    scellee: "Ce défi est encore sous scellé.",
+    close: "Ce défi est clos : les réponses ne sont plus reçues.",
     profil: "Il faut une fiche d'identification et une brigade pour répondre.",
-    deja: "Votre réponse est déjà déposée : une seule par membre et par énigme.",
+    deja: "Votre réponse est déjà déposée : une seule par membre et par défi.",
     reponse: "Réponse illisible : choisissez une proposition ou écrivez votre réponse.",
     code: "Code d'équipe refusé.",
   };
@@ -89,7 +93,22 @@
 .enq-cols li i{flex:none;width:18px;height:18px;margin-top:1px;border:2px solid var(--eq-laiton);border-radius:4px;font-style:normal;font-weight:800;font-size:.8rem;line-height:14px;text-align:center}
 .enq-cols li.x span{text-decoration:line-through;opacity:.6}
 .enq-cols li small{display:block;font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;opacity:.8}
-.enq-ind{display:grid;gap:6px;margin:0;padding:0 0 0 18px}
+.enq-cil{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.enq-ci{position:relative;margin:10px 0 0;border:2px solid var(--eq-laiton);border-radius:12px;overflow:hidden;background:linear-gradient(160deg,#145055,#0A2B2E);color:#F4E9CF;text-align:center;box-shadow:inset 0 0 0 3px #0A2B2E,inset 0 0 0 4px rgba(201,162,75,.55)}
+.enq-cil .enq-ci{margin:0;height:100%}
+.enq-ci-b{position:relative;display:block;padding:7px 34px;border-bottom:2px solid #C9A24B;background:#0A2B2E;color:#C9A24B;font-weight:800;font-size:.74rem;letter-spacing:.12em;text-transform:uppercase}
+.enq-ci::before,.enq-ci::after,.enq-ci-b::before,.enq-ci-b::after{content:"";position:absolute;width:24px;height:24px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-16 -16 32 32'%3E%3Ccircle r='11' fill='none' stroke='%23C9A24B' stroke-width='6' stroke-dasharray='4.32 4.32'/%3E%3Ccircle r='8.5' fill='%23C9A24B'/%3E%3Ccircle r='3.5' fill='%230A2B2E'/%3E%3C/svg%3E") center/contain no-repeat}
+.enq-ci-b::before{left:5px;top:4px}
+.enq-ci-b::after{right:5px;top:4px}
+.enq-ci::before{left:-7px;bottom:-7px}
+.enq-ci::after{right:-7px;bottom:-7px}
+.enq-ci-c{padding:12px 16px 18px}
+.enq-ci-n{display:block;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#E6CD8B}
+.enq-ci.hc .enq-ci-n{display:inline-block;padding:3px 10px;border:3px solid #A8472F;border-radius:5px;background:#F4E9CF;color:#A8472F;font-size:.8rem;font-weight:900;transform:rotate(-4deg)}
+.enq-ci strong{display:block;margin-top:8px;font-size:1.05rem;line-height:1.2;color:#fff;overflow-wrap:anywhere}
+.enq .enq-ci p{margin:8px 0 0;line-height:1.45;overflow-wrap:anywhere}
+.enq-ci.dos{background:repeating-linear-gradient(45deg,#0F3D40 0 8px,#0A2B2E 8px 16px)}
+.enq-ci.dos i{display:grid;place-items:center;width:46px;height:46px;margin:0 auto;border:2px solid #C9A24B;border-radius:50%;background:#0A2B2E;color:#C9A24B;font-style:normal;font-weight:900;font-size:1.4rem}
 .enq-cl{display:grid;gap:4px;margin:0;padding:0;list-style:none;font-variant-numeric:tabular-nums}
 .enq-cl li{display:flex;justify-content:space-between;gap:10px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.08)}
 .enq-cl li.me{outline:2px solid var(--eq-laiton)}
@@ -152,7 +171,18 @@ button.enq-v{cursor:zoom-in}
     const saisie = {}, confirme = {}, erreur = {};
     const peut = () => (opts.peutRepondre ? Boolean(opts.peutRepondre()) : true);
 
-    const revelation = e => (e.revelation
+    // Carte indice : ce que révèle un défi clos, hors accusation, quête secondaire et défi libre.
+    const aCarte = e => !e.quete && !e.libre && e.k <= 21;
+    const indice = e => {
+      const tete = '<b class="enq-ci-b">Carte indice ' + e.k + '</b><div class="enq-ci-c">';
+      if (!e.revelation) return '<div class="enq-ci dos" data-ci="' + e.k + '">' + tete + '<i aria-hidden="true">?</i><p>Carte indice attendue le ' + dateDe(e.attente) + ".</p></div></div>";
+      if (!e.elimine) return '<div class="enq-ci" data-ci="' + e.k + '">' + tete + '<span class="enq-ci-n">Pièce versée au dossier</span><p>' + nl(e.revelation) + "</p></div></div>";
+      const f = (Q.fiches || []).find(x => x.id === e.elimine), plat = t => String(t).toLowerCase().replace(/[\s\u00A0.]+/g, " ").trim();
+      // Le texte du serveur n'est répété que s'il dit autre chose que « <nom> est hors de cause ».
+      const redite = f && plat(e.revelation) === plat(f.nom + " est hors de cause");
+      return '<div class="enq-ci hc" data-ci="' + e.k + '">' + tete + '<span class="enq-ci-n">Hors de cause</span>' + (f ? "<strong>" + h(f.nom) + "</strong>" : "") + (redite ? "" : "<p>" + nl(e.revelation) + "</p>") + "</div></div>";
+    };
+    const revelation = e => (aCarte(e) ? (e.revelation || (e.attente && dateDe(e.attente)) ? indice(e) : "") : e.revelation
       ? '<p class="enq-rev"><b>' + (e.quete ? "Quête secondaire" : e.elimine ? "Carte éliminée" : e.libre ? "Rien de neuf au dossier" : e.k > 21 ? "Pièce à conviction" : "Indice") + "</b>" + nl(e.revelation) + "</p>"
       : e.attente && dateDe(e.attente) ? '<p class="enq-rev"><b>Révélation</b>Révélation le ' + dateDe(e.attente) + ".</p>" : "");
 
@@ -196,13 +226,13 @@ button.enq-v{cursor:zoom-in}
     const cloture = e => (e.resultat !== undefined ? dateDe(e.resultat) : Number.isInteger(e.jour) && e.jour + 3 <= 31 ? dateDe(e.jour + 3) : "");
     const carte = e => {
       const finale = e.k > 21 && !e.quete;
-      let s = '<li class="enq-e" data-k="' + e.k + '"><h5><small>' + (e.quete ? "Quête secondaire" + (e.etat !== "close" && dateDe(e.ferme) ? " · jusqu'au " + dateDe(e.ferme) : "") : (finale ? "Dénouement" : "Énigme " + e.k) + (dateDe(e.jour) ? " · " + dateDe(e.jour) : "")) + "</small>" + fr(e.titre || "") + "</h5>";
+      let s = '<li class="enq-e" data-k="' + e.k + '"><h5><small>' + (e.quete ? "Quête secondaire" + (e.etat !== "close" && dateDe(e.ferme) ? " · jusqu'au " + dateDe(e.ferme) : "") : (finale ? "Dénouement" : "Défi " + e.k) + (dateDe(e.jour) ? " · " + dateDe(e.jour) : "")) + "</small>" + fr(e.titre || "") + "</h5>";
       if (e.enonce) s += "<p>" + nl(e.enonce) + "</p>";
       if (e.etat !== "close") s += de(e);
       if (e.etat === "close") {
         s += e.resolue
-          ? '<p class="enq-etat ok">Énigme acquise : la réponse majoritaire de la brigade était la bonne.' + (e.quete && e.prime ? (e.premiere ? " Votre brigade a été la première : prime de " + pl(e.prime, "point", "points") + "." : " Une autre brigade a été plus rapide : pas de prime.") : "") + (e.repondu ? (e.juste ? " La vôtre aussi." : " La vôtre ne l'était pas.") : "") + "</p>"
-          : '<p class="enq-etat ko">Énigme non acquise : réponse majoritaire fausse ou aucune réponse. ' + (e.revelation ? "Révélation d'office, sans point." : "Pas de point.") + "</p>";
+          ? '<p class="enq-etat ok">Défi réussi : la réponse majoritaire de la brigade était la bonne.' + (e.quete && e.prime ? (e.premiere ? " Votre brigade a été la première : prime de " + pl(e.prime, "point", "points") + "." : " Une autre brigade a été plus rapide : pas de prime.") : "") + (e.repondu ? (e.juste ? " La vôtre aussi." : " La vôtre ne l'était pas.") : "") + "</p>"
+          : '<p class="enq-etat ko">Défi manqué : réponse majoritaire fausse ou aucune réponse. ' + (e.revelation ? (aCarte(e) ? "Carte indice donnée d'office, sans point." : "Révélation d'office, sans point.") : "Pas de point.") + "</p>";
         s += revelation(e);
       } else if (e.repondu) {
         s += '<p class="enq-etat">Votre réponse est déposée et scellée' + (e.reponse !== undefined && e.reponse !== null ? " : «\u00A0" + fr(Array.isArray(e.options) && Number.isInteger(e.reponse) ? e.options[e.reponse] : e.reponse) + "\u00A0»" : "") + ". "
@@ -249,7 +279,7 @@ button.enq-v{cursor:zoom-in}
       const devoile = !amorce || A.some(a => a.n >= 2), enJeu = !amorce || A.some(a => a.fiche);
       const vues = enJeu ? L.filter(e => e.etat !== "avenir") : [];
       const aFaire = vues.filter(e => e.etat === "ouverte" && !e.repondu), scellees = vues.filter(e => e.etat === "ouverte" && e.repondu), closes = vues.filter(e => e.etat === "close");
-      const indices = closes.filter(e => e.revelation && !e.elimine && !e.libre && !e.quete && e.k <= 21);
+      const indices = closes.filter(e => aCarte(e) && (e.revelation || (e.attente && dateDe(e.attente)))), recues = indices.filter(e => e.revelation).length;
       const max = Q.max || 30, moi = opts.mienne ? opts.mienne() : undefined, commence = vues.length > 0;
       let s = "";
       if (devoile && Q.titre) s += "<h3>" + fr(Q.titre) + "</h3>" + (Q.fiction !== false ? '<p class="enq-fic">Fiction</p>' : "");
@@ -258,20 +288,20 @@ button.enq-v{cursor:zoom-in}
         s += '<section class="enq-sec enq-am" aria-live="polite">' + une(A[0]) + "</section>";
         if (A.length > 1) s += '<section class="enq-sec"><details><summary>' + pl(A.length - 1, "message précédent", "messages précédents") + "</summary>" + A.slice(1).map(a => '<div style="margin-top:10px">' + une(a) + "</div>").join("") + "</details></section>";
       }
-      if (commence) s += '<p class="enq-pts" role="status">Votre brigade : ' + pl(Q.points || 0, "point", "points") + " sur " + max + ". À la clôture de chaque énigme, la réponse majoritaire de la brigade est retenue.</p>";
-      if (enJeu) s += '<section class="enq-sec" aria-labelledby="enqT1"><h4 id="enqT1">' + (aFaire.length ? pl(aFaire.length, "énigme à résoudre", "énigmes à résoudre") : "Aucune énigme à résoudre pour l'instant") + "</h4>"
+      if (commence) s += '<p class="enq-pts" role="status">Votre brigade : ' + pl(Q.points || 0, "point", "points") + " sur " + max + ". À la clôture de chaque défi, la réponse majoritaire de la brigade est retenue.</p>";
+      if (enJeu) s += '<section class="enq-sec" aria-labelledby="enqT1"><h4 id="enqT1">' + (aFaire.length ? pl(aFaire.length, "défi à relever", "défis à relever") : "Aucun défi à relever pour l'instant") + "</h4>"
         + (aFaire.length ? '<ol class="enq-l">' + aFaire.map(carte).join("") + "</ol>" : "")
-        + (aVenir.length ? '<p class="enq-next">Prochaine énigme' + (dateDe(aVenir[0].jour) ? " le " + dateDe(aVenir[0].jour) : " bientôt") + ". Chaque énigme reste ouverte son jour et les deux jours suivants.</p>" : "") + "</section>";
+        + (aVenir.length ? '<p class="enq-next">Prochain défi' + (dateDe(aVenir[0].jour) ? " le " + dateDe(aVenir[0].jour) : " bientôt") + ". Chaque défi reste ouvert son jour et les deux jours suivants.</p>" : "") + "</section>";
       if (scellees.length) s += '<section class="enq-sec" aria-labelledby="enqT6"><h4 id="enqT6">' + pl(scellees.length, "réponse scellée", "réponses scellées") + '</h4><ol class="enq-l">' + scellees.map(carte).join("") + "</ol></section>";
       if (enJeu && Array.isArray(Q.fiches) && Q.fiches.length) s += '<section class="enq-sec" aria-labelledby="enqT2"><h4 id="enqT2">' + (album() ? "Album de la brigade" : "Fiche de suivi de la brigade") + "</h4>" + suivi() + "</section>";
-      if (indices.length) s += '<section class="enq-sec" aria-labelledby="enqT3"><h4 id="enqT3">Carnet d\'indices</h4><ol class="enq-ind">' + indices.map(e => "<li>" + nl(e.revelation) + "</li>").join("") + "</ol></section>";
-      if (closes.length) s += '<section class="enq-sec"><details><summary>' + pl(closes.length, "énigme close", "énigmes closes") + '</summary><ol class="enq-l" style="margin-top:10px">' + closes.map(carte).join("") + "</ol></details></section>";
+      if (indices.length) s += '<section class="enq-sec" aria-labelledby="enqT3"><h4 id="enqT3">' + pl(recues, "carte indice reçue", "cartes indice reçues") + (recues < indices.length ? ", " + (indices.length - recues) + " en attente" : "") + '</h4><ol class="enq-cil">' + indices.map(e => "<li>" + indice(e) + "</li>").join("") + "</ol></section>";
+      if (closes.length) s += '<section class="enq-sec"><details><summary>' + pl(closes.length, "défi clos", "défis clos") + '</summary><ol class="enq-l" style="margin-top:10px">' + closes.map(carte).join("") + "</ol></details></section>";
       if (enJeu && Q.denouement) s += '<section class="enq-sec" aria-labelledby="enqT4"><h4 id="enqT4">Dénouement</h4><p style="margin:0;line-height:1.5">' + nl(Q.denouement) + "</p></section>";
       if (commence && Array.isArray(Q.classement) && Q.classement.length) {
         const C = Q.classement.slice().sort((a, b) => b.points - a.points || a.b - b.b);
         s += '<section class="enq-sec" aria-labelledby="enqT5"><h4 id="enqT5">Les brigades à l\'enquête</h4><ol class="enq-cl">' + C.map(x =>
           "<li" + (x.b === moi ? ' class="me"' : "") + "><span>" + h(opts.brigade ? opts.brigade(x.b) : "Brigade " + (x.b + 1)) + "</span><b>" + pl(x.points, "point", "points") + "</b></li>").join("")
-          + '</ol><p class="enq-next">Seules les énigmes closes comptent ici.</p></section>';
+          + '</ol><p class="enq-next">Seuls les défis clos comptent ici.</p></section>';
       }
       el.className = "enq"; el.hidden = false; el.innerHTML = s;
       if (repere) { const f = el.querySelector(repere); if (f) f.focus({ preventScroll: true }); }
