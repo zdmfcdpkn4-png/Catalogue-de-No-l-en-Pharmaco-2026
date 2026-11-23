@@ -10,7 +10,14 @@
    vide, le bloc ne montre rien. Étape 1 seule : le message seul. Le titre attend une étape n >= 2 ; la fiche de suivi
    et les énigmes attendent une étape marquée `fiche`. Sans champ `amorces`, tout s'affiche.
    Fiche de suivi : `fiches` ([{id, cat, nom}], cat étant le libellé de la colonne), cochée d'après le champ `elimine`
-   des énigmes closes.
+   des énigmes closes. Quand les fiches portent `vue` (jour de décembre où la carte paraît dans le sapin), la fiche de
+   suivi devient l'album de la brigade : une vignette par fiche, de face (img/enquete/<id>.webp) dès que le jour courant
+   atteint `vue`, de dos (img/enquete/dos.webp) avant ; sans image, un pavé de repli. Le jour courant vient de
+   `enquete.jour`, sinon de l'option `jour()`, sinon du jour de la dernière énigme ouverte ou close.
+   Dé d'aide : `de` (1 à 6) sur une énigme, le même pour toute la brigade ; à 3 ou plus, `aide: {forme, texte, cle}`.
+   Formes : clair, miroir (retourné ici par CSS), envers, morse (table repliable), decalage (`cle` rangs) ; toute autre
+   forme s'affiche telle quelle.
+   Révélation décalée : à la clôture, sans `revelation` mais avec `attente` (date), la page annonce « Révélation le … ».
 
    window.PharmacoEnquete.monter(element, {
      envoyer(k, reponse) : promesse de { status, j } (la réponse du serveur à l'action "enquete"),
@@ -18,11 +25,17 @@
      identifier()        : appelée quand un joueur sans fiche veut répondre (facultatif),
      brigade(b)          : nom affiché de la brigade b (facultatif),
      mienne()            : numéro de la brigade du joueur (facultatif),
+     jour()              : jour courant de décembre, pour l'album (facultatif),
    }) rend { maj(enquete) } : à appeler à chaque nouvel état reçu du serveur. */
 (() => {
   const h = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const fr = s => h(s).replace(/ ([?!:;»])/g, " $1").replace(/« /g, "« ");
+  const nl = s => fr(s).replace(/\r?\n/g, "<br>");
   const pl = (n, un, des) => n + " " + (n > 1 ? des : un);
+  // Points du dé (cases d'une grille 3 x 3, de 0 à 8) et alphabet Morse : rien ici ne vient de l'enquête.
+  const POINTS = [[], [4], [0, 8], [0, 4, 8], [0, 2, 6, 8], [0, 2, 4, 6, 8], [0, 2, 3, 5, 6, 8]];
+  const NIVEAU = ["", "pas d'aide cette fois", "pas d'aide cette fois", "aide légère", "aide légère", "aide forte", "aide forte"];
+  const MORSE = "A.- B-... C-.-. D-.. E. F..-. G--. H.... I.. J.--- K-.- L.-.. M-- N-. O--- P.--. Q--.- R.-. S... T- U..- V...- W.-- X-..- Y-.-- Z--.. 0----- 1.---- 2..--- 3...-- 4....- 5..... 6-.... 7--... 8---.. 9----.".split(" ");
 
   const REFUS = {
     scellee: "Cette énigme est encore sous scellé.",
@@ -78,6 +91,28 @@
 .enq-cl li{display:flex;justify-content:space-between;gap:10px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.08)}
 .enq-cl li.me{outline:2px solid var(--eq-laiton)}
 .enq details summary{cursor:pointer;font-weight:700}
+.enq-de{display:flex;gap:10px;align-items:center;margin:10px 0 0;font-weight:700;font-size:.9rem}
+.enq-de i{flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:40px;height:40px;padding:6px;border:2px solid var(--eq-encre);border-radius:9px;background:#fff;box-shadow:2px 2px 0 var(--eq-laiton);transform:rotate(-6deg)}
+.enq-de i u{border-radius:50%}
+.enq-de i u.p{background:var(--eq-encre)}
+.enq-de small{display:block;font-weight:600;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;opacity:.75}
+.enq-aide{margin:10px 0 0;padding:8px 10px;border-left:5px solid var(--eq-laiton);border-radius:0 8px 8px 0;background:#fff}
+.enq-aide b{display:block;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase}
+.enq-aide p{margin:4px 0 0;overflow-wrap:anywhere}
+.enq-aide .miroir{display:inline-block;transform:scaleX(-1)}
+.enq-aide .code{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em}
+.enq-aide small{display:block;margin-top:6px;font-size:.8rem;opacity:.85}
+.enq-aide details{margin-top:6px;font-size:.85rem}
+.enq-morse{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:2px 8px;margin:6px 0 0;padding:0;list-style:none;font-family:ui-monospace,Menlo,Consolas,monospace}
+.enq-alb{margin:0 0 10px;font-size:.9rem}
+.enq-cols.alb{grid-template-columns:1fr}
+.enq-cols.alb ul{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px 8px}
+.enq-cols.alb li{display:block;text-align:center;font-size:.8rem;line-height:1.25}
+.enq-v{position:relative;display:grid;place-items:center;aspect-ratio:9/16;margin:0 0 4px;padding:4px;border:2px solid var(--eq-laiton);border-radius:8px;overflow:hidden;background:var(--eq-clair);color:var(--eq-encre);font-weight:800;font-size:.72rem;overflow-wrap:anywhere}
+.enq-v.dos{background:repeating-linear-gradient(45deg,var(--eq-fond) 0 8px,var(--eq-fonce) 8px 16px);color:var(--eq-laiton);font-size:1.6rem}
+.enq-v img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.enq-cols.alb li.x .enq-v{filter:grayscale(1);opacity:.55}
+.enq-cols.alb li.x .enq-v::after{content:"";position:absolute;inset:0;background:linear-gradient(to top right,transparent 47%,var(--eq-ko) 47% 53%,transparent 53%)}
 @media (prefers-reduced-motion:no-preference){.enq-e{transition:background .2s}}
 `;
   const style = () => {
@@ -102,7 +137,26 @@
     const peut = () => (opts.peutRepondre ? Boolean(opts.peutRepondre()) : true);
 
     const revelation = e => (e.revelation
-      ? '<p class="enq-rev"><b>' + (e.elimine ? "Carte éliminée" : e.k > 21 ? "Pièce à conviction" : "Indice") + "</b>" + fr(e.revelation) + "</p>" : "");
+      ? '<p class="enq-rev"><b>' + (e.elimine ? "Carte éliminée" : e.k > 21 ? "Pièce à conviction" : "Indice") + "</b>" + nl(e.revelation) + "</p>"
+      : e.attente && dateDe(e.attente) ? '<p class="enq-rev"><b>Révélation</b>Révélation le ' + dateDe(e.attente) + ".</p>" : "");
+
+    // Le dé de la brigade pour cette énigme, dessiné face visible, et l'aide qu'il donne à partir de 3.
+    const de = e => {
+      if (!Number.isInteger(e.de) || e.de < 1 || e.de > 6) return "";
+      let s = '<p class="enq-de"><i role="img" aria-label="Dé : ' + e.de + '">' + [0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => "<u" + (POINTS[e.de].includes(i) ? ' class="p"' : "") + "></u>").join("")
+        + "</i><span><small>Le dé de la brigade</small>" + e.de + " : " + NIVEAU[e.de] + ".</span></p>";
+      const a = e.aide;
+      if (!a || typeof a.texte !== "string" || !a.texte) return s;
+      const cle = Number.isInteger(a.cle) && a.cle > 0 ? a.cle : 1;
+      s += '<div class="enq-aide"><b>Aide du dé</b>';
+      if (a.forme === "miroir") s += '<p><span class="miroir">' + nl(a.texte) + "</span></p><small>Aide écrite en miroir.</small>";
+      else if (a.forme === "envers") s += "<p>" + nl(a.texte) + "</p><small>Aide écrite à l'envers.</small>";
+      else if (a.forme === "morse") s += '<p class="code">' + nl(a.texte) + "</p><small>Aide en Morse. Une barre oblique sépare les mots.</small><details><summary>Table Morse</summary><ul class=\"enq-morse\">"
+        + MORSE.map(m => "<li>" + m[0] + " " + m.slice(1) + "</li>").join("") + "</ul></details>";
+      else if (a.forme === "decalage") s += '<p class="code">' + nl(a.texte) + "</p><small>Chaque lettre a été avancée de " + pl(cle, "rang", "rangs") + " dans l'alphabet : reculez-la d'autant.</small>";
+      else s += "<p>" + nl(a.texte) + "</p>";
+      return s + "</div>";
+    };
 
     const formulaire = e => {
       const id = "enq" + e.k, v = saisie[e.k];
@@ -127,11 +181,12 @@
     const carte = e => {
       const finale = e.k > 21;
       let s = '<li class="enq-e" data-k="' + e.k + '"><h5><small>' + (finale ? "Dénouement" : "Énigme " + e.k) + (dateDe(e.jour) ? " · " + dateDe(e.jour) : "") + "</small>" + fr(e.titre || "") + "</h5>";
-      if (e.enonce) s += "<p>" + fr(e.enonce) + "</p>";
+      if (e.enonce) s += "<p>" + nl(e.enonce) + "</p>";
+      if (e.etat !== "close") s += de(e);
       if (e.etat === "close") {
         s += e.resolue
           ? '<p class="enq-etat ok">Énigme acquise : la réponse majoritaire de la brigade était la bonne.' + (e.repondu ? (e.juste ? " La vôtre aussi." : " La vôtre ne l'était pas.") : "") + "</p>"
-          : '<p class="enq-etat ko">Énigme non acquise : réponse majoritaire fausse ou aucune réponse. Révélation d\'office, sans point.</p>';
+          : '<p class="enq-etat ko">Énigme non acquise : réponse majoritaire fausse ou aucune réponse. ' + (e.revelation ? "Révélation d'office, sans point." : "Pas de point.") + "</p>";
         s += revelation(e);
       } else if (e.repondu) {
         s += '<p class="enq-etat">Votre réponse est déposée et scellée' + (e.reponse !== undefined && e.reponse !== null ? " : «\u00A0" + fr(Array.isArray(e.options) && Number.isInteger(e.reponse) ? e.options[e.reponse] : e.reponse) + "\u00A0»" : "") + ". "
@@ -143,9 +198,26 @@
       return s + "</li>";
     };
 
+    // Jour courant de décembre : donné par le serveur ou par enigme.js, sinon celui de la dernière énigme sortie.
+    const aujourdhui = () => {
+      if (Number.isInteger(Q.jour)) return Q.jour;
+      const j = opts.jour ? opts.jour() : undefined;
+      if (Number.isInteger(j)) return j;
+      return Math.max(0, ...(Q.enigmes || []).filter(e => e.etat !== "avenir" && Number.isInteger(e.jour)).map(e => e.jour));
+    };
+    const album = () => Array.isArray(Q.fiches) && Q.fiches.some(f => Number.isInteger(f.vue));
     const suivi = () => {
       const F = Array.isArray(Q.fiches) ? Q.fiches : [], cats = [...new Set(F.map(f => f.cat))];
       const hors = new Set((Q.enigmes || []).filter(e => e.elimine).map(e => e.elimine));
+      if (album()) {
+        const j = aujourdhui(), recue = f => !Number.isInteger(f.vue) || j >= f.vue, id = f => encodeURIComponent(String(f.id));
+        return '<p class="enq-alb">' + pl(F.filter(recue).length, "carte reçue", "cartes reçues") + " sur " + F.length + "." + (F.every(recue) ? "" : " Les autres paraîtront dans le sapin.") + "</p>"
+          + '<div class="enq-cols alb">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(f =>
+            "<li" + (hors.has(f.id) ? ' class="x"' : "") + ">" + (recue(f)
+              ? '<div class="enq-v" data-id="' + h(f.id) + '"><span aria-hidden="true">' + h(f.nom) + '</span><img src="img/enquete/' + id(f) + '.webp" alt="" loading="lazy"></div>'
+              : '<div class="enq-v dos" data-id="' + h(f.id) + '"><span aria-hidden="true">?</span><img src="img/enquete/dos.webp" alt="" loading="lazy"></div>')
+            + "<span>" + h(f.nom) + "</span>" + (hors.has(f.id) ? "<small>Hors de cause</small>" : recue(f) ? "" : "<small>Carte à venir</small>") + "</li>").join("") + "</ul></div>").join("") + "</div>";
+      }
       return '<div class="enq-cols">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(f =>
         '<li' + (hors.has(f.id) ? ' class="x"' : "") + '><i aria-hidden="true">' + (hors.has(f.id) ? "×" : "") + "</i><div><span>" + h(f.nom) + "</span>" + (hors.has(f.id) ? "<small>Hors de cause</small>" : "") + "</div></li>").join("") + "</ul></div>").join("") + "</div>";
     };
@@ -166,7 +238,7 @@
       let s = "";
       if (devoile && Q.titre) s += "<h3>" + fr(Q.titre) + "</h3>" + (Q.fiction !== false ? '<p class="enq-fic">Fiction</p>' : "");
       if (A.length) {
-        const une = a => "<h4>" + fr(a.titre || "") + '</h4><p style="margin:0;line-height:1.5">' + fr(a.texte || "") + "</p>";
+        const une = a => "<h4>" + fr(a.titre || "") + '</h4><p style="margin:0;line-height:1.5">' + nl(a.texte || "") + "</p>";
         s += '<section class="enq-sec enq-am" aria-live="polite">' + une(A[0]) + "</section>";
         if (A.length > 1) s += '<section class="enq-sec"><details><summary>' + pl(A.length - 1, "message précédent", "messages précédents") + "</summary>" + A.slice(1).map(a => '<div style="margin-top:10px">' + une(a) + "</div>").join("") + "</details></section>";
       }
@@ -175,10 +247,10 @@
         + (aFaire.length ? '<ol class="enq-l">' + aFaire.map(carte).join("") + "</ol>" : "")
         + (aVenir.length ? '<p class="enq-next">Prochaine énigme' + (dateDe(aVenir[0].jour) ? " le " + dateDe(aVenir[0].jour) : " bientôt") + ". Chaque énigme reste ouverte son jour et les deux jours suivants.</p>" : "") + "</section>";
       if (scellees.length) s += '<section class="enq-sec" aria-labelledby="enqT6"><h4 id="enqT6">' + pl(scellees.length, "réponse scellée", "réponses scellées") + '</h4><ol class="enq-l">' + scellees.map(carte).join("") + "</ol></section>";
-      if (enJeu && Array.isArray(Q.fiches) && Q.fiches.length) s += '<section class="enq-sec" aria-labelledby="enqT2"><h4 id="enqT2">Fiche de suivi de la brigade</h4>' + suivi() + "</section>";
-      if (indices.length) s += '<section class="enq-sec" aria-labelledby="enqT3"><h4 id="enqT3">Carnet d\'indices</h4><ol class="enq-ind">' + indices.map(e => "<li>" + fr(e.revelation) + "</li>").join("") + "</ol></section>";
+      if (enJeu && Array.isArray(Q.fiches) && Q.fiches.length) s += '<section class="enq-sec" aria-labelledby="enqT2"><h4 id="enqT2">' + (album() ? "Album de la brigade" : "Fiche de suivi de la brigade") + "</h4>" + suivi() + "</section>";
+      if (indices.length) s += '<section class="enq-sec" aria-labelledby="enqT3"><h4 id="enqT3">Carnet d\'indices</h4><ol class="enq-ind">' + indices.map(e => "<li>" + nl(e.revelation) + "</li>").join("") + "</ol></section>";
       if (closes.length) s += '<section class="enq-sec"><details><summary>' + pl(closes.length, "énigme close", "énigmes closes") + '</summary><ol class="enq-l" style="margin-top:10px">' + closes.map(carte).join("") + "</ol></details></section>";
-      if (enJeu && Q.denouement) s += '<section class="enq-sec" aria-labelledby="enqT4"><h4 id="enqT4">Dénouement</h4><p style="margin:0;line-height:1.5">' + fr(Q.denouement) + "</p></section>";
+      if (enJeu && Q.denouement) s += '<section class="enq-sec" aria-labelledby="enqT4"><h4 id="enqT4">Dénouement</h4><p style="margin:0;line-height:1.5">' + nl(Q.denouement) + "</p></section>";
       if (commence && Array.isArray(Q.classement) && Q.classement.length) {
         const C = Q.classement.slice().sort((a, b) => b.points - a.points || a.b - b.b);
         s += '<section class="enq-sec" aria-labelledby="enqT5"><h4 id="enqT5">Les brigades à l\'enquête</h4><ol class="enq-cl">' + C.map(x =>
@@ -197,6 +269,7 @@
       return t && t.value.trim() ? t.value.trim() : undefined;
     };
 
+    el.addEventListener("error", ev => { const t = ev.target; if (t && t.tagName === "IMG" && t.closest(".enq-v")) t.remove(); }, true);
     el.addEventListener("input", ev => {
       const t = ev.target;
       if (t.matches('.enq-o input[type="radio"]')) saisie[Number(t.name.slice(3))] = Number(t.value);
