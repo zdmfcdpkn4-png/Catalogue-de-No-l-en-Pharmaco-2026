@@ -326,6 +326,7 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
       if (s && e === 'close' && c.prime) x.premiere = primees(c, S, jour).includes(j.b);
       if (a && e === 'close') x.juste = justeEnq(c, a.v);
     }
+    if (e === 'close' && c.saisie === 'trio') x.trio = c.trio; // le trio sort à la clôture de l'hypothèse, avec le dénouement
     if (tout) { if (c.saisie === 'choix') x.bonne = c.bonne; else if (c.saisie === 'trio') x.trio = c.trio; else x.reponses = c.reponses; }
     return x;
   });
