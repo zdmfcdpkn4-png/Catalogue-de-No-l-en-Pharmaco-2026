@@ -200,10 +200,11 @@ function classement(B, joueurs, jour) {
   const closes = B.portes.filter(q => etatDe(q.n, jour) === 'close').map(q => [q, rangsPorte(q, joueurs)]);
   const L = Object.keys(joueurs).map(cle => {
     const j = joueurs[cle];
-    let pts = 0;
-    for (const [q, M] of closes) pts += M ? (M[cle] ? M[cle].pts : 0) : points(q, j.r[q.n]);
+    // pq : points des cases de questions ; pj : points des jeux d'adresse (finale comprise) ; pq + pj = pts.
+    let pts = 0, pj = 0;
+    for (const [q, M] of closes) { const v = M ? (M[cle] ? M[cle].pts : 0) : points(q, j.r[q.n]); pts += v; if (M) pj += v; }
     // cl : nombre de portes closes que le joueur a jouées (une porte lancée compte), pour la moyenne de sa brigade.
-    return { p: j.p, pts, rep: Object.keys(j.r).length, cl: closes.filter(([q]) => j.r[q.n]).length, a: j.a, b: j.b };
+    return { p: j.p, pts, pq: pts - pj, pj, rep: Object.keys(j.r).length, cl: closes.filter(([q]) => j.r[q.n]).length, a: j.a, b: j.b };
   }).sort((a, b) => b.pts - a.pts || a.p.localeCompare(b.p, 'fr'));
   let rang = 0;
   L.forEach((x, i) => { if (!i || x.pts !== L[i - 1].pts) rang = i + 1; x.rang = rang; });
@@ -480,9 +481,9 @@ async function graineTirage() {
 
 // `enq` : les points d'enquête de chaque brigade (énigmes closes), ajoutés à sa moyenne pour le classement (`tot`).
 function brigades(L, joueurs, mienne, enq) {
-  const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, actifs: 0, pts: 0, moy: 0 }));
-  for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; if (x.cl) T[x.b].actifs++; }
-  for (const t of T) { t.moy = t.actifs ? Math.round(t.pts / t.actifs * 10) / 10 : 0; t.enq = enq ? enq[t.b] : 0; t.tot = Math.round((t.moy + t.enq) * 10) / 10; }
+  const T = Array.from({ length: NB_BRIGADES }, (_, b) => ({ b, n: 0, actifs: 0, pts: 0, pj: 0, moy: 0 }));
+  for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; T[x.b].pj += x.pj || 0; if (x.cl) T[x.b].actifs++; }
+  for (const t of T) { t.moy = t.actifs ? Math.round(t.pts / t.actifs * 10) / 10 : 0; t.mj = t.actifs ? Math.round(t.pj / t.actifs * 10) / 10 : 0; t.mq = Math.round((t.moy - t.mj) * 10) / 10; delete t.pj; t.enq = enq ? enq[t.b] : 0; t.tot = Math.round((t.moy + t.enq) * 10) / 10; }
   // nn : les voix pour le nom, regroupées sans accents ni casse ; n : les mêmes voix telles que les membres les ont écrites.
   const V = Array.from({ length: NB_BRIGADES }, () => ({ d: {}, g: {}, n: {}, e: {}, nn: {} }));
   for (const cle of Object.keys(joueurs)) {
