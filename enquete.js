@@ -55,6 +55,7 @@
     code: "Code d'équipe refusé.",
   };
 
+  const TAMPON = '<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M7 2.5h6v3.2c0 1.3-1.2 2-1.2 3.8h2.7c1.4 0 2.5 1.1 2.5 2.5v1.5H3v-1.5C3 10.6 4.1 9.5 5.5 9.5h2.7C8.2 7.7 7 7 7 5.7z" fill="currentColor"/><rect x="2.5" y="14.5" width="15" height="3" rx="1" fill="currentColor"/></svg>';
   const CASES = [
     "Case 1, Le mystère. Trois cartes, un personnage, un lieu et un objet, sous une loupe : « Six personnages, six lieux, six objets… et un seul trio coupable. À la brigade de le démasquer ! »",
     "Case 2, L'album. Des cartes vont du sapin à l'album orange de la brigade : « Les cartes tombent du sapin et se rangent dans l'album de la brigade. Ouvrez l'œil. »",
@@ -145,6 +146,24 @@ button.enq-v{cursor:zoom-in}
 .enq-v{container-type:inline-size}
 .enq-cols.alb li.x .enq-v::after,.enq-zi.x::after{content:"HORS\\A DE CAUSE";white-space:pre;position:absolute;left:50%;top:50%;width:84%;transform:translate(-50%,-50%) rotate(-18deg);padding:.2em 0;border:3px solid #A8472F;border-radius:5px;background:rgba(244,233,207,.3);text-shadow:0 0 4px #F4E9CF,0 0 2px #F4E9CF;color:#A8472F;font-size:.72rem;font-size:min(.72rem,10.5cqw);font-weight:900;letter-spacing:.05em;text-align:center;line-height:1.15;pointer-events:none}
 .enq-zi{position:relative}
+.enq-cols.alb li.p .enq-v::after,.enq-zi.p::after{content:"ÉCARTÉE\\A PAR LA BRIGADE";white-space:pre;position:absolute;left:50%;top:50%;width:90%;transform:translate(-50%,-50%) rotate(12deg);padding:.2em 0;border:3px dashed #2F5DA8;border-radius:5px;background:rgba(244,233,207,.3);text-shadow:0 0 4px #F4E9CF,0 0 2px #F4E9CF;color:#2F5DA8;font-size:.6rem;font-size:min(.6rem,8.6cqw);font-weight:900;letter-spacing:.03em;text-align:center;line-height:1.15;pointer-events:none}
+.enq-zi.p::after{font-size:1.6rem;font-size:8.6cqw;border-width:6px;border-radius:10px}
+.enq-cols.alb li small.p{color:#9DB8E8}
+.enq-cols.alb li.att .enq-v{border:3px dashed var(--eq-laiton);box-shadow:0 0 0 2px var(--eq-fonce),0 0 0 4px var(--eq-laiton)}
+.enq-at{position:absolute;left:0;right:0;bottom:0;padding:3px 2px;background:var(--eq-laiton);color:var(--eq-encre);font-size:.62rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;line-height:1.2}
+.enq-cols.alb li:has(.enq-act){display:flex;flex-direction:column}
+.enq-cols.alb li>.enq-act{margin-top:auto}
+.enq-cols.alb li:has(.enq-act)>:nth-last-child(2){margin-bottom:5px}
+.enq-act{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0 5px;width:100%;min-height:40px;margin:5px 0 0;padding:4px 3px;border:2px solid var(--eq-laiton);border-radius:8px;font:inherit;font-weight:800;font-size:.78rem;line-height:1.1;background:transparent;color:var(--eq-clair);cursor:pointer}
+.enq-act svg{flex:none;width:16px;height:16px}
+.enq-act.enq-tp{background:var(--eq-laiton);color:var(--eq-encre)}
+.enq-act.enq-ec[aria-pressed="true"]{background:#2F5DA8;border-color:#9DB8E8;color:#fff}
+.enq-act b{font-variant-numeric:tabular-nums;opacity:.9}
+.enq-act:disabled{opacity:.6;cursor:wait}
+.enq-att{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px;padding:8px 10px;border:2px dashed var(--eq-laiton);border-radius:10px}
+.enq-att p{flex:1 1 180px;margin:0;font-weight:700;font-size:.88rem}
+.enq-att .enq-act{width:auto;margin:0;padding:4px 12px}
+.enq-cpt{opacity:.85}
 .enq-zi.x::after{font-size:2rem;font-size:10.5cqw;border-width:6px;border-radius:10px;background:rgba(244,233,207,.3);text-shadow:0 0 6px #F4E9CF,0 0 2px #F4E9CF}
 .enq-zi{container-type:inline-size}
 @media (prefers-reduced-motion:no-preference){.enq-e{transition:background .2s}
@@ -258,12 +277,36 @@ button.enq-v{cursor:zoom-in}
       const hors = new Set((Q.enigmes || []).filter(e => e.elimine).map(e => e.elimine));
       if (album()) {
         const j = aujourdhui(), recue = f => !Number.isInteger(f.vue) || j >= f.vue, id = f => encodeURIComponent(String(f.id));
+        const V = memoire(), maintenant = Date.now(), vote = Boolean(opts.ecarter) && peut(), seuil = Number.isInteger(Q.seuil) ? Q.seuil : 0;
+        const E = Q.ecarts && typeof Q.ecarts === "object" ? Q.ecarts : {};
+        const etat = f => (hors.has(f.id) ? (V.x.has(f.id) ? "x" : "att") : E[f.id] && E[f.id].tampon ? "p" : "");
+        const attente = F.filter(f => etat(f) === "att");
+        const li = f => {
+          const st = etat(f), ec = E[f.id] || {}, t = recents.get(f.id), anime = st === "x" && t !== undefined && maintenant < t + 1000;
+          const etiquette = st === "x" ? ", hors de cause" : st === "att" ? ", à tamponner" : st === "p" ? ", écartée par la brigade" : "";
+          let s = '<li data-f="' + h(f.id) + '"' + (recue(f) ? " data-recue" : "") + (st || anime ? ' class="' + (st + (anime ? " tam" : "")).trim() + '"' : "")
+            + (anime ? ' style="--dt:' + ((t - maintenant) / 1000).toFixed(2) + 's"' : "") + ">";
+          s += recue(f)
+            ? '<button type="button" class="enq-v" data-carte="' + h(f.id) + '" aria-label="Voir en grand : ' + h(f.nom) + etiquette + '"><span aria-hidden="true">' + h(f.nom) + '</span><img src="img/enquete/vignettes/' + id(f) + '.webp" alt="" loading="lazy">' + (st === "att" ? '<span class="enq-at" aria-hidden="true">À tamponner</span>' : "") + "</button>"
+            : '<div class="enq-v dos" data-id="' + h(f.id) + '"><span aria-hidden="true">?</span><img src="img/enquete/vignettes/dos.webp" alt="" loading="lazy"></div>';
+          s += "<span>" + h(f.nom) + "</span>";
+          if (st === "x") s += "<small>Hors de cause</small>";
+          else if (st === "att") s += '<button type="button" class="enq-act enq-tp" data-tamp="' + h(f.id) + '" aria-label="Tamponner « Hors de cause » : ' + h(f.nom) + '">' + TAMPON + "Tamponner</button>";
+          else {
+            if (st === "p") s += '<small class="p">Écartée par la brigade</small>';
+            else if (!recue(f)) s += "<small>Carte à venir</small>";
+            const n = Number.isInteger(ec.n) ? ec.n : 0, compte = n && seuil ? n + "/" + seuil : "";
+            if (vote && recue(f)) s += '<button type="button" class="enq-act enq-ec" data-ecart="' + h(f.id) + '" aria-pressed="' + Boolean(ec.moi) + '" aria-label="Proposer d\'écarter : ' + h(f.nom) + (seuil ? ", " + pl(n, "voix", "voix") + " sur " + seuil : "") + '">' + (ec.moi ? "✓ " : "") + "Écarter" + (compte ? " <b>" + compte + "</b>" : "") + "</button>";
+            else if (compte) s += '<small class="enq-cpt">' + pl(n, "voix", "voix") + " sur " + seuil + "</small>";
+          }
+          return s + "</li>";
+        };
         return '<p class="enq-alb">' + pl(F.filter(recue).length, "carte reçue", "cartes reçues") + " sur " + F.length + "." + (F.every(recue) ? "" : " Les autres paraîtront dans le sapin.") + "</p>"
-          + '<div class="enq-cols alb">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(f =>
-            '<li data-f="' + h(f.id) + '"' + (recue(f) ? " data-recue" : "") + (hors.has(f.id) ? ' class="x"' : "") + ">" + (recue(f)
-              ? '<button type="button" class="enq-v" data-carte="' + h(f.id) + '" aria-label="Voir en grand : ' + h(f.nom) + (hors.has(f.id) ? ", hors de cause" : "") + '"><span aria-hidden="true">' + h(f.nom) + '</span><img src="img/enquete/vignettes/' + id(f) + '.webp" alt="" loading="lazy"></button>'
-              : '<div class="enq-v dos" data-id="' + h(f.id) + '"><span aria-hidden="true">?</span><img src="img/enquete/vignettes/dos.webp" alt="" loading="lazy"></div>')
-            + "<span>" + h(f.nom) + "</span>" + (hors.has(f.id) ? "<small>Hors de cause</small>" : recue(f) ? "" : "<small>Carte à venir</small>") + "</li>").join("") + "</ul></div>").join("") + "</div>";
+          + (attente.length ? '<div class="enq-att"><p>' + (attente.length > 1 ? attente.length + " révélations à reporter dans l'album : tamponnez les cartes signalées." : "Une révélation à reporter dans l'album : tamponnez la carte signalée.") + "</p>"
+            + (attente.length > 1 ? '<button type="button" class="enq-act enq-tp" data-tamp-tout="1">' + TAMPON + "Tout tamponner (" + attente.length + ")</button>" : "") + "</div>" : "")
+          + (vote ? '<p class="enq-next">Tampon provisoire : chacun peut proposer d\'écarter une carte' + (seuil ? " ; à " + seuil + " voix, la brigade la tamponne « Écartée par la brigade »" : "") + ". Sans effet sur les points.</p>" : "")
+          + (erreurAlb ? '<p class="enq-err" role="alert">' + h(erreurAlb) + "</p>" : "")
+          + '<div class="enq-cols alb">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(li).join("") + "</ul></div>").join("") + "</div>";
       }
       return '<div class="enq-cols">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(f =>
         '<li' + (hors.has(f.id) ? ' class="x"' : "") + '><i aria-hidden="true">' + (hors.has(f.id) ? "×" : "") + "</i><div><span>" + h(f.nom) + "</span>" + (hors.has(f.id) ? "<small>Hors de cause</small>" : "") + "</div></li>").join("") + "</ul></div>").join("") + "</div>";
@@ -273,7 +316,8 @@ button.enq-v{cursor:zoom-in}
     // le tampon s'abat sur une carte nouvellement hors de cause. Simple habillage : l'état final est celui des styles de
     // base, l'animation ne fait que partir d'ailleurs ; sans mouvement demandé (prefers-reduced-motion), rien ne bouge.
     const CLE = "pharmacoEnqueteAlbum";
-    let vu = null, guets = [];
+    let vu = null, guets = [], erreurAlb = "", occupeAlb = false;
+    const recents = new Map(); // carte tamponnée à l'instant -> heure du coup (pour ne jouer l'animation qu'une fois)
     const memoire = () => {
       if (vu) return vu;
       let o = null;
@@ -293,25 +337,47 @@ button.enq-v{cursor:zoom-in}
       if (!alb) return;
       const V = memoire(), L = [...alb.querySelectorAll("li[data-f]")];
       const neuves = L.filter(li => li.hasAttribute("data-recue") && !V.v.has(li.dataset.f));
-      const tampon = (li, retard) => { li.style.setProperty("--dt", retard + "s"); li.classList.add("tam"); V.x.add(li.dataset.f); };
       if (neuves.length) guetter(alb, () => {
         const b = alb.getBoundingClientRect(), mi = b.left + b.width / 2;
         neuves.forEach((li, i) => {
           const r = li.getBoundingClientRect(), dx = Math.round((mi - (r.left + r.width / 2)) * 0.6);
           li.style.setProperty("--dx", dx + "px"); li.style.setProperty("--r", (-dx / 12).toFixed(1) + "deg"); li.style.setProperty("--d", (i * 0.05).toFixed(2) + "s");
           li.classList.add("arr"); V.v.add(li.dataset.f);
-          if (li.classList.contains("x") && !V.x.has(li.dataset.f)) tampon(li, i * 0.05 + 0.55);
         });
         garder();
       });
-      L.filter(li => li.classList.contains("x") && !V.x.has(li.dataset.f) && !neuves.includes(li))
-        .forEach(li => guetter(li, () => { tampon(li, 0.1); garder(); }, "0px 0px -25% 0px"));
+    };
+    // Le joueur reporte une révélation : tampon officiel, animation, mémoire de l'appareil. Aucun effet serveur.
+    const tamponner = ids => {
+      const V = memoire(), t = Date.now();
+      ids.forEach((id, i) => { V.x.add(id); recents.set(id, t + i * 150); });
+      garder(); rendre();
+      const v = el.querySelector('[data-carte="' + (window.CSS && CSS.escape ? CSS.escape(ids[0]) : ids[0]) + '"]');
+      if (v) v.focus({ preventScroll: true });
+    };
+    const REFUS_ECART = {
+      fiche: "Carte inconnue du dossier.",
+      profil: "Il faut une fiche d'identification et une brigade pour proposer un écart.",
+      scellee: "L'album n'est pas encore ouvert à votre brigade.",
+      close: "Le dossier est clos : les tampons provisoires sont figés.",
+    };
+    const ecarter = async (b, id) => {
+      if (occupeAlb || !opts.ecarter) return;
+      const on = b.getAttribute("aria-pressed") !== "true";
+      occupeAlb = true; b.disabled = true;
+      let r;
+      try { r = await opts.ecarter(id, on); } catch (e) { r = { status: 0, j: {} }; }
+      occupeAlb = false;
+      const j = (r && r.j) || {};
+      erreurAlb = r && r.status === 200 ? "" : REFUS_ECART[j.error] || "Le serveur ne répond pas : rien n'a changé, réessayez.";
+      if (j.enquete) Q = j.enquete;
+      rendre();
     };
 
     function rendre() {
       if (!Q) return cacher();
       const actif = document.activeElement && el.contains(document.activeElement) ? document.activeElement : null;
-      const repere = actif ? (actif.id ? "#" + actif.id : actif.dataset.rep ? '[data-rep="' + actif.dataset.rep + '"]' : actif.dataset.envoi ? '[data-envoi="' + actif.dataset.envoi + '"]' : actif.dataset.carte ? '[data-carte="' + actif.dataset.carte + '"]' : "") : "";
+      const repere = actif ? (actif.id ? "#" + actif.id : actif.dataset.rep ? '[data-rep="' + actif.dataset.rep + '"]' : actif.dataset.envoi ? '[data-envoi="' + actif.dataset.envoi + '"]' : actif.dataset.carte ? '[data-carte="' + actif.dataset.carte + '"]' : actif.dataset.ecart ? '[data-ecart="' + actif.dataset.ecart + '"]' : "") : "";
       const L = Q.enigmes || [], aVenir = L.filter(e => e.etat === "avenir");
       // Amorce : sans le champ, tout s'affiche ; avec, on ne montre que ce que les étapes reçues autorisent.
       const amorce = Array.isArray(Q.amorces), A = amorce ? Q.amorces.slice().sort((a, b) => b.n - a.n) : [];
@@ -354,9 +420,10 @@ button.enq-v{cursor:zoom-in}
     const grand = id => {
       const f = (Q.fiches || []).find(x => String(x.id) === id);
       if (!f || document.querySelector(".enq-zoom")) return;
-      const d = document.createElement("div"), x = (Q.enigmes || []).some(e => e.elimine === f.id);
-      d.className = "enq-zoom"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", f.nom + (x ? ", hors de cause" : ""));
-      d.innerHTML = '<button type="button" data-fin="1">Fermer</button><button type="button" class="enq-zi' + (x ? " x" : "") + '" aria-pressed="false" aria-label="Doubler la taille de la carte"><img src="img/enquete/' + encodeURIComponent(id) + '.webp" alt="' + h(f.nom) + '"></button><p>' + (x ? "Hors de cause. " : "") + 'Touchez la carte pour la doubler.</p>';
+      const hors = (Q.enigmes || []).some(e => e.elimine === f.id), x = hors && memoire().x.has(f.id);
+      const p = !hors && Q.ecarts && Q.ecarts[f.id] && Q.ecarts[f.id].tampon, d = document.createElement("div");
+      d.className = "enq-zoom"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", f.nom + (x ? ", hors de cause" : p ? ", écartée par la brigade" : ""));
+      d.innerHTML = '<button type="button" data-fin="1">Fermer</button><button type="button" class="enq-zi' + (x ? " x" : p ? " p" : "") + '" aria-pressed="false" aria-label="Doubler la taille de la carte"><img src="img/enquete/' + encodeURIComponent(id) + '.webp" alt="' + h(f.nom) + '"></button><p>' + (x ? "Hors de cause. " : p ? "Écartée par la brigade (provisoire). " : "") + 'Touchez la carte pour la doubler.</p>';
       const fermer = () => { d.remove(); document.removeEventListener("keydown", touche, true); const v = [...el.querySelectorAll("[data-carte]")].find(x => x.dataset.carte === id); if (v) v.focus({ preventScroll: true }); };
       const touche = ev => {
         if (ev.key === "Escape") { ev.stopPropagation(); fermer(); }
@@ -392,6 +459,9 @@ button.enq-v{cursor:zoom-in}
       if (!b || !Q) return;
       if (b.dataset.fiche) return opts.identifier && opts.identifier();
       if (b.dataset.carte) return grand(b.dataset.carte);
+      if (b.dataset.tamp) return tamponner([b.dataset.tamp]);
+      if (b.dataset.tampTout) return tamponner([...el.querySelectorAll("[data-tamp]")].map(x => x.dataset.tamp));
+      if (b.dataset.ecart) return ecarter(b, b.dataset.ecart);
       if (b.dataset.rep) {
         const k = Number(b.dataset.rep), v = lire(k);
         erreur[k] = v === undefined ? "Choisissez ou écrivez d'abord votre réponse." : "";
