@@ -71,7 +71,7 @@
   margin-top:18px;padding:16px;border:3px solid var(--eq-laiton);border-radius:16px;background:var(--eq-fond);color:var(--eq-clair);text-align:left}
 .enq *{box-sizing:border-box}
 .enq>.eg-notice{margin:0 0 14px}
-.enq-film{margin-top:12px}.enq-film video{display:block;width:100%;max-width:420px;margin:0 auto;border-radius:12px;background:#000}
+.enq-film,.enq-ouv{margin-top:12px}.enq-film video,.enq-ouv video{display:block;width:100%;max-width:420px;margin:0 auto;border-radius:12px;background:#000}
 .enq h3{margin:0;font-weight:800;font-size:1.3rem;line-height:1.15;color:var(--eq-laiton)}
 .enq h4{margin:0 0 8px;font-weight:800;font-size:1rem;color:var(--eq-laiton)}
 .enq-fic{display:inline-block;margin:6px 0 0;padding:2px 8px;border:1.5px solid var(--eq-laiton);border-radius:99px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}
@@ -435,6 +435,23 @@ button.enq-v{cursor:zoom-in}
         if (!matchMedia("(prefers-reduced-motion:reduce)").matches) v.play().catch(() => {});
       }).catch(() => { filmEtat = "dispo"; b.disabled = false; m.textContent = "Le film n'a pas pu être chargé. Réessayez."; });
     });
+    // Film d'ouverture : fichier du dépôt (il ne dévoile rien : l'armoire vide et les six personnages), proposé dès que
+    // l'album est acquis au joueur (étape d'amorce marquée `fiche`, le 3 décembre). Nœud durable, rattaché à chaque rendu.
+    const ouv = document.createElement("div"); ouv.className = "enq-ouv";
+    ouv.innerHTML = '<div class="enq-b"><button type="button" data-ouv="1">Voir le film d\'ouverture</button></div>';
+    function poserOuverture() {
+      const t = corps.querySelector(".enq-fic") || corps.querySelector("h3");
+      if (!t || !Q || (Array.isArray(Q.amorces) && !Q.amorces.some(a => a.fiche))) return;
+      const v = ouv.querySelector("video"), joue = v && !v.paused && !v.ended;
+      t.after(ouv);
+      if (joue) v.play().catch(() => {});
+    }
+    ouv.addEventListener("click", ev => {
+      if (!ev.target.closest("[data-ouv]")) return;
+      const v = document.createElement("video"); v.src = "video/enquete-ouverture.mp4";
+      v.controls = true; v.playsInline = true; v.muted = true; v.setAttribute("playsinline", ""); v.setAttribute("aria-label", "Film d'ouverture de l'enquête");
+      ouv.replaceChildren(v); v.play().catch(() => {});
+    });
     function rendre() {
       if (!Q) return cacher();
       const actif = document.activeElement && el.contains(document.activeElement) ? document.activeElement : null;
@@ -471,7 +488,7 @@ button.enq-v{cursor:zoom-in}
           + '</ol><p class="enq-next">Seules les énigmes closes comptent ici.</p></section>';
       }
       el.className = "enq"; el.hidden = false; corps.innerHTML = s;
-      poserFilm();
+      poserOuverture(); poserFilm();
       if (!corps.isConnected) { notice.open = true; el.replaceChildren(notice, corps); }
       notice.hidden = !enJeu;
       animer();
