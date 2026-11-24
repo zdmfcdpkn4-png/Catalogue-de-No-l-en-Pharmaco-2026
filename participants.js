@@ -190,7 +190,8 @@
 .pp-top{display:flex;align-items:center;gap:14px;margin-top:14px;position:sticky;top:0;z-index:2;padding:6px 0;background:var(--surface,#FFFBF2)}
 .pp-apercu{flex:0 0 auto;width:124px;filter:drop-shadow(5px 5px 0 var(--shadow,#26076D))}
 .pp-top>div:last-child{min-width:0}
-.pp-desc{margin:0;font-weight:800;line-height:1.25}
+.pp-desc{margin:0;font-weight:800;line-height:1.25;min-height:3.75em}
+/* La description garde sa hauteur : le bouton « Au hasard » ne saute pas sous le doigt quand le texte change de longueur. */
 .pp-top .go{margin-top:10px}
 .pp-set{min-width:0;margin:14px 0 0;padding:0;border:0}
 .pp-set legend{padding:0;margin:0 0 6px;font:600 .72rem var(--mono,monospace);letter-spacing:.05em;text-transform:uppercase;color:var(--muted,#4E3D7C)}
@@ -243,7 +244,7 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
 .eg-rank img.eg-emb{width:26px;height:26px}
 .eg-brig summary img.eg-emb{width:36px;height:36px}
 .pp-opt span em{font:600 .58rem/1.1 var(--mono,monospace);font-style:normal}
-@media(max-width:380px){.pp-apercu{width:96px}.pp-top{gap:10px}.pp-opts{gap:5px}.pp-opt span{padding:6px 0 5px;font-size:.6rem;letter-spacing:-.01em}.pp-opt span svg,.pp-opt span i{width:34px;height:34px}.pp-carte .pp-apercu{width:84px}}
+@media(max-width:380px){.pp-desc{font-size:.86rem;line-height:1.2;min-height:4.8em}.pp-apercu{width:96px}.pp-top{gap:10px}.pp-opts{gap:5px}.pp-opt span{padding:6px 0 5px;font-size:.6rem;letter-spacing:-.01em}.pp-opt span svg,.pp-opt span i{width:34px;height:34px}.pp-carte .pp-apercu{width:84px}}
 @media(prefers-reduced-motion:reduce){.pp-pop{animation:none}.pp-opt input:checked+span{transform:none}}`;
   const st = document.createElement("style");
   st.textContent = CSS;
