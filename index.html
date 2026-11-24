@@ -488,6 +488,15 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .bdz .carte{width:100%;cursor:inherit}
 @media (prefers-reduced-motion:reduce){.ap-ca .carte,.ap-ca.fin .carte{animation:none}}
 /* Lever de rideau des jours d'événement (1er et 25 décembre) : une courte vidéo dans son cadre, par-dessus le sapin, puis fondu */
+.av-pl{position:fixed;inset:0;z-index:1200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:60px 10px 16px;background:#150638;cursor:pointer;animation:plIn .25s both}
+.av-pl.out{opacity:0;transition:opacity .35s}
+@keyframes plIn{from{opacity:0}}
+.av-pl video{display:block;flex:1 1 0;min-height:0;width:100%;max-width:100%;object-fit:contain;border:0;background:none}
+.av-pl p{margin:0;max-width:40ch;font-weight:800;font-size:1.05rem;line-height:1.25;text-align:center;color:#FFFBF2}
+.av-pl .pl-b{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:8px}
+.av-pl .pl-b button{padding:8px 14px;font:800 .9rem var(--display,inherit);color:#26076D;background:#ECD567;border:3px solid #26076D;border-radius:999px;box-shadow:3px 3px 0 #0B0320;cursor:pointer}
+.av-pl .pl-b button[aria-pressed="false"]{background:#FFFBF2}
+@media (prefers-reduced-motion:reduce){.av-pl{animation:none}}
 .av-ev{position:absolute;z-index:3;inset:0;margin:auto;width:min(100%,560px);height:fit-content;padding:10px 10px 12px;background:var(--surface);color:var(--on-surface);border:3px solid var(--line);border-radius:16px;box-shadow:6px 6px 0 var(--shadow);text-align:center;cursor:pointer;animation:apIn .4s cubic-bezier(.16,1,.3,1) both;transition:opacity .5s}
 .av-ev.out{opacity:0}
 .av-ev video{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border:3px solid var(--line);border-radius:10px;background:#EC7739}
@@ -930,9 +939,9 @@ function avContent(d){
     +(c.audio?'<audio class="ap-audio" controls preload="auto" src="'+esc(c.audio)+'" aria-label="'+esc(c.titre)+'"></audio>':'')
     +(c.lien?'<a class="go main" href="'+esc(c.lien)+'" target="_blank" rel="noopener">Écouter</a>':'');
   else if(t==="cartes"){const mv=!matchMedia("(prefers-reduced-motion:reduce)").matches,L=c.cartes||[];
-    h+='<div class="ap-ca'+(mv?'':' fin')+'"><div class="cas">'+L.map((k,i)=>avCarte(k,d,i)).join("")+'</div>'+avCaNav(L.length)+(mv?'<video class="cav" src="'+esc(c.video||AV_BOOSTER)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div>'
+    h+='<div class="ap-ca'+(mv?'" data-plv="'+esc(c.video||AV_BOOSTER)+'" data-amb="enquete':' fin')+'"><div class="cas">'+L.map((k,i)=>avCarte(k,d,i)).join("")+'</div>'+avCaNav(L.length)+'</div>'
       +(c.titre?'<p class="ap-t">'+esc(c.titre)+'</p>':'')+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+(c.texte?'<p class="ap-p">'+esc(c.texte)+'</p>':'')+(c.lien?'<a class="go" href="'+esc(c.lien)+'">'+esc(c.bouton||"Voir")+'</a>':'')+'<p class="ap-src">'+(L.length>1?'Faites glisser ou utilisez les flèches pour voir les '+L.length+' cartes. ':'')+'Touchez une carte pour la voir en grand.</p>'}
-  else if(t==="bd")h+='<div class="ap-bd'+(c.comme==="origami"?' og':'')+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'':' fin')+'"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="'+(c.comme==="origami"?"Voir en grand":"Lire en grand")+' : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'<video class="bdv" src="'+esc(c.video)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div>'
+  else if(t==="bd")h+='<div class="ap-bd'+(c.comme==="origami"?' og':'')+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'" data-plv="'+esc(c.video):' fin')+'"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="'+(c.comme==="origami"?"Voir en grand":"Lire en grand")+' : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+'</div>'
     +'<p class="ap-t">'+esc(c.titre)+'</p>'+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+'<p class="ap-src">'+(c.comme==="origami"?"Touchez le pliage pour le voir en grand.":"Touchez la planche pour la lire en grand.")+'</p>';
   else if(t==="ticket")h+='<div class="ap-tk t'+([1,2,3].includes(+c.teinte)?+c.teinte:((d-7)%3+3)%3+1)+'"'+(c.image?' style="background-image:url('+esc(encodeURI(c.image))+')"':'')+'><div class="tk-g" aria-hidden="true" style="display:contents">'+(c.han?'<div class="tk-h" lang="zh-Hans">'+c.han.split(" ").map(x=>'<span>'+esc(x)+'</span>').join("")+'</div>':'')+'<div class="tk-b"><p class="tk-x">'+esc(c.texte||"").replace(/ ([;:!?])/g,"\u00a0$1")+'</p>'+(c.source?'<p class="tk-s">'+esc(c.source)+'</p>':'')+(c.sceau?'<span class="tk-o" lang="zh-Hans">'+esc(c.sceau)+'</span>':'')+'</div></div><canvas class="tk-c" aria-hidden="true"></canvas></div><p class="ap-t">'+esc(c.titre||"Ticket à gratter")+'</p><p class="ap-src tk-n">Grattez la zone dorée du doigt ou de la souris.</p><button class="go" type="button" data-tk>Révéler</button>';
   else if(t==="image")h+='<figure class="ap-im"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="Voir en grand : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'" loading="lazy"></a><figcaption>'+esc(c.titre)+'</figcaption></figure><p class="ap-src">Touchez l\'image pour la voir en grand.</p>';
@@ -940,7 +949,7 @@ function avContent(d){
   else if(t==="test")h+='<form class="ap-ts"><p class="ap-t">'+esc(c.titre||"Mini-test")+'</p>'+(c.questions||[]).map((q,i)=>'<fieldset><legend>'+(i+1)+'. '+esc(q[0])+'</legend>'+q.slice(1).map((r,k)=>'<label><input type="radio" name="q'+i+'" value="'+k+'"><span><b>'+"ABC"[k]+'.</b> '+esc(r)+'</span></label>').join("")+'</fieldset>').join("")+'<div class="ts-r" role="status"></div><button class="go" type="reset">Recommencer</button></form>';
   else if(t==="ordonnance")h+='<div class="ap-or"><p class="ap-t">'+esc(c.titre||"Ordonnance")+'</p>'+(c.texte?'<p class="ap-src">'+esc(c.texte)+'</p>':'')+'<div class="or-l" aria-live="polite">'+avOrd()+'</div><button class="go main" type="button" data-or>Renouveler l\'ordonnance</button></div>';
   else if(t==="coloriage")h+='<div class="ap-co" data-img="'+esc(c.image)+'" data-tampon="'+esc(c.tampon||"")+'"><p class="ap-t">'+esc(c.titre||"Coloriage")+'</p>'+(c.texte?'<p class="ap-src">'+esc(c.texte)+'</p>':'')+'<div class="co-f" role="group" aria-label="Flacons de couleur">'+(c.couleurs||[]).map((k,i)=>'<button type="button" data-co="'+(i+1)+'" aria-pressed="'+(i?"false":"true")+'" aria-label="Lot '+(i+1)+'" style="--k:'+esc(k)+'">'+(i+1)+'</button>').join("")+'</div><div class="co-d"><img src="'+esc(c.image)+'" alt="'+esc(c.titre||"Coloriage")+'"></div><p class="co-s" role="status"></p><button class="go" type="button" data-co-eff>Tout effacer</button> <button class="go" type="button" data-co-imp>Imprimer la version vierge</button></div>';
-  else if(t==="voeux")h+='<div class="ap-vx ap-im"><a href="'+esc(c.grand||c.image)+'" target="_blank" rel="noopener" aria-label="Voir en grand : '+esc(c.titre||"la carte")+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre||"")+'">'+(c.tampon?'<img class="vx-t" src="'+esc(c.tampon)+'" alt="">':'')+'</a></div><p class="ap-t">'+esc(c.titre||"")+'</p><p class="ap-src">Touchez le certificat pour le lire en grand.</p><button class="go main" type="button" data-vx="'+esc(c.partage||c.titre||"")+'">Envoyer la carte</button><p class="ap-src vx-s" role="status"></p>'+(c.video?'<div class="ap-bo">'+(c.videoTitre?'<p class="ap-t">'+esc(c.videoTitre)+'</p>':'')+'<video class="vx-v" src="'+esc(c.video)+'" controls muted playsinline preload="none"'+(c.affiche?' poster="'+esc(c.affiche)+'"':'')+' aria-label="'+esc(c.videoTitre||"Vidéo du jour")+'"></video>'+(c.videoTexte?'<p class="ap-p">'+esc(c.videoTexte).replace(/ ([;:!?])/g,"\u00a0$1")+'</p>':'')+(c.lien?'<a class="go" href="'+esc(c.lien)+'">'+esc(c.bouton||"Voir")+'</a>':'')+'</div>':'');
+  else if(t==="voeux")h+='<div class="ap-vx ap-im"><a href="'+esc(c.grand||c.image)+'" target="_blank" rel="noopener" aria-label="Voir en grand : '+esc(c.titre||"la carte")+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre||"")+'">'+(c.tampon?'<img class="vx-t" src="'+esc(c.tampon)+'" alt="">':'')+'</a></div><p class="ap-t">'+esc(c.titre||"")+'</p><p class="ap-src">Touchez le certificat pour le lire en grand.</p><button class="go main" type="button" data-vx="'+esc(c.partage||c.titre||"")+'">Envoyer la carte</button><p class="ap-src vx-s" role="status"></p>'+(c.video?'<div class="ap-bo">'+(c.videoTitre?'<p class="ap-t">'+esc(c.videoTitre)+'</p>':'')+'<video class="vx-v" src="'+esc(c.video)+'" controls preload="none"'+(c.affiche?' poster="'+esc(c.affiche)+'"':'')+' aria-label="'+esc(c.videoTitre||"Vidéo du jour")+'"></video>'+(c.videoTexte?'<p class="ap-p">'+esc(c.videoTexte).replace(/ ([;:!?])/g,"\u00a0$1")+'</p>':'')+(c.lien?'<a class="go" href="'+esc(c.lien)+'">'+esc(c.bouton||"Voir")+'</a>':'')+' <button class="go" type="button" data-pl="son"></button></div>':'');
   else if(t==="origami")h+=avOri(d)+(c.texte?'<p class="ap-p">'+esc(c.texte)+'</p>':'')+'<button class="go" type="button" data-replay>Replier et rejouer</button>';
   return h+avBo(d)+avNext();
 }
@@ -972,7 +981,7 @@ function avOri(d){
     +'<g class="o-c"><circle r="31" fill="#FFFBF2" stroke="'+V+'" stroke-width="3"/><image href="'+AV_LOGO+'" x="-25" y="-25" width="50" height="50"/></g></svg></div>';
 }
 /* Vidéo d'ouverture d'une bande dessinée : à la fin (ou en cas d'échec), elle laisse la place à la planche. */
-["ended","error"].forEach(ev=>document.addEventListener(ev,e=>{const v=e.target;if(!v||!v.classList)return;if(v.classList.contains("bdv")||v.classList.contains("cav"))v.parentNode.classList.add("fin");if(v.classList.contains("ouv"))v.remove();if(v.classList.contains("evv"))avEvEnd();
+["ended","error"].forEach(ev=>document.addEventListener(ev,e=>{const v=e.target;if(!v||!v.classList)return;if(v.parentNode&&v.parentNode.classList&&v.parentNode.classList.contains("av-pl")){avPleinFin();return}if(v.classList.contains("ouv"))v.remove();if(v.classList.contains("vx-v"))avMusique();
   if(ev==="error"&&v.classList.contains("cg")&&v.parentNode.classList.contains("en")){if(/carte-revelation/.test(v.src))v.src=AV_ENQ+"carte-enigme.webp";else v.parentNode.classList.add("sf")}},true));
 /* Vidéo générique d'ouverture d'une goutte : indiquer ici son chemin (elle doit finir sur un aplat crème #FFFBF2).
    Vide : pas de vidéo. Elle ne joue qu'au clic, jamais pour une case qui a sa propre vidéo, ni en mouvement réduit. */
@@ -980,8 +989,8 @@ const AV_OUV="";
 /* Lecture en grand : la planche reste ouverte par-dessus la page jusqu'au bouton Fermer (ou Échap). */
 document.addEventListener("click",e=>{
   if(e.target.closest("[data-ev]")){avEv(true);return}
-  if(e.target.closest(".av-ev")){avEvEnd();return}
-  if(e.target.classList&&e.target.classList.contains("cav")){e.target.pause();e.target.parentNode.classList.add("fin");return}
+  const son=e.target.closest('[data-pl="son"]');if(son){avSon(!avSon());avPlSon();const b=$("#avPanel .vx-v");avMusique(avPl?avPl._amb:b&&!b.paused?"enquete":null);return}
+  if(e.target.closest(".av-pl")){avPleinFin();return}
   const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG"&&e.target.parentNode===z)e.target.classList.toggle("zz");else{const nb=e.target.closest("[data-bn]"),c=e.target.closest(".bdc");if(nb)avCaZ(z._s,z._i+ +nb.dataset.bn);else if(c)c.classList.toggle("zz");else avZ()}return}
   const lk=e.target.closest("[data-lk]");if(lk){avLkClic(lk);return}
   if(e.target.closest("[data-tk]")){avTkVu($("#avPanel .ap-tk"));return}
@@ -1020,19 +1029,41 @@ document.addEventListener("submit",e=>{if(e.target.classList&&e.target.classList
 document.addEventListener("DOMContentLoaded",()=>{avAcces(matchMedia("(hover:hover)").matches?1:0);if($("#avNotice")&&AVO.size)$("#avNotice").open=false});
 document.addEventListener("focusin",e=>{const k=e.target.closest&&e.target.closest(".ap-ca .carte");if(k)avCa(k.parentNode,[...k.parentNode.children].indexOf(k))});
 document.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"||e.key==="ArrowRight"){const z=document.querySelector(".bdz"),v=e.key==="ArrowLeft"?-1:1,k=document.activeElement.closest(".ap-ca .carte");if(z){if(z._s)avCaZ(z._s,z._i+v)}else if(k){const o=v<0?k.previousElementSibling:k.nextElementSibling;if(o)o.focus()}return}
-  if(e.key==="Escape"){const z=document.querySelector(".bdz");if(z)avZ();else{avEvEnd();const v=document.querySelector("#avPanel .cav");if(v&&!v.parentNode.classList.contains("fin")){v.pause();v.parentNode.classList.add("fin")}}}});
+  if(e.key==="Escape"){const z=document.querySelector(".bdz");if(z)avZ();else avPleinFin()}});
 /* Jours d'événement : le 1er et le 25 décembre, une vidéo du sapin joue une fois par appareil à l'arrivée sur la page (muette),
    dans son propre cadre, puis s'efface. Elle n'ouvre aucune goutte. Pas en mouvement réduit ; se passe d'un toucher ou avec Échap. */
 const AV_EV={1:["video/sapin-1er-decembre.mp4","Levée de quarantaine : le lot de décembre est libéré."],25:["video/sapin-25-decembre.mp4","Dernière dose. Le Père Noël a signé la libération."]};
-function avEvEnd(now){clearTimeout(avEv.t);const o=document.querySelector("#avTree .av-ev");if(!o)return;if(now){o.remove();return}o.classList.add("out");setTimeout(()=>o.remove(),500)}
+/* Vidéos du sapin en plein écran (lever de rideau, cygne, origamis, boosters) : la vidéo occupe tout l'écran sur fond sombre, puis s'efface
+   sur le contenu ; un toucher, « Passer » ou Échap l'abrège. Musique d'ambiance (audio/ambiance-*.mp3, nappes synthétiques maison) :
+   coupée par défaut, activée par le bouton « Musique », choix gardé sur l'appareil. */
+let avPl=null;
+function avSon(v){try{if(v===undefined)return localStorage.getItem(AV_KEY+"-son")==="1";localStorage.setItem(AV_KEY+"-son",v?"1":"0")}catch(e){}return false}
+function avMusique(nom){
+  let a=avMusique.a;if(!nom||!avSon()){if(a)a.pause();return}
+  if(!a){a=avMusique.a=new Audio();a.loop=true;a.volume=.6}
+  if(avMusique.n!==nom){avMusique.n=nom;a.src="audio/ambiance-"+nom+".mp3"}if(a.paused){try{a.currentTime=0}catch(e){}a.play().catch(()=>{})}
+}
+function avPlSon(){const on=avSon();document.querySelectorAll('[data-pl="son"]').forEach(b=>{b.setAttribute("aria-pressed",on?"true":"false");b.textContent=on?"Musique : activée":"Musique : coupée"})}
+function avPlein(src,o){
+  o=o||{};avPleinFin(true);const d=document.createElement("div");d.className="av-pl";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-label",o.texte||"Vidéo en plein écran");
+  d.innerHTML='<div class="pl-b"><button type="button" data-pl="son"></button><button type="button" data-pl="fin">Passer</button></div><video src="'+esc(src)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>'+(o.texte?'<p>'+esc(o.texte)+'</p>':'');
+  d._fin=o.fin;d._amb=o.amb||"noel";d._ev=!!o.ev;d._ret=document.activeElement;document.body.appendChild(d);avPl=d;avPlSon();d.querySelector('[data-pl="fin"]').focus({preventScroll:true});avMusique(d._amb);d._t=setTimeout(()=>avPleinFin(),o.max||16000);
+}
+function avPleinFin(now){
+  const d=avPl;if(!d)return;avPl=null;clearTimeout(d._t);avMusique();
+  if(now)d.remove();else{d.classList.add("out");setTimeout(()=>d.remove(),350)}
+  if(d._fin)d._fin();if(d._ret&&d._ret.isConnected&&d._ret!==document.body)d._ret.focus({preventScroll:true});
+}
+function avPleinAuto(r){const f=r&&r.querySelector("[data-plv]:not(.fin)");if(f)avPlein(f.dataset.plv,{amb:f.dataset.amb,fin:()=>f.classList.add("fin")})}
+["play","pause"].forEach(k=>document.addEventListener(k,e=>{const v=e.target;if(!v.classList||!v.classList.contains("vx-v"))return;if(k==="pause"){avMusique();return}avMusique("enquete");
+  if(!document.fullscreenElement){try{if(v.requestFullscreen)v.requestFullscreen().catch(()=>{});else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen()}catch(z){}}},true));
+function avEvEnd(now){if(avPl&&avPl._ev)avPleinFin(now)}
 function avEv(force){
   const n=avNow(),ev=AV_EV[n];if(!ev)return;
   let vu=[];try{vu=JSON.parse(localStorage.getItem(AV_KEY+"-ev")||"[]")}catch(e){}
   if(!force&&(vu.includes(n)||matchMedia("(prefers-reduced-motion:reduce)").matches))return;
   if(!vu.includes(n)){vu.push(n);try{localStorage.setItem(AV_KEY+"-ev",JSON.stringify(vu))}catch(e){}}
-  avEvEnd(true);
-  $("#avTree").insertAdjacentHTML("beforeend",'<div class="av-ev" role="group" aria-label="'+esc(ev[1])+'"><video class="evv" src="'+ev[0]+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video><p>'+esc(ev[1])+'</p><button class="go" type="button">Passer</button></div>');
-  avEv.t=setTimeout(avEvEnd,10000);
+  avPlein(ev[0],{texte:ev[1],ev:true,max:12000});
 }
 /* Case de type « cartes » : {"jour": n, "type": "cartes", "titre": "(facultatif) titre sous les cartes", "credit": "(facultatif)", "texte": "(facultatif) phrase sous les cartes", "lien": "(facultatif) adresse du bouton", "bouton": "(facultatif) son libellé",
    "cartes": [{"image": "img/….webp", "titre": "Titre court", "texte": "(facultatif) une ligne", "symbole": "(facultatif, sinon le numéro du jour)", "alt": "(facultatif) description de l'image"}]}
@@ -1065,7 +1096,7 @@ function avCaMaj(s){
 }
 async function avBoOpen(btn){
   const d=+btn.dataset.bo,o=btn.parentNode,mv=!matchMedia("(prefers-reduced-motion:reduce)").matches;
-  o.innerHTML='<p class="ap-t">Le booster de l\'enquête</p><div class="ap-ca'+(mv?'':' fin')+'"><div class="cas"></div>'+(mv?'<video class="cav" src="'+AV_BOOSTER+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>':'')+'</div><div class="bo-su"></div>';
+  o.innerHTML='<p class="ap-t">Le booster de l\'enquête</p><div class="ap-ca'+(mv?'" data-plv="'+AV_BOOSTER+'" data-amb="enquete':' fin')+'"><div class="cas"></div></div><div class="bo-su"></div>';avPleinAuto(o);
   let r=null;try{if(window.PharmacoBooster)r=await window.PharmacoBooster.cartes(d)}catch(e){}
   if(!o.isConnected)return;
   const s=o.querySelector(".cas"),su=o.querySelector(".bo-su"),L=r&&r.identifie?(r.cartes||[]):null;
@@ -1201,7 +1232,7 @@ function avOpen(d,viaBtn){
   if(g){if(!viaBtn)g.focus({preventScroll:true});if(first){g.classList.add("pop","fill");g.style.setProperty("--d",".05s");const b=g.getBBox();$("#avTree svg").insertAdjacentHTML("beforeend",avBurst(b.x+b.width/2,b.y+b.height/2,d===25?56:46))}}
   $("#avPanel").innerHTML=avContent(d);
   if(AV_OUV&&!(AVENT[d-1]||{}).video&&(AVENT[d-1]||{}).type!=="cartes"&&!matchMedia("(prefers-reduced-motion:reduce)").matches)$("#avPanel").insertAdjacentHTML("afterbegin",'<video class="ouv" src="'+esc(AV_OUV)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>');
-  const au=$("#avPanel audio");if(au)au.play().catch(()=>{});avTk();avCo();
+  const au=$("#avPanel audio");if(au)au.play().catch(()=>{});avTk();avCo();avPleinAuto($("#avPanel"));avPlSon();
   if(matchMedia("(max-width:860px)").matches)$("#avPanel").scrollIntoView({block:"nearest",behavior:"smooth"});
   avAcces();if($("#avNotice"))$("#avNotice").open=false;
 }
