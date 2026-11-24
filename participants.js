@@ -114,6 +114,11 @@
     "Brigade des Pipettes", "Brigade des Mortiers", "Brigade des Balances", "Brigade des Isolateurs", "Brigade des Étiquettes",
     "Brigade des Scellés", "Brigade des Cartes Maîtresses", "Brigade des Bons Dosages", "Brigade de la Zone Blanche", "Brigade des Lutins Stériles",
     "Brigade des Rennes Pressés", "Brigade du Grand Chelem", "Brigade du Coup d'Avance", "Brigade des Atouts Maîtres", "Brigade des Petits Chevaux",
+    // Côté jeu de société.
+    "Brigade des Mauvais Perdants Repentis", "Brigade des Tricheurs Repentis", "Brigade de la Pioche Miraculeuse", "Brigade des Rois du Plateau", "Brigade du Dé Pipetté",
+    "Brigade des Meeples en Charlotte", "Brigade Relance les Dés", "Brigade des Bluffeurs Aseptiques", "Brigade Passe Ton Tour", "Brigade Case Départ",
+    "Brigade des Lecteurs de Règles", "Brigade Échec et Mat", "Brigade des Sept Familles", "Brigade du Joker Stérile", "Brigade Cartes sur Table",
+    "Brigade Quitte ou Double", "Brigade des Compteurs de Points", "Brigade du Dernier Pli", "Brigade Double Six", "Brigade Mélange et Distribue",
   ];
   // Nom court d'une brigade, pour les endroits étroits : le nom sans son « Brigade des ».
   const court = n => String(n).replace(/^Brigade\s+(?:des\s+|du\s+|de\s+la\s+|de\s+l'|d'|de\s+)?/i, "") || String(n);
