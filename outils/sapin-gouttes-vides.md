@@ -6,20 +6,13 @@ Tous les textes sont des créations originales : il n'y a aucun fait à sourcer.
 
 ---
 
-## 1. Goutte 9 : boîte de médicament parodique « LUDOMYCINE 500 mg »
-- **Principe** : la boîte et sa notice, pour un « médicament » qui serait le jeu de société.
+## 1. Goutte 9 : boîte de médicament parodique « LUDOMYCINE 500 mg » (version réaliste, validée le 24/11)
+- **Principe** : une boîte en relief (braille sur le dessus, code-barres « 3 400 PION 2026 », code carré, triangle d'avertissement), une plaquette de comprimés et la notice pliée.
 - **Le joueur** : lit, et touche l'image pour l'agrandir.
-- **Fichier** : `img/affiche-ludomycine.svg` (5 ko). Type `image` existant, aucun code.
-- **Vérification** : je n'ai trouvé aucun médicament de ce nom (recherche web rapide, sans résultat ; sources consultées : HAS, Vidal, base publique des médicaments).
-- **Texte** :
-  > **LUDOMYCINE 500 mg**, comprimés à partager. Boîte de 2 à 6 joueurs.
-  > **Composition** : un plateau, des pions, une règle. Excipient à effet notoire : la mauvaise foi.
-  > **Indications** : grisaille de décembre, soirées sans écran, cousins qui s'ennuient.
-  > **Posologie** : une partie le soir, à renouveler tant que tout le monde est d'accord. Ne pas dépasser « une dernière ».
-  > **Contre-indications** : joueur qui lit la règle à voix haute pendant quarante minutes.
-  > **Effets indésirables** : très fréquents : fous rires, « c'est pas juste ! ». Fréquents : demande de revanche. Rares : plateau renversé.
-  > **Conservation** : à l'abri du chat (voir le 8 décembre).
-  > Lot DEC-2026, libéré par la Pharmacotechnie.
+- **Fichier** : `img/affiche-ludomycine.svg` (19 ko). Type `image` existant, aucun code. Tout le texte est dans l'image (voir `aria-label`).
+- **Vérification** : je n'ai trouvé aucun médicament de ce nom (recherche web rapide, non exhaustive).
+- **Boîte** : LUDOMYCINE 500 mg. Comprimés pelliculés de bonne humeur. À partager · voie orale (surtout pour râler). Boîte de 2 à 6 joueurs · dès 8 ans. Médicament à prescription familiale facultative. Lot DEC-2026 · EXP : jusqu'à la prochaine dispute. Sur le côté : « Lire attentivement la règle avant utilisation. Ne pas conduire la partie si vous êtes mauvais perdant. »
+- **Notice** : Composition : principe actif : ludothérapine, 500 mg ; excipients : un plateau, 84 pions (dont 3 sous le canapé), une règle de 24 pages ; excipient à effet notoire : la mauvaise foi. Indications : grisaille de décembre, repas de famille qui s'éternisent, cousin qui a ressorti son téléphone. Posologie : une partie le soir ; chez le sujet âgé (Tonton), réduire la durée des explications ; ne jamais dépasser « une dernière », sauf si vous êtes en train de gagner. Mode d'administration : autour d'une table, avec des chips ; ne pas avaler les dés. Contre-indications : allergie connue à la défaite ; joueur qui lit la règle à voix haute pendant quarante minutes. Interactions : association déconseillée avec le téléphone portable et avec le cousin qui « connaît une variante ». Effets indésirables : très fréquents (plus d'un joueur sur dix) : fous rires, « c'est pas juste ! » ; fréquents : demande de revanche, alliance trahie ; rares : plateau renversé ; très rares : quelqu'un range la boîte correctement. Surdosage : au-delà de quatre heures de partie, aérer la pièce et commander des pizzas. Conservation : à l'abri du chat (voir le 8 décembre) et des petits frères. Titulaire : Laboratoires de Pharmacotechnie ludique, lot DEC-2026.
 
 ## 2. Goutte 12 (samedi) : coloriage « par numéro de lot » du logo de l'unité
 - **Principe** : le logo de la Pharmacotechnie, tracé à partir de `img/logo-pharmacotechnie.webp` (un grand P et une gerbe de gouttes). Il compte 29 zones numérotées de 1 à 4 : 1 violet #26076D, 2 orange #EC7739, 3 jaune #ECD567, 4 rose #E5B4D9. Les 13 gouttes trop petites pour le doigt sont déjà en couleur (`data-fixe`). Colorié selon les numéros, il redonne exactement le logo.
@@ -52,17 +45,11 @@ Tous les textes sont des créations originales : il n'y a aucun fait à sourcer.
   - **Majorité de B, la Perfusion continue** : avec vous, le débit ne s'arrête jamais. Aucune soirée ne finit tant qu'il reste une revanche à proposer.
   - **Majorité de C, le Lot expérimental** : vous inventez une règle maison à chaque tour. Personne ne sait où vous allez, vous non plus, et c'est pour ça qu'on vous invite.
 
-## 5. Goutte 22 : avis de recherche du pion rouge
-- **Principe** : une affiche « Avis de recherche » de western, pour un pion perdu.
+## 5. Goutte 22 : avis de recherche du pion rouge (version réaliste, validée le 24/11)
+- **Principe** : une affiche de western clouée sur des planches, en papier vieilli, avec le pion rouge photographié devant une toise d'identité (N° PR-2412).
 - **Le joueur** : lit, et touche l'image pour l'agrandir.
-- **Fichier** : `img/affiche-avis-de-recherche.svg` (3 ko). Type `image` existant, aucun code.
-- **Texte** :
-  > **AVIS DE RECHERCHE.** Pion rouge, dit « le Petit Rouge ».
-  > **Signalement** : 2 cm, tête ronde, socle large, regard fixe.
-  > **Vu pour la dernière fois** le 24 décembre vers 23 h, au bord de la table, juste avant que quelqu'un crie « J'ai gagné ! ».
-  > **Pistes** : sous le canapé, dans la poche d'un cousin, dans la boîte d'un autre jeu.
-  > **Récompense** : une partie sans finir dernier.
-  > Tout renseignement est à transmettre au service des pièces non conformes de la Pharmacotechnie.
+- **Fichier** : `img/affiche-avis-de-recherche.svg` (7 ko). Type `image` existant, aucun code.
+- **Texte** : RECHERCHÉ, debout ou couché. PION ROUGE, alias « le Petit Rouge », alias « celui qui manque toujours ». Signalement : 2 cm, tête ronde, socle large, regard fixe ; aucune expression, même quand il perd. Signe particulier : légère trace de dents (le chien, 2024). Dernière apparition : le 24 décembre vers 23 h, au bord de la table, juste avant que quelqu'un crie « J'ai gagné ! » et secoue la nappe. Complices présumés : le chat, l'aspirateur, le cousin aux grandes poches. Remplacé provisoirement par : un bouchon de flacon, qui ne fait pas illusion. RÉCOMPENSE : une partie sans finir dernier, et le droit de choisir sa couleur. Tout renseignement au service des pièces non conformes de la Pharmacotechnie. Ne pas tenter de l'appréhender seul : il roule.
 
 ## 6. Goutte 24 (temps fort) : l'ordonnance de Noël
 - **Principe** : une ordonnance tirée au hasard dans le catalogue du site. Elle prescrit un jeu dans chacune des quatre catégories (enfant, famille, initié, expert), avec la couverture du jeu et sa notice « effet secondaire » déjà écrite (champ `nt`).
