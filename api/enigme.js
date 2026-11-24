@@ -286,7 +286,6 @@ function primees(c, S, jour) {
 }
 // Points d'enquête de chaque brigade : les énigmes closes dont la réponse majoritaire est juste, plus les primes.
 const pointsEnq = (E, S, jour) => S.map((s, b) => E.enigmes.reduce((t, c) => t + (etatEnq(c, jour) === 'close' && acquise(c, s[c.k]) ? c.pts + (primees(c, S, jour).includes(b) ? c.prime : 0) : 0), 0));
-const seuilEcart = n => Math.min(n, Math.max(2, Math.ceil(n / 2)));
 // Ce qu'un joueur voit de l'enquête : l'énoncé à l'ouverture, sa propre réponse, le nombre de réponses de sa brigade ;
 // à la clôture seulement, le résultat et la révélation ; les réponses attendues en relecture seulement (`tout`).
 function vueEnquete(E, joueurs, cle, jour, tout) {
@@ -328,14 +327,6 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
     if (tout) { if (c.saisie === 'choix') x.bonne = c.bonne; else x.reponses = c.reponses; }
     return x;
   });
-  // Tampon provisoire de la brigade : chaque membre peut proposer d'écarter une fiche (`ec` du joueur) ; à partir du seuil
-  // (la moitié des membres, deux au moins), la fiche porte le tampon provisoire. Sans effet sur les points.
-  if (s && E.fiches) {
-    const M = Object.values(joueurs).filter(m => m.b === j.b), ids = new Set(E.fiches.map(f => f.id));
-    o.seuil = seuilEcart(M.length); o.ecarts = {};
-    for (const m of M) for (const id of m.ec || []) if (ids.has(id)) (o.ecarts[id] || (o.ecarts[id] = { n: 0 })).n++;
-    for (const id of Object.keys(o.ecarts)) { if (o.ecarts[id].n >= o.seuil) o.ecarts[id].tampon = true; if ((j.ec || []).includes(id)) o.ecarts[id].moi = true; }
-  }
   const P = pointsEnq(E, S, jour);
   if (s) o.points = P[j.b];
   // Le dénouement : quand toutes les énigmes du dernier jour sont closes.
@@ -797,23 +788,6 @@ async function handler(req, res) {
         if (!j || j.b === undefined) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
         if (j.x && j.x[c.k]) return { fin: J => ({ code: 409, corps: { error: 'deja', ...vu(J) } }) };
         (j.x || (j.x = {}))[c.k] = { v, t: maintenant };
-        return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
-      });
-      return res.status(s.code).json(s.corps);
-    }
-    if (b.action === 'ecarter') {
-      // Proposer (ou retirer) l'écart d'une fiche : possible dès que la fiche de suivi est acquise au joueur, jusqu'au dénouement.
-      const E = B.enquete, f = E && E.fiches && typeof b.id === 'string' ? E.fiches.find(x => x.id === b.id) : null;
-      if (!f) return res.status(400).json({ error: 'fiche' });
-      if (etatDe(Math.max(...E.enigmes.map(c => c.n)), jour) === 'close') return res.status(403).json({ error: 'close' });
-      const s = await modifier(joueurs => {
-        const j = joueurs[cle], vu = J => etat(B, J, cle, jour, maintenant);
-        if (!j || j.b === undefined) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
-        const V = vueEnquete(E, joueurs, cle, jour);
-        if (!V || !V.fiches) return { fin: () => ({ code: 403, corps: { error: 'scellee' } }) };
-        const L = (j.ec || []).filter(x => x !== f.id);
-        if (b.on !== false) L.push(f.id);
-        if (L.length) j.ec = L; else delete j.ec;
         return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
       });
       return res.status(s.code).json(s.corps);
