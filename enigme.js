@@ -770,7 +770,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       const W = window.PharmacoParticipants, B = W.BRIGADES[P.b];
       if (P.a) q("#egWho").innerHTML = W.avatar(P.a, { brigade: P.b, cls: "pp-mini" }) + h(mem.prenom);
       q("#egBrig").hidden = !B;
-      const ligne = (E.brigades || []).find(x => x.b === P.b), devise = ligne && W.DEVISES[ligne.devise];
+      const ligne = (E.brigades || []).find(x => x.b === P.b), devise = W.devise(ligne);
       if (B) q("#egBrig").innerHTML = W.embleme(P.b) + "<span>" + h(B.nom) + (devise ? " · « " + h(devise) + " »" : "") + "</span>";
     }).catch(() => {});
   }
@@ -790,6 +790,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         try { r = await call({ code: mem.code, prenom: mem.prenom, action: "brigade", titre: v.titre, embleme: v.embleme, devise: v.devise, jeu: v.jeu }); } catch (e) { r = { status: 0, j: {} }; }
         if (r.status === 403 && r.j.error === "fige") return { ok: false, message: "Trop tard : les paramètres de la brigade sont scellés." };
         if (r.status === 403 && r.j.error === "scellee") return { ok: false, message: "Le vote de la brigade est encore sous scellé." };
+        if (r.status === 400 && r.j.error === "devise") return { ok: false, message: "Cette devise n'a pas été acceptée : de 5 à 120 caractères, des lettres, des chiffres et une ponctuation simple." };
         if (r.status !== 200 || !r.j.profil) return { ok: false };
         E = r.j;
         majBrigades(); identite(); rang();
@@ -1412,7 +1413,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egBrigsL").innerHTML = T.map(t => {
       const b = W.BRIGADES[t.b];
       if (!b) return "";
-      const devise = W.DEVISES[t.devise], jeu = (t.jeux || []).map(n => cat.find(g => g.n === n)).find(Boolean), M = L.filter(x => x.b === t.b);
+      const devise = W.devise(t), jeu = (t.jeux || []).map(n => cat.find(g => g.n === n)).find(Boolean), M = L.filter(x => x.b === t.b);
       return '<li><details class="eg-brig' + (t.b === mienne ? " me" : "") + '" data-b="' + t.b + '" style="--bf:' + b.fond + '"' + (brigOuvertes.has(String(t.b)) ? " open" : "") + ">"
         + "<summary>" + insigne(t.rang, note) + W.embleme(t.b, "eg-emb")
         + '<span class="eg-brig-t"><b>' + h(b.nom) + (t.b === mienne ? ' <span class="eg-vous">la vôtre</span>' : "") + "</b>"
