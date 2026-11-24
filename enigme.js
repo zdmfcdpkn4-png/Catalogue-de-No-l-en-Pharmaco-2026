@@ -499,7 +499,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<div id="egListe" hidden><label for="egNom">Votre nom</label><select id="egNom"></select></div>'
       + '<div id="egLibre"><label for="egPrenom">Pseudo ou prénom</label><input id="egPrenom" type="text" autocomplete="given-name" maxlength="24" required></div>'
       + '<p class="eg-hint">Même nom, même fiche, sur tous vos appareils : vos réponses sont gardées par le serveur de l\'équipe. Deux collègues du même prénom ? Ajoutez une initiale collée, par exemple CamilleB. Avatar et brigade se règlent à la création de votre fiche.</p>'
-      + '<p class="eg-msg err" id="egGateMsg" role="status"></p><button class="go main" type="submit">Ouvrir mon calendrier</button></form>'
+      + '<div id="egConf" hidden><p class="eg-warn" id="egConfQui" role="alert"></p><label for="egConfPrenom">Les 3 premières lettres de votre prénom</label><input id="egConfPrenom" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="40"><button class="linkbtn" type="button" id="egConfNon">Ce n\'est pas moi</button></div>'
+      + '<p class="eg-msg err" id="egGateMsg" role="status"></p><button class="go main" type="submit" id="egOuvrir">Ouvrir mon calendrier</button></form>'
       + '<p class="eg-banner" id="egBanner" hidden>Mode relecture : les 25 portes s\'affichent avec leur solution. Rien n\'est enregistré.</p>'
       + '<div class="eg-body" id="egBody" hidden>'
       + '<div class="eg-sheet"><div class="eg-cap"><span>Calendrier des 25 portes</span><b id="egWho"></b></div>'
@@ -542,7 +543,9 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 
     q("#egGate").addEventListener("submit", entrer);
     q("#egCode").addEventListener("change", () => chercherListe(q("#egCode").value.trim()));
-    q("#egNom").addEventListener("change", () => dire("#egGateMsg", ""));
+    q("#egNom").addEventListener("change", () => { finConfirmation(); dire("#egGateMsg", ""); });
+    q("#egCode").addEventListener("input", finConfirmation);
+    q("#egConfNon").addEventListener("click", () => { finConfirmation(); q("#egNom").value = ""; q("#egNom").focus(); dire("#egGateMsg", "Choisissez votre nom dans la liste.", "ok"); });
     q("#egGrid").addEventListener("click", e => {
       const c = e.target.closest(".eg-cell");
       if (!c) return;
@@ -627,13 +630,40 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     try { r = await call({ code, action: "entrer", nom }); } catch (x) { r = { status: 0, j: {} }; }
     if (r.status === 400) { listeCode = ""; return dire("#egGateMsg", "Ce nom n'est plus dans la liste. Choisissez-le de nouveau.", "err"); }
     if (r.status !== 200) return dire("#egGateMsg", "Le serveur ne répond pas. Réessayez dans un instant.", "err");
+    // Une fiche existe déjà sous ce nom : on la montre et on demande le prénom avant d'entrer, pour ne pas ouvrir la fiche d'un collègue par erreur.
+    if (!r.j.nouveau && r.j.prenom) return confirmer(code, nom, r.j);
+    ouvrir(code, nom, r.j);
+  }
+  function ouvrir(code, nom, j) {
     relecture = "";
     mem.code = code; mem.nom = nom;
-    if (r.j.prenom) mem.prenom = r.j.prenom; else delete mem.prenom;
+    if (j.prenom) mem.prenom = j.prenom; else delete mem.prenom;
     save();
     dire("#egGateMsg", "");
-    if (r.j.nouveau) versFiche = true; // première visite : la fiche s'ouvre d'elle-même
-    recevoir(r.j);
+    if (j.nouveau) versFiche = true; // première visite : la fiche s'ouvre d'elle-même
+    recevoir(j);
+  }
+  // Confirmation d'identité (simple garde-fou contre l'erreur, pas un contrôle d'accès) : les lettres saisies (trois au moins,
+  // ou le mot entier s'il est plus court) doivent ouvrir l'un des mots du nom choisi dans la liste, accents et casse ignorés.
+  // attente : { code, nom, j } tant qu'elle est affichée.
+  let attente = null;
+  const plat = t => String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/’/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
+  const memePrenom = (saisi, nom) => { const t = plat(saisi), n = plat(nom); return t.length >= 2 && (t === n || n.split(/[ .]+/).some(m => m.length >= 2 && t.length >= Math.min(3, m.length) && (m.startsWith(t) || n.slice(n.indexOf(m)).startsWith(t)))); };
+  function finConfirmation() {
+    if (!attente) return;
+    attente = null;
+    q("#egConf").hidden = true; q("#egConfPrenom").value = ""; q("#egOuvrir").textContent = "Ouvrir mon calendrier";
+  }
+  function confirmer(code, nom, j) {
+    attente = { code, nom, j };
+    const texte = "<span>Une fiche existe déjà sous ce nom : <b>" + h(j.prenom) + "</b> (" + h(nom) + "). C'est bien vous ?</span>";
+    q("#egConfQui").innerHTML = texte;
+    q("#egConf").hidden = false; q("#egOuvrir").textContent = "Oui, c'est moi : entrer";
+    dire("#egGateMsg", "");
+    q("#egConfPrenom").value = ""; q("#egConfPrenom").focus({ preventScroll: true });
+    q("#egOuvrir").scrollIntoView({ block: "nearest" }); // la question, le champ et le bouton tiennent à l'écran
+    // L'avatar de la fiche, quand le module est chargé : un repère de plus pour se reconnaître.
+    if (j.profil && j.profil.a) chargerParticipants().then(() => { if (attente && attente.j === j) { q("#egConfQui").innerHTML = window.PharmacoParticipants.avatar(j.profil.a, { cls: "pp-mini" }) + texte; q("#egOuvrir").scrollIntoView({ block: "nearest" }); } }).catch(() => {});
   }
   // Pastille « Pharmacomeeple » : une fois le joueur entré, sa fiche d'identification s'ouvre (création ou retouche).
   // Avant l'ouverture de l'identification (le 26 novembre), rien ne s'ouvre : la mention « sous scellé » en tête du calendrier suffit.
@@ -649,6 +679,15 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     e.preventDefault();
     const p = q("#egPrenom").value.trim().replace(/’/g, "'"), code = q("#egCode").value.trim();
     if (!code) return dire("#egGateMsg", "Le code d'équipe est demandé : il circule dans l'unité.", "err");
+    if (attente) {
+      const a = attente;
+      if (a.code === code && q("#egNom").value === a.nom) {
+        if (!memePrenom(q("#egConfPrenom").value, a.nom)) { q("#egConfPrenom").focus(); return dire("#egGateMsg", "Ces lettres ne correspondent pas à « " + a.nom + " ». Vérifiez le nom choisi dans la liste.", "err"); }
+        finConfirmation();
+        return ouvrir(a.code, a.nom, a.j);
+      }
+      finConfirmation(); // le code ou le nom a changé : on repart de la liste
+    }
     dire("#egGateMsg", "Ouverture…", "ok");
     await chercherListe(code);
     if (liste && liste.length && listeCode === code) {
@@ -1030,7 +1069,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       ? (reste > 1 ? "Il vous reste " + pl(reste, "tentative", "tentatives") + " sur " + p.essais + " pour ce jeu." : "C'est votre dernière tentative pour ce jeu.") + " Dès le lancement, elle est décomptée, même interrompue."
       : "Une seule tentative pour cette question : le chrono de " + p.duree + " s part au lancement et ne s'arrête plus, même si vous quittez la page.";
     b.dataset.ok = "1"; b.textContent = "Je confirme, je lance";
-    b.insertAdjacentHTML("beforebegin", '<p class="eg-warn" role="alert">' + msg + "</p>");
+    b.insertAdjacentHTML("beforebegin", '<p class="eg-warn" role="alert">' + (mem.prenom ? "Vous jouez en tant que <b>" + h(mem.prenom) + "</b>. " : "") + msg + "</p>");
     b.insertAdjacentHTML("afterend", '<button class="go" type="button" id="egNon">Pas maintenant</button>');
   }
   async function lancer() {
