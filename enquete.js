@@ -145,6 +145,31 @@ button.enq-v{cursor:zoom-in}
 .enq-v{container-type:inline-size}
 .enq-cols.alb li.x .enq-v::after,.enq-zi.x::after{content:"HORS\\A DE CAUSE";white-space:pre;position:absolute;left:50%;top:50%;width:84%;transform:translate(-50%,-50%) rotate(-18deg);padding:.2em 0;border:3px solid #A8472F;border-radius:5px;background:rgba(244,233,207,.3);text-shadow:0 0 4px #F4E9CF,0 0 2px #F4E9CF;color:#A8472F;font-size:.72rem;font-size:min(.72rem,10.5cqw);font-weight:900;letter-spacing:.05em;text-align:center;line-height:1.15;pointer-events:none}
 .enq-zi{position:relative}
+.enq-cols.alb li.mh .enq-v::after,.enq-zi.mh::after,.enq-cols.alb li.mc .enq-v::after,.enq-zi.mc::after{content:"HORS DE\\A CAUSE ?";white-space:pre;position:absolute;left:50%;top:58%;width:84%;transform:translate(-50%,-50%) rotate(9deg);padding:.2em 0;border:3px dashed #2E7D5B;border-radius:14px;background:rgba(244,233,207,.3);text-shadow:0 0 4px #F4E9CF,0 0 2px #F4E9CF;color:#2E7D5B;font-size:.66rem;font-size:min(.66rem,9.6cqw);font-weight:900;letter-spacing:.04em;text-align:center;line-height:1.15;pointer-events:none}
+.enq-cols.alb li.mc .enq-v::after,.enq-zi.mc::after{content:"COUPABLE ?";border-color:#7B3FA0;color:#7B3FA0;transform:translate(-50%,-50%) rotate(-9deg);padding:.45em 0}
+.enq-zi.mh::after,.enq-zi.mc::after{font-size:1.8rem;font-size:9.6cqw;border-width:6px;border-radius:24px}
+.enq-cols li small.enq-cpt,.enq-cpt{display:block;margin-top:2px;font-size:.72rem;letter-spacing:0;text-transform:none;opacity:.9}
+.enq-cols li small.enq-vd,.enq-vd{display:block;margin-top:3px;font-weight:800;font-size:.74rem;letter-spacing:0;text-transform:none;opacity:1}
+.enq-vd.ok{color:#8FD3A9}
+.enq-vd.ko{color:#F0A58F}
+.enq-act{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0 5px;min-height:44px;padding:4px 10px;border:2px solid var(--eq-laiton);border-radius:8px;font:inherit;font-weight:800;font-size:.85rem;line-height:1.1;background:transparent;color:var(--eq-clair);cursor:pointer}
+.enq-tpb{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:6px 0 0}
+.enq-act.th[aria-pressed="true"]{background:#2E7D5B;border-color:#8FD3A9;color:#fff}
+.enq-act.tc[aria-pressed="true"]{background:#7B3FA0;border-color:#D4B0E8;color:#fff}
+.enq-tpz{width:min(100%,440px);margin:10px auto 0}
+.enq-tpz p{margin:8px 0 0}
+.enq-tpt{font-weight:800}
+.enq-tpz .enq-err{color:#F0A58F}
+.enq-tpz .enq-vd.ok{color:#8FD3A9}
+.enq-tpi{margin:10px 0 0;padding:8px 10px;border:2px dashed var(--eq-encre);border-radius:8px}
+.enq-tpi p{margin:0;font-weight:700;font-size:.88rem}
+.enq-tpi .enq-tpb{justify-content:flex-start}
+.enq-tpi .enq-act{color:var(--eq-encre);border-color:var(--eq-encre)}
+.enq-trio{display:grid;gap:4px;min-width:0}
+.enq-trio label{min-height:0;padding:0;border:0;background:none;font-weight:700;font-size:.85rem;margin-top:6px}
+.enq-trio select{width:100%;max-width:100%;min-height:44px;padding:6px 8px;border:2px solid var(--eq-encre);border-radius:8px;font:inherit;background:#fff;color:var(--eq-encre)}
+.enq-bar{margin:6px 0 0;font-size:.85rem;font-weight:700}
+.enq-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .enq-zi.x::after{font-size:2rem;font-size:10.5cqw;border-width:6px;border-radius:10px;background:rgba(244,233,207,.3);text-shadow:0 0 6px #F4E9CF,0 0 2px #F4E9CF}
 .enq-zi{container-type:inline-size}
 @media (prefers-reduced-motion:no-preference){.enq-e{transition:background .2s}
@@ -208,18 +233,28 @@ button.enq-v{cursor:zoom-in}
     const formulaire = e => {
       const id = "enq" + e.k, v = saisie[e.k];
       let s = "";
-      if (e.saisie === "choix" && Array.isArray(e.options)) {
+      if (e.saisie === "trio") {
+        // Hypothèse finale : une fiche par catégorie, dans l'ordre des catégories de `fiches`.
+        const F = Array.isArray(Q.fiches) ? Q.fiches : [], cats = [...new Set(F.map(f => f.cat))], hs = horsDeCause(), V = Array.isArray(v) ? v : [];
+        s += '<fieldset class="enq-o enq-trio"><legend>Votre hypothèse</legend>' + cats.map((c, i) => '<label for="' + id + "-" + i + '">' + h(c) + "</label>"
+          + '<select id="' + id + "-" + i + '" data-trio="' + e.k + "-" + i + '"' + (confirme[e.k] ? " disabled" : "") + '><option value="">Choisir…</option>'
+          + F.filter(f => f.cat === c).map(f => '<option value="' + h(f.id) + '"' + (V[i] === f.id ? " selected" : "") + ">" + h(f.nom) + (hs.has(f.id) ? " (hors de cause)" : "") + "</option>").join("") + "</select>").join("") + "</fieldset>";
+        const choisis = V.filter(x => hs.has(x));
+        if (choisis.length) s += '<p class="enq-warn">Attention : ' + (choisis.length > 1 ? "des cartes choisies sont" : "une carte choisie est") + " déjà hors de cause.</p>";
+      } else if (e.saisie === "choix" && Array.isArray(e.options)) {
         s += '<fieldset class="enq-o"><legend>Votre réponse</legend>' + e.options.map((o, i) =>
           '<label><input type="radio" name="' + id + '" value="' + i + '"' + (v === i ? " checked" : "") + (confirme[e.k] ? " disabled" : "") + "> <span>" + fr(o) + "</span></label>").join("") + "</fieldset>";
       } else {
-        s += '<label for="' + id + '" style="display:block;margin-top:10px;font-weight:700;font-size:.85rem">Votre réponse</label>'
+        s += '<label for="' + id + '" style="display:block;margin-top:10px;font-weight:700;font-size:.85rem">' + (e.quete ? "Votre hypothèse" : "Votre réponse") + "</label>"
           + '<input class="enq-t" id="' + id + '" type="text" maxlength="60" autocomplete="off" autocapitalize="off" spellcheck="false" value="' + h(typeof v === "string" ? v : "") + '"' + (confirme[e.k] ? " readonly" : "") + ">";
       }
       if (erreur[e.k]) s += '<p class="enq-err" role="alert">' + fr(erreur[e.k]) + "</p>";
       if (confirme[e.k]) {
-        s += '<p class="enq-warn" role="alert">Une seule réponse par membre, définitive. À la clôture, la réponse majoritaire de votre brigade est retenue : concertez-vous avant de déposer.</p>'
-          + '<div class="enq-b"><button type="button" data-envoi="' + e.k + '"' + (occupe ? " disabled" : "") + '>Je confirme, je dépose</button><button type="button" class="sec" data-non="' + e.k + '">Pas maintenant</button></div>';
-      } else s += '<div class="enq-b"><button type="button" data-rep="' + e.k + '">Répondre</button></div>';
+        s += (e.quete
+          ? '<p class="enq-warn" role="alert">Une seule hypothèse par membre, verrouillée pour de bon. À la clôture, l\'hypothèse majoritaire de votre brigade est retenue : concertez-vous avant de verrouiller.</p>'
+          : '<p class="enq-warn" role="alert">Une seule réponse par membre, définitive. À la clôture, la réponse majoritaire de votre brigade est retenue : concertez-vous avant de déposer.</p>')
+          + '<div class="enq-b"><button type="button" data-envoi="' + e.k + '"' + (occupe ? " disabled" : "") + ">" + (e.quete ? "Je confirme, je verrouille" : "Je confirme, je dépose") + '</button><button type="button" class="sec" data-non="' + e.k + '">Pas maintenant</button></div>';
+      } else s += '<div class="enq-b"><button type="button" data-rep="' + e.k + '">' + (e.quete ? "Verrouiller mon hypothèse" : "Répondre") + "</button></div>";
       return s;
     };
 
@@ -227,17 +262,28 @@ button.enq-v{cursor:zoom-in}
     const cloture = e => (e.resultat !== undefined ? dateDe(e.resultat) : Number.isInteger(e.jour) && e.jour + 3 <= 31 ? dateDe(e.jour + 3) : "");
     const carte = e => {
       const finale = e.k > 21 && !e.quete;
-      let s = '<li class="enq-e" data-k="' + e.k + '"><h5><small>' + (e.quete ? "Quête secondaire" + (e.etat !== "close" && dateDe(e.ferme) ? " · jusqu'au " + dateDe(e.ferme) : "") : (finale ? "Dénouement" : "Énigme " + e.k) + (dateDe(e.jour) ? " · " + dateDe(e.jour) : "")) + "</small>" + fr(e.titre || "") + "</h5>";
+      let s = '<li class="enq-e" data-k="' + e.k + '"><h5><small>' + (e.quete ? (e.saisie === "trio" ? "Hypothèse finale" : "Quête secondaire") + (e.etat !== "close" && dateDe(e.ferme) ? " · jusqu'au " + dateDe(e.ferme) : "") : (finale ? "Dénouement" : "Énigme " + e.k) + (dateDe(e.jour) ? " · " + dateDe(e.jour) : "")) + "</small>" + fr(e.titre || "") + "</h5>";
       if (e.enonce) s += "<p>" + nl(e.enonce) + "</p>";
+      if (e.quete && e.etat !== "close" && (e.pts || e.prime)) s += '<p class="enq-bar">' + (e.pts ? pl(e.pts, "point", "points") + " pour une hypothèse juste" + (e.prime ? ", plus " + e.prime + " à la première brigade juste" : "") : e.prime + " points à la première brigade juste") + ".</p>";
       if (e.etat !== "close") s += de(e);
       if (e.etat === "close") {
-        s += e.resolue
-          ? '<p class="enq-etat ok">Énigme acquise : la réponse majoritaire de la brigade était la bonne.' + (e.quete && e.prime ? (e.premiere ? " Votre brigade a été la première : prime de " + pl(e.prime, "point", "points") + "." : " Une autre brigade a été plus rapide : pas de prime.") : "") + (e.repondu ? (e.juste ? " La vôtre aussi." : " La vôtre ne l'était pas.") : "") + "</p>"
+        s += e.quete && !e.resolue
+          ? '<p class="enq-etat ko">Hypothèse non retenue : hypothèse majoritaire fausse ou aucune hypothèse. Pas de point.</p>'
+          : e.resolue
+          ? '<p class="enq-etat ok">' + (e.quete ? "Hypothèse juste : celle de la majorité de la brigade était la bonne." : "Énigme acquise : la réponse majoritaire de la brigade était la bonne.") + (e.quete && e.prime ? (e.premiere ? " Votre brigade a été la première : prime de " + pl(e.prime, "point", "points") + "." : " Une autre brigade a été plus rapide : pas de prime.") : "") + (e.repondu ? (e.juste ? " La vôtre aussi." : " La vôtre ne l'était pas.") : "") + "</p>"
           : '<p class="enq-etat ko">Énigme non acquise : réponse majoritaire fausse ou aucune réponse. ' + (e.revelation ? "Révélation d'office, sans point." : "Pas de point.") + "</p>";
         s += revelation(e);
       } else if (e.repondu) {
-        s += '<p class="enq-etat">Votre réponse est déposée et scellée' + (e.reponse !== undefined && e.reponse !== null ? " : «\u00A0" + fr(Array.isArray(e.options) && Number.isInteger(e.reponse) ? e.options[e.reponse] : e.reponse) + "\u00A0»" : "") + ". "
-          + (Number.isInteger(e.deposes) ? pl(e.deposes, "réponse déposée", "réponses déposées") + " dans la brigade. " : "") + "Résultat à la clôture" + (cloture(e) ? ", le " + cloture(e) : "") + ".</p>";
+        const nomDe = x => { const f = (Q.fiches || []).find(y => y.id === x); return f ? f.nom : String(x); };
+        const lu = Array.isArray(e.reponse) ? e.reponse.map(nomDe).join(" · ") : Array.isArray(e.options) && Number.isInteger(e.reponse) ? e.options[e.reponse] : e.reponse;
+        s += '<p class="enq-etat">' + (e.quete ? "Votre hypothèse est verrouillée" : "Votre réponse est déposée et scellée") + (e.reponse !== undefined && e.reponse !== null ? " : «\u00A0" + fr(lu) + "\u00A0»" : "") + ". "
+          + (Number.isInteger(e.deposes) ? (e.quete ? pl(e.deposes, "hypothèse verrouillée", "hypothèses verrouillées") : pl(e.deposes, "réponse déposée", "réponses déposées")) + " dans la brigade. " : "") + "Résultat à la clôture" + (cloture(e) ? ", le " + cloture(e) : "") + ".</p>";
+        // « Lors de la réponse » : proposer de reporter la déduction dans l'album, sur la carte désignée si elle est reconnue.
+        if (!e.quete && peutTamponner()) {
+          const f = typeof lu === "string" ? (Q.fiches || []).find(y => y.nom === lu.trim()) : null;
+          if (f && !horsDeCause().has(f.id)) s += '<div class="enq-tpi"><p>Reporter votre déduction sur la carte « ' + h(f.nom) + " » :</p>" + boutonsTp(f.id, f.nom) + "</div>";
+          else s += '<p class="enq-next">Reportez votre déduction dans l\'album : touchez une carte pour la tamponner.</p>';
+        }
       } else if (!peut()) {
         s += '<p class="enq-etat">Pour répondre, il faut votre fiche d\'identification et votre brigade.</p>'
           + (opts.identifier ? '<div class="enq-b"><button type="button" data-fiche="1">Créer ma fiche</button></div>' : "");
@@ -253,17 +299,70 @@ button.enq-v{cursor:zoom-in}
       return Math.max(0, ...(Q.enigmes || []).filter(e => e.etat !== "avenir" && Number.isInteger(e.jour)).map(e => e.jour));
     };
     const album = () => Array.isArray(Q.fiches) && Q.fiches.some(f => Number.isInteger(f.vue));
+    // Tampons des joueurs (sans point) : chacun marque une carte « hors de cause » (h) ou « coupable » (c), la brigade voit
+    // le décompte. Le tampon officiel reste automatique à la révélation ; il confirme ou dément le tampon du joueur, et le
+    // trio, connu à la clôture de l'hypothèse finale, juge les tampons restants.
+    let erreurTp = "", occupeTp = false;
+    const horsDeCause = () => new Set((Q.enigmes || []).filter(e => e.elimine).map(e => e.elimine));
+    const trioConnu = () => { const e = (Q.enigmes || []).find(x => x.saisie === "trio" && x.etat === "close" && Array.isArray(x.trio)); return e ? e.trio : null; };
+    const peutTamponner = () => Boolean(opts.tamponner) && peut() && !Q.denouement;
+    const tampon = id => (Q.tampons && Q.tampons[id]) || {};
+    const decompte = id => { const t = tampon(id), L = []; if (t.h) L.push(t.h + " hors de cause"); if (t.c) L.push(pl(t.c, "coupable", "coupables")); return L.join(" · "); };
+    const verdict = (id, hors, trio) => {
+      const m = tampon(id).moi;
+      if (m !== "h" && m !== "c") return null;
+      const innocente = hors.has(id) ? true : trio ? !trio.includes(id) : null;
+      if (innocente === null) return null;
+      const ok = (m === "h") === innocente;
+      return { ok, court: (ok ? "✓ Votre tampon confirmé" : "✗ Votre tampon démenti"), texte: (ok ? "✓ " : "✗ ") + "Votre tampon « " + (m === "h" ? "hors de cause" : "coupable") + " » : " + (ok ? "confirmé" : "démenti") };
+    };
+    const boutonsTp = (id, nom) => {
+      const m = tampon(id).moi;
+      return '<div class="enq-tpb" role="group" aria-label="Votre tampon : ' + h(nom) + '">'
+        + '<button type="button" class="enq-act th" data-tp="' + h(id) + '" data-t="h" aria-pressed="' + (m === "h") + '">' + (m === "h" ? "✓ " : "") + "Hors de cause ?</button>"
+        + '<button type="button" class="enq-act tc" data-tp="' + h(id) + '" data-t="c" aria-pressed="' + (m === "c") + '">' + (m === "c" ? "✓ " : "") + "Coupable ?</button></div>";
+    };
+    const REFUS_TP = {
+      fiche: "Carte inconnue du dossier.",
+      profil: "Il faut une fiche d'identification et une brigade pour tamponner.",
+      scellee: "L'album n'est pas encore ouvert à votre brigade.",
+      close: "Le dossier est clos : les tampons sont figés.",
+    };
+    let majZoom = null;
+    const poser = async (id, t) => {
+      if (occupeTp || !opts.tamponner) return;
+      occupeTp = true;
+      let r;
+      try { r = await opts.tamponner(id, tampon(id).moi === t ? null : t); } catch (e) { r = { status: 0, j: {} }; }
+      occupeTp = false;
+      const j = (r && r.j) || {};
+      erreurTp = r && r.status === 200 ? "" : REFUS_TP[j.error] || "Le serveur ne répond pas : rien n'a changé, réessayez.";
+      if (j.enquete) Q = j.enquete;
+      rendre();
+      if (majZoom) majZoom();
+    };
+
     const suivi = () => {
       const F = Array.isArray(Q.fiches) ? Q.fiches : [], cats = [...new Set(F.map(f => f.cat))];
       const hors = new Set((Q.enigmes || []).filter(e => e.elimine).map(e => e.elimine));
       if (album()) {
         const j = aujourdhui(), recue = f => !Number.isInteger(f.vue) || j >= f.vue, id = f => encodeURIComponent(String(f.id));
+        const trio = trioConnu(), actif = peutTamponner();
+        const li = f => {
+          const x = hors.has(f.id), m = !x && recue(f) ? tampon(f.id).moi : undefined, v = verdict(f.id, hors, trio), cpt = !x && recue(f) ? decompte(f.id) : "";
+          const cl = (x ? "x" : m === "h" ? "mh" : m === "c" ? "mc" : "");
+          const etiq = x ? ", hors de cause" : (m === "h" ? ", votre tampon : hors de cause ?" : m === "c" ? ", votre tampon : coupable ?" : "") + (cpt ? ", brigade : " + cpt : "");
+          return '<li data-f="' + h(f.id) + '"' + (recue(f) ? " data-recue" : "") + (cl ? ' class="' + cl + '"' : "") + ">" + (recue(f)
+            ? '<button type="button" class="enq-v" data-carte="' + h(f.id) + '" aria-label="' + (actif && !x ? "Voir en grand et tamponner : " : "Voir en grand : ") + h(f.nom) + etiq + '"><span aria-hidden="true">' + h(f.nom) + '</span><img src="img/enquete/vignettes/' + id(f) + '.webp" alt="" loading="lazy"></button>'
+            : '<div class="enq-v dos" data-id="' + h(f.id) + '"><span aria-hidden="true">?</span><img src="img/enquete/vignettes/dos.webp" alt="" loading="lazy"></div>')
+            + "<span>" + h(f.nom) + "</span>" + (x ? "<small>Hors de cause</small>" : recue(f) ? "" : "<small>Carte à venir</small>")
+            + (cpt ? '<small class="enq-cpt">' + h(cpt) + "</small>" : "")
+            + (v ? '<small class="enq-vd ' + (v.ok ? "ok" : "ko") + '" title="' + h(v.texte) + '">' + h(v.court) + '<span class="enq-sr"> (' + h(v.texte.slice(2)) + ")</span></small>" : "") + "</li>";
+        };
         return '<p class="enq-alb">' + pl(F.filter(recue).length, "carte reçue", "cartes reçues") + " sur " + F.length + "." + (F.every(recue) ? "" : " Les autres paraîtront dans le sapin.") + "</p>"
-          + '<div class="enq-cols alb">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(f =>
-            '<li data-f="' + h(f.id) + '"' + (recue(f) ? " data-recue" : "") + (hors.has(f.id) ? ' class="x"' : "") + ">" + (recue(f)
-              ? '<button type="button" class="enq-v" data-carte="' + h(f.id) + '" aria-label="Voir en grand : ' + h(f.nom) + (hors.has(f.id) ? ", hors de cause" : "") + '"><span aria-hidden="true">' + h(f.nom) + '</span><img src="img/enquete/vignettes/' + id(f) + '.webp" alt="" loading="lazy"></button>'
-              : '<div class="enq-v dos" data-id="' + h(f.id) + '"><span aria-hidden="true">?</span><img src="img/enquete/vignettes/dos.webp" alt="" loading="lazy"></div>')
-            + "<span>" + h(f.nom) + "</span>" + (hors.has(f.id) ? "<small>Hors de cause</small>" : recue(f) ? "" : "<small>Carte à venir</small>") + "</li>").join("") + "</ul></div>").join("") + "</div>";
+          + (actif && F.some(recue) ? '<p class="enq-next">Vos tampons : touchez une carte pour la marquer « Hors de cause ? » ou « Coupable ? ». La brigade voit le décompte ; la révélation les confirme ou les dément. Sans effet sur les points.</p>' : "")
+          + (erreurTp ? '<p class="enq-err" role="alert">' + h(erreurTp) + "</p>" : "")
+          + '<div class="enq-cols alb">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(li).join("") + "</ul></div>").join("") + "</div>";
       }
       return '<div class="enq-cols">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(f =>
         '<li' + (hors.has(f.id) ? ' class="x"' : "") + '><i aria-hidden="true">' + (hors.has(f.id) ? "×" : "") + "</i><div><span>" + h(f.nom) + "</span>" + (hors.has(f.id) ? "<small>Hors de cause</small>" : "") + "</div></li>").join("") + "</ul></div>").join("") + "</div>";
@@ -311,7 +410,7 @@ button.enq-v{cursor:zoom-in}
     function rendre() {
       if (!Q) return cacher();
       const actif = document.activeElement && el.contains(document.activeElement) ? document.activeElement : null;
-      const repere = actif ? (actif.id ? "#" + actif.id : actif.dataset.rep ? '[data-rep="' + actif.dataset.rep + '"]' : actif.dataset.envoi ? '[data-envoi="' + actif.dataset.envoi + '"]' : actif.dataset.carte ? '[data-carte="' + actif.dataset.carte + '"]' : "") : "";
+      const repere = actif ? (actif.id ? "#" + actif.id : actif.dataset.rep ? '[data-rep="' + actif.dataset.rep + '"]' : actif.dataset.envoi ? '[data-envoi="' + actif.dataset.envoi + '"]' : actif.dataset.carte ? '[data-carte="' + actif.dataset.carte + '"]' : actif.dataset.tp ? '[data-tp="' + actif.dataset.tp + '"][data-t="' + actif.dataset.t + '"]' : actif.dataset.trio ? '[data-trio="' + actif.dataset.trio + '"]' : "") : "";
       const L = Q.enigmes || [], aVenir = L.filter(e => e.etat === "avenir");
       // Amorce : sans le champ, tout s'affiche ; avec, on ne montre que ce que les étapes reçues autorisent.
       const amorce = Array.isArray(Q.amorces), A = amorce ? Q.amorces.slice().sort((a, b) => b.n - a.n) : [];
@@ -356,13 +455,26 @@ button.enq-v{cursor:zoom-in}
       if (!f || document.querySelector(".enq-zoom")) return;
       const d = document.createElement("div"), x = (Q.enigmes || []).some(e => e.elimine === f.id);
       d.className = "enq-zoom"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", f.nom + (x ? ", hors de cause" : ""));
-      d.innerHTML = '<button type="button" data-fin="1">Fermer</button><button type="button" class="enq-zi' + (x ? " x" : "") + '" aria-pressed="false" aria-label="Doubler la taille de la carte"><img src="img/enquete/' + encodeURIComponent(id) + '.webp" alt="' + h(f.nom) + '"></button><p>' + (x ? "Hors de cause. " : "") + 'Touchez la carte pour la doubler.</p>';
-      const fermer = () => { d.remove(); document.removeEventListener("keydown", touche, true); const v = [...el.querySelectorAll("[data-carte]")].find(x => x.dataset.carte === id); if (v) v.focus({ preventScroll: true }); };
+      d.innerHTML = '<button type="button" data-fin="1">Fermer</button><button type="button" class="enq-zi' + (x ? " x" : "") + '" aria-pressed="false" aria-label="Doubler la taille de la carte"><img src="img/enquete/' + encodeURIComponent(id) + '.webp" alt="' + h(f.nom) + '"></button><p>' + (x ? "Hors de cause. " : "") + 'Touchez la carte pour la doubler.</p><div class="enq-tpz"></div>';
+      // Panneau des tampons du joueur sous la carte, redessiné à chaque état reçu tant que la carte est ouverte.
+      majZoom = () => {
+        const hs = horsDeCause(), xx = hs.has(f.id), m = xx ? undefined : tampon(f.id).moi, v = verdict(f.id, hs, trioConnu()), cpt = xx ? "" : decompte(f.id), z = d.querySelector(".enq-zi");
+        if (z) { z.classList.toggle("mh", m === "h"); z.classList.toggle("mc", m === "c"); }
+        const actif = d.contains(document.activeElement) ? document.activeElement : null, t = actif && actif.dataset.t;
+        d.querySelector(".enq-tpz").innerHTML = (!xx && peutTamponner() ? '<p class="enq-tpt">Votre tampon</p>' + boutonsTp(f.id, f.nom) : "")
+          + (cpt ? "<p>Brigade : " + h(cpt) + "</p>" : "") + (v ? '<p class="enq-vd ' + (v.ok ? "ok" : "ko") + '">' + h(v.texte) + "</p>" : "")
+          + (erreurTp ? '<p class="enq-err" role="alert">' + h(erreurTp) + "</p>" : "");
+        if (t) { const b = d.querySelector('[data-t="' + t + '"]'); if (b) b.focus({ preventScroll: true }); }
+      };
+      majZoom();
+      const fermer = () => { majZoom = null; d.remove(); document.removeEventListener("keydown", touche, true); const v = [...el.querySelectorAll("[data-carte]")].find(x => x.dataset.carte === id); if (v) v.focus({ preventScroll: true }); };
       const touche = ev => {
         if (ev.key === "Escape") { ev.stopPropagation(); fermer(); }
         else if (ev.key === "Tab" && !d.contains(ev.target)) { ev.preventDefault(); d.querySelector("button").focus(); }
       };
       d.addEventListener("click", ev => {
+        const tp = ev.target.closest("[data-tp]");
+        if (tp) return poser(tp.dataset.tp, tp.dataset.t);
         const z = ev.target.closest(".enq-zi");
         if (z) { z.setAttribute("aria-pressed", String(z.classList.toggle("zz"))); return; }
         if (ev.target === d || ev.target.closest("[data-fin]")) fermer();
@@ -377,21 +489,26 @@ button.enq-v{cursor:zoom-in}
       const e = (Q.enigmes || []).find(x => x.k === k);
       if (!e) return undefined;
       if (e.saisie === "choix") { const c = el.querySelector('input[name="enq' + k + '"]:checked'); return c ? Number(c.value) : undefined; }
+      if (e.saisie === "trio") { const L = [...el.querySelectorAll('[data-trio^="' + k + '-"]')].map(x => x.value); return L.length && L.every(Boolean) ? L : undefined; }
       const t = el.querySelector("#enq" + k);
       return t && t.value.trim() ? t.value.trim() : undefined;
     };
 
     el.addEventListener("error", ev => { const t = ev.target; if (t && t.tagName === "IMG" && t.closest(".enq-v")) t.remove(); }, true);
+    // Les listes du trio : « change » en plus de « input », pour les navigateurs qui ne signalent que le premier.
+    el.addEventListener("change", ev => { const t = ev.target; if (t.matches("[data-trio]")) { const k = Number(t.dataset.trio.split("-")[0]), L = [...el.querySelectorAll('[data-trio^="' + k + '-"]')].map(x => x.value); if (JSON.stringify(L) !== JSON.stringify(saisie[k])) { saisie[k] = L; erreur[k] = ""; rendre(); } } });
     el.addEventListener("input", ev => {
       const t = ev.target;
       if (t.matches('.enq-o input[type="radio"]')) saisie[Number(t.name.slice(3))] = Number(t.value);
       else if (t.matches(".enq-t")) saisie[Number(t.id.slice(3))] = t.value;
+      else if (t.matches("[data-trio]")) { const k = Number(t.dataset.trio.split("-")[0]); saisie[k] = [...el.querySelectorAll('[data-trio^="' + k + '-"]')].map(x => x.value); erreur[k] = ""; rendre(); }
     });
     el.addEventListener("click", async ev => {
       const b = ev.target.closest("button");
       if (!b || !Q) return;
       if (b.dataset.fiche) return opts.identifier && opts.identifier();
       if (b.dataset.carte) return grand(b.dataset.carte);
+      if (b.dataset.tp) return poser(b.dataset.tp, b.dataset.t);
       if (b.dataset.rep) {
         const k = Number(b.dataset.rep), v = lire(k);
         erreur[k] = v === undefined ? "Choisissez ou écrivez d'abord votre réponse." : "";

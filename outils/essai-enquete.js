@@ -276,6 +276,76 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
   await page.waitForFunction(() => document.querySelectorAll('#zD li.arr').length === 5);
   ok(true, 'stockage bloqué : l\'animation joue tout de même, sans erreur');
   await page.evaluate(() => ['zA', 'zB', 'zC', 'zD'].forEach(id => document.getElementById(id).remove()));
+  // Tampons des joueurs (« hors de cause ? », « coupable ? ») et hypothèse finale du trio.
+  const fichesT = [];
+  [['Personnages', 'p'], ['Lieux', 'l'], ['Objets', 'o']].forEach(([cat, c]) => [1, 2, 3].forEach(i => fichesT.push({ id: c + i, cat, nom: cat.slice(0, -1) + ' factice ' + i, vue: 1 })));
+  await page.evaluate(fichesT => {
+    const z = document.createElement('section'); z.id = 'zT'; document.body.prepend(z); window.scrollTo(0, 0);
+    const Q = { titre: 'Affaire factice', max: 40, fiches: fichesT, tampons: { p1: { h: 2, c: 1, moi: 'h' }, l2: { h: 0, c: 1 } }, enigmes: [
+      { k: 1, jour: 4, etat: 'ouverte', titre: 'Factice', enonce: 'Énoncé.', saisie: 'choix', options: ['Personnage factice 3', 'Autre'], repondu: true, reponse: 0, deposes: 1 },
+      { k: 25, jour: 4, etat: 'ouverte', titre: 'Lot factice', enonce: 'Énoncé.', saisie: 'texte', quete: true, pts: 5, prime: 2, ferme: '2026-12-24' },
+      { k: 26, jour: 18, etat: 'ouverte', titre: 'Trio factice', enonce: 'Énoncé.', saisie: 'trio', quete: true, pts: 0, prime: 3, ferme: '2026-12-27', resultat: '2026-12-28' },
+    ] };
+    const T = window.tp = { Q, appels: [], envois: [] };
+    T.b = window.PharmacoEnquete.monter(z, {
+      jour: () => 18,
+      tamponner: async (id, t) => {
+        T.appels.push([id, t]);
+        if (T.refus) return { status: 403, j: { error: T.refus } };
+        const o = T.Q.tampons[id] || (T.Q.tampons[id] = { h: 0, c: 0 });
+        if (o.moi) o[o.moi]--; if (t) { o[t]++; o.moi = t; } else delete o.moi;
+        return { status: 200, j: { ok: true, enquete: T.Q } };
+      },
+      envoyer: async (k, r) => { T.envois.push([k, r]); const e = T.Q.enigmes.find(x => x.k === k); Object.assign(e, { repondu: true, reponse: r, deposes: 1 }); return { status: 200, j: { ok: true, enquete: T.Q } }; },
+    });
+    T.b.maj(Q);
+  }, fichesT);
+  const apresT = sel => page.locator(sel).first().evaluate(n => getComputedStyle(n, '::after').content);
+  ok(await page.locator('#zT li.mh[data-f="p1"]').count() === 1 && (await apresT('#zT li[data-f="p1"] .enq-v')).includes('?') && (await txt('#zT li[data-f="p1"] .enq-cpt')) === '2 hors de cause · 1 coupable' && (await txt('#zT li[data-f="l2"] .enq-cpt')) === '1 coupable' && (await page.locator('#zT .enq-v[data-carte="p1"]').getAttribute('aria-label')).includes('votre tampon : hors de cause ?'), 'tampons : mon tampon sur la vignette, décompte de la brigade, état dit au lecteur d\'écran');
+  ok(await page.locator('#zT li.x').count() === 0 && (await page.locator('#zT li[data-f="p1"] .enq-v').evaluate(n => getComputedStyle(n, '::after').borderTopStyle)) === 'dashed', 'tampons : le tampon du joueur (pointillés, point d\'interrogation) ne se confond pas avec l\'officiel, absent sans révélation');
+  await page.click('#zT .enq-v[data-carte="l2"]');
+  ok(await page.locator('.enq-zoom [data-tp="l2"]').count() === 2 && (await txt('.enq-zoom .enq-tpz')).includes('Brigade : 1 coupable'), 'tampons : la carte en grand propose « Hors de cause ? » et « Coupable ? » avec le décompte');
+  await page.focus('.enq-zoom [data-tp="l2"][data-t="c"]'); await page.keyboard.press('Enter');
+  ok((await page.locator('.enq-zoom [data-t="c"]').getAttribute('aria-pressed')) === 'true' && await page.locator('.enq-zoom .enq-zi.mc').count() === 1 && await page.evaluate(() => document.activeElement.dataset.t === 'c') && await page.locator('#zT li.mc[data-f="l2"]').count() === 1 && (await txt('.enq-zoom .enq-tpz')).includes('2 coupables'), 'tampons : « Coupable ? » posé au clavier, tampon violet en grand et dans l\'album, focus gardé');
+  await page.click('.enq-zoom [data-t="c"]');
+  ok(await page.locator('.enq-zoom .enq-zi.mc').count() === 0 && JSON.stringify(await page.evaluate(() => window.tp.appels)) === '[["l2","c"],["l2",null]]', 'tampons : un second toucher retire le tampon (t = null)');
+  await page.evaluate(() => { window.tp.refus = 'close'; });
+  await page.click('.enq-zoom [data-t="h"]');
+  ok((await txt('.enq-zoom .enq-err')).includes('dossier est clos') && await page.locator('.enq-zoom [data-t="h"][aria-pressed="false"]').count() === 1, 'tampons : refus du serveur dit en clair, rien ne change');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => { delete window.tp.refus; });
+  ok((await txt('#zT li[data-k="1"] .enq-tpi')).includes('Personnage factice 3') && await page.locator('#zT .enq-tpi [data-tp="p3"]').count() === 2, 'lors de la réponse : la carte désignée par la réponse est proposée au tampon');
+  await page.click('#zT .enq-tpi [data-tp="p3"][data-t="c"]');
+  ok(await page.locator('#zT li.mc[data-f="p3"]').count() === 1, 'lors de la réponse : le tampon posé apparaît dans l\'album');
+  // Hypothèse finale du trio et quête du lot, présentées comme des hypothèses à verrouiller.
+  const t26 = await txt('#zT li[data-k="26"]');
+  ok(t26.includes('Hypothèse finale') && t26.includes('3 points à la première brigade juste') && !/\b0 point/.test(t26) && await page.locator('#zT li[data-k="26"] select').count() === 3 && (await txt('#zT li[data-k="26"] label')) === 'Personnages', 'trio : trois choix, un par catégorie, barème sans « 0 point »');
+  ok((await txt('#zT li[data-k="25"] [data-rep]')) === 'Verrouiller mon hypothèse' && (await txt('#zT li[data-k="26"] [data-rep]')) === 'Verrouiller mon hypothèse' && (await txt('#zT li[data-k="25"] .enq-bar')).includes('5 points pour une hypothèse juste, plus 2'), 'lot et trio : même bouton « Verrouiller mon hypothèse », barème dit');
+  await page.click('#zT li[data-k="26"] [data-rep]');
+  ok((await txt('#zT li[data-k="26"] .enq-err')).includes('Choisissez'), 'trio : impossible de verrouiller sans les trois choix');
+  await page.evaluate(() => { const T = window.tp; T.Q.enigmes.push({ k: 3, jour: 5, etat: 'close', titre: 'Factice', enonce: 'Énoncé.', saisie: 'texte', resolue: true, revelation: 'Hors de cause.', elimine: 'p2' }); T.b.maj(T.Q); });
+  await page.selectOption('#zT [data-trio="26-0"]', 'p2'); await page.selectOption('#zT [data-trio="26-1"]', 'l1'); await page.selectOption('#zT [data-trio="26-2"]', 'o3');
+  ok((await page.locator('#zT [data-trio="26-0"] option[value="p2"]').textContent()).includes('(hors de cause)') && (await txt('#zT li[data-k="26"] .enq-warn')).includes('déjà hors de cause'), 'trio : une carte déjà écartée reste choisissable mais signalée');
+  await page.selectOption('#zT [data-trio="26-0"]', 'p1');
+  await page.click('#zT li[data-k="26"] [data-rep]');
+  ok((await txt('#zT li[data-k="26"] .enq-warn')).includes('hypothèse majoritaire') && (await txt('#zT [data-envoi="26"]')) === 'Je confirme, je verrouille' && await page.locator('#zT [data-trio="26-0"][disabled]').count() === 1, 'trio : avertissement habituel, choix figés avant confirmation');
+  await page.click('#zT [data-envoi="26"]');
+  const t26b = await txt('#zT li[data-k="26"]');
+  ok(JSON.stringify(await page.evaluate(() => window.tp.envois)) === '[[26,["p1","l1","o3"]]]' && t26b.includes('Votre hypothèse est verrouillée : « Personnage factice 1 · Lieu factice 1 · Objet factice 3 »') && t26b.includes('1 hypothèse verrouillée dans la brigade') && t26b.includes('le 28 décembre') && !t26b.includes('Hypothèse juste') && !t26b.includes('non retenue'), 'trio : envoi du tableau d\'identifiants, rappel du trio et des dépôts, aucun verdict avant la clôture');
+  // Révélations : l'officiel confirme ou dément mon tampon ; le trio juge les tampons restants.
+  ok(await page.locator('#zT li.x[data-f="p2"]').count() === 1 && await page.locator('#zT li[data-f="p1"] .enq-vd').count() === 0, 'tampons : pas de verdict tant que rien n\'est révélé sur la carte');
+  await page.evaluate(() => { const T = window.tp; T.Q.tampons.o1 = { h: 1, c: 0, moi: 'h' }; T.Q.tampons.o2 = { h: 0, c: 1, moi: 'c' }; T.Q.enigmes.push({ k: 4, jour: 6, etat: 'close', titre: 'F', enonce: 'É.', saisie: 'texte', resolue: true, revelation: 'Hors de cause.', elimine: 'o1' }, { k: 5, jour: 7, etat: 'close', titre: 'F', enonce: 'É.', saisie: 'texte', resolue: true, revelation: 'Hors de cause.', elimine: 'o2' }); T.b.maj(T.Q); });
+  ok((await txt('#zT li[data-f="o1"] .enq-vd.ok')).includes('confirmé') && (await txt('#zT li[data-f="o2"] .enq-vd.ko')).includes('« coupable » : démenti') && await page.locator('#zT li.x[data-f="o1"]').count() === 1 && await page.locator('#zT li.mh[data-f="o1"]').count() === 0, 'révélation : tampon officiel automatique, mon « hors de cause » confirmé, mon « coupable » démenti');
+  await page.evaluate(() => { const T = window.tp; const e = T.Q.enigmes.find(x => x.k === 26); Object.assign(e, { etat: 'close', resolue: true, premiere: true, trio: ['p1', 'l2', 'o3'], revelation: 'Trio factice.' }); T.Q.denouement = 'Dénouement factice.'; T.b.maj(T.Q); });
+  const t26c = await txt('#zT li[data-k="26"]');
+  ok((await txt('#zT li[data-f="p1"] .enq-vd.ko')).includes('« hors de cause » : démenti') && (await txt('#zT li[data-f="l2"]')).includes('Lieu factice 2') && await page.locator('#zT li[data-f="p3"] .enq-vd.ok').count() === 0 && (await txt('#zT li[data-f="p3"] .enq-vd.ko')).includes('« coupable » : démenti'), 'dénouement : le trio juge les tampons restants');
+  ok(t26c.includes('Hypothèse juste') && t26c.includes('prime de 3 points') && !/\b0 point/.test(t26c) && await page.locator('#zT [data-tp]').count() === 0, 'trio clos : hypothèse juste et prime dites, plus de bouton de tampon après le dénouement');
+  // Relecture (sans option tamponner) : les tampons se voient, rien ne se pose.
+  await page.evaluate(() => { const T = window.tp; delete T.Q.denouement; T.b2 = window.PharmacoEnquete.monter(document.getElementById('zT'), { jour: () => 18, peutRepondre: () => false }); T.b2.maj(T.Q); });
+  await page.click('#zT .enq-v[data-carte="l3"]');
+  ok(await page.locator('.enq-zoom [data-tp]').count() === 0 && await page.locator('#zT [data-tp]').count() === 0, 'relecture : aucun bouton de tampon, ni dans l\'album ni en grand');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => document.getElementById('zT').remove());
   await page.evaluate(() => window.PharmacoEnquete.monter(document.getElementById('zone')).maj(null));
   ok(await page.locator('#zone').isHidden(), 'sans champ enquete : le bloc se cache');
   ok(erreurs.length === 0, 'aucune erreur de script' + (erreurs.length ? ' : ' + erreurs.join(' | ') : ''));
