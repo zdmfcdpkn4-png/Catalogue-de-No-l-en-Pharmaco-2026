@@ -25,7 +25,7 @@ const PRENOM = /^\p{L}+(?:[-']\p{L}+)*$/u;
 // Participants : cinq brigades, tirées par le serveur ; un avatar est trois numéros [couleur, coiffe, accessoire],
 // chacun sous le nombre de choix de sa liste (les listes sont dessinées dans participants.js : garder les longueurs accordées).
 const NB_BRIGADES = 5;
-const AVATAR = [8, 8, 8];
+const AVATAR = [16, 16, 16, 8]; // couleur, coiffe, accessoire, fleur du logo (facultative : les fiches anciennes ont trois numéros)
 // Paramètres d'une brigade (nom, emblème, devise, jeu emblème) : chaque membre vote du 26 novembre au 10 décembre,
 // puis tout est figé. Les brigades sont tirées sans nom (« Brigade 1 » à « Brigade 5 »). L'emblème est un numéro de la liste
 // EMBLEMES de participants.js. Le nom est un texte : l'un des noms proposés par la page, ou celui qu'un membre propose.
@@ -50,7 +50,7 @@ const FILE_FILM = 'film-cloture.mp4', MAX_FILM = 3 * 1024 * 1024;
 const MAX_LISTE = 300;
 const NOM_LISTE = /^\p{L}[\p{L} .'-]{1,39}$/u;
 const propre = s => String(s).replace(/’/g, "'").replace(/\s+/g, ' ').trim();
-const avatarOk = a => Array.isArray(a) && a.length === AVATAR.length && a.every((v, i) => Number.isInteger(v) && v >= 0 && v < AVATAR[i]);
+const avatarOk = a => Array.isArray(a) && a.length >= 3 && a.length <= AVATAR.length && a.every((v, i) => Number.isInteger(v) && v >= 0 && v < AVATAR[i]);
 // Tirage équilibré : la brigade la moins fournie, au hasard entre les ex aequo. Les effectifs ne diffèrent jamais de plus d'un.
 function tirer(joueurs) {
   const n = new Array(NB_BRIGADES).fill(0);
