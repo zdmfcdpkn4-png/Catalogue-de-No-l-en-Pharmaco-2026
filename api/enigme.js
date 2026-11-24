@@ -248,7 +248,9 @@ function attribuer(V, k) {
 // Ce que le serveur garde par joueur : x: { k: { v: sa réponse, t: heure } }.
 // Les points vont à la brigade, jamais au classement individuel.
 const normRep = s => norm(s).replace(/[^a-z0-9]/g, '');
-const justeEnq = (c, v) => (c.saisie === 'choix' ? v === c.bonne : c.reponses.some(x => normRep(x) === normRep(v)));
+// Saisie `trio` (hypothèse finale) : la réponse est la liste des identifiants de fiche, un par catégorie, dans l'ordre des
+// catégories ; la bonne est `trio`.
+const justeEnq = (c, v) => (c.saisie === 'choix' ? v === c.bonne : c.saisie === 'trio' ? Array.isArray(v) && v.length === c.trio.length && c.trio.every((x, i) => x === v[i]) : c.reponses.some(x => normRep(x) === normRep(v)));
 // Par brigade et par énigme, les voix : { k: { n: réponses déposées, v: { réponse: voix } } }. Un texte est compté sans casse,
 // accents, espaces ni ponctuation ; toutes les écritures acceptées de la bonne réponse comptent ensemble (clé « = »).
 function voix(E, joueurs) {
@@ -259,7 +261,7 @@ function voix(E, joueurs) {
     if (!s || !j.x) continue;
     for (const k of Object.keys(j.x)) {
       if (!C[k]) continue;
-      const v = C[k].saisie === 'choix' ? String(j.x[k].v) : justeEnq(C[k], j.x[k].v) ? '=' : normRep(j.x[k].v), u = s[k] || (s[k] = { n: 0, v: {}, t: {} });
+      const v = C[k].saisie === 'choix' ? String(j.x[k].v) : justeEnq(C[k], j.x[k].v) ? '=' : C[k].saisie === 'trio' ? [].concat(j.x[k].v).join('|') : normRep(j.x[k].v), u = s[k] || (s[k] = { n: 0, v: {}, t: {} });
       u.n++; u.v[v] = (u.v[v] || 0) + 1; u.t[v] = Math.min(u.t[v] || Infinity, Number(j.x[k].t) || 0);
     }
   }
@@ -324,9 +326,16 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
       if (s && e === 'close' && c.prime) x.premiere = primees(c, S, jour).includes(j.b);
       if (a && e === 'close') x.juste = justeEnq(c, a.v);
     }
-    if (tout) { if (c.saisie === 'choix') x.bonne = c.bonne; else x.reponses = c.reponses; }
+    if (tout) { if (c.saisie === 'choix') x.bonne = c.bonne; else if (c.saisie === 'trio') x.trio = c.trio; else x.reponses = c.reponses; }
     return x;
   });
+  // Tampons des joueurs (sans point) : chacun marque les fiches « hors de cause » (h) ou « coupable » (c), champ `tp` du
+  // joueur ; la brigade voit le décompte par fiche, et chacun son propre tampon (`moi`).
+  if (s && E.fiches) {
+    const ids = new Set(E.fiches.map(f => f.id)); o.tampons = {};
+    for (const m of Object.values(joueurs)) if (m.b === j.b && m.tp) for (const id of Object.keys(m.tp)) if (ids.has(id) && (m.tp[id] === 'h' || m.tp[id] === 'c')) { const t = o.tampons[id] || (o.tampons[id] = { h: 0, c: 0 }); t[m.tp[id]]++; }
+    for (const id of Object.keys(j.tp || {})) if (o.tampons[id]) o.tampons[id].moi = j.tp[id];
+  }
   const P = pointsEnq(E, S, jour);
   if (s) o.points = P[j.b];
   // Le dénouement : quand toutes les énigmes du dernier jour sont closes.
@@ -782,12 +791,29 @@ async function handler(req, res) {
       const e = etatEnq(c, jour);
       if (e !== 'ouverte') return res.status(403).json({ error: e === 'avenir' ? 'scellee' : 'close' });
       const v = typeof b.reponse === 'string' ? b.reponse.trim() : b.reponse;
-      if (c.saisie === 'choix' ? !(Number.isInteger(v) && v >= 0 && v < c.options.length) : !(typeof v === 'string' && normRep(v) && v.length <= 80 && !/[\u0000-\u001f<>]/.test(v))) return res.status(400).json({ error: 'reponse' });
+      const cats = c.saisie === 'trio' ? [...new Set((B.enquete.fiches || []).map(f => f.cat))] : [];
+      if (c.saisie === 'trio' ? !(Array.isArray(v) && v.length === cats.length && v.every((id, i) => B.enquete.fiches.some(f => f.id === id && f.cat === cats[i]))) : c.saisie === 'choix' ? !(Number.isInteger(v) && v >= 0 && v < c.options.length) : !(typeof v === 'string' && normRep(v) && v.length <= 80 && !/[\u0000-\u001f<>]/.test(v))) return res.status(400).json({ error: 'reponse' });
       const s = await modifier(joueurs => {
         const j = joueurs[cle], vu = J => etat(B, J, cle, jour, maintenant);
         if (!j || j.b === undefined) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
         if (j.x && j.x[c.k]) return { fin: J => ({ code: 409, corps: { error: 'deja', ...vu(J) } }) };
         (j.x || (j.x = {}))[c.k] = { v, t: maintenant };
+        return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
+      });
+      return res.status(s.code).json(s.corps);
+    }
+    if (b.action === 'tampon') {
+      // Poser, changer ou retirer son tampon sur une fiche (t : 'h', 'c' ou rien), dès la fiche de suivi et jusqu'au dénouement.
+      const E = B.enquete, f = E && E.fiches && typeof b.id === 'string' ? E.fiches.find(x => x.id === b.id) : null;
+      if (!f || !(b.t === 'h' || b.t === 'c' || b.t === null || b.t === undefined)) return res.status(400).json({ error: 'fiche' });
+      if (etatDe(Math.max(...E.enigmes.map(c => finEnq(c))) - DELAI, jour) === 'close') return res.status(403).json({ error: 'close' });
+      const s = await modifier(joueurs => {
+        const j = joueurs[cle], vu = J => etat(B, J, cle, jour, maintenant);
+        if (!j || j.b === undefined) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
+        const V = vueEnquete(E, joueurs, cle, jour);
+        if (!V || !V.fiches) return { fin: () => ({ code: 403, corps: { error: 'scellee' } }) };
+        const T = Object.assign({}, j.tp); if (b.t) T[f.id] = b.t; else delete T[f.id];
+        if (Object.keys(T).length) j.tp = T; else delete j.tp;
         return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
       });
       return res.status(s.code).json(s.corps);

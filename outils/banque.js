@@ -67,6 +67,9 @@ function controler(b) {
           else if (!Number.isInteger(c.bonne) || c.bonne < 0 || c.bonne >= c.options.length) e.push(o + 'bonne réponse hors des propositions');
         } else if (c.saisie === 'texte') {
           if (!Array.isArray(c.reponses) || !c.reponses.length || c.reponses.some(x => typeof x !== 'string' || !norm(x).replace(/[^a-z0-9]/g, ''))) e.push(o + 'réponses acceptées manquantes');
+        } else if (c.saisie === 'trio') {
+          const cats = [...new Set((Array.isArray(E.fiches) ? E.fiches : []).map(f => f.cat))];
+          if (!Array.isArray(c.trio) || !cats.length || c.trio.length !== cats.length || c.trio.some((id, i) => !E.fiches.some(f => f.id === id && f.cat === cats[i]))) e.push(o + 'trio : une fiche par catégorie, dans l\'ordre des catégories');
         } else e.push(o + 'saisie inconnue');
       });
       if (E.amorces !== undefined && (!Array.isArray(E.amorces) || E.amorces.some(a => !a || !Number.isInteger(a.n) || a.n < 1 || a.n > 25 || typeof a.titre !== 'string' || !a.titre || typeof a.texte !== 'string' || !a.texte))) e.push(ou + 'amorces : jour, titre et texte attendus');
