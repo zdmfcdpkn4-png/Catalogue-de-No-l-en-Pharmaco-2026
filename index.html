@@ -1037,14 +1037,16 @@ document.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"||e.key==="ArrowRi
    dans son propre cadre, puis s'efface. Elle n'ouvre aucune goutte. Pas en mouvement réduit ; se passe d'un toucher ou avec Échap. */
 const AV_EV={1:["video/sapin-1er-decembre.mp4","Levée de quarantaine : le lot de décembre est libéré."],25:["video/sapin-25-decembre.mp4","Dernière dose. Le Père Noël a signé la libération."]};
 /* Vidéos du sapin en plein écran (lever de rideau, cygne, origamis, boosters) : la vidéo occupe tout l'écran sur fond sombre, puis s'efface
-   sur le contenu ; un toucher, « Passer » ou Échap l'abrège. Musique d'ambiance (audio/ambiance-*.mp3, nappes synthétiques maison) :
+   sur le contenu ; un toucher, « Passer » ou Échap l'abrège. Musique d'ambiance (audio/ambiance-*.mp3, deux boucles de 8 mesures synthétisées maison : célesta et grelots pour Noël, vibraphone et pizzicati pour l'enquête) :
    coupée par défaut, activée par le bouton « Musique », choix gardé sur l'appareil. */
 let avPl=null;
 function avSon(v){try{if(v===undefined)return localStorage.getItem(AV_KEY+"-son")==="1";localStorage.setItem(AV_KEY+"-son",v?"1":"0")}catch(e){}return false}
 function avMusique(nom){
-  let a=avMusique.a;if(!nom||!avSon()){if(a)a.pause();return}
-  if(!a){a=avMusique.a=new Audio();a.loop=true;a.volume=.6}
-  if(avMusique.n!==nom){avMusique.n=nom;a.src="audio/ambiance-"+nom+".mp3"}if(a.paused){try{a.currentTime=0}catch(e){}a.play().catch(()=>{})}
+  let a=avMusique.a;const V=.6,vers=(c,ms,fin)=>{clearInterval(avMusique.i);const d=a.volume,t0=Date.now();avMusique.i=setInterval(()=>{const k=Math.min(1,(Date.now()-t0)/ms);try{a.volume=d+(c-d)*k}catch(e){}if(k>=1){clearInterval(avMusique.i);if(fin)fin()}},40)};
+  if(!nom||!avSon()){if(a&&!a.paused)vers(0,700,()=>a.pause());return}          /* arrêt en fondu, jamais de coupure nette */
+  if(!a){a=avMusique.a=new Audio();a.loop=true}
+  if(avMusique.n!==nom){avMusique.n=nom;a.src="audio/ambiance-"+nom+".mp3"}
+  if(a.paused){try{a.currentTime=0;a.volume=0}catch(e){}a.play().catch(()=>{})}vers(V,450);
 }
 function avPlSon(){const on=avSon();document.querySelectorAll('[data-pl="son"]').forEach(b=>{b.setAttribute("aria-pressed",on?"true":"false");b.textContent=on?"Musique : activée":"Musique : coupée"})}
 function avPlein(src,o){
