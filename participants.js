@@ -1,6 +1,6 @@
 /* Participants des Pharmacogames : l'avatar (un meeple à composer), les cinq brigades et la fiche d'identification.
-   Chargé à la demande par enigme.js. Aucune photo, aucune donnée personnelle : un avatar n'est que trois numéros
-   [couleur, coiffe, accessoire], pris dans les listes fermées ci-dessous. Le serveur (api/enigme.js, AVATAR et
+   Chargé à la demande par enigme.js. Aucune photo, aucune donnée personnelle : un avatar n'est que quatre numéros
+   [couleur, coiffe, accessoire, fleur], pris dans les listes fermées ci-dessous. Le serveur (api/enigme.js, AVATAR et
    NB_BRIGADES) valide ces numéros et tire seul la brigade : garder les longueurs des listes accordées avec lui.
    Ne jamais retirer ni réordonner un élément d'une liste (les avatars enregistrés pointent dessus) : ajouter à la fin. */
 (() => {
@@ -10,7 +10,13 @@
   const COULEURS = [
     { nom: "orange", c: "#EC7739" }, { nom: "jaune", c: "#ECD567" }, { nom: "rouge", c: "#DC4B4F" }, { nom: "rose", c: "#F2A0C4" },
     { nom: "vert", c: "#4FB286" }, { nom: "bleu", c: "#5AA9E6" }, { nom: "violet", c: "#9A7BE0" }, { nom: "crème", c: "#FFFBF2" },
+    { nom: "turquoise", c: "#3CB4AC" }, { nom: "vert sapin", c: "#2F8F63" }, { nom: "bleu nuit", c: "#4257B8", sombre: true }, { nom: "lilas", c: "#E5B4D9" },
+    { nom: "corail", c: "#F59A62" }, { nom: "pain d'épices", c: "#B9783A" }, { nom: "gris perle", c: "#C9CED6" }, { nom: "réglisse", c: "#4B3F72", sombre: true },
   ];
+  // La goutte du logo de l'unité (pointe en bas, longueur 100) : pétale des fleurs, des couronnes et des bouquets.
+  const GOUTTE = "M0 0C-4-29-27-50-27-73A27 27 0 0 1 27-73C27-50 4-29 0 0Z";
+  const LOGO = ["#26076D", "#EC7739", "#ECD567", "#E5B4D9"];
+  const gouttes = (cx, cy, n, ech, ecart, trait) => Array.from({ length: n }, (_, k) => '<path transform="translate(' + cx + " " + cy + ") rotate(" + Math.round((k - (n - 1) / 2) * ecart) + ") scale(" + ech + ') translate(0 -22)" d="' + GOUTTE + '" fill="' + LOGO[(k + 1) % 4] + '" stroke="' + L + '" stroke-width="' + trait + '" stroke-linejoin="round"/>').join("");
   // Coiffes et accessoires : dessinés dans le repère du meeple (tête centrée en 50,20, rayon 16 ; main droite vers 90,60).
   const T = 'stroke="' + L + '" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"';
   const COIFFES = [
@@ -22,6 +28,14 @@
     { nom: "bonnet de lutin", d: '<path d="M32 15C36-3 54-6 64-22c4 12 8 24 5 37z" fill="#4FB286" ' + T + '/><rect x="27" y="11" width="46" height="10" rx="5" fill="#ECD567" ' + T + '/><circle cx="64" cy="-23" r="5.5" fill="#ECD567" ' + T + "/>" },
     { nom: "calot de bloc", d: '<path d="M31 16c-2-14 7-23 19-23s21 9 19 23z" fill="#3CB4AC" ' + T + '/><path d="M69 10l9-4-2 10z" fill="#3CB4AC" ' + T + '/><path d="M38 4h6M50 0h6" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>' },
     { nom: "cache-oreilles", d: '<path d="M31 20a19 19 0 0 1 38 0" fill="none" stroke="' + L + '" stroke-width="10" stroke-linecap="round"/><path d="M31 20a19 19 0 0 1 38 0" fill="none" stroke="#ECD567" stroke-width="4" stroke-linecap="round"/><circle cx="31" cy="22" r="8.5" fill="#DC4B4F" ' + T + '/><circle cx="69" cy="22" r="8.5" fill="#DC4B4F" ' + T + "/>" },
+    { nom: "bonnet à pompon", d: '<path d="M31 17c-2-15 7-25 19-25s21 10 19 25z" fill="#5AA9E6" ' + T + '/><rect x="27" y="11" width="46" height="10" rx="5" fill="#fff" ' + T + '/><circle cx="50" cy="-11" r="6.5" fill="#fff" ' + T + "/>" },
+    { nom: "haut-de-forme", d: '<rect x="36" y="-20" width="28" height="30" rx="3" fill="#4B3F72" ' + T + '/><rect x="38.5" y="-2" width="23" height="6" fill="#ECD567"/><rect x="25" y="7" width="50" height="9" rx="4.5" fill="#4B3F72" ' + T + "/>" },
+    { nom: "chapeau de magicien", d: '<path d="M31 13L54-26l16 39z" fill="#9A7BE0" ' + T + '/><ellipse cx="50" cy="13" rx="27" ry="6" fill="#9A7BE0" ' + T + '/><path d="M52-8l1.8 3.7 4.1.6-3 2.9.7 4.1-3.6-1.9-3.7 1.9.7-4.1-3-2.9 4.1-.600z" fill="#ECD567"/>' },
+    { nom: "casquette", d: '<path d="M32 15c0-14 8-21 18-21s18 7 18 21z" fill="#EC7739" ' + T + '/><path d="M64 9c9 0 17 3 20 9H62z" fill="#EC7739" ' + T + '/><circle cx="50" cy="-6" r="3" fill="#ECD567" stroke="' + L + '" stroke-width="2.5"/>' },
+    { nom: "nœud", d: '<path d="M50 3L33-8v20zM50 3l17-11v20z" fill="#F2A0C4" ' + T + '/><circle cx="50" cy="3" r="5.5" fill="#F2A0C4" ' + T + "/>" },
+    { nom: "auréole", d: '<ellipse cx="50" cy="-7" rx="17" ry="5.5" fill="none" stroke="' + L + '" stroke-width="9"/><ellipse cx="50" cy="-7" rx="17" ry="5.5" fill="none" stroke="#ECD567" stroke-width="4"/>' },
+    { nom: "couronne de gouttes", d: gouttes(50, 26, 5, 0.26, 34, 11) },
+    { nom: "lunettes de protection", d: '<path d="M33 25h34" fill="none" ' + T + '/><rect x="37" y="18" width="26" height="13" rx="6.5" fill="#BFE3F2" ' + T + '/><path d="M42 22.5c1.5-1.5 3.5-2 5.5-2" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>' },
   ];
   const ACCESSOIRES = [
     { nom: "mains libres", d: "" },
@@ -32,6 +46,28 @@
     { nom: "cadeau", d: '<rect x="76" y="48" width="28" height="24" rx="3" fill="#DC4B4F" ' + T + '/><path d="M90 48v24M76 58h28" stroke="#ECD567" stroke-width="5"/><path d="M90 47c-10-12-16 0-6 1M90 47c10-12 16 0 6 1" fill="#ECD567" ' + T + "/>" },
     { nom: "sucre d'orge", d: '<path d="M84 78V46a8 8 0 0 1 16 0v5" fill="none" stroke="' + L + '" stroke-width="13" stroke-linecap="round"/><path d="M84 78V46a8 8 0 0 1 16 0v5" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M84 78V46a8 8 0 0 1 16 0v5" fill="none" stroke="#DC4B4F" stroke-width="7" stroke-dasharray="6 7"/>' },
     { nom: "dé", d: '<g transform="rotate(-12 90 58)"><rect x="76" y="44" width="28" height="28" rx="6" fill="#fff" ' + T + '/><circle cx="83.5" cy="51.5" r="3" fill="' + L + '"/><circle cx="90" cy="58" r="3" fill="' + L + '"/><circle cx="96.5" cy="64.5" r="3" fill="' + L + '"/></g>' },
+    { nom: "bécher", d: '<path d="M80 43v25a5 5 0 0 0 5 5h10a5 5 0 0 0 5-5V43z" fill="#fff" ' + T + '/><path d="M82.5 57h15v10.5a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3z" fill="#EC7739"/><path d="M77 43h26" fill="none" ' + T + "/>" },
+    { nom: "pipette", d: '<g transform="rotate(30 90 56)"><rect x="85" y="28" width="10" height="15" rx="5" fill="#F2A0C4" ' + T + '/><rect x="83.5" y="42" width="13" height="6" rx="2" fill="#ECD567" ' + T + '/><path d="M86 48h8v17l-4 9-4-9z" fill="#fff" ' + T + '/></g><path d="M78 79c2 3 4 4.5 4 7a4 4 0 0 1-8 0c0-2.5 2-4 4-7z" fill="#F2A0C4" stroke="' + L + '" stroke-width="2.5"/>' },
+    { nom: "carte à jouer", d: '<g transform="rotate(10 90 56)"><rect x="78" y="38" width="24" height="35" rx="4" fill="#fff" ' + T + '/><path d="M90 46l6.5 9.5-6.5 9.5-6.5-9.5z" fill="#DC4B4F"/></g>' },
+    { nom: "trophée", d: '<path d="M81 43h-6c0 7 3 10 7 10M99 43h6c0 7-3 10-7 10M90 60v9M82 73h16" fill="none" ' + T + '/><path d="M80 40h20v10a10 10 0 0 1-20 0z" fill="#ECD567" ' + T + "/>" },
+    { nom: "sablier", d: '<path d="M82 39h16v8l-6 10 6 10v8H82v-8l6-10-6-10z" fill="#fff" ' + T + '/><path d="M85.5 73h9L90 66z" fill="#EC7739"/><path d="M79 39h22M79 75h22" fill="none" ' + T + "/>" },
+    { nom: "loupe", d: '<path d="M96 65l9 11" fill="none" stroke="' + L + '" stroke-width="9" stroke-linecap="round"/><circle cx="88" cy="54" r="12" fill="#BFE3F2" ' + T + '/><path d="M82 50c1.5-3 4.5-4.5 7.5-4.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>' },
+    { nom: "fiche de fabrication", d: '<rect x="77" y="40" width="26" height="37" rx="4" fill="#ECD567" ' + T + '/><rect x="81.5" y="47" width="17" height="25.5" rx="2" fill="#fff"/><rect x="84.5" y="35" width="11" height="9" rx="3" fill="#9A7BE0" ' + T + '/><path d="M85 54h10M85 60h10M85 66h6" fill="none" stroke="' + L + '" stroke-width="2.5" stroke-linecap="round"/>' },
+    { nom: "bouquet de gouttes", d: '<path d="M90 60v20" fill="none" ' + T + "/>" + gouttes(90, 62, 5, 0.2, 38, 13) },
+  ];
+  // Fleur du logo, derrière le meeple, dans le repère du jeton (centre 60,60) : quatrième choix de l'avatar.
+  // Des gouttes rayonnent du centre, de tailles inégales comme sur le logo ; rien ne dépasse l'anneau de la brigade.
+  const fleur = (teintes, debut, fin) => { const n = Math.round((fin - debut) / 24), T2 = [0.41, 0.31, 0.38, 0.28, 0.4, 0.33, 0.36, 0.3, 0.41, 0.29, 0.37, 0.32, 0.4, 0.3, 0.35];
+    return Array.from({ length: n }, (_, k) => '<path transform="translate(60 60) rotate(' + Math.round(debut + (k + 0.5) * (fin - debut) / n + (k % 3 - 1) * 4) + ") translate(0 -5) scale(" + T2[k % T2.length] + ')" d="' + GOUTTE + '" fill="' + teintes[k % teintes.length] + '"/>').join(""); };
+  const FLEURS = [
+    { nom: "sans fleur", d: "" },
+    { nom: "fleur du logo", d: fleur(LOGO, 0, 360) },
+    { nom: "fleur violette", d: fleur(["#26076D", "#9A7BE0", "#E5B4D9"], 0, 360) },
+    { nom: "fleur soleil", d: fleur(["#EC7739", "#ECD567", "#F59A62"], 0, 360) },
+    { nom: "fleur rose", d: fleur(["#F2A0C4", "#E5B4D9", "#DC4B4F"], 0, 360) },
+    { nom: "fleur de Noël", d: fleur(["#2F8F63", "#DC4B4F", "#ECD567"], 0, 360) },
+    { nom: "fleur givrée", d: fleur(["#5AA9E6", "#BFE3F2", "#3CB4AC"], 0, 360) },
+    { nom: "éventail du logo", d: fleur(LOGO, -108, 108) },
   ];
   // Emblèmes des brigades : repère 24 x 24.
   const E = 'fill="#fff" stroke="' + L + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"';
@@ -45,11 +81,11 @@
     { nom: "ampoule", d: '<path d="M10 1.5h4v4l-1.2 2 1.2 2.5c2 1 3 2 3 4.5V20a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 7 20v-5.5c0-2.5 1-3.5 3-4.5l1.2-2.5L10 5.5z" ' + E + '/><path d="M8 15h8v5a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 8 20z" fill="currentColor"/>' },
     { nom: "dé", d: '<rect x="3.5" y="3.5" width="17" height="17" rx="4" ' + EC + '/><circle cx="8.5" cy="8.5" r="1.7" fill="' + L + '"/><circle cx="12" cy="12" r="1.7" fill="' + L + '"/><circle cx="15.5" cy="15.5" r="1.7" fill="' + L + '"/>' },
     { nom: "meeple", d: '<g transform="translate(2.2 2.2) scale(.196)"><path d="M50 4c-9 0-16 7-16 16 0 6 3 11 8 14-14 3-34 12-36 20-1 5 6 14 10 13 6-1 13-6 19-8-3 11-13 26-13 33 0 3 2 4 5 4h16c2 0 3-1 4-3l3-10 3 10c1 2 2 3 4 3h16c3 0 5-1 5-4 0-7-10-22-13-33 6 2 13 7 19 8 4 1 11-8 10-13-2-8-22-17-36-20 5-3 8-8 8-14 0-9-7-16-16-16z" fill="currentColor" stroke="' + L + '" stroke-width="10" stroke-linejoin="round"/></g>' },
-    { nom: "étoile", d: '<path d="M12 2.2l2.9 6 6.6.9-4.8 4.6 1.2 6.500L12 17.100l-5.9 3.1 1.2-6.500L2.5 9.100l6.6-.900z" ' + EC + '/>' },
-    { nom: "goutte", d: '<path d="M12 2.5c4 5 6.5 8 6.5 11.5a6.5 6.5 0 0 1-13 0C5.5 10.5 8 7.5 12 2.500z" ' + EC + '/><path d="M9 14.500a3 3 0 0 0 3 3" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>' },
-    { nom: "sablier", d: '<path d="M7 3h10v3.500L13.5 12 17 17.500V21H7v-3.500L10.5 12 7 6.500z" ' + E + '/><path d="M8.5 19.500h7L12 15zM10 7h4l-2 3z" fill="currentColor"/><path d="M5.5 3h13M5.5 21h13" ' + EN + '/>' },
-    { nom: "mortier", d: '<path d="M15 9l4.5-6.5" fill="none" stroke="' + L + '" stroke-width="3.4" stroke-linecap="round"/><path d="M3.5 10h17c0 5.5-3.5 9-8.5 9s-8.5-3.5-8.5-9z" ' + EC + '/><path d="M8.5 21.500h7" ' + EN + '/>' },
-    { nom: "sapin", d: '<rect x="10.5" y="18.5" width="3" height="3.5" ' + E + '/><path d="M12 2l4.5 5.500h-2.200l4 5h-2.600l4.3 6H4l4.3-6H5.700l4-5H7.500z" ' + EC + '/>' },
+    { nom: "étoile", d: '<path d="M12 2.2l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.1l-5.9 3.1 1.2-6.5L2.5 9.1l6.6-.900z" ' + EC + '/>' },
+    { nom: "goutte", d: '<path d="M12 2.5c4 5 6.5 8 6.5 11.5a6.5 6.5 0 0 1-13 0C5.5 10.5 8 7.5 12 2.5z" ' + EC + '/><path d="M9 14.5a3 3 0 0 0 3 3" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>' },
+    { nom: "sablier", d: '<path d="M7 3h10v3.5L13.5 12 17 17.5V21H7v-3.5L10.5 12 7 6.5z" ' + E + '/><path d="M8.5 19.5h7L12 15zM10 7h4l-2 3z" fill="currentColor"/><path d="M5.5 3h13M5.5 21h13" ' + EN + '/>' },
+    { nom: "mortier", d: '<path d="M15 9l4.5-6.5" fill="none" stroke="' + L + '" stroke-width="3.4" stroke-linecap="round"/><path d="M3.5 10h17c0 5.5-3.5 9-8.5 9s-8.5-3.5-8.5-9z" ' + EC + '/><path d="M8.5 21.5h7" ' + EN + '/>' },
+    { nom: "sapin", d: '<rect x="10.5" y="18.5" width="3" height="3.5" ' + E + '/><path d="M12 2l4.5 5.5h-2.2l4 5h-2.6l4.3 6H4l4.3-6H5.7l4-5H7.5z" ' + EC + '/>' },
     { nom: "pipette", d: '<g transform="rotate(40 12 12)"><rect x="10" y="1.5" width="4" height="5.5" rx="2" ' + EC + '/><rect x="9" y="7" width="6" height="9" rx="1" ' + E + '/><path d="M12 16v6.5" ' + EN + '/><rect x="10" y="11" width="4" height="4" fill="currentColor"/></g>' },
     { nom: "balance", d: '<path d="M12 4v15.5M7 20.5h10M4.5 6.5h15" ' + EN + '/><path d="M4.5 7l-3 6h6zM19.5 7l-3 6h6z" ' + EC + '/>' },
     { nom: "bécher", d: '<path d="M7 3v15a3 3 0 0 0 3 3h4a3 3 0 0 0 3-3V3z" ' + E + '/><path d="M8 12h8v6a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z" fill="currentColor"/><path d="M5.5 3h13" ' + EN + '/>' },
@@ -59,15 +95,15 @@
     { nom: "trèfle", d: '<path d="M12 12v9.5M9.5 21.5h5" ' + EN + '/><circle cx="12" cy="6.5" r="4" ' + EC + '/><circle cx="6.8" cy="13" r="4" ' + EC + '/><circle cx="17.2" cy="13" r="4" ' + EC + '/>' },
     { nom: "pique", d: '<path d="M12 15v6.5M9.5 21.5h5" ' + EN + '/><path d="M12 2.5c4 4.5 8 7 8 11a4 4 0 0 1-8 1 4 4 0 0 1-8-1c0-4 4-6.5 8-11z" ' + EC + '/>' },
     { nom: "carreau", d: '<path d="M12 2l7.5 10L12 22 4.5 12z" ' + EC + '/>' },
-    { nom: "carte", d: '<rect x="5" y="2.5" width="14" height="19" rx="2.5" ' + E + '/><path d="M12 7.5l3.2 4.5-3.2 4.5L8.800 12z" fill="currentColor"/>' },
+    { nom: "carte", d: '<rect x="5" y="2.5" width="14" height="19" rx="2.5" ' + E + '/><path d="M12 7.5l3.2 4.5-3.2 4.5L8.8 12z" fill="currentColor"/>' },
     { nom: "pion", d: '<path d="M9 11h6l1.5 7.5h-9z" ' + EC + '/><circle cx="12" cy="6.5" r="4" ' + EC + '/><rect x="6" y="18.5" width="12" height="3" rx="1" ' + EC + '/>' },
-    { nom: "cadeau", d: '<path d="M12 8.5c-4-6-7-1-2.5 0M12 8.500c4-6 7-1 2.500 0" ' + E + '/><rect x="3.5" y="9" width="17" height="12" rx="1.5" ' + EC + '/><path d="M12 9v12M3.500 14h17" stroke="' + L + '" stroke-width="2"/>' },
-    { nom: "flocon", d: '<path d="M12 2.5v19M3.800 7.200l16.400 9.600M3.800 16.800l16.400-9.600" fill="none" stroke="' + L + '" stroke-width="5.500" stroke-linecap="round"/><path d="M12 2.500v19M3.800 7.200l16.400 9.600M3.800 16.800l16.400-9.600" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round"/>' },
-    { nom: "cloche", d: '<circle cx="12" cy="20.300" r="1.800" ' + E + '/><path d="M12 3a6 6 0 0 0-6 6v5l-2.500 4h17L18 14V9a6 6 0 0 0-6-6z" ' + EC + '/>' },
-    { nom: "bonnet", d: '<path d="M4 17C5 8 10 3.500 19 4.500c-2.500 2-3.500 6-3 12.500z" ' + EC + '/><rect x="2.500" y="16.500" width="15.500" height="4.500" rx="2.250" ' + E + '/><circle cx="20" cy="5" r="2.300" ' + E + '/>' },
-    { nom: "couronne", d: '<path d="M3.500 18.500l-1-11 5.500 4.500L12 5l4 7 5.500-4.500-1 11z" ' + EC + '/>' },
-    { nom: "trophée", d: '<path d="M7 5H3.500c0 3 1.500 5 4 5M17 5h3.500c0 3-1.500 5-4 5M12 14v4M8 21h8M9.500 18h5" ' + EN + '/><path d="M7 3h10v6a5 5 0 0 1-10 0z" ' + EC + '/>' },
-    { nom: "sucre d'orge", d: '<path d="M9 21V8.500a4.500 4.500 0 0 1 9 0V10" fill="none" stroke="' + L + '" stroke-width="6.500" stroke-linecap="round"/><path d="M9 21V8.500a4.500 4.500 0 0 1 9 0V10" fill="none" stroke="#fff" stroke-width="3.500" stroke-linecap="round"/><path d="M9 21V8.500a4.500 4.500 0 0 1 9 0V10" fill="none" stroke="currentColor" stroke-width="3.500" stroke-dasharray="3 3.500"/>' },
+    { nom: "cadeau", d: '<path d="M12 8.5c-4-6-7-1-2.5 0M12 8.5c4-6 7-1 2.5 0" ' + E + '/><rect x="3.5" y="9" width="17" height="12" rx="1.5" ' + EC + '/><path d="M12 9v12M3.5 14h17" stroke="' + L + '" stroke-width="2"/>' },
+    { nom: "flocon", d: '<path d="M12 2.5v19M3.8 7.2l16.4 9.6M3.8 16.8l16.4-9.6" fill="none" stroke="' + L + '" stroke-width="5.5" stroke-linecap="round"/><path d="M12 2.5v19M3.8 7.2l16.4 9.6M3.8 16.8l16.4-9.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>' },
+    { nom: "cloche", d: '<circle cx="12" cy="20.3" r="1.8" ' + E + '/><path d="M12 3a6 6 0 0 0-6 6v5l-2.5 4h17L18 14V9a6 6 0 0 0-6-6z" ' + EC + '/>' },
+    { nom: "bonnet", d: '<path d="M4 17C5 8 10 3.5 19 4.5c-2.5 2-3.5 6-3 12.5z" ' + EC + '/><rect x="2.5" y="16.5" width="15.5" height="4.5" rx="2.250" ' + E + '/><circle cx="20" cy="5" r="2.3" ' + E + '/>' },
+    { nom: "couronne", d: '<path d="M3.5 18.5l-1-11 5.5 4.5L12 5l4 7 5.5-4.5-1 11z" ' + EC + '/>' },
+    { nom: "trophée", d: '<path d="M7 5H3.5c0 3 1.5 5 4 5M17 5h3.5c0 3-1.5 5-4 5M12 14v4M8 21h8M9.5 18h5" ' + EN + '/><path d="M7 3h10v6a5 5 0 0 1-10 0z" ' + EC + '/>' },
+    { nom: "sucre d'orge", d: '<path d="M9 21V8.5a4.5 4.5 0 0 1 9 0V10" fill="none" stroke="' + L + '" stroke-width="6.5" stroke-linecap="round"/><path d="M9 21V8.5a4.5 4.5 0 0 1 9 0V10" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><path d="M9 21V8.5a4.5 4.5 0 0 1 9 0V10" fill="none" stroke="currentColor" stroke-width="3.5" stroke-dasharray="3 3.5"/>' },
   ];
   // Noms proposés au vote des brigades. Un membre peut aussi proposer le sien : pour le serveur, un nom est un texte,
   // et deux brigades ne peuvent pas porter le même (accents et casse ignorés). Un emblème non plus.
@@ -106,8 +142,9 @@
   const MEEPLE = "M50 4c-9 0-16 7-16 16 0 6 3 11 8 14-14 3-34 12-36 20-1 5 6 14 10 13 6-1 13-6 19-8-3 11-13 26-13 33 0 3 2 4 5 4h16c2 0 3-1 4-3l3-10 3 10c1 2 2 3 4 3h16c3 0 5-1 5-4 0-7-10-22-13-33 6 2 13 7 19 8 4 1 11-8 10-13-2-8-22-17-36-20 5-3 8-8 8-14 0-9-7-16-16-16z";
 
   const borne = (v, n) => (Number.isInteger(v) && v >= 0 && v < n ? v : 0);
-  const sain = a => { a = Array.isArray(a) ? a : []; return [borne(a[0], COULEURS.length), borne(a[1], COIFFES.length), borne(a[2], ACCESSOIRES.length)]; };
-  const decrire = a => { a = sain(a); return "Meeple " + COULEURS[a[0]].nom + ", " + COIFFES[a[1]].nom + ", " + ACCESSOIRES[a[2]].nom; };
+  // Un avatar : [couleur, coiffe, accessoire, fleur]. Les fiches d'avant la fleur n'ont que trois numéros : la fleur vaut alors 0.
+  const sain = a => { a = Array.isArray(a) ? a : []; return [borne(a[0], COULEURS.length), borne(a[1], COIFFES.length), borne(a[2], ACCESSOIRES.length), borne(a[3], FLEURS.length)]; };
+  const decrire = a => { a = sain(a); return "Meeple " + COULEURS[a[0]].nom + ", " + COIFFES[a[1]].nom + ", " + ACCESSOIRES[a[2]].nom + (a[3] ? ", " + FLEURS[a[3]].nom : ""); };
   // Emblème d'une brigade : l'autocollant illustré (img/emblemes), ou à défaut le dessin au trait ci-dessus.
   // Les images portent le même ordre que EMBLEMES ; « jeton-N » est le jeton numéroté d'une brigade encore sans emblème.
   const IMAGES = ["flacon", "seringue", "poche", "gelule", "ampoule", "de", "meeple", "etoile", "goutte", "sablier", "mortier", "sapin", "pipette", "balance", "becher",
@@ -125,11 +162,17 @@
   // Dessin décoratif par défaut (aria-hidden) ; avec o.titre, il porte sa description.
   function avatar(a, o) {
     a = sain(a); o = o || {};
-    const B = BRIGADES[o.brigade];
+    const B = BRIGADES[o.brigade], C = COULEURS[a[0]];
     return '<svg class="pp-av' + (o.cls ? " " + o.cls : "") + '" viewBox="0 0 120 120"' + (o.titre ? ' role="img" aria-label="' + h(o.titre === true ? decrire(a) : o.titre) + '"' : ' aria-hidden="true"') + ">"
       + '<circle cx="60" cy="60" r="56" fill="' + (B ? B.fond : "#FFFBF2") + '" stroke="' + L + '" stroke-width="5"/>'
       + (B ? '<circle cx="60" cy="60" r="49.5" fill="none" stroke="' + B.c + '" stroke-width="5"/>' : "")
-      + '<g transform="translate(21 34) scale(.72)"><path d="' + MEEPLE + '" fill="' + COULEURS[a[0]].c + '" stroke="' + L + '" stroke-width="8" stroke-linejoin="round"/>'
+      + FLEURS[a[3]].d
+      // Le meeple en autocollant : liseré blanc, contour, reflet et petit visage, puis la coiffe et l'accessoire.
+      + '<g transform="translate(20 33) scale(.78)"><path d="' + MEEPLE + '" fill="none" stroke="#fff" stroke-width="17" stroke-linejoin="round"/>'
+      + '<path d="' + MEEPLE + '" fill="' + C.c + '" stroke="' + L + '" stroke-width="8" stroke-linejoin="round"/>'
+      + '<path d="M39 15c1.5-4 5-7 10-7.5M19 53c3-2.5 8-5 13-6.5" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="3.5" stroke-linecap="round"/>'
+      + '<circle cx="40" cy="30" r="2.6" fill="#F2A0C4" fill-opacity=".85"/><circle cx="60" cy="30" r="2.6" fill="#F2A0C4" fill-opacity=".85"/>'
+      + '<path d="M42 26q2.8-4 5.6 0M52.4 26q2.8-4 5.6 0M46 29.5q4 4 8 0" fill="none" stroke="' + (C.sombre ? "#FFFBF2" : L) + '" stroke-width="2.4" stroke-linecap="round"/>'
       + COIFFES[a[1]].d + ACCESSOIRES[a[2]].d + "</g></svg>";
   }
 
@@ -139,14 +182,14 @@
 .pp-mini{display:inline-block;width:2.4em;height:2.4em;margin-right:.4em;vertical-align:middle}
 .pp-emb{display:inline-block;width:1.25em;height:1.25em;vertical-align:-.25em}
 .pp-brig{display:flex;align-items:center;gap:6px;margin:6px 0 10px;font:600 .72rem var(--mono,monospace);letter-spacing:.05em;text-transform:uppercase}
-.pp-top{display:flex;align-items:center;gap:14px;margin-top:14px}
+.pp-top{display:flex;align-items:center;gap:14px;margin-top:14px;position:sticky;top:0;z-index:2;padding:6px 0;background:var(--surface,#FFFBF2)}
 .pp-apercu{flex:0 0 auto;width:124px;filter:drop-shadow(5px 5px 0 var(--shadow,#26076D))}
 .pp-top>div:last-child{min-width:0}
 .pp-desc{margin:0;font-weight:800;line-height:1.25}
 .pp-top .go{margin-top:10px}
 .pp-set{min-width:0;margin:14px 0 0;padding:0;border:0}
 .pp-set legend{padding:0;margin:0 0 6px;font:600 .72rem var(--mono,monospace);letter-spacing:.05em;text-transform:uppercase;color:var(--muted,#4E3D7C)}
-.pp-opts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.pp-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:8px}
 .pp-opt{position:relative;display:block;margin:0!important;cursor:pointer;text-transform:none!important;letter-spacing:0!important}
 .pp-opt span{display:grid;justify-items:center;gap:3px;height:100%;padding:6px 2px 5px;background:#fff;color:var(--on-surface,#26076D);border:2.5px solid var(--line,#26076D);border-radius:12px;font:700 .68rem/1.15 var(--display,sans-serif);text-align:center;overflow-wrap:break-word}
 #ppTitre:focus{outline:none}
@@ -230,7 +273,8 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
   }
   function fiche(el, o) {
     const retouche = Array.isArray(o.avatar) && o.brigade !== undefined;
-    let a = o.avatar ? sain(o.avatar) : [Math.floor(Math.random() * COULEURS.length), 0, 0], occupe = false;
+    const LISTES = [COULEURS, COIFFES, ACCESSOIRES, FLEURS];
+    let a = o.avatar ? sain(o.avatar) : [Math.floor(Math.random() * COULEURS.length), 0, 0, 0], occupe = false;
     const q = s => el.querySelector(s);
     const groupe = (k, titre, liste) => '<fieldset class="pp-set"><legend>' + titre + '</legend><div class="pp-opts">'
       + liste.map((x, i) => '<label class="pp-opt"><input class="pp-vh" type="radio" name="pp' + k + '" value="' + i + '"' + (a[k] === i ? " checked" : "") + '><span data-k="' + k + '" data-i="' + i + '"></span></label>').join("") + "</div></fieldset>";
@@ -244,7 +288,7 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
         + '<p class="eg-hint">Un seul mot, de 2 à 24 lettres : votre prénom ou un nom de scène. Il se retouche ensuite quand vous voulez.</p>' : "")
       + (retouche && o.renommer ? '<label for="ppPseudo">Pseudo ou prénom</label><input class="pp-jeu" id="ppPseudo" type="text" autocomplete="off" maxlength="24" value="' + h(o.pseudo) + '">'
         + '<p class="eg-hint">Un seul mot, de 2 à 24 lettres. Vos réponses, votre avatar et votre brigade vous suivent sous le nouveau nom.</p>' : "")
-      + groupe(0, "Couleur", COULEURS) + groupe(1, "Coiffe", COIFFES) + groupe(2, "Accessoire", ACCESSOIRES)
+      + groupe(0, "Couleur", COULEURS) + groupe(1, "Coiffe", COIFFES) + groupe(2, "Accessoire", ACCESSOIRES) + groupe(3, "Fleur du logo", FLEURS)
       + '<p class="eg-hint">' + (retouche ? "Votre brigade ne change pas : seuls le pseudo et l'avatar se retouchent."
         : "La brigade est tirée au sort par le serveur, pour des effectifs équilibrés : elle est définitive. L'avatar, lui, se retouche quand vous voulez.") + "</p>"
       + '<p class="eg-msg err" id="ppMsg" role="status"></p>'
@@ -256,8 +300,8 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
       q("#ppDesc").textContent = decrire(a) + ".";
       el.querySelectorAll(".pp-opt span").forEach(s => {
         const k = Number(s.dataset.k), i = Number(s.dataset.i);
-        const nom = [COULEURS, COIFFES, ACCESSOIRES][k][i].nom;
-        s.innerHTML = (k === 0 ? '<i style="background:' + COULEURS[i].c + '"></i>' : avatar(k === 1 ? [a[0], i, 0] : [a[0], 0, i])) + h(nom);
+        const nom = LISTES[k][i].nom;
+        s.innerHTML = (k === 0 ? '<i style="background:' + COULEURS[i].c + '"></i>' : avatar(k === 1 ? [a[0], i, 0, 0] : k === 2 ? [a[0], 0, i, 0] : [a[0], 0, 0, i])) + h(nom);
       });
     };
     peindre();
@@ -271,7 +315,7 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
       peindre();
     });
     q("#ppHasard").addEventListener("click", () => {
-      a = [COULEURS, COIFFES, ACCESSOIRES].map(l => Math.floor(Math.random() * l.length));
+      a = LISTES.map(l => Math.floor(Math.random() * l.length));
       a.forEach((v, k) => { el.querySelector('input[name="pp' + k + '"][value="' + v + '"]').checked = true; });
       peindre();
     });
@@ -402,5 +446,5 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
     q("#ppTitre").focus({ preventScroll: true });
   }
 
-  window.PharmacoParticipants = { COULEURS, COIFFES, ACCESSOIRES, BRIGADES, NOMS, EMBLEMES, DEVISES, tirage, maj, court, secours, avatar, embleme: emblemeSvg, decrire, fiche, brigade };
+  window.PharmacoParticipants = { COULEURS, COIFFES, ACCESSOIRES, FLEURS, BRIGADES, NOMS, EMBLEMES, DEVISES, tirage, maj, court, secours, avatar, embleme: emblemeSvg, decrire, fiche, brigade };
 })();
