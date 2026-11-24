@@ -1087,6 +1087,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       if (!E || !E.enquete) return;
       blocEnquete = blocEnquete || window.PharmacoEnquete.monter(el, {
         envoyer: envoyerEnquete,
+        film: tete => call({ code: mem.code, prenom: mem.prenom, action: "film", tete: Boolean(tete) }),
         tamponner: async (id, t) => { const r = await call({ code: mem.code, prenom: mem.prenom, action: "tampon", id, t }); if (r.j && r.j.portes) { E = r.j; majBrigades(); rang(); } return r; },
         peutRepondre: () => Boolean(!relecture && E && E.profil && E.profil.b !== undefined),
         identifier: () => { if (!relecture && !enJeu && brouillon === null && !q("#egTime")) identifier(); },

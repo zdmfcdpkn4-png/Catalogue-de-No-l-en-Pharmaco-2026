@@ -71,6 +71,7 @@
   margin-top:18px;padding:16px;border:3px solid var(--eq-laiton);border-radius:16px;background:var(--eq-fond);color:var(--eq-clair);text-align:left}
 .enq *{box-sizing:border-box}
 .enq>.eg-notice{margin:0 0 14px}
+.enq-film{margin-top:12px}.enq-film video{display:block;width:100%;max-width:420px;margin:0 auto;border-radius:12px;background:#000}
 .enq h3{margin:0;font-weight:800;font-size:1.3rem;line-height:1.15;color:var(--eq-laiton)}
 .enq h4{margin:0 0 8px;font-weight:800;font-size:1rem;color:var(--eq-laiton)}
 .enq-fic{display:inline-block;margin:6px 0 0;padding:2px 8px;border:1.5px solid var(--eq-laiton);border-radius:99px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}
@@ -407,6 +408,33 @@ button.enq-v{cursor:zoom-in}
         .forEach(li => guetter(li, () => { tampon(li, 0.1); garder(); }, "0px 0px -25% 0px"));
     };
 
+    // Film de clôture : un nœud durable, rattaché au dénouement à chaque rendu. Le serveur ne le sert qu'après le
+    // dénouement (option `film(tete)` : true pour savoir s'il existe, sinon le film en base64). Rien n'est dans le dépôt.
+    const film = document.createElement("div"); film.className = "enq-film"; let filmEtat = "";
+    function poserFilm() {
+      const t = corps.querySelector("#enqT4");
+      if (!t || !opts.film) return;
+      t.parentNode.appendChild(film);
+      if (filmEtat) return;
+      filmEtat = "cherche";
+      Promise.resolve(opts.film(true)).then(r => {
+        if (!r || r.status !== 200 || !r.j || !r.j.film) { filmEtat = r && r.status === 404 ? "absent" : ""; return; }
+        filmEtat = "dispo";
+        film.innerHTML = '<div class="enq-b"><button type="button" data-film="1">Voir le film de clôture</button></div><p class="enq-next" role="status"></p>';
+      }).catch(() => { filmEtat = ""; });
+    }
+    film.addEventListener("click", ev => {
+      const b = ev.target.closest("[data-film]"); if (!b || filmEtat !== "dispo") return;
+      const m = film.querySelector("[role=status]"); b.disabled = true; m.textContent = "Mise en place de la bobine…"; filmEtat = "charge";
+      Promise.resolve(opts.film(false)).then(r => {
+        if (!r || r.status !== 200 || !r.j || typeof r.j.film !== "string") throw new Error("film");
+        const o = atob(r.j.film), u = new Uint8Array(o.length); for (let i = 0; i < o.length; i++) u[i] = o.charCodeAt(i);
+        const v = document.createElement("video"); v.src = URL.createObjectURL(new Blob([u], { type: r.j.type || "video/mp4" }));
+        v.controls = true; v.playsInline = true; v.muted = true; v.setAttribute("playsinline", ""); v.setAttribute("aria-label", "Film de clôture de l'enquête");
+        film.replaceChildren(v); filmEtat = "pret";
+        if (!matchMedia("(prefers-reduced-motion:reduce)").matches) v.play().catch(() => {});
+      }).catch(() => { filmEtat = "dispo"; b.disabled = false; m.textContent = "Le film n'a pas pu être chargé. Réessayez."; });
+    });
     function rendre() {
       if (!Q) return cacher();
       const actif = document.activeElement && el.contains(document.activeElement) ? document.activeElement : null;
@@ -443,6 +471,7 @@ button.enq-v{cursor:zoom-in}
           + '</ol><p class="enq-next">Seules les énigmes closes comptent ici.</p></section>';
       }
       el.className = "enq"; el.hidden = false; corps.innerHTML = s;
+      poserFilm();
       if (!corps.isConnected) { notice.open = true; el.replaceChildren(notice, corps); }
       notice.hidden = !enJeu;
       animer();

@@ -45,6 +45,8 @@ const CHOIX_FIN = 10;
 // elle est fermée : une fiche ne se crée que pour un nom de la liste (403 `liste` sinon), sauf avec le code d'administration
 // (joueurs d'essai des contrôles). Les fiches déjà créées restent valables.
 const FILE_LISTE = 'participants.json';
+// Film de clôture de l'enquête : gardé dans le magasin (jamais dans le dépôt, qui est public), servi après le dénouement.
+const FILE_FILM = 'film-cloture.mp4', MAX_FILM = 3 * 1024 * 1024;
 const MAX_LISTE = 300;
 const NOM_LISTE = /^\p{L}[\p{L} .'-]{1,39}$/u;
 const propre = s => String(s).replace(/’/g, "'").replace(/\s+/g, ' ').trim();
@@ -162,6 +164,12 @@ async function lireListe() {
   if (!r || r.statusCode !== 200) return [];
   const o = JSON.parse(await new Response(r.stream).text());
   return Array.isArray(o.noms) ? o.noms : [];
+}
+async function lireFilm() {
+  const r = await get(FILE_FILM, { access: 'private', useCache: false });
+  if (!r || r.statusCode !== 200) return null;
+  const f = Buffer.from(await new Response(r.stream).arrayBuffer());
+  return f.length ? f : null;
 }
 // Le nom de la liste tel qu'il y est écrit, ou rien s'il n'y est pas.
 const dansListe = (liste, nom) => (typeof nom === 'string' ? liste.find(x => norm(x) === norm(propre(nom))) : undefined);
@@ -674,6 +682,17 @@ async function handler(req, res) {
       const pris = Object.keys(joueurs).filter(c => joueurs[c].l).map(c => ({ nom: joueurs[c].l, pseudo: joueurs[c].p }));
       return res.status(200).json({ ok: true, participants: liste, pris, horsListe: Object.keys(joueurs).filter(c => !joueurs[c].l).map(c => joueurs[c].p) });
     }
+    // Film de clôture : l'administration le dépose (MP4 en base64), le retire ("effacer") ou en relit la taille ("lire").
+    if (admin && b.film !== undefined) {
+      if (b.film === 'effacer') await put(FILE_FILM, '', { access: 'private', contentType: 'video/mp4', allowOverwrite: true });
+      else if (b.film !== 'lire') {
+        const octets = typeof b.film === 'string' && /^[A-Za-z0-9+/=]+$/.test(b.film) ? Buffer.from(b.film, 'base64') : null;
+        if (!octets || octets.length < 1024 || octets.length > MAX_FILM || octets.slice(4, 8).toString('latin1') !== 'ftyp') return res.status(400).json({ error: 'film' });
+        await put(FILE_FILM, octets, { access: 'private', contentType: 'video/mp4', allowOverwrite: true });
+      }
+      const f = await lireFilm();
+      return res.status(200).json({ ok: true, film: f ? f.length : 0 });
+    }
     // Modération : l'administration efface un nom de brigade proposé par un membre (toutes les voix qui le portent).
     if (admin && typeof b.effacerTitre === 'string') {
       const c = norm(propre(b.effacerTitre));
@@ -683,6 +702,12 @@ async function handler(req, res) {
         L.forEach(x => { delete joueurs[x].n; });
         return { ok: () => ({ ok: true, efface: L.length }) };
       }));
+    }
+    // Relecture du film par l'administration, à toute date.
+    if (admin && !equipe && b.action === 'film') {
+      const f = await lireFilm();
+      if (!f) return res.status(404).json({ error: 'film' });
+      return res.status(200).json(b.tete ? { film: true, octets: f.length } : { film: f.toString('base64'), type: 'video/mp4' });
     }
     // Code d'administration seul : relecture des 25 portes, solutions comprises. Rien ne s'enregistre.
     if (!equipe) {
@@ -802,6 +827,14 @@ async function handler(req, res) {
         return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
       });
       return res.status(s.code).json(s.corps);
+    }
+    // Film de clôture : rien avant le dénouement (toutes les énigmes du dernier jour closes). `tete` : seulement s'il existe.
+    if (b.action === 'film') {
+      const E = B.enquete;
+      if (!E || etatDe(Math.max(...E.enigmes.map(c => c.n)), jour) !== 'close') return res.status(403).json({ error: 'scellee' });
+      const f = await lireFilm();
+      if (!f) return res.status(404).json({ error: 'film' });
+      return res.status(200).json(b.tete ? { film: true, octets: f.length } : { film: f.toString('base64'), type: 'video/mp4' });
     }
     if (b.action === 'tampon') {
       // Poser, changer ou retirer son tampon sur une fiche (t : 'h', 'c' ou rien), dès la fiche de suivi et jusqu'au dénouement.
