@@ -413,13 +413,12 @@ footer{padding:26px 0 34px;font-size:.86rem}
 .carte.hc .tp{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-14deg);padding:.15em .45em;border:.14em solid #C62828;border-radius:.3em;color:#C62828;font-weight:800;font-size:18px;font-size:11cqw;line-height:1.1;text-transform:uppercase;white-space:nowrap;text-shadow:0 0 .2em #FFFBF2,0 0 .2em #FFFBF2}
 .bo-tx b{display:block}.bo-tx ul{margin:6px 0 0;padding-left:1.2em}
 .bdz .bdc.en{width:min(100%,360px)}
-/* Notice du sapin en cinq cases : bande à faire glisser sur téléphone, grille au-delà. Repliée dès qu'une goutte a été ouverte. */
+/* Notice du sapin en cinq cases : bande horizontale à faire glisser à toutes les largeurs (une case visible sur téléphone, trois sur grand écran). Repliée dès qu'une goutte a été ouverte. */
 .av-bd{margin:12px 0 0}
 .av-bd summary{display:inline-block;padding:5px 12px;font-weight:800;font-size:.85rem;color:var(--on-surface);background:var(--surface);border:3px solid var(--line);border-radius:999px;cursor:pointer}
-.av-bd>div{display:flex;gap:10px;margin-top:10px;padding-bottom:6px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
-.av-bd img{flex:0 0 min(82%,330px);width:min(82%,330px);height:auto;display:block;scroll-snap-align:center}
-@media(min-width:700px){.av-bd>div{display:grid;grid-template-columns:repeat(3,1fr);overflow:visible}.av-bd img{width:100%}}
-@media(min-width:1040px){.av-bd>div{grid-template-columns:repeat(5,1fr)}}
+.av-bd>div{display:grid;grid-auto-flow:column;grid-auto-columns:88%;gap:10px;margin-top:10px;padding-bottom:6px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.av-bd img{width:100%;height:auto;display:block;scroll-snap-align:start}
+@media(min-width:861px){.av-bd>div{grid-auto-columns:calc((100% - 20px) / 3)}}
 /* Contrôle d'accès du sapin : code d'équipe, puis un clic sur son avatar (window.PharmacoAcces, fourni par enigme.js).
    Simple affichage, pas une sécurité : le contenu du sapin est public. Sans ce module (artefact), le sapin reste ouvert. */
 .adv-tree.verr>svg{opacity:.35;filter:saturate(.5) blur(1.5px);pointer-events:none}
@@ -550,12 +549,12 @@ footer{padding:26px 0 34px;font-size:.86rem}
   </div>
   <details class="av-bd" id="avNotice" open>
     <summary>Mode d'emploi en cinq cases</summary>
-    <div role="list" aria-label="Mode d'emploi du sapin en cinq cases">
-      <img role="listitem" src="img/notice-sapin-1.svg" alt="Le flacon a saisi le code d'équipe, masqué par des points, puis clique sur son avatar en forme de meeple : « Code d'équipe, puis un clic sur mon avatar : accès libéré. »" width="400" height="300" loading="lazy">
-      <img role="listitem" src="img/notice-sapin-2.svg" alt="Le flacon secoue un sapin de gouttes fermé par un cadenas : « Sapin sous scellé jusqu'au 1er décembre. J'ai secoué : rien. »" width="400" height="300" loading="lazy">
-      <img role="listitem" src="img/notice-sapin-3.svg" alt="Le flacon touche la goutte du jour, dorée et rayonnante, dans le sapin : « Chaque jour, une goutte est libérée. Je touche la mienne. »" width="400" height="300" loading="lazy">
-      <img role="listitem" src="img/notice-sapin-4.svg" alt="La goutte s'ouvre en étoile ; le flacon, bouche cousue, garde le secret : « Ce qu'il y a dedans ? Secret de fabrication. Je ne dirai rien. »" width="400" height="300" loading="lazy">
-      <img role="listitem" src="img/notice-sapin-5.svg" alt="Le flacon court vers la porte du jour des Pharmacogames : « Goutte ouverte : la porte du jour des Pharmacogames m'attend ! »" width="400" height="300" loading="lazy">
+    <div role="region" tabindex="0" aria-label="Mode d'emploi du sapin en cinq cases, à faire défiler">
+      <img src="img/notice-sapin-1.svg" alt="Le flacon a saisi le code d'équipe, masqué par des points, puis clique sur son avatar en forme de meeple : « Code d'équipe, puis un clic sur mon avatar : accès libéré. »" width="400" height="300" loading="lazy">
+      <img src="img/notice-sapin-2.svg" alt="Le flacon secoue un sapin de gouttes fermé par un cadenas : « Sapin sous scellé jusqu'au 1er décembre. J'ai secoué : rien. »" width="400" height="300" loading="lazy">
+      <img src="img/notice-sapin-3.svg" alt="Le flacon touche la goutte du jour, dorée et rayonnante, dans le sapin : « Chaque jour, une goutte est libérée. Je touche la mienne. »" width="400" height="300" loading="lazy">
+      <img src="img/notice-sapin-4.svg" alt="La goutte s'ouvre en étoile ; le flacon, bouche cousue, garde le secret : « Ce qu'il y a dedans ? Secret de fabrication. Je ne dirai rien. »" width="400" height="300" loading="lazy">
+      <img src="img/notice-sapin-5.svg" alt="Le flacon court vers la porte du jour des Pharmacogames : « Goutte ouverte : la porte du jour des Pharmacogames m'attend ! »" width="400" height="300" loading="lazy">
     </div>
   </details>
   <div class="adv-body">
