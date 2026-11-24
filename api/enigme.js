@@ -30,14 +30,17 @@ const AVATAR = [16, 16, 16, 8]; // couleur, coiffe, accessoire, fleur du logo (f
 // puis tout est figé. Les brigades sont tirées sans nom (« Brigade 1 » à « Brigade 5 »). L'emblème est un numéro de la liste
 // EMBLEMES de participants.js. Le nom est un texte : l'un des noms proposés par la page, ou celui qu'un membre propose.
 // Ni un nom (accents et casse ignorés) ni un emblème ne peuvent être portés par deux brigades (voir attribuer).
-// La devise est un numéro de la liste DEVISES de participants.js ; le jeu emblème, le nom d'un jeu du catalogue
+// La devise est un numéro de la liste DEVISES de participants.js, ou une phrase proposée par un membre (texte, modérée par effacerDevise) ; le jeu emblème, le nom d'un jeu du catalogue
 // (même contrôle que le vote du palmarès : la page ne montre que les noms qu'elle connaît).
 // L'identification (fiche, avatar, tirage de la brigade, changement de pseudo) ouvre le 26 novembre, avant le calendrier :
 // c'est le jour -4 (le jour 1 est le 1er décembre). Le vote de la devise et du jeu emblème ouvre le même jour.
 const FICHE_JOUR = -4;
-const NB_DEVISES = 20;
+const NB_DEVISES = 30;
+// Devise libre : une phrase courte proposée par un membre, en plus des devises de la liste.
+const DEVISE = /^\p{L}[\p{L}\p{N} .,;:!?'"…()«»-]{4,119}$/u;
+const deviseOk = d => (typeof d === 'string' ? DEVISE.test(d) : Number.isInteger(d) && d >= 0 && d < NB_DEVISES);
 const NB_EMBLEMES = 30;
-const TITRE = /^\p{L}[\p{L}\p{N} .'-]{2,39}$/u;
+const TITRE = /^\p{L}[\p{L}\p{N} .,&%'-]{2,39}$/u;
 const titreOk = t => typeof t === 'string' && TITRE.test(t) && !/^brigade \d+$/i.test(t); // « Brigade 3 » reste un nom provisoire
 const CHOIX_FIN = 10;
 // Liste des participants, fournie par l'administration : un fichier à part du magasin privé, jamais dans le dépôt.
@@ -485,26 +488,28 @@ function brigades(L, joueurs, mienne, enq) {
   for (const x of L) if (T[x.b]) { T[x.b].n++; T[x.b].pts += x.pts; T[x.b].pj += x.pj || 0; if (x.cl) T[x.b].actifs++; }
   for (const t of T) { t.moy = t.actifs ? Math.round(t.pts / t.actifs * 10) / 10 : 0; t.mj = t.actifs ? Math.round(t.pj / t.actifs * 10) / 10 : 0; t.mq = Math.round((t.moy - t.mj) * 10) / 10; delete t.pj; t.enq = enq ? enq[t.b] : 0; t.tot = Math.round((t.moy + t.enq) * 10) / 10; }
   // nn : les voix pour le nom, regroupées sans accents ni casse ; n : les mêmes voix telles que les membres les ont écrites.
-  const V = Array.from({ length: NB_BRIGADES }, () => ({ d: {}, g: {}, n: {}, e: {}, nn: {} }));
+  const V = Array.from({ length: NB_BRIGADES }, () => ({ d: {}, g: {}, n: {}, e: {}, nn: {}, dd: {} }));
   for (const cle of Object.keys(joueurs)) {
     const j = joueurs[cle], v = V[j.b];
     if (!v) continue;
-    if (j.d !== undefined) v.d[j.d] = (v.d[j.d] || 0) + 1;
+    if (j.d !== undefined) { const c = typeof j.d === 'string' ? norm(j.d) : j.d; v.d[j.d] = (v.d[j.d] || 0) + 1; v.dd[c] = (v.dd[c] || 0) + 1; }
     if (j.g !== undefined) v.g[j.g] = (v.g[j.g] || 0) + 1;
     if (typeof j.n === 'string') { v.n[j.n] = (v.n[j.n] || 0) + 1; v.nn[norm(j.n)] = (v.nn[norm(j.n)] || 0) + 1; }
     if (j.e !== undefined) v.e[j.e] = (v.e[j.e] || 0) + 1;
   }
   const titres = attribuer(V, 'nn'), emblemes = attribuer(V, 'e');
   // Le nom s'écrit comme la brigade qui le porte l'a le plus souvent écrit.
-  const graphie = (v, c) => Object.keys(v.n).filter(x => norm(x) === c).sort((x, y) => v.n[y] - v.n[x] || (x < y ? -1 : 1))[0];
+  const graphie = (o, c) => Object.keys(o).filter(x => norm(x) === c).sort((x, y) => o[y] - o[x] || (x < y ? -1 : 1))[0];
+  // Devise : à égalité, celles de la liste d'abord (dans l'ordre), puis les devises proposées, par ordre alphabétique.
+  const num = x => /^\d+$/.test(x), ordreDevise = (x, y) => (num(x) && num(y) ? x - y : num(x) ? -1 : num(y) ? 1 : x < y ? -1 : 1);
   const tries = (o, tri) => Object.keys(o).sort((x, y) => o[y] - o[x] || tri(x, y));
   for (const t of T) {
-    const v = V[t.b], d = tries(v.d, (x, y) => x - y)[0];
-    if (d !== undefined) t.devise = Number(d);
+    const v = V[t.b], d = tries(v.dd, ordreDevise)[0];
+    if (d !== undefined) t.devise = num(d) ? Number(d) : graphie(v.d, d);
     // Les cinq jeux les plus soutenus, dans l'ordre : la page retient le premier qui est au catalogue,
     // si bien qu'un nom inconnu (appel direct, jeu retiré ou renommé) ne prive pas la brigade de son emblème.
     t.jeux = tries(v.g, (x, y) => (x < y ? -1 : x > y ? 1 : 0)).slice(0, 5);
-    if (titres[t.b] !== undefined) t.titre = graphie(v, titres[t.b]);
+    if (titres[t.b] !== undefined) t.titre = graphie(v.n, titres[t.b]);
     if (emblemes[t.b] !== undefined) t.embleme = Number(emblemes[t.b]);
     if (t.b === mienne) t.voix = { d: v.d, g: v.g, n: v.n, e: v.e };
   }
@@ -694,6 +699,16 @@ async function handler(req, res) {
       const f = await lireFilm();
       return res.status(200).json({ ok: true, film: f ? f.length : 0 });
     }
+    if (admin && typeof b.effacerDevise === 'string') {
+      // Modération : l'administration efface une devise proposée par un membre (toutes les voix qui la portent).
+      const c = norm(propre(b.effacerDevise));
+      return res.status(200).json(await modifier(joueurs => {
+        const L = Object.keys(joueurs).filter(x => typeof joueurs[x].d === 'string' && norm(joueurs[x].d) === c);
+        if (!L.length) return { fin: () => ({ ok: true, efface: 0 }) };
+        L.forEach(x => { delete joueurs[x].d; });
+        return { ok: () => ({ ok: true, efface: L.length }) };
+      }));
+    }
     // Modération : l'administration efface un nom de brigade proposé par un membre (toutes les voix qui le portent).
     if (admin && typeof b.effacerTitre === 'string') {
       const c = norm(propre(b.effacerTitre));
@@ -781,12 +796,12 @@ async function handler(req, res) {
     // Voix d'un membre pour le nom, l'emblème, la devise et le jeu emblème de sa brigade : ouvert du 26 novembre au 10 décembre, modifiable d'ici là.
     if (b.action === 'brigade') {
       if (jour < FICHE_JOUR || jour > CHOIX_FIN) return res.status(403).json({ error: jour < FICHE_JOUR ? 'scellee' : 'fige' });
-      const d = b.devise, g = typeof b.jeu === 'string' ? b.jeu.trim() : b.jeu;
+      const d = typeof b.devise === 'string' ? propre(b.devise) : b.devise, g = typeof b.jeu === 'string' ? b.jeu.trim() : b.jeu;
       const ti = typeof b.titre === 'string' ? propre(b.titre) : b.titre, em = b.embleme;
       if (d === undefined && g === undefined && ti === undefined && em === undefined) return res.status(400).json({ error: 'choix' });
       if (ti !== undefined && !titreOk(ti)) return res.status(400).json({ error: 'titre' });
       if (em !== undefined && !(Number.isInteger(em) && em >= 0 && em < NB_EMBLEMES)) return res.status(400).json({ error: 'embleme' });
-      if (d !== undefined && !(Number.isInteger(d) && d >= 0 && d < NB_DEVISES)) return res.status(400).json({ error: 'devise' });
+      if (d !== undefined && !deviseOk(d)) return res.status(400).json({ error: 'devise' });
       if (g !== undefined && (typeof g !== 'string' || !g || g.length > 80 || /[\u0000-\u001f<>]/.test(g))) return res.status(400).json({ error: 'jeu' });
       const s = await modifier(joueurs => {
         const j = joueurs[cle];
