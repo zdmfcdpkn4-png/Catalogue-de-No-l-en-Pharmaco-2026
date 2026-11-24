@@ -57,15 +57,13 @@ Tous les textes sont des créations originales : il n'y a aucun fait à sourcer.
 - **À fabriquer** : un nouveau type `ordonnance`, environ 30 lignes, par la session Sapin. Il utilise le tableau `G` et les couvertures déjà présentes : zéro image nouvelle.
 - **Texte d'en-tête** : « Ordonnance de Noël. Docteur Père Noël, service de pharmacotechnie ludique. Traitement à suivre pendant les fêtes, en famille ou entre amis. À renouveler sans modération. »
 
-## 7. Goutte 25 (Noël) : certificat de libération du lot de Noël, à partager
-- **Principe** : une carte de vœux de l'unité. Un tampon « LIBÉRÉ » vient s'y poser en animation, et un bouton permet d'envoyer la carte.
-- **Le joueur** : regarde, puis touche « Envoyer la carte » (partage du téléphone, ou copie du lien du sapin). Cela cohabite avec une éventuelle vidéo de l'enquête.
-- **Fichiers** : `img/certificat-noel.svg` (la carte sans tampon) et `img/tampon-libere.svg` (le tampon, à faire tomber en animation sur la carte). Un petit type `voeux`, environ 25 lignes (tampon animé et partage par `navigator.share`, ou copie du lien `#sapin` à défaut), par la session Sapin. En repli : `img/certificat-noel-tamponne.svg` en type `image`, aucun code.
-- **Texte** :
-  > **Certificat de libération, lot de Noël 2026.**
-  > Contrôles effectués : bonne humeur conforme ; fous rires dans les normes ; aucune défaite sans revanche ; parties terminées à une heure raisonnable : non conforme, dérogation accordée.
-  > Décision : **lot libéré** pour consommation immédiate, sans modération.
-  > Joyeux Noël, de toute l'équipe de Pharmacotechnie.
+## 7. Goutte 25 (Noël) : certificat de libération de lot (version réaliste, validée le 24/11)
+- **Principe** : un vrai certificat de libération de lot, sur un porte-bloc. Le tampon rouge « LIBÉRÉ, 25 · 12 · 2026 » tombe sur la signature, puis un bouton « Envoyer la carte » apparaît.
+- **Fichiers** : `img/certificat-noel.svg` (le certificat sans tampon, 26 ko) et `img/tampon-libere.svg`. Le tampon est un **calque transparent de même format** (600 × 860) : il suffit de le superposer au certificat pour l'animer (chute, puis légère secousse), sans calcul de position. Repli sans code : `img/certificat-noel-tamponne.svg` en type `image`.
+- **Type** `voeux`, environ 25 lignes : superposition animée, puis partage par `navigator.share`, ou copie du lien `#sapin` à défaut. Une vidéo de l'enquête doit arriver plus tard pour ce jour-là : le certificat doit pouvoir cohabiter avec elle.
+- **Texte** : Pharmacotechnie ludique, service de libération des lots festifs, réf. FDN-2026, version 25, page 1/1. CERTIFICAT DE LIBÉRATION DE LOT. Produit : Noël 2026, forme : fête, voie : familiale. Numéro de lot : NOEL-2026-12-25. Taille de lot : toute l'équipe (et les conjoints). Fabrication : du 1er au 24 décembre, sous sapin. Péremption : 1er janvier ; ensuite, on recommence.
+  Contrôles (contrôle | spécification | résultat | conclusion) : Aspect | pull moche obligatoire | conforme | Conforme. Bonne humeur | ≥ 95 % | 103 % | Conforme. Fous rires | ≥ 3 par partie | 11, dont 2 nerveux | Conforme. Chocolats | ≤ 1 boîte / personne | 2,5 boîtes | Hors spécification, dérogation accordée. Défaites non vengées | 0 | 0 | Conforme. Fin des parties | ≤ 23 h | 1 h 47 | Hors spécification, dérogation accordée. Pièces manquantes | 0 | 1 pion rouge (voir le 22) | Enquête en cours. Pulls tricotés main | sans objet | 3, lavables à 30 °C | Conforme.
+  Décision : lot libéré pour consommation immédiate, sans modération. Conditions de conservation : au chaud, entre amis, loin des écrans. Double contrôle : le renne de garde. Pharmacien responsable : P. Noël. Joyeux Noël ! De toute l'équipe de Pharmacotechnie.
 
 ---
 
