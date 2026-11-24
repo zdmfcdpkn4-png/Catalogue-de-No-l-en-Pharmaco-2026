@@ -455,7 +455,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 .eg-brig-j img{flex:0 0 auto;width:44px;height:44px;object-fit:contain}
 .eg-brig-j b{min-width:0;font-weight:800;overflow-wrap:anywhere}
 .eg-brig-m{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
-.eg-brig-m li{display:flex;align-items:center;gap:5px;max-width:100%;padding:2px 9px 2px 3px;background:var(--chip);border:2px solid var(--line);border-radius:999px;font-size:.84rem;font-weight:800;overflow-wrap:anywhere}
+.eg-brig-m li{display:flex;align-items:center;gap:5px;max-width:100%;padding:2px 9px 2px 3px;background:var(--chip);border:2px solid var(--line);border-radius:999px;font-size:.84rem;font-weight:800;overflow-wrap:break-word}
 .eg-brig-m li.me{background:var(--pressed);color:var(--pressed-on)}
 .eg-brig-m .eg-av{width:24px;height:24px}
 @media(min-width:861px){.eg-rules{grid-template-columns:1fr 1fr;gap:11px 30px}.eg-rbody.duo{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}}
