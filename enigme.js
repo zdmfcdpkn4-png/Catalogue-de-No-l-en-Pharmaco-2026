@@ -385,14 +385,58 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 .eg-scene-b{display:flex;flex-wrap:wrap;justify-content:center;gap:0 14px;margin:8px 0 0}
 .eg-scene-b .go{margin-right:0}
 .eg-scene-r{margin:8px 0 0}
+/* Les classements : blocs repliables, rang dans la fleur du logo, médailles des trois premiers */
+.eg-cls{display:grid;gap:10px;min-width:0}
+.eg-cl{padding:0;background:#fff;border:2.5px solid var(--line);border-radius:14px;overflow:hidden}
+.eg-cl>summary{display:grid;grid-template-columns:34px minmax(0,1fr) auto 14px;gap:10px;align-items:center;min-height:52px;padding:6px 12px;background:var(--tI);cursor:pointer;list-style:none}
+.eg-cl>summary::-webkit-details-marker{display:none}
+.eg-cl>summary::before,.eg-cl[open]>summary::before{content:none;display:none}
+.eg-cl>summary:focus-visible{outline:3px solid var(--focus,var(--line));outline-offset:-3px}
+.eg-cl>summary>b{min-width:0;font-weight:800;font-size:1.05rem;line-height:1.15}
+.eg-cl>summary>svg{display:block;width:34px;height:34px}
+.eg-cl-t{display:flex;align-items:center;gap:4px}
+.eg-rank .eg-cl-t .eg-av,.eg-rank .eg-cl-t .eg-emb{width:26px;height:26px}
+.eg-cl>summary>i{width:9px;height:9px;border:solid var(--line);border-width:0 2.5px 2.5px 0;transform:rotate(45deg);justify-self:center}
+.eg-cl[open]>summary>i{transform:rotate(-135deg)}
+.eg-cl[open]>summary{border-bottom:2.5px solid var(--line)}
+.eg-cl-c{display:grid;gap:10px;padding:10px 10px 12px;min-width:0}
+.eg-cl-c>p{margin:0}
+.eg-cl-n{font:600 .7rem var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.eg-seg{display:inline-grid;grid-auto-flow:column;justify-self:start;border:2.5px solid var(--line);border-radius:999px;overflow:hidden}
+.eg-seg button{min-height:40px;padding:4px 14px;background:none;border:0;color:inherit;font:800 .86rem var(--display);cursor:pointer}
+.eg-seg button[aria-pressed="true"]{background:var(--pressed);color:var(--pressed-on)}
+.eg-seg button:focus-visible{outline:3px solid var(--focus,var(--line));outline-offset:-4px}
+.eg-fl,.eg-med{flex:0 0 auto;display:block}
+.eg-fl text,.eg-med text{font-family:var(--display);font-weight:800}
+.eg-lns{display:grid;margin:0;padding:0;list-style:none}
+.eg-ln{display:grid;grid-template-columns:42px auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:5px 4px;font-variant-numeric:tabular-nums}
+.eg-ln+.eg-ln,.eg-ln+.eg-gap,.eg-gap+.eg-ln{border-top:2px solid var(--foil-b)}
+.eg-ln.me{background:var(--tI);box-shadow:inset 5px 0 0 var(--line)}
+.eg-ln .eg-fl,.eg-ln .eg-med{width:42px;height:42px}
+.eg-rank .eg-ln .eg-emb{width:28px;height:28px}
+.eg-ln>div{min-width:0}
+.eg-ln>div>b{display:block;font-weight:800;line-height:1.15;overflow-wrap:anywhere}
+.eg-bar{display:flex;height:8px;margin-top:4px;border-radius:999px;background:var(--foil-a);overflow:hidden}
+.eg-bar u{display:block;height:100%}
+.eg-bar .q{background:var(--li)}.eg-bar .j{background:var(--or)}.eg-bar .e{background:var(--pressed)}.eg-bar .t{background:var(--mu)}
+.eg-leg{display:flex;flex-wrap:wrap;gap:4px 12px;font:600 .68rem var(--mono);color:var(--muted)}
+.eg-leg span::before{content:"";display:inline-block;width:10px;height:10px;margin-right:5px;border-radius:3px;vertical-align:-1px;background:var(--c)}
+.eg-list .eg-row{grid-template-columns:42px minmax(0,1fr) auto}
+.eg-list .eg-rk .eg-fl{width:42px;height:42px}
+@media(max-width:380px){.eg-list .eg-row{gap:6px;padding:7px 6px}.eg-ln{gap:6px}.eg-list .eg-pt,.eg-ln .eg-pt{font-size:.72rem}.eg-cl-c{padding:10px 6px 12px}.eg-nm{gap:3px 5px}}
+.eg-nm .eg-bar{flex:1 0 100%;margin-top:0}
+.eg-marche .eg-med{width:64px;height:auto}
+.eg-marche.s1 .eg-med{width:84px}
+.eg-pts3{font:600 .72rem var(--mono);color:var(--muted);white-space:nowrap}
+.eg-brig summary .eg-fl,.eg-brig summary .eg-med{width:34px;height:34px}
 /* Classement des brigades */
-.eg-brigs{margin-top:14px}
+.eg-brigs{margin:0}
 .eg-brigs h4{margin:0;font-weight:800;font-size:1.05rem;line-height:1.2}
 .eg-brigs>p{margin:3px 0 0;font:600 .72rem var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .eg-brigs ol{display:grid;gap:8px;margin:10px 0 0;padding:0;list-style:none}
 .eg-brig{padding:0;background:var(--surface);border:2.5px solid var(--line);border-radius:14px;overflow:hidden}
 .eg-brig.me{box-shadow:4px 4px 0 var(--shadow)}
-.eg-brig summary{display:grid;grid-template-columns:22px auto minmax(0,1fr) 14px;gap:8px;align-items:center;min-height:46px;padding:6px 12px;background:var(--bf);cursor:pointer;list-style:none;font-variant-numeric:tabular-nums}
+.eg-brig summary{display:grid;grid-template-columns:34px auto minmax(0,1fr) 14px;gap:8px;align-items:center;min-height:46px;padding:6px 12px;background:var(--bf);cursor:pointer;list-style:none;font-variant-numeric:tabular-nums}
 .eg-brig summary::-webkit-details-marker{display:none}
 .eg-brig>summary::before,.eg-brig[open]>summary::before{content:none;display:none}
 .eg-brig-t{display:grid;gap:1px;min-width:0}
@@ -423,6 +467,17 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 .eg-ouv video{display:block;width:min(86vw,62vh,420px);aspect-ratio:1;border-radius:22px;background:#EC7739;box-shadow:0 14px 40px rgba(0,0,0,.4)}
 .eg-ouv:focus-visible video{outline:3.5px solid var(--focus);outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.eg-face{transition:none}.eg-brig summary i{transition:none}.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door,.eg-cell.ou .eg-door.op{animation:none}.eg-door,.eg-door.op b{transition:none}}`;
+
+  // Icônes des blocs de classement et bascule Joueurs / Brigades (gabarit).
+  const TR = 'stroke="#26076D" stroke-width="3"';
+  const ICO = {
+    gen: '<svg viewBox="0 0 34 34" aria-hidden="true"><path d="M10 2h6l4 11h-6Z" fill="#EC7739" ' + TR + ' stroke-linejoin="round"/><path d="M24 2h-6l-4 11h6Z" fill="#E5B4D9" ' + TR + ' stroke-linejoin="round"/><circle cx="17" cy="21" r="10" fill="#ECD567" ' + TR + "/></svg>",
+    cal: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect x="4" y="6" width="26" height="24" rx="5" fill="#fff" ' + TR + '/><path d="M4 13h26M11 3v6M23 3v6" ' + TR + ' stroke-linecap="round"/><path d="M11 21l4 4 8-8" fill="none" ' + TR + ' stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    quiz: '<svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="13" fill="#E5B4D9" ' + TR + '/><path d="M13 13.5a4 4 0 1 1 6 3.4c-1.4.9-2 1.6-2 3.1" fill="none" ' + TR + ' stroke-linecap="round"/><circle cx="17" cy="24.5" r="1.8" fill="#26076D"/></svg>',
+    jeu: '<svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="13" fill="#EC7739" ' + TR + '/><circle cx="17" cy="17" r="7" fill="#fff" ' + TR + '/><circle cx="17" cy="17" r="2" fill="#26076D"/></svg>',
+    enq: '<svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="14" cy="14" r="9" fill="#F2E39A" ' + TR + '/><path d="M21 21l9 9" stroke="#26076D" stroke-width="4.5" stroke-linecap="round"/></svg>',
+  };
+  const SEG = (k, nom) => '<div class="eg-seg" id="egSeg-' + k + '" role="group" aria-label="' + nom + ' : joueurs ou brigades" hidden><button type="button" data-seg="' + k + '" data-v="j" aria-pressed="true">Joueurs</button><button type="button" data-seg="' + k + '" data-v="b" aria-pressed="false">Brigades</button></div>';
 
   function init() {
     const st = document.createElement("style");
@@ -461,12 +516,20 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<section class="eg-scene" id="egScene" aria-label="Remise des prix" hidden><div class="eg-scene-c" id="egSceneC" aria-hidden="true"><div class="eg-face f1"></div><div class="eg-face f2"></div><div class="eg-face f3"></div></div>'
       + '<p class="eg-scene-b"><button class="go" type="button" id="egScenePasser">Passer</button><button class="linkbtn" type="button" id="egSceneRejouer" hidden>Revoir</button><button class="linkbtn" type="button" id="egSceneReplier" hidden>Replier la scène</button></p></section>'
       + '<p class="eg-scene-r" id="egSceneR" hidden><button class="linkbtn" type="button" id="egSceneRevoir">Revoir la remise des prix</button></p>'
-      + '<section class="eg-brigs" id="egBrigs" aria-labelledby="egBrigsT" hidden><h4 id="egBrigsT">Classement des brigades</h4><p id="egBrigsS"></p><ol id="egBrigsL"></ol></section>'
       + '<div class="eg-rbody" id="egRBody">'
-      + '<div class="eg-rcol" id="egCol"><section class="eg-lib" id="egLib" aria-live="polite" hidden></section><section class="eg-moi" id="egMoi" aria-label="Ma fiche" hidden></section>'
-      + '<ol class="eg-pod" id="egPod" aria-label="Podium" hidden></ol></div>'
-      + '<div class="eg-rcol"><ol class="eg-list" id="egList" aria-label="Suite du classement"></ol>'
-      + '<p class="eg-more" id="egMore" hidden><button class="linkbtn" type="button" id="egTout"></button></p></div></div></div>';
+      + '<div class="eg-rcol" id="egCol"><section class="eg-lib" id="egLib" aria-live="polite" hidden></section><section class="eg-moi" id="egMoi" aria-label="Ma fiche" hidden></section></div>'
+      + '<div class="eg-rcol eg-cls" id="egCls">'
+      + '<details class="eg-cl" data-k="gen" open><summary>' + ICO.gen + '<b>Général</b><span class="eg-cl-t" id="egT-gen"></span><i aria-hidden="true"></i></summary><div class="eg-cl-c">'
+      + SEG("gen", "Général")
+      + '<div class="eg-cl-c" id="egGenJ" style="padding:0"><ol class="eg-pod" id="egPod" aria-label="Podium" hidden></ol><ol class="eg-list" id="egList" aria-label="Suite du classement"></ol>'
+      + '<p class="eg-more" id="egMore" hidden><button class="linkbtn" type="button" id="egTout"></button></p></div>'
+      + '<section class="eg-brigs" id="egBrigs" aria-labelledby="egBrigsT" hidden><h4 class="sr" id="egBrigsT">Classement des brigades</h4><p id="egBrigsS"></p><ol id="egBrigsL"></ol></section>'
+      + '<p class="eg-leg" id="egLeg-gen" hidden></p></div></details>'
+      + '<details class="eg-cl" data-k="cal" hidden><summary>' + ICO.cal + '<b>Calendrier</b><span class="eg-cl-t" id="egT-cal"></span><i aria-hidden="true"></i></summary><div class="eg-cl-c"><p class="eg-cl-n">Les 25 portes, moyenne par membre actif</p><ol class="eg-lns" id="egL-cal"></ol></div></details>'
+      + '<details class="eg-cl" data-k="quiz" hidden><summary>' + ICO.quiz + '<b>Questions</b><span class="eg-cl-t" id="egT-quiz"></span><i aria-hidden="true"></i></summary><div class="eg-cl-c">' + SEG("quiz", "Questions") + '<ol class="eg-lns" id="egL-quiz"></ol><p class="eg-more" hidden><button class="linkbtn" type="button" data-tout="quiz"></button></p></div></details>'
+      + '<details class="eg-cl" data-k="jeu" hidden><summary>' + ICO.jeu + '<b>Jeux d\'adresse</b><span class="eg-cl-t" id="egT-jeu"></span><i aria-hidden="true"></i></summary><div class="eg-cl-c">' + SEG("jeu", "Jeux d'adresse") + '<ol class="eg-lns" id="egL-jeu"></ol><p class="eg-more" hidden><button class="linkbtn" type="button" data-tout="jeu"></button></p></div></details>'
+      + '<details class="eg-cl" data-k="enq" hidden><summary>' + ICO.enq + '<b>Enquête</b><span class="eg-cl-t" id="egT-enq"></span><i aria-hidden="true"></i></summary><div class="eg-cl-c"><p class="eg-cl-n">Par brigade, 30 points au plus</p><ol class="eg-lns" id="egL-enq"></ol></div></details>'
+      + "</div></div></div>";
     (q("#vote") || q("#avent") || q("header.hero")).insertAdjacentElement("afterend", sec);
 
     const a = document.createElement("a");
@@ -508,6 +571,12 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egSceneRejouer").addEventListener("click", sceneJouer);
     q("#egSceneRevoir").addEventListener("click", sceneJouer);
     q("#egSceneReplier").addEventListener("click", () => sceneEtat("replie"));
+    q("#egCls").addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.k; if (k && e.target.classList.contains("eg-cl")) clsOuvert[k] = e.target.open; }, true);
+    q("#egCls").addEventListener("click", e => {
+      const b = e.target.closest("button");
+      if (b && b.dataset.seg) { clsVue[b.dataset.seg] = b.dataset.v; rang(); }
+      else if (b && b.dataset.tout) { clsTout[b.dataset.tout] = !clsTout[b.dataset.tout]; rang(); }
+    });
     q("#egBrigsL").addEventListener("toggle", e => { const b = e.target.dataset && e.target.dataset.b; if (b !== undefined) brigOuvertes[e.target.open ? "add" : "delete"](b); }, true);
     q("#egLib").addEventListener("click", e => { if (e.target.id === "egVu") { vuLib(); rang(); } });
     q("#egReload").addEventListener("click", () => charger("Calendrier à jour."));
@@ -1063,6 +1132,22 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   const ord = n => n + "<sup>" + (n === 1 ? "er" : "e") + "</sup>";
   let toutVoir = false, vuLib = () => {}, attenteW = false;
   const brigOuvertes = new Set();
+  const clsVue = { gen: "j", quiz: "j", jeu: "j" }, clsTout = {}, clsOuvert = { gen: true };
+  // La fleur du logo de l'unité : des gouttes autour d'un cœur qui porte le rang. Les trois premiers reçoivent une médaille
+  // (or, argent, bronze) frappée du logo. Sans rang établi (aucun point distribué), la fleur reste vide.
+  const PETALES = [[0, 62, 17, "#26076D"], [27, 50, 13, "#ECD567"], [52, 66, 18, "#ECD567"], [80, 52, 13, "#EC7739"], [104, 64, 17, "#26076D"], [131, 50, 12, "#E5B4D9"], [156, 66, 18, "#EC7739"],
+    [184, 54, 14, "#ECD567"], [209, 64, 17, "#26076D"], [236, 52, 13, "#E5B4D9"], [262, 68, 19, "#E5B4D9"], [290, 50, 12, "#EC7739"], [313, 62, 16, "#26076D"], [338, 48, 11, "#ECD567"]];
+  const GOUTTES = PETALES.map(([a, l, r, c]) => '<path transform="rotate(' + a + ') translate(0 -27)" d="M0 0C' + -.15 * r + " " + -.4 * l + " " + -r + " " + -.68 * l + " " + -r + " " + (r - l) + "A" + r + " " + r + " 0 0 1 " + r + " " + (r - l) + "C" + r + " " + -.68 * l + " " + .15 * r + " " + -.4 * l + ' 0 0Z" fill="' + c + '"/>').join("");
+  const fleur = n => '<svg class="eg-fl" viewBox="-100 -100 200 200" ' + (n ? 'role="img" aria-label="Rang ' + n + '"' : 'aria-hidden="true"') + ">" + GOUTTES
+    + '<circle r="46" fill="#FFFBF2" stroke="#26076D" stroke-width="7"/>' + (n ? '<text y="' + (n > 99 ? 13 : n > 9 ? 17 : 20) + '" text-anchor="middle" font-size="' + (n > 99 ? 38 : n > 9 ? 50 : 58) + '" fill="#26076D">' + n + "</text>" : "") + "</svg>";
+  const METAL = { 1: ["#F2C230", "#FFE89A", "Médaille d'or"], 2: ["#C9CEDA", "#F1F3F8", "Médaille d'argent"], 3: ["#D98A4E", "#F6C9A4", "Médaille de bronze"] };
+  const medaille = n => '<svg class="eg-med" viewBox="0 0 120 150" role="img" aria-label="' + METAL[n][2] + ", rang " + n + '">'
+    + '<path d="M34 4h22l14 46H48Z" fill="#EC7739" stroke="#26076D" stroke-width="5" stroke-linejoin="round"/><path d="M86 4H64L50 50h22Z" fill="#E5B4D9" stroke="#26076D" stroke-width="5" stroke-linejoin="round"/>'
+    + '<circle cx="60" cy="94" r="50" fill="' + METAL[n][0] + '" stroke="#26076D" stroke-width="6"/><circle cx="60" cy="94" r="40" fill="' + METAL[n][1] + '" stroke="#26076D" stroke-width="3"/>'
+    + '<image href="img/logo-pharmacotechnie.webp" x="26" y="60" width="68" height="68"/><circle cx="98" cy="128" r="17" fill="#26076D"/><text x="98" y="136" text-anchor="middle" font-size="24" fill="#ECD567">' + n + "</text></svg>";
+  const insigne = (r, etabli) => (!etabli ? fleur(0) : r <= 3 ? medaille(r) : fleur(r));
+  const barre = (parts, max) => (max > 0 ? '<span class="eg-bar" aria-hidden="true">' + parts.map(p => '<u class="' + p[0] + '" style="width:' + Math.max(0, p[1]) / max * 100 + '%"></u>').join("") + "</span>" : "");
+  const classer = (A, val) => { const S = A.map(x => ({ x, v: val(x) })).sort((a, b) => b.v - a.v); let r = 0; S.forEach((o, i) => { if (!i || o.v !== S[i - 1].v) r = i + 1; o.r = r; }); return S; };
   const dec = n => String(n).replace(".", ",");
 
   // Enquête des brigades : le bloc vient de enquete.js, chargé seulement quand le serveur a quelque chose à montrer
@@ -1119,7 +1204,10 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     const B = x => (W && W.BRIGADES[x.b]) || null;
     const av = x => (!W || !fiches ? "" : x.a ? W.avatar(x.a, { brigade: x.b, cls: "eg-av" }) : '<span class="eg-av eg-av0" aria-hidden="true"></span>');
     const emb = x => (B(x) ? W.embleme(x.b, "eg-emb") + '<span class="sr"> ' + h(B(x).nom) + "</span>" : "");
-    brigades(L, clos, moi, W, av);
+    // Détail par épreuve (pq : cases de questions, pj : jeux d'adresse), si le serveur le fournit.
+    const epreuves = L.some(x => x.pq !== undefined || x.pj !== undefined), maxPts = clos && L.length ? L[0].pts : 0;
+    const parts = x => (epreuves ? [["q", x.pq || 0], ["j", x.pj || 0]] : [["j", x.pts]]);
+    brigades(L, clos, moi, W, av, epreuves);
     // Progression : le serveur peut joindre le rang d'avant la dernière clôture (av). Seules les montées s'affichent.
     const monte = x => (x.av > x.rang ? '<span class="eg-up"><span aria-hidden="true">▲' + (x.av - x.rang) + '</span><span class="sr"> gagne ' + pl(x.av - x.rang, "rang", "rangs") + "</span></span>" : "");
 
@@ -1163,8 +1251,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egPod").hidden = !podium;
     q("#egPod").innerHTML = !podium ? "" : [1, 2, 3].map(n => {
       const T = tete.filter(x => x.rang === n);
-      return !T.length ? "" : '<li class="eg-marche s' + n + '"><ul>' + T.map(x => '<li class="eg-row r' + n + (norm(x.p) === moi ? " me" : "") + '">' + av(x) + "<span><b>" + h(x.p) + "</b>" + emb(x) + monte(x) + '</span><span class="sr"> ' + pl(x.pts, "point", "points") + "</span></li>").join("")
-        + '</ul><div class="eg-socle"><span class="sr">Rang </span><b>' + n + "</b><span>" + pl(T[0].pts, "point", "points") + (T.length > 1 ? '<span class="sr"> chacun, ex aequo</span>' : "") + "</span></div></li>";
+      return !T.length ? "" : '<li class="eg-marche s' + n + '">' + medaille(n) + "<ul>" + T.map(x => '<li class="eg-row r' + n + (norm(x.p) === moi ? " me" : "") + '">' + av(x) + "<span><b>" + h(x.p) + "</b>" + emb(x) + monte(x) + '</span><span class="sr"> ' + pl(x.pts, "point", "points") + "</span></li>").join("")
+        + '</ul><span class="eg-pts3">' + pl(T[0].pts, "point", "points") + (T.length > 1 ? '<span class="sr"> chacun, ex aequo</span>' : "") + "</span></li>";
     }).join("");
 
     scene(clos === 25 && podium && !relecture, tete, av);
@@ -1176,14 +1264,15 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       const cache = long && !toutVoir && i >= 5 && Math.abs(i - iMoi) > 1, saut = cache && !trou;
       trou = cache;
       return (saut ? '<li class="eg-gap" aria-hidden="true">…</li>' : "")
-        + '<li class="eg-row' + (x === me ? " me" : "") + '"' + (cache ? " hidden" : "") + '><span class="eg-rk"><span class="sr">Rang </span>' + (clos ? x.rang : "·") + "</span>"
-        + '<span class="eg-nm">' + av(x) + "<b>" + h(x.p) + "</b>" + emb(x) + (x === me ? '<span class="eg-vous">vous</span>' : "") + monte(x) + "</span>"
+        + '<li class="eg-row' + (x === me ? " me" : "") + '"' + (cache ? " hidden" : "") + '><span class="eg-rk">' + insigne(x.rang, maxPts > 0) + "</span>"
+        + '<span class="eg-nm">' + av(x) + "<b>" + h(x.p) + "</b>" + emb(x) + (x === me ? '<span class="eg-vous">vous</span>' : "") + monte(x) + barre(parts(x), maxPts) + "</span>"
         + '<span class="eg-pt">' + (clos ? pl(x.pts, "point", "points") : pl(x.rep, "réponse scellée", "réponses scellées")) + "</span></li>";
     }).join("");
     q("#egMore").hidden = !long;
     q("#egTout").textContent = toutVoir ? "Replier le classement" : "Afficher les " + L.length + " joueurs";
     q("#egTout").setAttribute("aria-expanded", toutVoir);
-    const tete2 = !lib.hidden || !fiche.hidden || podium;
+    blocs(L, clos, moi, W, av, epreuves);
+    const tete2 = !lib.hidden || !fiche.hidden;
     q("#egCol").hidden = !tete2;
     q("#egRBody").classList.toggle("duo", tete2);
   }
@@ -1249,13 +1338,74 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   // Classement des cinq brigades, au-dessus du classement individuel : rang et moyenne par membre actif (portes closes
   // seulement, calculés par le serveur), puis au toucher la devise, le jeu emblème, l'effectif et les membres.
   // Avant la première clôture : ni rang ni moyenne. Sans brigade (avant l'ouverture des fiches) : pas de bandeau.
-  function brigades(L, clos, moi, W, av) {
+  // Les blocs repliables : Général (joueurs ou brigades), Calendrier (brigades), Questions et Jeux d'adresse (joueurs ou
+  // brigades, si le serveur détaille les points par épreuve), Enquête (brigades). Peu de texte : insigne, avatar ou emblème,
+  // barre, points. Les moyennes de brigade par épreuve suivent la règle du serveur : somme des membres sur membres actifs.
+  function blocs(L, clos, moi, W, av, epreuves) {
+    const T = W ? (E.brigades || []).filter(t => t.n > 0 && W.BRIGADES[t.b]) : [], mienne = !relecture && E.profil ? E.profil.b : undefined;
+    const un = n => Math.round(n * 10) / 10, pts = n => dec(n) + " pts";
+    const moyenne = (t, k, cle) => (t[cle] !== undefined ? t[cle] : (a => (a ? un(L.filter(x => x.b === t.b).reduce((s, x) => s + (x[k] || 0), 0) / a) : 0))(L.filter(x => x.b === t.b && x.cl > 0).length));
+    const nomB = t => W.embleme(t.b, "eg-emb") + "<div><b>" + h(W.BRIGADES[t.b].nom) + "</b>";
+    const nomJ = x => av(x) + "<div><b>" + h(x.p) + "</b>";
+    const tete = (k, html) => { q("#egT-" + k).innerHTML = html; };
+    const bloc = (k, vu) => { const d = q('.eg-cl[data-k="' + k + '"]'); d.hidden = !vu; if (clsOuvert[k] !== undefined && d.open !== clsOuvert[k]) d.open = clsOuvert[k]; return d; };
+    const lignes = (k, S, nom, cls, estMoi, plier) => {
+      const max = S.length ? S[0].v : 0, iMoi = S.findIndex(o => estMoi(o.x)), long = plier && S.length > 8;
+      let trou = false;
+      q("#egL-" + k).innerHTML = S.map((o, i) => {
+        const cache = long && !clsTout[k] && i >= 5 && Math.abs(i - iMoi) > 1, saut = cache && !trou;
+        trou = cache;
+        return (saut ? '<li class="eg-gap" aria-hidden="true">…</li>' : "") + '<li class="eg-ln' + (estMoi(o.x) ? " me" : "") + '"' + (cache ? " hidden" : "") + ">" + insigne(o.r, max > 0) + nom(o.x) + barre([[cls, o.v]], max) + "</div>"
+          + '<span class="eg-pt">' + pts(o.v) + "</span></li>";
+      }).join("");
+      const plus = q("#egL-" + k).nextElementSibling;
+      if (plus && plus.classList.contains("eg-more")) { plus.hidden = !long; plus.firstChild.textContent = clsTout[k] ? "Replier" : "Afficher les " + S.length + " joueurs"; plus.firstChild.setAttribute("aria-expanded", Boolean(clsTout[k])); }
+      return max > 0 ? S[0].x : null;
+    };
+    const bascule = (k, deux) => { const v = deux ? clsVue[k] : "j"; q("#egSeg-" + k).hidden = !deux; q("#egSeg-" + k).querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === v)); return v; };
+
+    // Général : la bascule montre les joueurs (podium et suite) ou les brigades (total, détail au dépliage).
+    bloc("gen", true);
+    const vGen = bascule("gen", T.length > 0);
+    q("#egGenJ").hidden = vGen !== "j";
+    q("#egBrigs").hidden = vGen !== "b" || !T.length;
+    const legende = vGen === "j" ? (epreuves && clos ? [["questions", "--li"], ["jeux d'adresse", "--or"]] : []) : T.some(t => t.enq > 0) ? (epreuves ? [["questions", "--li"], ["jeux d'adresse", "--or"], ["enquête", "--pressed"]] : [["portes", "--or"], ["enquête", "--pressed"]]) : [];
+    q("#egLeg-gen").hidden = !legende.length;
+    q("#egLeg-gen").innerHTML = legende.map(x => '<span style="--c:var(' + x[1] + ')">' + x[0] + "</span>").join("");
+    const premier = clos && L.length && L[0].pts > 0 ? L[0] : null, total = t => (t.tot !== undefined ? t.tot : t.moy), tB = classer(T, total);
+    tete("gen", (premier ? av(premier) : "") + (tB.length && tB[0].v > 0 ? W.embleme(tB[0].x.b, "eg-emb") : ""));
+
+    // Calendrier : les brigades aux 25 portes, sans l'enquête.
+    bloc("cal", T.length > 0);
+    const pCal = T.length ? lignes("cal", classer(T, t => t.moy), nomB, "j", t => t.b === mienne) : null;
+    tete("cal", pCal ? W.embleme(pCal.b, "eg-emb") : "");
+
+    // Questions et jeux d'adresse : seulement si le serveur détaille les points par épreuve.
+    [["quiz", "pq", "mq", "q"], ["jeu", "pj", "mj", "j"]].forEach(([k, champ, cleB, cls]) => {
+      bloc(k, epreuves && clos > 0);
+      if (!epreuves || !clos) return;
+      const v = bascule(k, T.length > 0);
+      const pJ = classer(L, x => x[champ] || 0), pB = classer(T, t => moyenne(t, champ, cleB));
+      const p = v === "j" ? lignes(k, pJ, nomJ, cls, x => Boolean(moi) && norm(x.p) === moi, true) : lignes(k, pB, nomB, cls, t => t.b === mienne);
+      tete(k, (pJ.length && pJ[0].v > 0 ? av(pJ[0].x) : "") + (pB.length && pB[0].v > 0 ? W.embleme(pB[0].x.b, "eg-emb") : ""));
+    });
+
+    // Enquête : les points d'enquête des brigades.
+    const enq = T.length > 0 && (Boolean(E.enquete) || T.some(t => t.enq > 0));
+    bloc("enq", enq);
+    const pEnq = enq ? lignes("enq", classer(T, t => t.enq || 0), nomB, "e", t => t.b === mienne) : null;
+    tete("enq", pEnq ? W.embleme(pEnq.b, "eg-emb") : "");
+  }
+
+  function brigades(L, clos, moi, W, av, epreuves) {
     const T = (E.brigades || []).filter(t => t.n > 0), zone = q("#egBrigs");
-    zone.hidden = !(W && T.length);
-    if (zone.hidden) return;
+    if (!(W && T.length)) { zone.hidden = true; q("#egBrigsL").innerHTML = ""; return; }
+    const un = n => Math.round(n * 10) / 10, actifs = b => L.filter(x => x.b === b && x.cl > 0).length;
+    const moyB = (t, k, cle) => (t[cle] !== undefined ? t[cle] : actifs(t.b) ? un(L.filter(x => x.b === t.b).reduce((s, x) => s + (x[k] || 0), 0) / actifs(t.b)) : 0);
     // Le serveur classe les brigades sur un total : la moyenne des portes par membre actif, plus les points de l'enquête
     // de brigade (tot = moy + enq). La ligne montre ce total ; le détail est dans la partie dépliée.
     const total = t => (t.tot !== undefined ? t.tot : t.moy), enquete = T.some(t => t.enq > 0), pts = n => dec(n) + " " + (n >= 2 ? "points" : "point");
+    const maxB = Math.max(0, ...T.map(total));
     const note = T.some(t => total(t) > 0), mienne = !relecture && E.profil ? E.profil.b : undefined;
     const cat = typeof G !== "undefined" && Array.isArray(G) ? G : [];
     q("#egBrigsS").textContent = !note ? "Rang et points à la première clôture" : enquete ? "Total : moyenne des portes par membre actif, plus l'enquête" : "Moyenne de points par membre actif, portes closes";
@@ -1264,9 +1414,9 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       if (!b) return "";
       const devise = W.DEVISES[t.devise], jeu = (t.jeux || []).map(n => cat.find(g => g.n === n)).find(Boolean), M = L.filter(x => x.b === t.b);
       return '<li><details class="eg-brig' + (t.b === mienne ? " me" : "") + '" data-b="' + t.b + '" style="--bf:' + b.fond + '"' + (brigOuvertes.has(String(t.b)) ? " open" : "") + ">"
-        + '<summary><span class="eg-rk">' + (note ? '<span class="sr">Rang </span>' + t.rang : '<span aria-hidden="true">·</span>') + "</span>" + W.embleme(t.b, "eg-emb")
+        + "<summary>" + insigne(t.rang, note) + W.embleme(t.b, "eg-emb")
         + '<span class="eg-brig-t"><b>' + h(b.nom) + (t.b === mienne ? ' <span class="eg-vous">la vôtre</span>' : "") + "</b>"
-        + '<span class="eg-pt">' + (note ? (enquete ? "" : "moyenne ") + pts(total(t)) + " · " : "") + pl(t.n, "membre", "membres") + '</span></span><i aria-hidden="true"></i></summary>'
+        + '<span class="eg-pt">' + (note ? (enquete ? "" : "moyenne ") + pts(total(t)) + " · " : "") + pl(t.n, "membre", "membres") + "</span>" + barre((epreuves ? [["q", moyB(t, "pq", "mq")], ["j", moyB(t, "pj", "mj")]] : [["j", t.moy]]).concat([["e", t.enq || 0]]), maxB) + '</span><i aria-hidden="true"></i></summary>'
         + '<div class="eg-brig-c">' + (note && enquete ? "<p><small>Points</small>Portes, moyenne par membre actif : <b>" + pts(t.moy) + "</b>. Enquête : <b>" + pts(t.enq || 0) + "</b>. Total : <b>" + pts(total(t)) + "</b>.</p>" : "")
         + '<p><small>Devise</small>' + (devise ? "« " + h(devise) + " »" : "Pas encore élue.") + "</p>"
         + '<div><small>Jeu emblème</small><div class="eg-brig-j">' + (jeu ? '<img src="img/' + h(jeu.img) + '" alt="" loading="lazy"><b>' + h(jeu.n) + "</b>" : "<p>Pas encore élu.</p>") + "</div></div>"
