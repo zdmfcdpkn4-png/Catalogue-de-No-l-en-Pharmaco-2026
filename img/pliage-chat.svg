@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" role="img" aria-label="Le chat en origami, déplié : « Le chat ne perd jamais une partie : il s’assoit sur la règle du jeu et déclare le lot non conforme. »">
+<rect width="600" height="800" fill="#C9B6D8"/>
+<ellipse cx="300" cy="680" rx="250" ry="22" fill="#26076D" opacity=".12"/>
+<g transform="translate(300 400)">
+<rect x="-262" y="-262" width="524" height="524" fill="#26076D" opacity=".18" transform="translate(7 9)"/>
+<rect x="-262" y="-262" width="524" height="524" fill="#FFFBF2" stroke="#26076D" stroke-width="3"/>
+<g stroke="#26076D" stroke-width="1.4" stroke-dasharray="5 6" opacity=".22"><path d="M-262 -262L262 262M262 -262L-262 262M0 -262V262M-262 0H262M-262 -131H262M-262 131H262M-131 -262V262M131 -262V262"/></g>
+<rect x="-232" y="-232" width="464" height="464" fill="none" stroke="#EC7739" stroke-width="3" rx="10"/>
+<text x="0" y="-188" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="700" letter-spacing="2" fill="#EC7739">NOTICE DE PLIAGE · LE CHAT</text>
+</g>
+<text x="300" y="318" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="30" font-weight="700" fill="#26076D">Le chat ne perd jamais</text>
+<text x="300" y="358" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="30" font-weight="700" fill="#26076D">une partie : il</text>
+<text x="300" y="398" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="30" font-weight="700" fill="#26076D">s’assoit sur la règle</text>
+<text x="300" y="438" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="30" font-weight="700" fill="#26076D">du jeu et déclare le</text>
+<text x="300" y="478" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="30" font-weight="700" fill="#26076D">lot non conforme.</text>
+<text x="300" y="608" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="#26076D" opacity=".75">La Pharmacotechnie, lot de décembre</text>
+</svg>
