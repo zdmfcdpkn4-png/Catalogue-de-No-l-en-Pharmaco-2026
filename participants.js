@@ -108,17 +108,15 @@
   // Noms proposés au vote des brigades. Un membre peut aussi proposer le sien : pour le serveur, un nom est un texte,
   // et deux brigades ne peuvent pas porter le même (accents et casse ignorés). Un emblème non plus.
   const NOMS = [
-    "Brigade des Flacons", "Brigade des Seringues", "Brigade des Poches", "Brigade des Gélules", "Brigade des Ampoules",
-    "Brigade des Meeples Stériles", "Brigade des As de la Paillasse", "Brigade du Double Contrôle", "Brigade des Dés Calibrés", "Brigade des Fines Gouttes",
-    "Brigade Sans Particule", "Brigade des Lots Gagnants", "Brigade de la Dream Hotte", "Brigade des Pions Libérés", "Brigade des Jokers de Garde",
-    "Brigade des Pipettes", "Brigade des Mortiers", "Brigade des Balances", "Brigade des Isolateurs", "Brigade des Étiquettes",
-    "Brigade des Scellés", "Brigade des Cartes Maîtresses", "Brigade des Bons Dosages", "Brigade de la Zone Blanche", "Brigade des Lutins Stériles",
-    "Brigade des Rennes Pressés", "Brigade du Grand Chelem", "Brigade du Coup d'Avance", "Brigade des Atouts Maîtres", "Brigade des Petits Chevaux",
+    "Brigade de la Dream Hotte", "Brigade des Jokers de Garde", "Brigade du Dé Pipetté", "Brigade des Meeples en Charlotte", "Brigade des Bluffeurs Aseptiques",
+    "Brigade des Mauvais Perdants Repentis", "Brigade des Lutins Stériles", "Brigade des As de la Paillasse", "Brigade des Lots Gagnants", "Brigade de la Pioche Miraculeuse",
     // Côté jeu de société.
-    "Brigade des Mauvais Perdants Repentis", "Brigade des Tricheurs Repentis", "Brigade de la Pioche Miraculeuse", "Brigade des Rois du Plateau", "Brigade du Dé Pipetté",
-    "Brigade des Meeples en Charlotte", "Brigade Relance les Dés", "Brigade des Bluffeurs Aseptiques", "Brigade Passe Ton Tour", "Brigade Case Départ",
-    "Brigade des Lecteurs de Règles", "Brigade Échec et Mat", "Brigade des Sept Familles", "Brigade du Joker Stérile", "Brigade Cartes sur Table",
-    "Brigade Quitte ou Double", "Brigade des Compteurs de Points", "Brigade du Dernier Pli", "Brigade Double Six", "Brigade Mélange et Distribue",
+    "Les Meeples sans pitié", "La Mauvaise Foi Ludique", "Les Optimisateurs du Dimanche", "Le Syndicat du Dé Pipé", "Les Pions Fous",
+    "Zéro Alliances, 100 % Rancune", "La Brigade du Livret de Règles", "Les Stratèges de Comptoir", "Coup Bas & Co.", "Les Pros de l'Analysis Paralysis",
+    "L'Escouade du Plateau Renversé", "Tout dans le Bluff", "Les Hors-Jeu Assumés",
+    // Côté pharmacotechnie.
+    "Les Meeples Stériles", "Les Pipettes Tactiques", "Zéro Particule, Max Points", "Double Contrôle & Coups Bas", "Traçabilité Totale, Pitié Zéro",
+    "Sous Isolateur, Hors Contrôle", "Le Commando Galénique",
   ];
   // Nom court d'une brigade, pour les endroits étroits : le nom sans son « Brigade des ».
   const court = n => String(n).replace(/^Brigade\s+(?:des\s+|du\s+|de\s+la\s+|de\s+l'|d'|de\s+)?/i, "") || String(n);
@@ -136,14 +134,34 @@
       B.nom = N || "Brigade " + (t.b + 1); B.court = N ? court(N) : B.nom; B.d = M ? M.d : jeton(t.b); B.img = M ? IMAGES[t.embleme] : "jeton-" + (t.b + 1);
     });
   }
-  // Devises proposées aux brigades : chaque membre en soutient une, la plus soutenue s'affiche (serveur : NB_DEVISES).
+  // Devises proposées aux brigades : chaque membre en soutient une, ou en propose une autre ; la plus soutenue s'affiche (serveur : NB_DEVISES).
   const DEVISES = [
-    "Un pour tous, tous au plateau", "Qui dose bien joue bien", "Jamais de pioche sans double contrôle", "Lancer, compter, libérer",
-    "Petits lots, grandes victoires", "La règle d'abord, le bluff ensuite", "Aseptiques, mais pas sans saveur", "Un coup d'avance, jamais un lot de retard",
-    "Préparés avec soin, joués avec panache", "À la paillasse comme au plateau", "Zéro particule, cent pour cent meeple", "Qui scelle sa réponse scelle son destin",
-    "Agiter avant de jouer", "Tenir hors de portée des mauvais perdants", "Une partie matin, midi et soir", "Sous hotte, mais pas sous cloche",
-    "La chance se prépare", "Posologie : une victoire par jour", "Le dé est jeté, le lot est libéré", "Traçabilité totale, bluff compris",
+    "Un pour tous, tous au plateau", "Qui dose bien joue bien", "Lancer, compter, libérer", "Aseptiques, mais pas sans saveur",
+    "Qui scelle sa réponse scelle son destin", "Agiter avant de jouer", "Tenir hors de portée des mauvais perdants", "Sous hotte, mais pas sous cloche",
+    "Posologie : une victoire par jour", "Le dé est jeté, le lot est libéré",
+    "On ne perd jamais vraiment : soit on gagne, soit on apprend à tricher plus discrètement",
+    "La règle d'or : lire les règles pendant 3 minutes, puis improviser pendant 2 heures",
+    "C'est pas de la chance, c'est du calcul probabiliste à haut risque",
+    "Un bon joueur sait encaisser la défaite ; un excellent joueur accuse le lancer de dé",
+    "On a dit \"pas de rancune\"… mais on a noté les coups bas dans un coin",
+    "Moins de blabla, plus de pions : le plateau ne ment jamais",
+    "La boîte est déjà ouverte, la diplomatie est officiellement suspendue",
+    "Celui qui lit le livret de règles en entier mérite déjà 5 points de victoire morale",
+    "Le hasard propose, la mauvaise foi dispose",
+    "Un meeple tombé sous la table est un meeple qui a choisi l'exil",
+    "L'important, ce n'est pas de gagner… enfin, si, un peu quand même",
+    "Si tout le monde est d'accord sur les règles, c'est qu'on a raté un paragraphe",
+    "La traçabilité avant tout : on sait d'où vient le produit, et qui a posé le pion",
+    "Zéro particule en trop, zéro point de victoire laissé au hasard",
+    "On ne joue pas avec la conformité, mais on adore challenger la mécanique",
+    "De la hotte au plateau : la rigueur ne quitte jamais la pièce",
+    "On maîtrise les protocoles complexes… alors un livret de 24 pages, c'est de la mise en bouche",
+    "La sécurité d'abord, la stratégie ensuite, la victoire en bonus",
+    "Rigueur aseptique le jour, esprit tactique le soir",
+    "Optimiser le geste, sécuriser le process, et toujours garder un joker en main",
   ];
+  // Devise d'une ligne de brigade envoyée par le serveur : un numéro de la liste, ou le texte proposé par un membre.
+  const devise = l => (l && typeof l.devise === "string" ? l.devise : (l && DEVISES[l.devise]) || "");
   const MEEPLE = "M50 4c-9 0-16 7-16 16 0 6 3 11 8 14-14 3-34 12-36 20-1 5 6 14 10 13 6-1 13-6 19-8-3 11-13 26-13 33 0 3 2 4 5 4h16c2 0 3-1 4-3l3-10 3 10c1 2 2 3 4 3h16c3 0 5-1 5-4 0-7-10-22-13-33 6 2 13 7 19 8 4 1 11-8 10-13-2-8-22-17-36-20 5-3 8-8 8-14 0-9-7-16-16-16z";
 
   const borne = (v, n) => (Number.isInteger(v) && v >= 0 && v < n ? v : 0);
@@ -398,6 +416,11 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
       // Noms au vote : les trente proposés, puis ceux que des membres de la brigade ont ajoutés. Les voix sont comptées sans tenir compte des accents ni de la casse.
       const voixNom = {}; Object.keys(voix.n).forEach(t => { voixNom[cle(t)] = (voixNom[cle(t)] || 0) + voix.n[t]; });
       const ajoutes = Object.keys(voix.n).filter(t => !NOMS.some(x => cle(x) === cle(t))), auVote = NOMS.concat(ajoutes), monNom = moi.n === undefined ? "" : cle(moi.n);
+      // Devises au vote : celles de la liste, puis celles que des membres de la brigade ont proposées (une seule ligne par devise, accents et casse ignorés).
+      const estNum = t => /^\d+$/.test(t), voixDev = {}, devAjoutees = [];
+      Object.keys(voix.d).forEach(t => { const k = estNum(t) ? t : cle(t); voixDev[k] = (voixDev[k] || 0) + voix.d[t]; });
+      Object.keys(voix.d).filter(t => !estNum(t)).sort((x, y) => voix.d[y] - voix.d[x] || x.localeCompare(y, "fr")).forEach(t => { if (!devAjoutees.some(x => cle(x) === cle(t))) devAjoutees.push(t); });
+      const maDevise = typeof moi.d === "string" ? cle(moi.d) : moi.d;
       const note = (n, pris) => (n ? "<em>" + pl(n, "voix", "voix") + (pris ? " · retenu ailleurs" : "") + "</em>" : pris ? "<em>retenu ailleurs</em>" : "");
       // Sections du vote : celles que le joueur a ouvertes restent ouvertes ; au départ, la première où il n'a pas encore voté.
       const cles = ["n", "e", "d", "g"];
@@ -406,7 +429,7 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
       const maVoix = (v, t) => (v === undefined ? "à voter" : "ma voix : " + t);
       el.innerHTML = '<div class="pp" style="--pp-c:' + B.c + '"><p class="ap-m">Carnet de brigade · ' + pl(ligne.n || 0, "membre", "membres") + '</p><h3 tabindex="-1" id="ppTitre">' + emblemeSvg(o.brigade) + " " + h(B.nom) + "</h3>"
         + '<ul class="pp-elus"><li>' + emblemeSvg(o.brigade) + "<span><small>Nom et emblème" + (ouvert ? " · provisoires" : "") + "</small><b>" + h(B.nom) + (ligne.titre === undefined ? " (pas encore de nom)" : "") + "</b></span></li>"
-        + "<li>" + emblemeSvg(o.brigade) + "<span><small>Devise</small><b>" + (ligne.devise !== undefined && DEVISES[ligne.devise] ? "« " + h(DEVISES[ligne.devise]) + " »" : "Pas encore de devise") + "</b></span></li>"
+        + "<li>" + emblemeSvg(o.brigade) + "<span><small>Devise</small><b>" + (devise(ligne) ? "« " + h(devise(ligne)) + " »" : "Pas encore de devise") + "</b></span></li>"
         + "<li>" + (jeu && jeu.img ? '<img src="img/' + h(jeu.img) + '" alt="">' : emblemeSvg(o.brigade)) + "<span><small>Jeu emblème</small><b>" + (jeu ? h(jeu.n) : "Pas encore de jeu emblème") + "</b></span></li></ul>"
         + '<ul class="pp-membres">' + (o.membres || []).map(x => "<li>" + avatar(x.a, { brigade: o.brigade }) + h(x.p) + "</li>").join("") + "</ul>"
         + (ouvert ? '<form id="ppVote" novalidate>'
@@ -417,7 +440,10 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
           + section("e", "Emblème", maVoix(moi.e, EMBLEMES[moi.e] ? EMBLEMES[moi.e].nom : ""), '<div class="pp-opts" role="group" aria-label="Emblème de la brigade">'
             + EMBLEMES.map((t, i) => '<label class="pp-opt"><input class="pp-vh" type="radio" name="ppEmbleme" value="' + i + '"' + (moi.e === i ? " checked" : "") + '><span>' + image(IMAGES[i], "pp-img", 'data-e="' + i + '"') + h(t.nom) + note(voix.e[i], emblPris.has(i)) + "</span></label>").join("") + "</div>")
           + section("d", "Devise", maVoix(moi.d, "choisie"), '<div class="pp-devises" role="group" aria-label="Devise de la brigade">'
-            + DEVISES.map((t, i) => '<label class="pp-dev"><input class="pp-vh" type="radio" name="ppDevise" value="' + i + '"' + (moi.d === i ? " checked" : "") + "><span>" + h(t) + note(voix.d[i]) + "</span></label>").join("") + "</div>")
+            + DEVISES.map((t, i) => '<label class="pp-dev"><input class="pp-vh" type="radio" name="ppDevise" value="' + i + '"' + (maDevise === i ? " checked" : "") + "><span>" + h(t) + note(voixDev[i]) + "</span></label>").join("")
+            + devAjoutees.map(t => '<label class="pp-dev"><input class="pp-vh" type="radio" name="ppDevise" value="' + h(t) + '"' + (maDevise === cle(t) ? " checked" : "") + "><span>" + h(t) + note(voixDev[cle(t)]) + "</span></label>").join("") + "</div>"
+            + '<label for="ppDeviseLibre">Ou proposer une autre devise</label><input class="pp-jeu" id="ppDeviseLibre" type="text" autocomplete="off" maxlength="120" placeholder="Notre devise…">'
+            + '<p class="eg-hint">De 5 à 120 caractères. Elle s\'ajoute aux choix de votre brigade, et elle est visible de tous : restez dans le ton, jamais moqueur.</p>')
           + section("g", "Jeu emblème", maVoix(moi.g, h(moi.g || "")), '<select class="pp-jeu" id="ppJeu" aria-label="Jeu emblème de la brigade"><option value="">Choisir un jeu du catalogue</option>'
             + cats.map(c => '<optgroup label="' + h((fam[c] || {}).n || c) + '">' + jeux.filter(g => g.c === c).sort((x, y) => x.n.localeCompare(y.n, "fr")).map(g => '<option value="' + h(g.n) + '"' + (moi.g === g.n ? " selected" : "") + ">" + h(g.n) + "</option>").join("") + "</optgroup>").join("") + "</select>"
             + (cites.length ? '<p class="eg-hint">Déjà cités : ' + cites.map(n => h(n) + " (" + voix.g[n] + ")").join(", ") + ".</p>" : ""))
@@ -434,9 +460,13 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
         if (occupe) return;
         const coche = n => { const x = q('input[name="' + n + '"]:checked'); return x ? Number(x.value) : undefined; };
         const libre = q("#ppNomLibre").value.replace(/\s+/g, " ").trim(), choisi = q('input[name="ppNom"]:checked');
-        const envoi = { titre: libre || (choisi ? choisi.value : undefined), embleme: coche("ppEmbleme"), devise: coche("ppDevise"), jeu: q("#ppJeu").value || undefined };
+        // Devise proposée : sans guillemets autour ; si elle est déjà dans la liste, c'est son numéro qui part.
+        const devLibre = q("#ppDeviseLibre").value.replace(/\s+/g, " ").replace(/^[«"“ ]+|[»"” ]+$/g, ""), devChoisie = q('input[name="ppDevise"]:checked'), dansListe = DEVISES.findIndex(t => cle(t) === cle(devLibre));
+        const maDev = devLibre ? (dansListe >= 0 ? dansListe : devLibre) : devChoisie ? (/^\d+$/.test(devChoisie.value) ? Number(devChoisie.value) : devChoisie.value) : undefined;
+        const envoi = { titre: libre || (choisi ? choisi.value : undefined), embleme: coche("ppEmbleme"), devise: maDev, jeu: q("#ppJeu").value || undefined };
         const dit = (t, cls) => { q("#ppMsg").textContent = t; q("#ppMsg").className = "eg-msg " + cls; };
-        if (libre && !/^\p{L}[\p{L}\p{N} .'’-]{2,39}$/u.test(libre)) { ouvertes.add("n"); q("#ppNomLibre").focus(); return dit("Un nom de 3 à 40 caractères : des lettres, des chiffres, des espaces, sans autre signe.", "err"); }
+        if (libre && !/^\p{L}[\p{L}\p{N} .,&%'’-]{2,39}$/u.test(libre)) { ouvertes.add("n"); q("#ppNomLibre").focus(); return dit("Un nom de 3 à 40 caractères : des lettres, des chiffres, des espaces, sans autre signe.", "err"); }
+        if (devLibre && !/^\p{L}[\p{L}\p{N} .,;:!?'’"…()«»-]{4,119}$/u.test(devLibre)) { ouvertes.add("d"); q("#ppDeviseLibre").focus(); return dit("Une devise de 5 à 120 caractères : des lettres, des chiffres et une ponctuation simple.", "err"); }
         if (Object.values(envoi).every(x => x === undefined)) return dit("Choisissez au moins un nom, un emblème, une devise ou un jeu emblème avant d'enregistrer.", "err");
         occupe = true; q("#ppOk").disabled = true;
         let r;
@@ -452,5 +482,5 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
     q("#ppTitre").focus({ preventScroll: true });
   }
 
-  window.PharmacoParticipants = { COULEURS, COIFFES, ACCESSOIRES, FLEURS, BRIGADES, NOMS, EMBLEMES, DEVISES, tirage, maj, court, secours, avatar, embleme: emblemeSvg, decrire, fiche, brigade };
+  window.PharmacoParticipants = { COULEURS, COIFFES, ACCESSOIRES, FLEURS, BRIGADES, NOMS, EMBLEMES, DEVISES, devise, tirage, maj, court, secours, avatar, embleme: emblemeSvg, decrire, fiche, brigade };
 })();
