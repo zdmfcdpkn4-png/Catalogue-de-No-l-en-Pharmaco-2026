@@ -125,7 +125,7 @@
   const jour = (d, court) => (court ? "" : JOURS[d.getDay()] + " ") + d.getDate() + (d.getDate() === 1 ? "er" : "") + " " + (court ? MOIS[d.getMonth()].slice(0, 3) + "." : MOIS[d.getMonth()]);
   const val = (p, v) => (p.type === "qcm" ? p.options[v].t : p.prefixe ? p.prefixe + String(v).padStart(2, "0") : v + (p.unite ? " " + p.unite : ""));
 
-  const NOTICE = `<details class="eg-panel eg-notice" id="egNotice" open><summary>Notice des Pharmacogames : à lire avant la première prise</summary>
+  const NOTICE = `<details class="eg-panel eg-notice" id="egNotice"><summary>Notice des Pharmacogames : à lire avant la première prise</summary>
 <p class="eg-bd-aide" id="egBdAide">Mode d'emploi en six cases : faites glisser.</p>
 <div class="eg-bd" role="region" aria-labelledby="egBdAide" tabindex="0"><img src="img/notice-pharmacogames-1.svg" alt="Case 1, Étiquetage. Le flacon montre son avatar en forme de meeple et un badge de brigade : « Nom, pseudo, avatar : flacon bien étiqueté ! Le sort me range dans l'une des cinq brigades. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-2.svg" alt="Case 2, Le sapin d'abord. Une flèche va du sapin à la porte du jour : « La goutte du sapin avant la porte, et les portes dans l'ordre : on ne saute pas d'étape en ZAC. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-3.svg" alt="Case 3, Au chrono. Un chronomètre tourne à côté du flacon concentré : « Cinq questions, 30 ou 40 secondes chacune, une seule prise, 2 points pièce. Dose : 2 points à 2 près, 1 point à 10 près. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-4.svg" alt="Case 4, Jeux d'adresse. Une cible touchée et un podium : « Deux essais, je garde le meilleur. Au rang : 10 points au premier, 1 au dernier. Le 25, double dose : 20 points ! »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-5.svg" alt="Case 5, Quarantaine. Trois jours au calendrier et une enveloppe scellée : « Porte ouverte trois jours. Les résultats ? En quarantaine jusqu'à la clôture. Patience ! »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-6.svg" alt="Case 6, En brigade. Trois meeples entourent le flacon : « Enquête d'équipe : un avis chacun, la majorité tranche. Jusqu'à 40 points pour la brigade. »" width="400" height="300" loading="lazy"></div>
 <p class="eg-fx">Effet indésirable très fréquent : consultation compulsive du classement.</p></details>`;
@@ -189,6 +189,8 @@
 .eg-bd img{display:block;width:100%;height:auto;scroll-snap-align:start}
 .eg-bd:focus-visible{outline:3px solid var(--line);outline-offset:2px}
 @media(min-width:861px){.eg-bd{grid-auto-columns:calc((100% - 20px) / 3)}}
+.eg-gate .eg-bd{grid-auto-columns:88%}
+.eg-gate .eg-notice{margin:10px 0 4px;padding:0}.eg-gate .eg-notice>summary{font-size:.98rem}
 .eg-fx{margin:12px 0 0;padding:8px 11px;border:2.5px dashed var(--line);border-radius:12px;font-size:.86rem;font-weight:700}
 .eg-banner{margin:18px 0 0;padding:10px 14px;background:var(--mu);color:#26076D;border:3px solid var(--line);border-radius:14px;box-shadow:5px 5px 0 var(--shadow);font-weight:800}
 /* Calendrier : 25 portes */
@@ -434,9 +436,10 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     sec.setAttribute("aria-labelledby", "pharmacogames-t");
     sec.innerHTML = '<p class="adv-back"><a class="go" href="#">Retour au catalogue</a></p>'
       + '<div class="adv-head"><h2 id="pharmacogames-t">Pharmacogames <span>de Noël</span></h2>'
-      + '<p class="adv-intro">Le concours de l\'équipe, chacun pour soi : 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, cinq questions au chrono sur un thème du jeu de société (quatre flacons au choix, ou une dose à estimer entre 0 et 100) ou un vrai jeu d\'adresse. Chaque porte vaut 10 points, la finale du 25 en vaut 20. Pour élire votre jeu préféré, c\'est au <a href="#vote">Palmarès</a>.</p></div>'
+      + '<p class="adv-intro">Le concours de l\'équipe, chacun pour soi : 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, cinq questions au chrono ou un jeu d\'adresse. Votre jeu préféré se vote au <a href="#vote">Palmarès</a>.</p></div>'
       + NOTICE
       + '<form class="eg-panel eg-gate" id="egGate" novalidate><h3>Entrer dans le calendrier</h3>'
+      + '<details class="eg-notice" id="egProfil"><summary>Première connexion : votre fiche en quatre cases</summary><p class="eg-bd-aide" id="egBdProfil">Faites glisser.</p><div class="eg-bd" role="region" aria-labelledby="egBdProfil" tabindex="0"><img src="img/notice-profil-1.svg" alt="Case 1, Le code. Un champ de saisie masqué et un cadenas, le flacon dit : « Tapez le code d\'équipe, puis choisissez votre nom dans la liste : on entre en zone. »" width="400" height="300" loading="lazy"><img src="img/notice-profil-2.svg" alt="Case 2, Le pseudo. Le flacon montre une étiquette « Dr Meeple » : « Choisissez un pseudo : c\'est lui qui paraîtra au classement. Étiquette obligatoire ! »" width="400" height="300" loading="lazy"><img src="img/notice-profil-3.svg" alt="Case 3, L\'avatar. Trois meeples coiffés d\'une couronne, d\'un bonnet et d\'un chapeau : « Couleur, coiffe, accessoire : composez le meeple qui vous ressemble. Dosage libre. »" width="400" height="300" loading="lazy"><img src="img/notice-profil-4.svg" alt="Case 4, La brigade. Cinq jetons numérotés, le troisième tiré au sort, le flacon dit : « Le sort vous range dans une des cinq brigades. Nom, emblème et devise : au vote jusqu\'au 10 décembre. »" width="400" height="300" loading="lazy"></div></details>'
       + '<label for="egCode">Code d\'équipe</label><input id="egCode" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" required>'
       + '<div id="egListe" hidden><label for="egNom">Votre nom</label><select id="egNom"></select></div>'
       + '<div id="egLibre"><label for="egPrenom">Pseudo ou prénom</label><input id="egPrenom" type="text" autocomplete="given-name" maxlength="24" required></div>'
@@ -607,7 +610,6 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     E = null; enFiche = false; enTirage = false; majEnquete();
     q("#egBody").hidden = true; q("#egRank").hidden = true; q("#egBanner").hidden = true;
     q("#egGate").hidden = false;
-    q("#egNotice").open = true;
     (q("#egLibre").hidden ? q("#egNom") : q("#egPrenom")).focus();
   }
 
