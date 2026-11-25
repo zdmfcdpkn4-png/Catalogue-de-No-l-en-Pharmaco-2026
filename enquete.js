@@ -71,7 +71,7 @@
   margin-top:18px;padding:16px;border:3px solid var(--eq-laiton);border-radius:16px;background:var(--eq-fond);color:var(--eq-clair);text-align:left}
 .enq *{box-sizing:border-box}
 .enq>.eg-notice{margin:0 0 14px}
-.enq-film,.enq-ouv{margin-top:12px}.enq-film video,.enq-ouv video{display:block;width:100%;max-width:420px;margin:0 auto;border-radius:12px;background:#000}
+.enq-film,.enq-ouv,.enq-mus{margin-top:12px}.enq-film video,.enq-ouv video{display:block;width:100%;max-width:420px;margin:0 auto;border-radius:12px;background:#000}
 .enq h3{margin:0;font-weight:800;font-size:1.3rem;line-height:1.15;color:var(--eq-laiton)}
 .enq h4{margin:0 0 8px;font-weight:800;font-size:1rem;color:var(--eq-laiton)}
 .enq-fic{display:inline-block;margin:6px 0 0;padding:2px 8px;border:1.5px solid var(--eq-laiton);border-radius:99px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}
@@ -205,7 +205,7 @@ button.enq-v{cursor:zoom-in}
     // pour que le volet reste comme le joueur l'a laissé. Bloc caché : les deux sont retirés ; bloc rouvert : volet déplié.
     const notice = document.createElement("details"), corps = document.createElement("div");
     notice.className = "eg-panel eg-notice"; notice.id = "enqNotice"; notice.innerHTML = NOTICE;
-    const cacher = () => { el.hidden = true; el.replaceChildren(); };
+    const cacher = () => { el.hidden = true; el.replaceChildren(); if (el._muet) el._muet(); };
     const saisie = {}, confirme = {}, erreur = {};
     const peut = () => (opts.peutRepondre ? Boolean(opts.peutRepondre()) : true);
 
@@ -441,6 +441,32 @@ button.enq-v{cursor:zoom-in}
     const plein = v => { try { const f = v.requestFullscreen || v.webkitRequestFullscreen; if (f) { const r = f.call(v); if (r && r.catch) r.catch(() => {}); } else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen(); } catch (e) {} };
     const ouv = document.createElement("div"); ouv.className = "enq-ouv";
     ouv.innerHTML = '<div class="enq-b"><button type="button" data-ouv="1">Voir le film d\'ouverture</button></div>';
+    // Musique de l'enquête : coupée par défaut, choix gardé sur l'appareil. Un extrait par phase (audio/ambiance-enquete-1 à 3 :
+    // amorce, énigmes, dénouement), en boucle, avec fondu. Elle se tait quand le bloc n'est plus à l'écran ou qu'un film parle.
+    const CLE_MUS = "pharmaco-enquete-musique";
+    const musOn = v => { try { if (v === undefined) return localStorage.getItem(CLE_MUS) === "1"; localStorage.setItem(CLE_MUS, v ? "1" : "0"); } catch (e) {} return false; };
+    const mus = document.createElement("div"); mus.className = "enq-mus";
+    mus.innerHTML = '<div class="enq-b"><button type="button" class="sec" data-mus="1" aria-pressed="false">Musique : coupée</button></div>';
+    let piste = null, pisteN = 0, fondu = 0;
+    const phase = () => (Q && Q.denouement ? 3 : Q && (Q.enigmes || []).some(e => !e.quete && e.etat !== "avenir") ? 2 : 1);
+    const vers = (c, ms, fin) => { clearInterval(fondu); const d = piste.volume, t0 = Date.now(); fondu = setInterval(() => { const k = Math.min(1, (Date.now() - t0) / ms); try { piste.volume = d + (c - d) * k; } catch (e) {} if (k >= 1) { clearInterval(fondu); if (fin) fin(); } }, 40); };
+    function musique() {
+      const b = mus.querySelector("[data-mus]"), on = musOn();
+      b.setAttribute("aria-pressed", on ? "true" : "false"); b.textContent = on ? "Musique : activée" : "Musique : coupée";
+      const film = [...el.querySelectorAll("video")].some(v => !v.paused && !v.ended && !v.muted);
+      if (!on || el.hidden || el.offsetParent === null || document.hidden || film) { if (piste && !piste.paused) vers(0, 600, () => piste.pause()); return; }
+      if (!piste) { piste = new Audio(); piste.loop = true; }
+      const n = phase();
+      if (pisteN !== n) { pisteN = n; piste.src = "audio/ambiance-enquete-" + n + ".mp3"; }
+      if (piste.paused) { try { piste.volume = 0; } catch (e) {} piste.play().catch(() => {}); }
+      vers(0.5, 500);
+    }
+    mus.addEventListener("click", ev => { if (!ev.target.closest("[data-mus]")) return; musOn(!musOn()); musique(); });
+    ["hashchange", "visibilitychange"].forEach(k => (k === "hashchange" ? window : document).addEventListener(k, () => setTimeout(musique, 60)));
+    ["play", "pause", "ended", "volumechange"].forEach(k => el.addEventListener(k, ev => { if (ev.target.tagName === "VIDEO") musique(); }, true));
+    document.addEventListener("pointerdown", () => { if (musOn() && piste && piste.paused) musique(); }); // lecture refusée sans geste : on réessaie au premier toucher
+    el._muet = () => { if (piste) piste.pause(); };
+    function poserMusique() { const t = corps.querySelector(".enq-fic") || corps.querySelector("h3"); if (!Q) return; if (t) t.after(mus); else corps.append(mus); musique(); }
     function poserOuverture() {
       const t = corps.querySelector(".enq-fic") || corps.querySelector("h3");
       if (!t || !Q || (Array.isArray(Q.amorces) && !Q.amorces.some(a => a.fiche))) return;
@@ -490,7 +516,7 @@ button.enq-v{cursor:zoom-in}
           + '</ol><p class="enq-next">Seules les énigmes closes comptent ici.</p></section>';
       }
       el.className = "enq"; el.hidden = false; corps.innerHTML = s;
-      poserOuverture(); poserFilm();
+      poserMusique(); poserOuverture(); poserFilm();
       if (!corps.isConnected) { notice.open = true; el.replaceChildren(notice, corps); }
       notice.hidden = !enJeu;
       animer();
