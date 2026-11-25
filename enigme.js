@@ -106,7 +106,18 @@
   //   oublier()            : oublie le joueur de cet appareil (le code d'équipe reste).
   //   dessin(avatar, brigade) : promesse du SVG de l'avatar (participants.js, chargé à la demande).
   window.PharmacoAcces = {
-    identite: () => (mem.code && mem.prenom ? { pseudo: mem.prenom } : null),
+    // Avatar et brigade : ceux de la fiche chargée dans la page, sinon ceux gardés sur l'appareil à la dernière visite.
+    identite: () => (mem.code && mem.prenom ? Object.assign({ pseudo: mem.prenom }, Array.isArray(mem.av) ? { avatar: mem.av, brigade: mem.br } : {}) : null),
+    // Le joueur mémorisé, demandé au serveur avec le code gardé sur l'appareil ; rien n'est demandé sans joueur identifié.
+    async moi() {
+      if (!mem.code || !mem.prenom) return null;
+      let r;
+      try { r = await call({ code: mem.code, prenom: mem.prenom }); } catch (e) { return null; }
+      const P = r.status === 200 && r.j && r.j.profil;
+      if (!P || !Array.isArray(P.a)) return null;
+      mem.av = P.a; mem.br = P.b; save();
+      return { pseudo: mem.prenom, avatar: P.a, brigade: P.b };
+    },
     async joueurs(code) {
       let r;
       try { r = await call({ code: String(code || "").trim() }); } catch (e) { return { erreur: "serveur" }; }
@@ -766,6 +777,12 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   function recevoir(j, msg, cls) {
     const premier = !E;
     E = j;
+    // Avatar et brigade du joueur, gardés sur l'appareil pour le sapin (PharmacoAcces.identite) ; effacés pour un joueur sans fiche.
+    if (!relecture && mem.prenom) {
+      const P = j.profil && Array.isArray(j.profil.a) ? j.profil : null, avant = JSON.stringify([mem.av, mem.br]);
+      if (P) { mem.av = P.a; mem.br = P.b; } else { delete mem.av; delete mem.br; }
+      if (JSON.stringify([mem.av, mem.br]) !== avant) save();
+    }
     // Chronos en cours : le serveur donne le temps restant, on le convertit en échéance locale.
     const vus = {};
     E.portes.forEach(p => { if (p.reste !== undefined) vus[p.n] = echeance[p.n] || Date.now() + p.reste * 1000; });
