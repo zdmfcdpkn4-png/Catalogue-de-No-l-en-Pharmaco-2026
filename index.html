@@ -1114,7 +1114,7 @@ async function avBoOpen(btn){
 }
 /* Contrôle d'accès : tant que personne n'est identifié sur l'appareil, les gouttes ne s'ouvrent pas. Rien n'est demandé au serveur
    avant « Lever le scellé ». Le code d'équipe n'est gardé que par PharmacoAcces.choisir(). Si le serveur ne répond pas, le sapin s'ouvre sans identification. */
-let avCode="",avJou=null,avLibre=false,avMoiSvg="";
+let avCode="",avJou=null,avLibre=false,avMoiSvg="",avMoiCle="";
 function avEvApres(){if(!matchMedia("(prefers-reduced-motion:reduce)").matches)avEv(true)}
 function avVerr(){const A=window.PharmacoAcces;return !!A&&!avLibre&&!A.identite()}
 function avMoi(v){try{if(v===undefined)return JSON.parse(localStorage.getItem(AV_KEY+"-moi")||"null");v?localStorage.setItem(AV_KEY+"-moi",JSON.stringify(v)):localStorage.removeItem(AV_KEY+"-moi")}catch(e){}return null}
@@ -1126,8 +1126,14 @@ function avAcces(foc){
     if(!id){if(m)m.remove();return}
     if(m&&m.dataset.p===id.pseudo)return;if(m)m.remove();
     t.insertAdjacentHTML("beforeend",'<div class="av-moi" data-p="'+esc(id.pseudo)+'"><span class="lk-im" aria-hidden="true">'+avIni(id.pseudo)+'</span><b>'+esc(id.pseudo)+'</b><button type="button" data-lk="changer">changer</button></div>');
-    const im=t.querySelector(".av-moi .lk-im"),k=avMoi();
-    if(avMoiSvg)im.innerHTML=avMoiSvg;else if(k&&k.pseudo===id.pseudo&&k.avatar)Promise.resolve(A.dessin(k.avatar,k.brigade)).then(s=>{if(typeof s!=="string")return;avMoiSvg=s;const i=$("#avTree .av-moi .lk-im");if(i)i.innerHTML=s}).catch(()=>{});
+    /* Meeple du joueur dans la pastille : l'initiale d'abord, remplacée dès que le dessin arrive. Sources, dans l'ordre : l'avatar rendu par
+       PharmacoAcces (identite(), ou moi() s'il existe), sinon celui choisi dans le sapin et gardé sur l'appareil. */
+    const im=t.querySelector(".av-moi .lk-im"),k=avMoi(),cle=x=>id.pseudo+"|"+JSON.stringify(x||0);
+    const pose=(av,br)=>{if(!av)return false;const c=cle(av);if(avMoiSvg&&avMoiCle===c){const i=$("#avTree .av-moi .lk-im");if(i)i.innerHTML=avMoiSvg;return true}
+      Promise.resolve(A.dessin(av,br)).then(s=>{if(typeof s!=="string"||!/^\s*<svg/i.test(s))return;avMoiSvg=s;avMoiCle=c;const i=$('#avTree .av-moi[data-p="'+CSS.escape(id.pseudo)+'"] .lk-im');if(i)i.innerHTML=s}).catch(()=>{});return true};
+    if(pose(id.avatar,id.brigade))return;
+    if(k&&k.pseudo===id.pseudo)pose(k.avatar,k.brigade);
+    if(typeof A.moi==="function")Promise.resolve(A.moi()).then(m=>{if(m&&m.pseudo===id.pseudo&&m.avatar){avMoi({pseudo:m.pseudo,avatar:m.avatar,brigade:m.brigade});pose(m.avatar,m.brigade)}}).catch(()=>{});
     return;
   }
   if(m)m.remove();t.classList.add("verr");avEvEnd(true);
@@ -1154,7 +1160,7 @@ function avLkClic(b){
   const A=window.PharmacoAcces,t=$("#avTree");if(!A)return;
   if(b.dataset.lk==="changer"){A.oublier();avMoi(null);avMoiSvg="";avAcces();const f=t.querySelector(".av-lock");if(f&&avCode&&avJou)avLkJou(f);else avAcces(1);return}
   const j=avJou&&avJou[+b.dataset.lk];if(!j||!A.choisir(avCode,j.pseudo))return;
-  avMoi({pseudo:j.pseudo,avatar:j.avatar,brigade:j.brigade});const s=b.querySelector(".lk-im svg");avMoiSvg=s?s.outerHTML:"";
+  avMoi({pseudo:j.pseudo,avatar:j.avatar,brigade:j.brigade});const s=b.querySelector(".lk-im svg");avMoiSvg=s?s.outerHTML:"";avMoiCle=s?j.pseudo+"|"+JSON.stringify(j.avatar||0):"";
   avAcces();$("#avPanel").innerHTML=avIntro();avEvApres();const g=$('#avTree [data-d="'+avNow()+'"]')||$("#avPanel .go");if(g)g.focus({preventScroll:true});
 }
 function avTkVu(o){if(!o||o.classList.contains("vu"))return;o.classList.add("vu");const x=o.querySelector(".tk-g");x.removeAttribute("aria-hidden");x.setAttribute("role","status");const b=$("#avPanel [data-tk]"),n=$("#avPanel .tk-n");if(b)b.remove();if(n)n.remove()}
