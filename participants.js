@@ -245,7 +245,12 @@
 .pp-dev input:focus-visible+span{outline:3px solid var(--line,#26076D);outline-offset:3px}
 .pp label[for]{display:block;margin:14px 0 5px}
 .pp-jeu{display:block;width:100%;min-height:46px;font:700 1rem var(--display,sans-serif);color:var(--on-surface,#26076D);background:#fff;border:2.5px solid var(--line,#26076D);border-radius:12px;padding:8px 10px}
-.pp-tirage video{display:block;width:100%;max-height:60vh;margin-top:10px;background:#FFFBF2;border:3px solid var(--line,#26076D);border-radius:16px}
+.pp-plein{position:fixed;inset:0;z-index:2147483000;display:flex;background:#0B0320;animation:ppPlein .3s both;transition:opacity .35s}
+.pp-plein.out{opacity:0;pointer-events:none}
+@keyframes ppPlein{from{opacity:0}}
+.pp-plein video{display:block;flex:1 1 0;min-width:0;min-height:0;width:100%;height:100%;object-fit:contain;border:0;background:none}
+.pp-plein button{position:absolute;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));padding:8px 14px;font:800 .9rem var(--display,inherit);color:#26076D;background:#ECD567;border:3px solid #26076D;border-radius:999px;box-shadow:3px 3px 0 #0B0320;cursor:pointer}
+.pp-plein button:focus-visible{outline:3px solid #FFFBF2;outline-offset:3px}
 .pp-vote{margin-top:12px;border:2.5px solid var(--line,#26076D);border-radius:14px;background:#fff}
 .pp-vote>summary{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;padding:6px 12px;font-weight:800;cursor:pointer;list-style:none}
 .pp-vote>summary::-webkit-details-marker{display:none}
@@ -281,16 +286,33 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
   // la révélation suit sans attendre. Fond crème : la vidéo se termine sur un flash de cette teinte.
   const tirage = { src: "video/tirage-brigade.mp4", attente: 12000 };
   function jouerTirage(el, suite) {
-    let fait = false;
-    const fin = () => { if (!fait) { fait = true; clearTimeout(garde); suite(); } };
-    let garde = 0;
+    let fait = false, garde = 0, couche = null, joue = false;
+    const avant = document.activeElement;
+    const touche = e => { if (e.key === "Escape") { e.preventDefault(); fin(); } };
+    function fin() {
+      if (fait) return;
+      fait = true; clearTimeout(garde);
+      document.removeEventListener("keydown", touche, true); window.removeEventListener("hashchange", fin);
+      const c = couche;
+      // Une vidéo qui n'a jamais démarré (fichier absent, lecture refusée) s'efface d'un coup ; sinon, en fondu.
+      if (c) { try { c.querySelector("video").pause(); } catch (e) {} if (joue) { c.classList.add("out"); setTimeout(() => c.remove(), 350); } else c.remove(); }
+      suite();
+      // Retour du focus : la suite le pose d'ordinaire sur la révélation ; sinon, là où il était avant la vidéo.
+      if (c && (c.contains(document.activeElement) || document.activeElement === document.body) && avant && avant.isConnected && avant !== document.body) avant.focus({ preventScroll: true });
+    }
     if (!tirage.src || (window.matchMedia && matchMedia("(prefers-reduced-motion:reduce)").matches)) return fin();
-    el.innerHTML = '<div class="pp pp-tirage"><p class="ap-m">Tirage de la brigade</p><video id="ppVideo" muted playsinline preload="auto" aria-label="Animation du tirage au sort de la brigade"></video>'
-      + '<button class="linkbtn" type="button" id="ppPasser">Passer l\'animation</button></div>';
-    const v = el.querySelector("#ppVideo");
+    // Plein écran, comme les vidéos du sapin : une couche fixe et sombre, la vidéo entière, « Passer », Échap ou un toucher pour abréger. Sans son.
+    el.innerHTML = '<div class="pp pp-tirage"><p class="ap-m">Tirage de la brigade</p></div>';
+    couche = document.createElement("div");
+    couche.className = "pp-plein"; couche.setAttribute("role", "dialog"); couche.setAttribute("aria-modal", "true"); couche.setAttribute("aria-label", "Tirage au sort de la brigade");
+    couche.innerHTML = '<video id="ppVideo" muted playsinline preload="auto" aria-hidden="true"></video><button type="button" id="ppPasser">Passer</button>';
+    document.body.appendChild(couche);
+    const v = couche.querySelector("#ppVideo");
     garde = setTimeout(fin, tirage.attente);
-    v.addEventListener("ended", fin); v.addEventListener("error", fin);
-    el.querySelector("#ppPasser").addEventListener("click", fin);
+    v.addEventListener("ended", fin); v.addEventListener("error", fin); v.addEventListener("playing", () => { joue = true; });
+    couche.addEventListener("click", fin);
+    document.addEventListener("keydown", touche, true); window.addEventListener("hashchange", fin);
+    couche.querySelector("#ppPasser").focus({ preventScroll: true });
     v.src = tirage.src;
     const p = v.play();
     if (p && p.catch) p.catch(fin);

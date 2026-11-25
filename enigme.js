@@ -775,7 +775,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egRank").hidden = false;
     q("#egBanner").hidden = !relecture;
     if (premier) { q("#egNotice").open = false; choix = parDefaut(); brouillon = null; aConfirmer = false; }
-    q("#egWho").textContent = relecture ? "Relecture" : mem.prenom || mem.nom || "";
+    q("#egWho").textContent = relecture ? "Relecture" : mem.prenom || String(mem.nom || "").split(/[ .]/)[0]; // sans fiche : le prénom seul (premier mot du nom de la liste)
     majBrigades();
     identite();
     grille();
