@@ -1,6 +1,7 @@
 /* Lecteur du podcast « La ludothèque idéale pour Noël », en tête du catalogue. Propre au site Vercel : sans ce fichier,
    le catalogue reste tel quel. Le lecteur se glisse au début du bloc des indications (.ind), que les autres pages masquent
    déjà : il n'apparaît donc que sur le catalogue, et se met en pause quand on le quitte.
+   Au repos, une petite pastille (disque et titre) ; elle se déploie à la lecture et se replie à la pause, en gardant la position.
    Disque au logo de l'unité (il tourne pendant la lecture, sauf en mouvement réduit), anneau de progression, lecture et pause,
    retour de 15 s, avance de 30 s, vitesse, barre de défilement. Le fichier n'est demandé qu'au premier appui (preload none).
    Ouverture : le 26 novembre 2026 à 7 h, heure de Paris (simple affichage). */
@@ -35,8 +36,17 @@
 .pc-b button:hover{background:rgba(255,251,242,.14)}
 .pc button:focus-visible,.pc input:focus-visible{outline:3px solid #ECD567;outline-offset:2px}
 .pc-e{margin:8px 0 0;font-size:.82rem;color:#ECD567}
+/* Au repos (pas de lecture en cours) : une simple pastille, sur ordinateur comme sur téléphone. Elle se déploie à la lecture. */
+.pc:not(.joue){display:inline-grid;grid-template-columns:auto auto;gap:0 12px;justify-items:start;text-align:left;width:auto;max-width:100%;margin-bottom:18px;padding:7px 18px 7px 8px;border-radius:999px;box-shadow:4px 4px 0 var(--shadow,rgba(38,7,109,.35))}
+.pc:not(.joue) .pc-d{width:54px;height:54px;padding:3px}
+.pc:not(.joue) .pc-go{width:32px;height:32px;border-width:2px;box-shadow:0 2px 0 #26076D}
+.pc:not(.joue) .pc-go svg{width:16px;height:16px}
+.pc:not(.joue) h2{font-size:1rem;margin:1px 0 0}
+.pc:not(.joue) .pc-m{font-size:.6rem}
+.pc:not(.joue) .pc-s,.pc:not(.joue) .pc-r,.pc:not(.joue) .pc-b{display:none}
+.pc:not(.joue) .pc-t{width:auto}
 @keyframes pcTour{to{transform:rotate(360deg)}}
-@media(max-width:560px){.pc{grid-template-columns:1fr;justify-items:center;text-align:center;padding:16px 14px}.pc-d{width:104px;height:104px}.pc-t{width:100%}.pc h2{font-size:1.15rem}.pc-b{justify-content:center}}
+@media(max-width:560px){.pc.joue{grid-template-columns:1fr;justify-items:center;text-align:center;padding:16px 14px}.pc.joue .pc-d{width:104px;height:104px}.pc.joue .pc-t{width:100%}.pc.joue h2{font-size:1.15rem}.pc.joue .pc-b{justify-content:center}.pc:not(.joue) h2{font-size:.92rem}}
 @media(prefers-reduced-motion:reduce){.pc-d img{animation:none}}`;
   document.head.appendChild(st);
 
@@ -44,7 +54,7 @@
   el.className = "pc"; el.setAttribute("aria-label", "Podcast : " + TITRE);
   el.innerHTML = '<div class="pc-d"><img src="img/logo-pharmacotechnie.webp" alt="" width="104" height="104">'
     + '<button class="pc-go" type="button" aria-label="Écouter le podcast"><svg class="pl" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.9l10.5-6.5a1 1 0 0 0 0-1.8L9.5 4.6A1 1 0 0 0 8 5.5z"/></svg><svg class="pa" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4.5" height="14" rx="1.2"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.2"/></svg></button></div>'
-    + '<div class="pc-t"><p class="pc-m">À écouter · nouveau</p><h2>' + TITRE + '</h2><p class="pc-s">' + SOUS + "</p>"
+    + '<div class="pc-t"><p class="pc-m">Podcast · 15 min</p><h2>' + TITRE + '</h2><p class="pc-s">' + SOUS + "</p>"
     + '<div class="pc-r"><span class="pc-c">0:00</span><input type="range" min="0" max="' + DUREE + '" value="0" step="1" aria-label="Position dans le podcast"><span class="pc-f"></span></div>'
     + '<div class="pc-b"><button type="button" data-s="-15" aria-label="Reculer de 15 secondes">− 15 s</button><button type="button" data-s="30" aria-label="Avancer de 30 secondes">+ 30 s</button><button type="button" data-v aria-label="Vitesse de lecture">Vitesse × 1</button></div>'
     + '<p class="pc-e" role="status" hidden></p></div>';
@@ -62,7 +72,7 @@
     q(".pc-d").style.setProperty("--p", (100 * (glisse ? +barre.value : t) / d).toFixed(2));
     barre.setAttribute("aria-valuetext", mmss(glisse ? +barre.value : t) + " sur " + mmss(d));
   };
-  const etat = () => { const joue = !!a && !a.paused && !a.ended; el.classList.toggle("joue", joue); go.setAttribute("aria-label", joue ? "Mettre le podcast en pause" : "Écouter le podcast"); };
+  const etat = () => { const joue = !!a && !a.paused && !a.ended; el.classList.toggle("joue", joue); q(".pc-m").textContent = joue ? "À écouter" : a && a.currentTime > 1 ? "Podcast en pause · reprendre à " + mmss(a.currentTime) : "Podcast · 15 min"; go.setAttribute("aria-label", joue ? "Mettre le podcast en pause" : "Écouter le podcast"); };
   function creer() {
     if (a) return a;
     a = new Audio(); a.preload = "none"; a.src = SRC;
