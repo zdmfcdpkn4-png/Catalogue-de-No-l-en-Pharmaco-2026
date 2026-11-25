@@ -838,7 +838,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     const scelle = !relecture && E && E.fiche && E.fiche.etat === "avenir";
     q("#egBrig").className = scelle ? "eg-hint" : "pp-brig";
     q("#egBrig").style.margin = scelle ? "6px 0 10px" : "";
-    if (scelle) { q("#egBrig").innerHTML = CADENAS + " Fiche d'identification, avatar et brigades : sous scellé jusqu'au " + jour(dt(E.fiche.ouvre)) + "."; q("#egBrig").hidden = false; bouton.hidden = true; q("#egBrigade").hidden = true; return; }
+    if (scelle) { q("#egBrig").innerHTML = CADENAS + " Fiche d'identification, avatar et brigades : sous scellé jusqu'au " + jour(dt(E.fiche.ouvre)) + (E.fiche.heure ? " à " + E.fiche.heure + " h" : "") + "."; q("#egBrig").hidden = false; bouton.hidden = true; q("#egBrigade").hidden = true; return; }
     if (!P) { q("#egBrig").hidden = true; return; }
     chargerParticipants().then(() => {
       if (!E || E.profil !== P) return;

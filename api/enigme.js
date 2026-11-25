@@ -36,6 +36,9 @@ const AVATAR = [16, 16, 19, 8]; // couleur, coiffe, accessoire, fleur du logo (f
 // L'identification (fiche, avatar, tirage de la brigade, changement de pseudo) ouvre le 26 novembre, avant le calendrier :
 // c'est le jour -4 (le jour 1 est le 1er décembre). Le vote de la devise et du jeu emblème ouvre le même jour.
 const FICHE_JOUR = -4;
+const FICHE_HEURE = 7; // l'identification ouvre ce jour-là à 7 h, heure de Paris
+const HEURE_PARIS = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', hourCycle: 'h23' });
+const ficheFermee = (jour, t) => jour < FICHE_JOUR || (jour === FICHE_JOUR && Number(HEURE_PARIS.format(new Date(t))) < FICHE_HEURE);
 const NB_DEVISES = 30;
 // Devise libre : une phrase courte proposée par un membre, en plus des devises de la liste.
 const DEVISE = /^\p{L}[\p{L}\p{N} .,;:!?'"…()«»-]{4,119}$/u;
@@ -633,8 +636,8 @@ function etat(B, joueurs, cle, jour, maintenant) {
     sapin: j && j.s ? Object.keys(j.s).map(Number) : [],
     profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b, d: j.d, g: j.g, n: j.n, e: j.e } : undefined,
     nom: j ? j.l : undefined,
-    fiche: { etat: jour < FICHE_JOUR ? 'avenir' : 'ouvert', ouvre: dateDe(FICHE_JOUR) },
-    choix: { etat: jour < FICHE_JOUR ? 'avenir' : jour <= CHOIX_FIN ? 'ouvert' : 'fige', ferme: dateDe(CHOIX_FIN) },
+    fiche: { etat: ficheFermee(jour, maintenant) ? 'avenir' : 'ouvert', ouvre: dateDe(FICHE_JOUR), heure: FICHE_HEURE },
+    choix: { etat: ficheFermee(jour, maintenant) ? 'avenir' : jour <= CHOIX_FIN ? 'ouvert' : 'fige', ferme: dateDe(CHOIX_FIN) },
     portes,
     total: portes.reduce((s, p) => s + (p.pts || 0), 0),
     classement: L,
@@ -753,7 +756,7 @@ async function handler(req, res) {
     // Fiche d'identification : l'avatar choisi par le joueur (liste fermée), la brigade tirée par le serveur, une fois pour toutes.
     if (b.action === 'profil') {
       // Sous scellé jusqu'au 26 novembre : ni fiche ni tirage avant.
-      if (jour < FICHE_JOUR) return res.status(403).json({ error: 'scellee' });
+      if (ficheFermee(jour, maintenant)) return res.status(403).json({ error: 'scellee' });
       if (!avatarOk(b.avatar)) return res.status(400).json({ error: 'avatar' });
       // Avec `nom` : la fiche est créée pour ce nom de la liste, qui ne peut être pris qu'une fois ; `prenom` est le pseudo choisi.
       const nom = b.nom === undefined ? undefined : dansListe(await lireListe(), b.nom);
@@ -781,7 +784,7 @@ async function handler(req, res) {
     // Changement de pseudo : la fiche entière (réponses, avatar, brigade, voix) suit le joueur sous son nouveau nom.
     // Refusé si un autre joueur porte déjà ce nom. Le prénom envoyé reste l'ancien : c'est lui qui désigne la fiche.
     if (b.action === 'renommer') {
-      if (jour < FICHE_JOUR) return res.status(403).json({ error: 'scellee' });
+      if (ficheFermee(jour, maintenant)) return res.status(403).json({ error: 'scellee' });
       const neuf = typeof b.pseudo === 'string' ? b.pseudo.trim().replace(/’/g, "'") : '';
       if (neuf.length < 2 || neuf.length > 24 || !PRENOM.test(neuf)) return res.status(400).json({ error: 'pseudo' });
       const cle2 = norm(neuf);
@@ -798,7 +801,7 @@ async function handler(req, res) {
     }
     // Voix d'un membre pour le nom, l'emblème, la devise et le jeu emblème de sa brigade : ouvert du 26 novembre au 10 décembre, modifiable d'ici là.
     if (b.action === 'brigade') {
-      if (jour < FICHE_JOUR || jour > CHOIX_FIN) return res.status(403).json({ error: jour < FICHE_JOUR ? 'scellee' : 'fige' });
+      if (ficheFermee(jour, maintenant) || jour > CHOIX_FIN) return res.status(403).json({ error: ficheFermee(jour, maintenant) ? 'scellee' : 'fige' });
       const d = typeof b.devise === 'string' ? propre(b.devise) : b.devise, g = typeof b.jeu === 'string' ? b.jeu.trim() : b.jeu;
       const ti = typeof b.titre === 'string' ? propre(b.titre) : b.titre, em = b.embleme;
       if (d === undefined && g === undefined && ti === undefined && em === undefined) return res.status(400).json({ error: 'choix' });

@@ -944,7 +944,7 @@ function avContent(d){
   else if(t==="cartes"){const mv=!matchMedia("(prefers-reduced-motion:reduce)").matches,L=c.cartes||[];
     h+='<div class="ap-ca'+(mv?'" data-plv="'+esc(c.video||AV_BOOSTER)+'" data-amb="enquete':' fin')+'"><div class="cas">'+L.map((k,i)=>avCarte(k,d,i)).join("")+'</div>'+avCaNav(L.length)+'</div>'
       +(c.titre?'<p class="ap-t">'+esc(c.titre)+'</p>':'')+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+(c.texte?'<p class="ap-p">'+esc(c.texte)+'</p>':'')+(c.lien?'<a class="go" href="'+esc(c.lien)+'">'+esc(c.bouton||"Voir")+'</a>':'')+'<p class="ap-src">'+(L.length>1?'Faites glisser ou utilisez les flèches pour voir les '+L.length+' cartes. ':'')+'Touchez une carte pour la voir en grand.</p>'}
-  else if(t==="bd")h+='<div class="ap-bd'+(c.comme==="origami"?' og':'')+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'" data-plv="'+esc(c.video):' fin')+'"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="'+(c.comme==="origami"?"Voir en grand":"Lire en grand")+' : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+'</div>'
+  else if(t==="bd")h+='<div class="ap-bd'+(c.comme==="origami"?' og':'')+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'" data-plv="'+esc(c.video)+(c.comme==="origami"?'" data-amb="origami':''):' fin')+'"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="'+(c.comme==="origami"?"Voir en grand":"Lire en grand")+' : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+'</div>'
     +'<p class="ap-t">'+esc(c.titre)+'</p>'+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+'<p class="ap-src">'+(c.comme==="origami"?"Touchez le pliage pour le voir en grand.":"Touchez la planche pour la lire en grand.")+'</p>';
   else if(t==="ticket")h+='<div class="ap-tk t'+([1,2,3].includes(+c.teinte)?+c.teinte:((d-7)%3+3)%3+1)+'"'+(c.image?' style="background-image:url('+esc(encodeURI(c.image))+')"':'')+'><div class="tk-g" aria-hidden="true" style="display:contents">'+(c.han?'<div class="tk-h" lang="zh-Hans">'+c.han.split(" ").map(x=>'<span>'+esc(x)+'</span>').join("")+'</div>':'')+'<div class="tk-b"><p class="tk-x">'+esc(c.texte||"").replace(/ ([;:!?])/g,"\u00a0$1")+'</p>'+(c.source?'<p class="tk-s">'+esc(c.source)+'</p>':'')+(c.sceau?'<span class="tk-o" lang="zh-Hans">'+esc(c.sceau)+'</span>':'')+'</div></div><canvas class="tk-c" aria-hidden="true"></canvas></div><p class="ap-t">'+esc(c.titre||"Ticket à gratter")+'</p><p class="ap-src tk-n">Grattez la zone dorée du doigt ou de la souris.</p><button class="go" type="button" data-tk>Révéler</button>';
   else if(t==="image")h+='<figure class="ap-im"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="Voir en grand : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'" loading="lazy"></a><figcaption>'+esc(c.titre)+'</figcaption></figure><p class="ap-src">Touchez l\'image pour la voir en grand.</p>';
@@ -992,7 +992,7 @@ const AV_OUV="";
 /* Lecture en grand : la planche reste ouverte par-dessus la page jusqu'au bouton Fermer (ou Échap). */
 document.addEventListener("click",e=>{
   if(e.target.closest("[data-ev]")){avEv(true);return}
-  const son=e.target.closest('[data-pl="son"]');if(son){avSon(!avSon());avPlSon();const b=$("#avPanel .vx-v");avMusique(avPl?avPl._amb:b&&!b.paused?"enquete":null);return}
+  const son=e.target.closest('[data-pl="son"]');if(son){avSon(!avSon());avPlSon();const b=$("#avPanel .vx-v");avMusique(avPl?avPl._amb:b&&!b.paused?"enquete":avGratte());return}
   if(e.target.closest(".av-pl")){avPleinFin();return}
   const z=e.target.closest(".bdz");if(z){if(e.target.tagName==="IMG"&&e.target.parentNode===z)e.target.classList.toggle("zz");else{const nb=e.target.closest("[data-bn]"),c=e.target.closest(".bdc");if(nb)avCaZ(z._s,z._i+ +nb.dataset.bn);else if(c)c.classList.toggle("zz");else avZ()}return}
   const lk=e.target.closest("[data-lk]");if(lk){avLkClic(lk);return}
@@ -1037,7 +1037,7 @@ document.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"||e.key==="ArrowRi
    dans son propre cadre, puis s'efface. Elle n'ouvre aucune goutte. Pas en mouvement réduit ; se passe d'un toucher ou avec Échap. */
 const AV_EV={1:["video/sapin-1er-decembre.mp4","Levée de quarantaine : le lot de décembre est libéré."],25:["video/sapin-25-decembre.mp4","Dernière dose. Le Père Noël a signé la libération."]};
 /* Vidéos du sapin en plein écran (lever de rideau, cygne, origamis, boosters) : la vidéo occupe tout l'écran sur fond sombre, puis s'efface
-   sur le contenu ; un toucher, « Passer » ou Échap l'abrège. Musique d'ambiance (audio/ambiance-*.mp3, célesta et grelots synthétisés maison pour Noël ; pour l'enquête, trois extraits de la piste fournie, un par phase : amorce jusqu'au 3, énigmes du 4 au 24, dénouement le 25) :
+   sur le contenu ; un toucher, « Passer » ou Échap l'abrège. Musique d'ambiance (audio/ambiance-*.mp3, pour Noël, deux pistes fournies : « noel » pour les vidéos et les cartes à gratter, « origami » pour les origamis ; pour l'enquête, trois extraits de la piste fournie, un par phase : amorce jusqu'au 3, énigmes du 4 au 24, dénouement le 25) :
    coupée par défaut, activée par le bouton « Musique », choix gardé sur l'appareil. */
 let avPl=null;
 function avSon(v){try{if(v===undefined)return localStorage.getItem(AV_KEY+"-son")==="1";localStorage.setItem(AV_KEY+"-son",v?"1":"0")}catch(e){}return false}
@@ -1049,6 +1049,9 @@ function avMusique(nom){
   if(avMusique.n!==f){avMusique.n=f;a.src="audio/ambiance-"+f+".mp3"}
   if(a.paused){try{a.currentTime=0;a.volume=0}catch(e){}a.play().catch(()=>{})}vers(V,450);
 }
+/* Musique de fond des cartes à gratter et de l'origami animé : tant que l'un d'eux est à l'écran (et la musique activée), l'ambiance de Noël joue. */
+function avGratte(){const c=$("#avPanel .tk-c,#avPanel .ap-ori");return c&&c.offsetParent!==null?(c.classList.contains("ap-ori")?"origami":"noel"):null}
+window.addEventListener("hashchange",()=>setTimeout(()=>{if(!avPl&&!avGratte())avMusique()},80));
 function avPlSon(){const on=avSon();document.querySelectorAll('[data-pl="son"]').forEach(b=>{b.setAttribute("aria-pressed",on?"true":"false");b.textContent=on?"Musique : activée":"Musique : coupée"})}
 function avPlein(src,o){
   o=o||{};avPleinFin(true);const d=document.createElement("div");d.className="av-pl";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-label",o.texte||"Vidéo en plein écran");
@@ -1056,7 +1059,7 @@ function avPlein(src,o){
   d._fin=o.fin;d._amb=o.amb||"noel";d._ev=!!o.ev;d._ret=document.activeElement;document.body.appendChild(d);avPl=d;avPlSon();d.querySelector('[data-pl="fin"]').focus({preventScroll:true});avMusique(d._amb);d._t=setTimeout(()=>avPleinFin(),o.max||16000);
 }
 function avPleinFin(now){
-  const d=avPl;if(!d)return;avPl=null;clearTimeout(d._t);avMusique();
+  const d=avPl;if(!d)return;avPl=null;clearTimeout(d._t);avMusique(avGratte());
   if(now)d.remove();else{d.classList.add("out");setTimeout(()=>d.remove(),350)}
   if(d._fin)d._fin();if(d._ret&&d._ret.isConnected&&d._ret!==document.body)d._ret.focus({preventScroll:true});
 }
@@ -1235,7 +1238,7 @@ function avOpen(d,viaBtn){
   if(avVerr()){avAcces(2);return}
   avHush();
   if(avSt(d)==="lock"){
-    $("#avPanel").innerHTML=avLocked(d);
+    avMusique();$("#avPanel").innerHTML=avLocked(d);
     const g=$('#avTree [data-d="'+d+'"]');if(g){g.classList.remove("shake");void g.getBoundingClientRect();g.classList.add("shake")}
     return;
   }
@@ -1245,7 +1248,7 @@ function avOpen(d,viaBtn){
   if(g){if(!viaBtn)g.focus({preventScroll:true});if(first){g.classList.add("pop","fill");g.style.setProperty("--d",".05s");const b=g.getBBox();$("#avTree svg").insertAdjacentHTML("beforeend",avBurst(b.x+b.width/2,b.y+b.height/2,d===25?56:46))}}
   $("#avPanel").innerHTML=avContent(d);
   if(AV_OUV&&!(AVENT[d-1]||{}).video&&(AVENT[d-1]||{}).type!=="cartes"&&!matchMedia("(prefers-reduced-motion:reduce)").matches)$("#avPanel").insertAdjacentHTML("afterbegin",'<video class="ouv" src="'+esc(AV_OUV)+'" muted playsinline autoplay preload="auto" aria-hidden="true"></video>');
-  const au=$("#avPanel audio");if(au)au.play().catch(()=>{});avTk();avCo();avPleinAuto($("#avPanel"));avPlSon();
+  const au=$("#avPanel audio");if(au)au.play().catch(()=>{});avTk();avCo();{const k=$("#avPanel .tk-c,#avPanel .ap-ori");if(k){const z=k.closest(".ap-tk")||k;z.insertAdjacentHTML("afterend",'<p style="margin:10px 0 0"><button class="go" type="button" data-pl="son"></button></p>')}}avMusique(avGratte());avPleinAuto($("#avPanel"));avPlSon();
   if(matchMedia("(max-width:860px)").matches)$("#avPanel").scrollIntoView({block:"nearest",behavior:"smooth"});
   avAcces();if($("#avNotice"))$("#avNotice").open=false;
 }
@@ -1265,7 +1268,7 @@ function build(){
   $("#tabs").innerHTML=["E","F","I","X","T"].map(k=>{const c=CATS[k];const n=k==="T"?"Toute la pharmaco":c.n;const f=k==="T"?G.length+" préparations":c.f.split(" ")[0]+" · "+G.filter(g=>g.c===k).length;return '<button class="tab" type="button" data-c="'+k+'" style="--c:var(--c'+(k==="T"?"X":c.v)+');--on:var(--on'+(k==="T"?"X":c.v)+')" aria-pressed="false"><span class="ic" aria-hidden="true">'+IC[k]+'</span><span><small>'+f+'</small><b>'+n+'</b></span></button>'}).join("");
   $("#presets").innerHTML=PRESETS.map(p=>'<button class="chip" type="button" data-p="'+p[0]+'" aria-pressed="false">'+p[1]+'</button>').join("");
   pensee();
-  $("#avTree").innerHTML=avTree();$("#avPanel").innerHTML=avIntro();
+  $("#avTree").innerHTML=avTree();avMusique();$("#avPanel").innerHTML=avIntro();
 }
 function fromHash(){const h=(location.hash||"").replace("#","");if(h==="tous"){S.cat="T";S.preset="";S.rx=false;return true}for(const k in CATS)if(CATS[k].k===h){S.cat=k;S.preset="";S.rx=false;return true}return false}
 let rolling=false;

@@ -45,12 +45,14 @@
     { id: "vote", href: "#vote", t: "Palmarès", s: "Votez pour votre jeu", sel: "#vote", img: "menu-palmares.webp", fond: "#F2E39A", pancarte: "Jury sous hotte", ouvre: "2026-12-02" },
     // plein : la face est une image entière (autocollant détouré, avec son propre contour), sans logo ni accessoire.
     // haut : pastille à part, en haut à droite de l'en-tête (dans le coin libre sur ordinateur ; sous le titre quand l'écran est trop étroit pour l'aligner avec lui). Elle mène à la fiche d'identification du joueur.
-    { id: "pharmacomeeple", href: "#pharmacomeeple", t: "Pharmacomeeple", s: "Votre fiche et votre brigade", sel: "#pharmacogames", img: "emblemes/pharmacomeeple.webp", plein: true, fond: "#BFE3F2", bientot: "lot en quarantaine", ouvre: "2026-11-26", haut: true },
+    { id: "pharmacomeeple", href: "#pharmacomeeple", t: "Pharmacomeeple", s: "Votre fiche et votre brigade", sel: "#pharmacogames", img: "emblemes/pharmacomeeple.webp", plein: true, fond: "#BFE3F2", bientot: "lot en quarantaine", ouvre: "2026-11-26T07:00", signal: ["2026-11-26T07:00", "2026-12-02"], appel: "Créez votre profil", haut: true },
   ];
   // ouvre : jour d'ouverture de la page, à l'heure de Paris. L'étiquette « Bientôt disponible » tombe d'elle-même ce jour-là ;
   // ce n'est qu'un affichage, la vraie barrière reste le serveur.
   let auj = "";
-  try { auj = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); } catch (e) { auj = new Date().toISOString().slice(0, 10); }
+  try { auj = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date()).replace(" ", "T"); } catch (e) { auj = new Date().toISOString().slice(0, 16); }
+  // signal : entre ces deux instants, une flèche clignotante et un halo guident vers la pastille (retirés dès que le joueur a sa fiche).
+  const signale = p => !!p.signal && auj >= p.signal[0] && auj < p.signal[1];
   const attendu = p => !!(p.bientot || p.pancarte) && (!p.ouvre || auj < p.ouvre);
 
   const st = document.createElement("style");
@@ -92,6 +94,13 @@
 .pm a.att{visibility:hidden}
 .pm.pm-haut{display:block;max-width:none;margin:14px 0 0;text-align:right}
 .pm.pm-haut[hidden]{display:none}
+.pm-haut .pm-go{grid-column:1;margin-top:4px;padding:3px 9px 4px;border:2px solid #26076D;border-radius:999px;background:#ECD567;color:#26076D;font-style:normal;font-weight:800;font-size:.74rem;white-space:nowrap;animation:pmGo 1.1s ease-in-out infinite}
+.pm-haut .pm-go i{display:inline-block;font-style:normal;animation:pmFl .55s ease-in-out infinite alternate}
+.pm-haut a.pm-flash .pm-d{border-radius:50%;animation:pmHalo 1.1s ease-in-out infinite}
+@keyframes pmGo{50%{background:#FFFBF2;box-shadow:0 0 0 4px rgba(236,213,103,.75)}}
+@keyframes pmFl{to{transform:translateX(6px)}}
+@keyframes pmHalo{0%,100%{box-shadow:0 0 0 0 rgba(236,213,103,0)}50%{box-shadow:0 0 0 7px rgba(236,213,103,.95),0 0 22px 10px rgba(236,119,57,.55)}}
+@media(prefers-reduced-motion:reduce){.pm-haut .pm-go,.pm-haut .pm-go i,.pm-haut a.pm-flash .pm-d{animation:none}.pm-haut a.pm-flash .pm-d{box-shadow:0 0 0 5px rgba(236,213,103,.95)}}
 .pm-haut a{display:inline-grid;grid-template-columns:auto auto;column-gap:12px;row-gap:3px;justify-items:end;align-content:center;text-align:right}
 .pm-haut .pm-d{grid-column:2;grid-row:1/4;align-self:center;width:58px;height:58px}
 .pm-haut b,.pm-haut small,.pm-haut .pm-s{grid-column:1}
@@ -115,7 +124,7 @@
   nav.setAttribute("aria-label", "Les quatre pages du site");
   const bouton = p => '<a href="' + p.href + '" data-page="' + p.id + '"' + (p.sel && !q(p.sel) ? ' class="att"' : "") + '><span class="pm-d" style="--fond:' + p.fond + '">'
     + '<span class="pm-o"></span><span class="pm-j"><span class="pm-f' + (p.plein ? " plein" : "") + '"><img src="img/' + p.img + '" alt="" width="224" height="224" decoding="async">' + (p.plein ? "" : PLUS[p.id]) + "</span>" + TRANCHE
-    + '<span class="pm-v" style="--fond:' + p.fond + '">' + DOS[p.id] + "</span></span></span><b>" + p.t + "</b><small>" + p.s + "</small>" + (attendu(p) ? '<em class="pm-s">' + (p.pancarte || "Bientôt disponible") + (p.bientot ? "<i>" + p.bientot + "</i>" : "") + "</em>" : "") + "</a>";
+    + '<span class="pm-v" style="--fond:' + p.fond + '">' + DOS[p.id] + "</span></span></span><b>" + p.t + "</b><small>" + p.s + "</small>" + (attendu(p) ? '<em class="pm-s">' + (p.pancarte || "Bientôt disponible") + (p.bientot ? "<i>" + p.bientot + "</i>" : "") + "</em>" : "") + (signale(p) ? '<em class="pm-go">' + p.appel + ' <i aria-hidden="true">➜</i></em>' : "") + "</a>";
   nav.innerHTML = PAGES.filter(p => !p.haut).map(bouton).join("");
   ancre.insertAdjacentElement("afterend", nav);
   const haut = document.createElement("nav");
@@ -124,6 +133,10 @@
   haut.innerHTML = PAGES.filter(p => p.haut).map(bouton).join("");
   const titre = q(".hero h1");
   if (titre) titre.insertAdjacentElement("afterend", haut);
+  haut.querySelectorAll("a").forEach(a => { if (a.querySelector(".pm-go")) a.classList.add("pm-flash"); });
+  // Fiche déjà créée (avatar mémorisé par enigme.js) : plus besoin de guider.
+  const eteindre = () => { try { const i = window.PharmacoAcces && window.PharmacoAcces.identite(); if (i && i.avatar) haut.querySelectorAll(".pm-flash").forEach(a => { a.classList.remove("pm-flash"); const g = a.querySelector(".pm-go"); if (g) g.remove(); }); } catch (e) {} };
+  [800, 3000].forEach(t => setTimeout(eteindre, t)); window.addEventListener("hashchange", () => setTimeout(eteindre, 300));
   const liens = [...nav.querySelectorAll("a"), ...haut.querySelectorAll("a")];
 
   const page = () => (location.hash === "#sapin" ? "sapin" : location.hash === "#vote" ? "vote" : location.hash === "#pharmacomeeple" ? "pharmacomeeple" : location.hash === "#pharmacogames" || location.hash === "#enigme" ? "pharmacogames" : "catalogue");
