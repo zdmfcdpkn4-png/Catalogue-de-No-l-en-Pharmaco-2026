@@ -661,7 +661,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     if (r.status === 400) { listeCode = ""; return dire("#egGateMsg", "Ce nom n'est plus dans la liste. Choisissez-le de nouveau.", "err"); }
     if (r.status !== 200) return dire("#egGateMsg", "Le serveur ne répond pas. Réessayez dans un instant.", "err");
     // Une fiche existe déjà sous ce nom : on la montre et on demande le prénom avant d'entrer, pour ne pas ouvrir la fiche d'un collègue par erreur.
-    if (!r.j.nouveau && r.j.prenom) return confirmer(code, nom, r.j);
+    // Première visite sous ce nom : même question, pour ne pas créer la fiche d'un collègue par erreur.
+    if (r.j.nouveau || r.j.prenom) return confirmer(code, nom, r.j);
     ouvrir(code, nom, r.j);
   }
   function ouvrir(code, nom, j) {
@@ -686,9 +687,10 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   }
   function confirmer(code, nom, j) {
     attente = { code, nom, j };
-    const texte = "<span>Une fiche existe déjà sous ce nom : <b>" + h(j.prenom) + "</b> (" + h(nom) + "). C'est bien vous ?</span>";
+    const texte = j.nouveau ? "<span>Vous allez créer la fiche de <b>" + h(nom) + "</b>. C'est bien vous ?</span>"
+      : "<span>Une fiche existe déjà sous ce nom : <b>" + h(j.prenom) + "</b> (" + h(nom) + "). C'est bien vous ?</span>";
     q("#egConfQui").innerHTML = texte;
-    q("#egConf").hidden = false; q("#egOuvrir").textContent = "Oui, c'est moi : entrer";
+    q("#egConf").hidden = false; q("#egOuvrir").textContent = j.nouveau ? "Oui, c'est moi : créer ma fiche" : "Oui, c'est moi : entrer";
     dire("#egGateMsg", "");
     q("#egConfPrenom").value = ""; q("#egConfPrenom").focus({ preventScroll: true });
     q("#egOuvrir").scrollIntoView({ block: "nearest" }); // la question, le champ et le bouton tiennent à l'écran
