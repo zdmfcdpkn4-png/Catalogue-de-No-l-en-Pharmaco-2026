@@ -1,7 +1,7 @@
 /* Pharmacogames de Noël : le concours individuel à points (d'abord appelé « la grande énigme de Noël »).
    À ne pas confondre avec le vote du jeu préféré, qui vit dans vote.js.
    Propre au site Vercel : ce module parle à /api/enigme (prénom et code d'équipe exigés).
-   Une porte par jour du 1er au 25 décembre, ouverte trois jours ; les questions, les solutions et les points
+   Une porte par jour du 1er au 25 décembre, classée son jour et les cinq suivants ; les questions, les solutions et les points
    viennent du serveur, rien n'est écrit ici. L'énoncé d'une question n'arrive qu'avec son chrono ; les jeux
    d'adresse (jeux.js, chargé à la demande) renvoient une note de 0 à 10. Sans serveur, par exemple dans l'artefact claude.ai, rien ne s'affiche. */
 (() => {
@@ -127,7 +127,7 @@
 
   const NOTICE = `<details class="eg-panel eg-notice" id="egNotice"><summary>Notice des Pharmacogames : à lire avant la première prise</summary>
 <p class="eg-bd-aide" id="egBdAide">Mode d'emploi en six cases : faites glisser.</p>
-<div class="eg-bd" role="region" aria-labelledby="egBdAide" tabindex="0"><img src="img/notice-pharmacogames-1.svg" alt="Case 1, Étiquetage. Le flacon montre son avatar en forme de meeple et un badge de brigade : « Nom, pseudo, avatar : flacon bien étiqueté ! Le sort me range dans l'une des cinq brigades. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-2.svg" alt="Case 2, Le sapin d'abord. Une flèche va du sapin à la porte du jour : « La goutte du sapin avant la porte, et les portes dans l'ordre : on ne saute pas d'étape en ZAC. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-3.svg" alt="Case 3, Au chrono. Un chronomètre tourne à côté du flacon concentré : « Cinq questions, 30 ou 40 secondes chacune, une seule prise, 2 points pièce. Dose : 2 points à 2 près, 1 point à 10 près. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-4.svg" alt="Case 4, Jeux d'adresse. Une cible touchée et un podium : « Deux essais, je garde le meilleur. Au rang : 10 points au premier, 1 au dernier. Le 25, double dose : 20 points ! »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-5.svg" alt="Case 5, Quarantaine. Trois jours au calendrier et une enveloppe scellée : « Porte ouverte trois jours. Les résultats ? En quarantaine jusqu'à la clôture. Patience ! »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-6.svg" alt="Case 6, En brigade. Trois meeples entourent le flacon : « Enquête d'équipe : un avis chacun, la majorité tranche. Jusqu'à 40 points pour la brigade. »" width="400" height="300" loading="lazy"></div>
+<div class="eg-bd" role="region" aria-labelledby="egBdAide" tabindex="0"><img src="img/notice-pharmacogames-1.svg" alt="Case 1, Étiquetage. Le flacon montre son avatar en forme de meeple et un badge de brigade : « Nom, pseudo, avatar : flacon bien étiqueté ! Le sort me range dans l'une des cinq brigades. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-2.svg" alt="Case 2, Le sapin d'abord. Une flèche va du sapin à la porte du jour : « La goutte du sapin avant la porte, et les portes dans l'ordre : on ne saute pas d'étape en ZAC. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-3.svg" alt="Case 3, Au chrono. Un chronomètre tourne à côté du flacon concentré : « Cinq questions, 30 ou 40 secondes chacune, une seule prise, 2 points pièce. Dose : 2 points à 2 près, 1 point à 10 près. »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-4.svg" alt="Case 4, Jeux d'adresse. Une cible touchée et un podium : « Deux essais, je garde le meilleur. Au rang : 10 points au premier, 1 au dernier. Le 25, double dose : 20 points ! »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-5.svg" alt="Case 5, Quarantaine. Six jours au calendrier et une enveloppe scellée : « Porte ouverte six jours. Les résultats ? En quarantaine jusqu'à la clôture. Patience ! »" width="400" height="300" loading="lazy"><img src="img/notice-pharmacogames-6.svg" alt="Case 6, En brigade. Trois meeples entourent le flacon : « Enquête d'équipe : un avis chacun, la majorité tranche. Jusqu'à 40 points pour la brigade. »" width="400" height="300" loading="lazy"></div>
 <p class="eg-fx">Effet indésirable très fréquent : consultation compulsive du classement.</p></details>`;
   const SCEAU = '<svg class="eg-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5l2.2 2 3-.3.7 2.9 2.6 1.5-1.2 2.7 1.2 2.7-2.6 1.5-.7 2.9-3-.3-2.2 2-2.2-2-3 .3-.7-2.9L1.5 13l1.2-2.7L1.5 7.6l2.6-1.5.7-2.9 3 .3z" fill="currentColor"/><path d="M6.4 10.3l2.4 2.4 4.6-4.9" fill="none" stroke="#26076D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const CADENAS = '<svg class="eg-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 9V6.5a4 4 0 0 1 8 0V9" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="3.5" y="9" width="13" height="9.5" rx="2.5" fill="currentColor"/></svg>';
@@ -997,10 +997,10 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
           if (p.duo) html += p.duo.avant.map(a => '<div class="eg-seal">' + SCEAU + "<span><small>" + fr(a.titre) + " : note scellée</small><b>" + (a.meilleur || 0) + " / 10</b></span></div>").join("");
           html += essaisFaits(p);
           if (nb < p.essais) html += '<p class="eg-hint">Chrono de ' + p.duree + " s par tentative. " + pl(p.essais, "tentative", "tentatives") + ", la meilleure compte ; une tentative lancée est décomptée, même interrompue. Clôture le " + jour(dt(p.ferme)) + ' à minuit : les points viennent alors du classement ' + (p.duo ? "de chacun des " + p.duo.nb + " jeux" : "de la porte") + ', de 10 pour le premier à 1 pour le dernier.</p>'
-            + '<button class="go main" type="button" id="egPlay">Lancer la tentative ' + (nb + 1) + " sur " + p.essais + "</button>";
+            + '<button class="go main" type="button" id="egPlay">Lancer la tentative ' + (nb + 1) + " sur " + p.essais + "</button>" + boutonLibre(p);
           else html += '<div class="eg-seal">' + SCEAU + "<span><small>Note scellée</small><b>" + p.meilleur + " / 10</b></span></div>"
-            + '<p class="eg-d">Vos points seront libérés à la clôture de la porte : rendez-vous le ' + jour(dt(p.ferme, 1)) + ".</p>";
-        } else html += essaisFaits(p) + '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (p.pts !== undefined ? (p.rang ? "Rang " + p.rang + " sur " + p.sur + " : " : "") + "+" + pl(p.pts, "point", "points") : "Porte manquée : 0 point") + '</p><p class="eg-ex">' + fr(p.explication) + "</p>" + origine(p);
+            + '<p class="eg-d">Vos points seront libérés à la clôture de la porte : rendez-vous le ' + jour(dt(p.ferme, 1)) + ".</p>" + REJOUER;
+        } else html += REJOUER + essaisFaits(p) + '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (p.pts !== undefined ? (p.rang ? "Rang " + p.rang + " sur " + p.sur + " : " : "") + "+" + pl(p.pts, "point", "points") : "Porte manquée : 0 point") + '</p><p class="eg-ex">' + fr(p.explication) + "</p>" + origine(p);
       } else if (p.type === "duo") {
         // Finale à deux jeux : tout joué (notes scellées), ou close ou en relecture (chaque jeu, sa règle et son résultat).
         if (p.fini) html += '<div class="eg-ill">' + p.ill + "</div>" + p.jeux.map(c => '<div class="eg-seal">' + SCEAU + "<span><small>" + fr(c.titre) + " : note scellée</small><b>" + (c.meilleur || 0) + " / 10</b></span></div>").join("")
@@ -1008,7 +1008,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         else html += (relecture ? "" : '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (p.pts !== undefined ? "Total de la finale : +" + pl(p.pts, "point", "points") + " sur " + 10 * p.nb : "Porte manquée : 0 point") + "</p>")
           + p.jeux.map((c, i) => '<section class="eg-sub"><p class="ap-m">Jeu ' + (i + 1) + " sur " + p.nb + " · jeu d'adresse</p><h4>" + fr(c.titre) + '</h4><div class="eg-ill" id="egJeu' + i + '">' + c.ill + '</div><p class="eg-q">' + fr(c.question) + "</p>"
             + (relecture ? '<p class="eg-hint">Chrono de ' + c.duree + " s, " + pl(c.essais, "tentative", "tentatives") + ', la meilleure compte.</p><button class="go main" type="button" data-try="' + i + '">Essayer le jeu, sans rien enregistrer</button>'
-              : essaisFaits(c) + (p.pts !== undefined ? '<p class="eg-pts' + (c.pts ? "" : " zero") + '">' + (c.rang ? "Rang " + c.rang + " sur " + c.sur + " : " : "") + "+" + pl(c.pts || 0, "point", "points") + "</p>" : ""))
+              : '<button class="go" type="button" data-try="' + i + '" style="margin-top:8px">Rejouer hors classement</button>' + essaisFaits(c) + (p.pts !== undefined ? '<p class="eg-pts' + (c.pts ? "" : " zero") + '">' + (c.rang ? "Rang " + c.rang + " sur " + c.sur + " : " : "") + "+" + pl(c.pts || 0, "point", "points") + "</p>" : ""))
             + '<p class="eg-ex">' + fr(c.explication) + "</p>" + origine(c) + "</section>").join("");
       } else if (p.type === "quiz") {
         // Case de cinq questions : toutes jouées (réponses scellées), ou close (les cinq solutions).
@@ -1125,6 +1125,14 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     document.head.appendChild(sc);
   });
   const patience = ms => new Promise(r => setTimeout(r, ms));
+  // Essais libres avant les tentatives classées : deux par jeu, facultatifs, comptés sur l'appareil seulement (rien ne part
+  // au serveur, rien n'est enregistré). Une fois la porte close ou les tentatives jouées, le jeu se rejoue hors classement.
+  const KEY_ESSAIS = KEY + "-essais", NB_LIBRES = 2;
+  const cleEssai = p => p.n + (p.duo ? "-" + p.duo.i : "");
+  const libres = p => { try { return Number((JSON.parse(localStorage.getItem(KEY_ESSAIS) || "{}") || {})[cleEssai(p)]) || 0; } catch (e) { return 0; } };
+  const compterLibre = p => { try { const o = JSON.parse(localStorage.getItem(KEY_ESSAIS) || "{}") || {}; o[cleEssai(p)] = (Number(o[cleEssai(p)]) || 0) + 1; localStorage.setItem(KEY_ESSAIS, JSON.stringify(o)); } catch (e) {} };
+  const boutonLibre = p => (libres(p) < NB_LIBRES ? '<button class="go" type="button" id="egTry" style="margin-top:8px">Essai libre ' + (libres(p) + 1) + " sur " + NB_LIBRES + ", non compté</button>" : "");
+  const REJOUER = '<button class="go" type="button" id="egTry" style="margin-top:8px">Rejouer hors classement</button>';
   // reel : la tentative compte et sa note part au serveur ; sinon c'est un essai libre de la relecture.
   // i : en relecture d'une finale à deux jeux, celui des deux qu'on essaie.
   async function jouer(reel, i) {
@@ -1145,13 +1153,15 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       jeton = r.j.jeton; E = r.j; grille();
     }
     occupe = false;
-    const zone = q(P.type === "duo" ? "#egJeu" + i : "#egJeu"), bouton = P.type === "duo" ? q('[data-try="' + i + '"]') : q("#egPlay") || q("#egTry");
-    if (bouton) bouton.hidden = true;
+    const zone = q(P.type === "duo" ? "#egJeu" + i : "#egJeu");
+    (P.type === "duo" ? [q('[data-try="' + i + '"]')] : [q("#egPlay"), q("#egTry")]).forEach(b => { if (b) b.hidden = true; });
+    const entrainement = !reel && !relecture && P.etat === "ouverte" && tentatives(P) < P.essais;
+    if (entrainement) compterLibre(P);
     zone.classList.add("jeu");
     dire("#egMsg", "");
     enJeu = window.PharmacoJeux[p.jeu](zone, { duree: p.duree, onFin: async (note, bilan, brut) => {
       enJeu = null;
-      if (!reel) return panneau("Essai libre : " + note + " sur 10. " + bilan + " Rien n'a été enregistré.");
+      if (!reel) return panneau((entrainement ? "Essai libre" : relecture ? "Essai libre" : "Partie hors classement") + " : " + note + " sur 10. " + bilan + " Rien n'a été enregistré.");
       let r = { status: 0, j: {} };
       for (let i = 0; i < 4 && !(r.j && r.j.portes); i++) {
         if (i) await patience(1500);

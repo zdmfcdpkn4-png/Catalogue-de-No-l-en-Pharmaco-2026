@@ -15,7 +15,8 @@ const { composerIndices } = require('./_indices.js');
 
 const FILE = 'enigme.json';
 const MAX_JOUEURS = 300;
-const DELAI = 2; // jours d'ouverture après le jour de la porte
+let DELAI = 5; // jours de classement après le jour de la porte (décision du 25 novembre : J+5 ; les bancs le règlent avec handler.delai)
+const DELAI_ENQ = 2; // l'enquête des brigades garde son rythme : une énigme reste ouverte son jour et les deux suivants
 const GRACE = 4; // secondes tolérées après la fin du chrono d'une question, pour le trajet réseau
 const JEU_MIN = 3, JEU_MARGE = 45; // une note de jeu n'est acceptée ni trop tôt ni trop longtemps après le départ
 // Score brut le plus haut qu'un jeu puisse rendre : au-delà, la note est refusée.
@@ -92,6 +93,7 @@ const PARIS = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year:
 const rangDe = iso => { const [a, m, j] = iso.split('-').map(Number); return Math.round((Date.UTC(a, m - 1, j) - JOUR1) / 864e5) + 1; };
 const dateDe = n => new Date(JOUR1 + (n - 1) * 864e5).toISOString().slice(0, 10);
 const etatDe = (n, jour) => (jour < n ? 'avenir' : jour <= n + DELAI ? 'ouverte' : 'close');
+const etatJ2 = (n, jour) => (jour < n ? 'avenir' : jour <= n + DELAI_ENQ ? 'ouverte' : 'close'); // calendrier de l'enquête
 
 // Ce que le serveur garde par joueur : { p: nom affiché, t: heure d'inscription, r: { porte: réponses },
 //   a: avatar [couleur, coiffe, accessoire], b: brigade de 0 à 4, d, g, n, e: ses voix pour la devise, le jeu emblème,
@@ -289,8 +291,8 @@ function acquise(c, u) {
 // Quête secondaire (`quete: true`) : une énigme de longue durée, ouverte du jour `n` au jour `fin` compris, sans retard de
 // révélation. Avec `prime`, la brigade dont la bonne réponse retenue a été déposée la première (ex aequo : toutes) reçoit
 // ces points en plus de `pts`.
-const etatEnq = (c, jour) => (Number.isInteger(c.fin) ? (jour < c.n ? 'avenir' : jour > c.fin ? 'close' : 'ouverte') : etatDe(c.n, jour));
-const finEnq = c => (Number.isInteger(c.fin) ? c.fin : c.n + DELAI);
+const etatEnq = (c, jour) => (Number.isInteger(c.fin) ? (jour < c.n ? 'avenir' : jour > c.fin ? 'close' : 'ouverte') : etatJ2(c.n, jour));
+const finEnq = c => (Number.isInteger(c.fin) ? c.fin : c.n + DELAI_ENQ);
 // Les brigades qui touchent la prime d'une énigme close : celles qui l'ont acquise le plus tôt.
 function primees(c, S, jour) {
   if (!c.prime || etatEnq(c, jour) !== 'close') return [];
@@ -305,7 +307,7 @@ const pointsEnq = (E, S, jour) => S.map((s, b) => E.enigmes.reduce((t, c) => t +
 function vueEnquete(E, joueurs, cle, jour, tout) {
   const j = cle ? joueurs[cle] : null, S = voix(E, joueurs), s = j && S[j.b];
   const D = s ? des(E, j.b) : {};
-  const A = (E.amorces || []).filter(a => tout || (jour >= a.n && (etatDe(a.n, jour) === 'close' || Boolean(j && j.r && j.r[a.n]))));
+  const A = (E.amorces || []).filter(a => tout || (jour >= a.n && (etatJ2(a.n, jour) === 'close' || Boolean(j && j.r && j.r[a.n]))));
   const libre = tout || !E.amorces;
   if (!libre && !A.length) return undefined;
   const premiere = E.amorces ? Math.min(...E.amorces.map(a => a.n)) : 0;
@@ -330,8 +332,8 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
       // Avec un retard (`retard`, en jours), la révélation sort à la clôture pour la brigade dont la réponse retenue est
       // juste, et plus tard pour les autres ; jamais de retard au dénouement.
       const juste = Boolean(s) && acquise(c, s[c.k]);
-      if (tout || !E.retard || c.final || c.quete || juste || etatDe(c.n + E.retard, jour) === 'close') Object.assign(x, { revelation: c.revelation, elimine: c.elimine, source: c.source }, c.libre ? { libre: true } : {});
-      else x.attente = dateDe(c.n + DELAI + 1 + E.retard);
+      if (tout || !E.retard || c.final || c.quete || juste || etatJ2(c.n + E.retard, jour) === 'close') Object.assign(x, { revelation: c.revelation, elimine: c.elimine, source: c.source }, c.libre ? { libre: true } : {});
+      else x.attente = dateDe(c.n + DELAI_ENQ + 1 + E.retard);
       // `paru` : le jour où la révélation est sortie pour cette brigade (clôture, ou clôture plus le retard).
       if (e === 'close') x.paru = dateDe(finEnq(c) + 1 + (!E.retard || c.final || c.quete || juste ? 0 : E.retard));
       if (s && e === 'close') x.resolue = juste;
@@ -353,7 +355,7 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
   if (s) o.points = P[j.b];
   // Le dénouement : quand toutes les énigmes du dernier jour sont closes.
   const fin = Math.max(...E.enigmes.map(c => c.n));
-  if (E.denouement && (tout || etatDe(fin, jour) === 'close')) o.denouement = E.denouement;
+  if (E.denouement && (tout || etatJ2(fin, jour) === 'close')) o.denouement = E.denouement;
   o.classement = P.map((points, b) => ({ b, points }));
   return o;
 }
@@ -848,7 +850,7 @@ async function handler(req, res) {
     // Film de clôture : rien avant le dénouement (toutes les énigmes du dernier jour closes). `tete` : seulement s'il existe.
     if (b.action === 'film') {
       const E = B.enquete;
-      if (!E || etatDe(Math.max(...E.enigmes.map(c => c.n)), jour) !== 'close') return res.status(403).json({ error: 'scellee' });
+      if (!E || etatJ2(Math.max(...E.enigmes.map(c => c.n)), jour) !== 'close') return res.status(403).json({ error: 'scellee' });
       const f = await lireFilm();
       if (!f) return res.status(404).json({ error: 'film' });
       return res.status(200).json(b.tete ? { film: true, octets: f.length } : { film: f.toString('base64'), type: 'video/mp4' });
@@ -857,7 +859,7 @@ async function handler(req, res) {
       // Poser, changer ou retirer son tampon sur une fiche (t : 'h', 'c' ou rien), dès la fiche de suivi et jusqu'au dénouement.
       const E = B.enquete, f = E && E.fiches && typeof b.id === 'string' ? E.fiches.find(x => x.id === b.id) : null;
       if (!f || !(b.t === 'h' || b.t === 'c' || b.t === null || b.t === undefined)) return res.status(400).json({ error: 'fiche' });
-      if (etatDe(Math.max(...E.enigmes.map(c => finEnq(c))) - DELAI, jour) === 'close') return res.status(403).json({ error: 'close' });
+      if (etatJ2(Math.max(...E.enigmes.map(c => finEnq(c))) - DELAI_ENQ, jour) === 'close') return res.status(403).json({ error: 'close' });
       const s = await modifier(joueurs => {
         const j = joueurs[cle], vu = J => etat(B, J, cle, jour, maintenant);
         if (!j || j.b === undefined) return { fin: () => ({ code: 403, corps: { error: 'profil' } }) };
@@ -970,6 +972,7 @@ async function handler(req, res) {
   }
 }
 handler.maintenant = () => new Date(); // remplaçable par le banc d'essai
+handler.delai = n => { if (Number.isInteger(n) && n >= 0) DELAI = n; return DELAI; }; // les bancs écrits pour J+2 le règlent ainsi
 handler.composer = composer; // pour le contrôle de la banque (outils/banque.js)
 module.exports = handler;
 handler.aideServie = aideServie;
