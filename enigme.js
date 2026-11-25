@@ -433,6 +433,16 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 .eg-marche.s1 .eg-med{width:84px}
 .eg-pts3{font:600 .72rem var(--mono);color:var(--muted);white-space:nowrap}
 .eg-brig summary .eg-fl,.eg-brig summary .eg-med{width:34px;height:34px}
+/* Un pseudo tient sur une ligne : au-delà, points de suspension (le texte complet reste dans la page et en infobulle) */
+.eg-ps{display:block;min-width:0;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.eg-nm>.eg-ps{flex:0 1 auto;max-width:calc(100% - 36px)}
+.eg-marche .eg-row,.eg-marche .eg-row>span{min-width:0;max-width:100%}
+.eg-marche ul{min-width:0}
+.eg-brig-m li{min-width:0}
+.eg-cls,.eg-cl-c,.eg-brigs ol{grid-template-columns:minmax(0,1fr)}
+.eg-brig-c{grid-template-columns:minmax(0,1fr)}
+.eg-brig-c>div{min-width:0}
+.eg-brig-c p{overflow-wrap:anywhere}
 /* Classement des brigades */
 .eg-brigs{margin:0}
 .eg-brigs h4{margin:0;font-weight:800;font-size:1.05rem;line-height:1.2}
@@ -1309,7 +1319,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     q("#egPod").hidden = !podium;
     q("#egPod").innerHTML = !podium ? "" : [1, 2, 3].map(n => {
       const T = tete.filter(x => x.rang === n);
-      return !T.length ? "" : '<li class="eg-marche s' + n + '">' + medaille(n) + "<ul>" + T.map(x => '<li class="eg-row r' + n + (norm(x.p) === moi ? " me" : "") + '">' + av(x) + "<span><b>" + h(x.p) + "</b>" + emb(x) + monte(x) + '</span><span class="sr"> ' + pl(x.pts, "point", "points") + "</span></li>").join("")
+      return !T.length ? "" : '<li class="eg-marche s' + n + '">' + medaille(n) + "<ul>" + T.map(x => '<li class="eg-row r' + n + (norm(x.p) === moi ? " me" : "") + '">' + av(x) + "<span>" + '<b class="eg-ps" title="' + h(x.p) + '">' + h(x.p) + "</b>" + emb(x) + monte(x) + '</span><span class="sr"> ' + pl(x.pts, "point", "points") + "</span></li>").join("")
         + '</ul><span class="eg-pts3">' + pl(T[0].pts, "point", "points") + (T.length > 1 ? '<span class="sr"> chacun, ex aequo</span>' : "") + "</span></li>";
     }).join("");
 
@@ -1323,7 +1333,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       trou = cache;
       return (saut ? '<li class="eg-gap" aria-hidden="true">…</li>' : "")
         + '<li class="eg-row' + (x === me ? " me" : "") + '"' + (cache ? " hidden" : "") + '><span class="eg-rk">' + insigne(x.rang, maxPts > 0) + "</span>"
-        + '<span class="eg-nm">' + av(x) + "<b>" + h(x.p) + "</b>" + emb(x) + (x === me ? '<span class="eg-vous">vous</span>' : "") + monte(x) + barre(parts(x), maxPts) + "</span>"
+        + '<span class="eg-nm">' + av(x) + '<b class="eg-ps" title="' + h(x.p) + '">' + h(x.p) + "</b>" + emb(x) + (x === me ? '<span class="eg-vous">vous</span>' : "") + monte(x) + barre(parts(x), maxPts) + "</span>"
         + '<span class="eg-pt">' + (clos ? pl(x.pts, "point", "points") : pl(x.rep, "réponse scellée", "réponses scellées")) + "</span></li>";
     }).join("");
     q("#egMore").hidden = !long;
@@ -1404,7 +1414,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     const un = n => Math.round(n * 10) / 10, pts = n => dec(n) + " pts";
     const moyenne = (t, k, cle) => (t[cle] !== undefined ? t[cle] : (a => (a ? un(L.filter(x => x.b === t.b).reduce((s, x) => s + (x[k] || 0), 0) / a) : 0))(L.filter(x => x.b === t.b && x.cl > 0).length));
     const nomB = t => W.embleme(t.b, "eg-emb") + "<div><b>" + h(W.BRIGADES[t.b].nom) + "</b>";
-    const nomJ = x => av(x) + "<div><b>" + h(x.p) + "</b>";
+    const nomJ = x => av(x) + "<div>" + '<b class="eg-ps" title="' + h(x.p) + '">' + h(x.p) + "</b>";
     const tete = (k, html) => { q("#egT-" + k).innerHTML = html; };
     const bloc = (k, vu) => { const d = q('.eg-cl[data-k="' + k + '"]'); d.hidden = !vu; if (clsOuvert[k] !== undefined && d.open !== clsOuvert[k]) d.open = clsOuvert[k]; return d; };
     const lignes = (k, S, nom, cls, estMoi, plier) => {
@@ -1479,7 +1489,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         + '<p><small>Devise</small>' + (devise ? "« " + h(devise) + " »" : "Pas encore élue.") + "</p>"
         + '<div><small>Jeu emblème</small><div class="eg-brig-j">' + (jeu ? '<img src="img/' + h(jeu.img) + '" alt="" loading="lazy"><b>' + h(jeu.n) + "</b>" : "<p>Pas encore élu.</p>") + "</div></div>"
         + "<p><small>Effectif</small>" + pl(t.n, "membre", "membres") + (clos ? ", dont " + pl(t.actifs, "actif", "actifs") + " sur les portes closes" : "") + ".</p>"
-        + '<div><small>Membres</small><ul class="eg-brig-m">' + M.map(x => "<li" + (moi && norm(x.p) === moi ? ' class="me"' : "") + ">" + av(x) + h(x.p) + "</li>").join("") + "</ul></div></div></details></li>";
+        + '<div><small>Membres</small><ul class="eg-brig-m">' + M.map(x => "<li" + (moi && norm(x.p) === moi ? ' class="me"' : "") + ">" + av(x) + '<span class="eg-ps" title="' + h(x.p) + '">' + h(x.p) + "</span></li>").join("") + "</ul></div></div></details></li>";
     }).join("");
   }
 })();
