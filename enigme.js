@@ -25,14 +25,19 @@
     if (vues[n] || q(".eg-ouv") || (window.matchMedia && matchMedia("(prefers-reduced-motion:reduce)").matches)) return;
     const o = document.createElement("button"), v = document.createElement("video"), avant = document.activeElement;
     o.type = "button"; o.className = "eg-ouv"; o.setAttribute("aria-label", "Passer l'animation d'ouverture de la porte " + n);
-    v.muted = true; v.playsInline = true; v.preload = "auto"; v.setAttribute("aria-hidden", "true"); v.src = "video/porte-ouverture.mp4";
-    o.appendChild(v);
+    // Son de la vidéo : coupé par défaut, activable par un bouton posé à côté du voile ; le choix reste sur l'appareil.
+    const KEY_SON = KEY + "-son", sonVoulu = () => { try { return localStorage.getItem(KEY_SON) === "1"; } catch (e) { return false; } };
+    const s = document.createElement("button"), etatSon = () => { s.textContent = v.muted ? "Son : coupé" : "Son : activé"; s.setAttribute("aria-pressed", String(!v.muted)); };
+    s.type = "button"; s.className = "eg-son";
+    s.addEventListener("click", e => { e.stopPropagation(); v.muted = !v.muted; try { localStorage.setItem(KEY_SON, v.muted ? "0" : "1"); } catch (x) {} etatSon(); });
+    v.muted = !sonVoulu(); v.playsInline = true; v.preload = "auto"; v.setAttribute("aria-hidden", "true"); v.src = "video/porte-ouverture.mp4";
+    o.appendChild(v); o.insertAdjacentHTML("beforeend", '<span class="eg-passer" aria-hidden="true">Passer</span>'); etatSon();
     let fini = false, garde = setTimeout(() => fermer(true), 1500);
     const fermer = net => {
       if (fini) return;
       fini = true; clearTimeout(garde);
       try { v.pause(); } catch (e) {}
-      const oter = () => { const f = document.activeElement === o; o.remove(); if (f && avant && avant.isConnected) avant.focus({ preventScroll: true }); };
+      const oter = () => { const f = document.activeElement === o || document.activeElement === s; o.remove(); s.remove(); if (f && avant && avant.isConnected) avant.focus({ preventScroll: true }); };
       if (net || !o.classList.contains("on")) return oter();
       o.classList.add("off"); setTimeout(oter, 450);
     };
@@ -40,16 +45,18 @@
       if (fini || o.classList.contains("on")) return;
       clearTimeout(garde); garde = setTimeout(() => fermer(false), 7000);
       vues[n] = 1; try { localStorage.setItem(KEY_VUES, JSON.stringify(vues)); } catch (e) {}
-      o.classList.add("on"); o.focus({ preventScroll: true });
+      o.classList.add("on"); s.classList.add("on"); o.focus({ preventScroll: true });
     });
     v.addEventListener("timeupdate", () => { if (v.currentTime >= 3.75) fermer(false); });
     v.addEventListener("ended", () => fermer(false));
     v.addEventListener("error", () => fermer(true));
     o.addEventListener("click", () => fermer(false));
     o.addEventListener("keydown", e => { if (e.key === "Escape") fermer(false); });
-    document.body.appendChild(o);
+    s.addEventListener("keydown", e => { if (e.key === "Escape") fermer(false); });
+    document.body.appendChild(o); document.body.appendChild(s);
+    // Lecture avec le son refusée par le navigateur : on repart en muet plutôt que de ne rien montrer.
     const p = v.play();
-    if (p && p.catch) p.catch(() => fermer(true));
+    if (p && p.catch) p.catch(() => { if (v.muted) return fermer(true); v.muted = true; etatSon(); const p2 = v.play(); if (p2 && p2.catch) p2.catch(() => fermer(true)); });
   };
   // E : dernier état reçu du serveur ; choix : porte affichée ; brouillon : réponse en cours de saisie.
   // echeance : fin du chrono de chaque question lancée, à l'horloge de l'appareil ; enJeu : arrêt du jeu en cours.
@@ -458,10 +465,14 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 @media(min-width:861px){.eg-rules{grid-template-columns:1fr 1fr;gap:11px 30px}.eg-rbody.duo{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}}
 @media(max-width:860px){.eg-body{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:480px){.eg-sheet{padding:10px 8px 12px}.eg-grid{gap:8px 6px}.eg-notice{padding:6px 12px}.eg-notice[open]{padding-bottom:14px}.eg-panel{padding:14px 14px 16px}}
-.eg-ouv{position:fixed;inset:0;z-index:60;display:grid;place-items:center;margin:0;padding:16px;border:0;background:rgba(43,26,84,.62);opacity:0;pointer-events:none;cursor:pointer;transition:opacity .25s ease;-webkit-tap-highlight-color:transparent}
+.eg-ouv{position:fixed;inset:0;z-index:60;display:grid;place-items:center;margin:0;padding:0;border:0;background:rgba(24,10,58,.94);opacity:0;pointer-events:none;cursor:pointer;transition:opacity .25s ease;-webkit-tap-highlight-color:transparent}
 .eg-ouv.on{opacity:1;pointer-events:auto}
 .eg-ouv.off{opacity:0;pointer-events:none;transition-duration:.45s}
-.eg-ouv video{display:block;width:min(86vw,62vh,420px);aspect-ratio:1;border-radius:22px;background:#EC7739;box-shadow:0 14px 40px rgba(0,0,0,.4)}
+.eg-ouv video{display:block;width:min(100vw,100vh);aspect-ratio:1;background:#EC7739}
+.eg-passer{position:fixed;right:14px;top:14px;padding:7px 14px;font:800 .9rem/1 var(--display);color:#26076D;background:#FFFBF2;border:2.5px solid #26076D;border-radius:999px;box-shadow:3px 3px 0 #26076D}
+.eg-son{position:fixed;left:14px;top:14px;z-index:61;padding:7px 14px;font:800 .9rem/1 var(--display);color:#FFFBF2;background:#26076D;border:2.5px solid #FFFBF2;border-radius:999px;opacity:0;pointer-events:none;cursor:pointer;transition:opacity .25s ease}
+.eg-son.on{opacity:1;pointer-events:auto}
+.eg-son:focus-visible{outline:3.5px solid var(--focus);outline-offset:3px}
 .eg-ouv:focus-visible video{outline:3.5px solid var(--focus);outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.eg-face{transition:none}.eg-brig summary i{transition:none}.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door,.eg-cell.ou .eg-door.op{animation:none}.eg-door,.eg-door.op b{transition:none}}`;
 

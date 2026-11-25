@@ -431,12 +431,14 @@ button.enq-v{cursor:zoom-in}
         const o = atob(r.j.film), u = new Uint8Array(o.length); for (let i = 0; i < o.length; i++) u[i] = o.charCodeAt(i);
         const v = document.createElement("video"); v.src = URL.createObjectURL(new Blob([u], { type: r.j.type || "video/mp4" }));
         v.controls = true; v.playsInline = true; v.muted = true; v.setAttribute("playsinline", ""); v.setAttribute("aria-label", "Film de clôture de l'enquête");
-        film.replaceChildren(v); filmEtat = "pret";
+        film.replaceChildren(v); filmEtat = "pret"; v.addEventListener("play", () => plein(v), { once: true });
         if (!matchMedia("(prefers-reduced-motion:reduce)").matches) v.play().catch(() => {});
       }).catch(() => { filmEtat = "dispo"; b.disabled = false; m.textContent = "Le film n'a pas pu être chargé. Réessayez."; });
     });
     // Film d'ouverture : fichier du dépôt (il ne dévoile rien : l'armoire vide et les six personnages), proposé dès que
     // l'album est acquis au joueur (étape d'amorce marquée `fiche`, le 3 décembre). Nœud durable, rattaché à chaque rendu.
+    // Plein écran à la lecture (demande faite sur le geste du joueur ; un refus du navigateur est ignoré).
+    const plein = v => { try { const f = v.requestFullscreen || v.webkitRequestFullscreen; if (f) { const r = f.call(v); if (r && r.catch) r.catch(() => {}); } else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen(); } catch (e) {} };
     const ouv = document.createElement("div"); ouv.className = "enq-ouv";
     ouv.innerHTML = '<div class="enq-b"><button type="button" data-ouv="1">Voir le film d\'ouverture</button></div>';
     function poserOuverture() {
@@ -450,7 +452,7 @@ button.enq-v{cursor:zoom-in}
       if (!ev.target.closest("[data-ouv]")) return;
       const v = document.createElement("video"); v.src = "video/enquete-ouverture.mp4";
       v.controls = true; v.playsInline = true; v.muted = true; v.setAttribute("playsinline", ""); v.setAttribute("aria-label", "Film d'ouverture de l'enquête");
-      ouv.replaceChildren(v); v.play().catch(() => {});
+      ouv.replaceChildren(v); plein(v); v.play().catch(() => {});
     });
     function rendre() {
       if (!Q) return cacher();
