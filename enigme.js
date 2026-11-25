@@ -262,6 +262,7 @@
 .eg-ill{margin:12px 0 0;border:3px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
 .eg-ill svg{display:block;width:100%;height:auto;font-family:var(--display)}
 .eg-q{margin:12px 0 0;font-size:1.08rem;font-weight:800;line-height:1.3}
+.eg-plus{margin:8px 0 0;font-size:.9rem;line-height:1.4}.eg-plus summary{display:inline-block;cursor:pointer;font-weight:800;text-decoration:underline;text-underline-offset:3px;list-style:none}.eg-plus summary::-webkit-details-marker{display:none}.eg-plus summary::before{content:"+ "}.eg-plus[open] summary::before{content:"\\2212  "}.eg-plus p{margin:6px 0 0}
 .eg-sub{margin-top:18px;padding-top:14px;border-top:2.5px dashed var(--line)}
 .eg-sub h4{margin:2px 0 0;font-weight:800;font-size:1.1rem;line-height:1.15}
 .eg-opts{display:grid;gap:9px;margin:12px 0 0}
@@ -1000,6 +1001,8 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   }
 
   // Notes des tentatives d'un jeu d'adresse.
+  // Règle d'un jeu : l'essentiel en façade, le détail du score à déplier.
+  const lignes = p => (p.detail ? '<details class="eg-plus"><summary>Les petites lignes de la notice</summary><p>' + fr(p.detail) + "</p></details>" : "");
   const essaisFaits = p => (tentatives(p) ? '<ul class="eg-tent">' + p.scores.map((n, i) => '<li' + (n !== null && n === p.meilleur ? ' class="top"' : "") + "><span>Tentative " + (i + 1) + "</span>" + (n === null ? "interrompue : 0 / 10" : n + " / 10") + "</li>").join("") + "</ul>" : "");
 
   function panneau(msg, cls) {
@@ -1025,7 +1028,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       html = '<p class="ap-m">Porte ' + p.n + " · " + jour(dt(p.ouvre)) + " · " + forme(p) + "</p><h3>" + fr(p.titre) + "</h3>"
         + (p.quiz && p.quiz.titre ? '<p class="ap-m">Question ' + p.quiz.i + " sur " + p.quiz.nb + " · " + fr(p.quiz.titre) + "</p>" : "")
         + (p.duo ? '<p class="ap-m">Jeu ' + p.duo.i + " sur " + p.duo.nb + " · " + fr(p.duo.titre) + "</p>" : "");
-      const enonce = () => '<div class="eg-ill" id="egJeu">' + p.ill + '</div><p class="eg-q">' + fr(p.question) + "</p>";
+      const enonce = () => '<div class="eg-ill" id="egJeu">' + p.ill + '</div><p class="eg-q">' + fr(p.question) + "</p>" + lignes(p);
       if (p.type === "jeu") {
         const nb = tentatives(p);
         html += enonce();
@@ -1044,7 +1047,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         if (p.fini) html += '<div class="eg-ill">' + p.ill + "</div>" + p.jeux.map(c => '<div class="eg-seal">' + SCEAU + "<span><small>" + fr(c.titre) + " : note scellée</small><b>" + (c.meilleur || 0) + " / 10</b></span></div>").join("")
           + '<p class="eg-d">Vos points seront libérés à la clôture de la porte : rendez-vous le ' + jour(dt(p.ferme, 1)) + ".</p>";
         else html += (relecture ? "" : '<p class="eg-pts' + (p.pts ? "" : " zero") + '">' + (p.pts !== undefined ? "Total de la finale : +" + pl(p.pts, "point", "points") + " sur " + 10 * p.nb : "Porte manquée : 0 point") + "</p>")
-          + p.jeux.map((c, i) => '<section class="eg-sub"><p class="ap-m">Jeu ' + (i + 1) + " sur " + p.nb + " · jeu d'adresse</p><h4>" + fr(c.titre) + '</h4><div class="eg-ill" id="egJeu' + i + '">' + c.ill + '</div><p class="eg-q">' + fr(c.question) + "</p>"
+          + p.jeux.map((c, i) => '<section class="eg-sub"><p class="ap-m">Jeu ' + (i + 1) + " sur " + p.nb + " · jeu d'adresse</p><h4>" + fr(c.titre) + '</h4><div class="eg-ill" id="egJeu' + i + '">' + c.ill + '</div><p class="eg-q">' + fr(c.question) + "</p>" + lignes(c)
             + (relecture ? '<p class="eg-hint">Chrono de ' + c.duree + " s, " + pl(c.essais, "tentative", "tentatives") + ', la meilleure compte.</p><button class="go main" type="button" data-try="' + i + '">Essayer le jeu, sans rien enregistrer</button>'
               : '<button class="go" type="button" data-try="' + i + '" style="margin-top:8px">Rejouer hors classement</button>' + essaisFaits(c) + (p.pts !== undefined ? '<p class="eg-pts' + (c.pts ? "" : " zero") + '">' + (c.rang ? "Rang " + c.rang + " sur " + c.sur + " : " : "") + "+" + pl(c.pts || 0, "point", "points") + "</p>" : ""))
             + '<p class="eg-ex">' + fr(c.explication) + "</p>" + origine(c) + "</section>").join("");

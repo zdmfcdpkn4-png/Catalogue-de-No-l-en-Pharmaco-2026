@@ -531,7 +531,7 @@ function vue(q, etat, r, tout, maintenant, rg) {
   if (q.type === 'duo') return vueDuo(o, q, etat, r, clos, rg);
   Object.assign(o, { type: q.type, titre: q.titre, duree: q.duree, essais: q.type === 'jeu' ? q.essais : 1 });
   if (q.type === 'jeu') {
-    Object.assign(o, { jeu: q.jeu, question: q.question, ill: q.ill });
+    Object.assign(o, { jeu: q.jeu, question: q.question, detail: q.detail, ill: q.ill });
     if (r) { o.scores = r.e.map(a => (a.s === undefined ? null : a.s)); o.meilleur = points(q, r); }
     if (clos) { Object.assign(o, { explication: q.explication, source: q.source }); if (r && etat === 'close') { o.pts = rg ? rg.pts : 0; if (rg) { o.rang = rg.rang; o.sur = rg.sur; } } }
     return o;
@@ -594,7 +594,7 @@ function vueDuo(o, q, etat, r, clos, rg) {
   if (clos) {
     Object.assign(o, { type: 'duo', titre: q.titre, ill: q.ill, nb });
     o.jeux = q.jeux.map((c, i) => {
-      const x = Object.assign({ jeu: c.jeu, titre: c.titre, duree: c.duree, essais: c.essais, question: c.question, ill: c.ill, explication: c.explication, source: c.source }, notes(i));
+      const x = Object.assign({ jeu: c.jeu, titre: c.titre, duree: c.duree, essais: c.essais, question: c.question, detail: c.detail, ill: c.ill, explication: c.explication, source: c.source }, notes(i));
       const d = rg && rg.d[i];
       if (r && etat === 'close') { x.pts = d ? d.pts : 0; if (d) { x.rang = d.rang; x.sur = d.sur; } }
       return x;
@@ -605,7 +605,7 @@ function vueDuo(o, q, etat, r, clos, rg) {
   const k = rangDuo(q, r);
   if (k >= nb) return Object.assign(o, { type: 'duo', titre: q.titre, ill: q.ill, nb, fini: true, jeux: q.jeux.map((c, i) => Object.assign({ titre: c.titre }, notes(i))) });
   const c = q.jeux[k];
-  return Object.assign(o, { type: 'jeu', titre: q.titre, duree: c.duree, essais: c.essais, jeu: c.jeu, question: c.question, ill: c.ill },
+  return Object.assign(o, { type: 'jeu', titre: q.titre, duree: c.duree, essais: c.essais, jeu: c.jeu, question: c.question, detail: c.detail, ill: c.ill },
     notes(k), { duo: { i: k + 1, nb, titre: c.titre, avant: q.jeux.slice(0, k).map((x, i) => Object.assign({ titre: x.titre }, notes(i))) } });
 }
 

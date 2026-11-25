@@ -222,11 +222,24 @@
 .pp-opt input:checked+span{background:var(--mu,#ECD567);box-shadow:3px 3px 0 var(--shadow,#26076D);transform:translate(-1px,-1px)}
 .pp-opt input:focus-visible+span{outline:3px solid var(--line,#26076D);outline-offset:3px}
 .pp-fin{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px}
-.pp-carte{display:flex;align-items:center;gap:14px;margin-top:14px;padding:12px;border:3px solid var(--line,#26076D);border-radius:16px;color:#26076D}
-.pp-carte .pp-apercu{width:108px}
-.pp-carte b{display:block;font-size:1.25rem;line-height:1.1}
-.pp-carte small{display:block;margin-top:4px;font:600 .72rem var(--mono,monospace);letter-spacing:.05em;text-transform:uppercase}
-.pp-carte .pp-emb{width:34px;height:34px;margin-bottom:4px}
+.pp-badge{position:relative;width:min(236px,80%);margin:52px auto 14px;transform:rotate(-2deg);transform-origin:50% -46px;color:#26076D;text-align:center}
+.pp-cordon{position:absolute;left:50%;top:-52px;width:26px;height:40px;margin-left:-13px;background:var(--bc);border:3px solid #26076D;border-top:0;border-radius:0 0 4px 4px}
+.pp-cordon::after{content:"";position:absolute;left:50%;top:100%;width:16px;height:24px;margin-left:-8px;background:#C9C6D6;border:3px solid #26076D;border-radius:5px;box-sizing:border-box}
+.pp-bg{position:relative;overflow:hidden;background:#FFFBF2;border:3px solid #26076D;border-radius:18px;box-shadow:5px 6px 0 rgba(38,7,109,.22)}
+.pp-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.5) 46%,rgba(255,255,255,.12) 52%,transparent 60%);pointer-events:none}
+.pp-bh{margin:0;padding:8px 10px 9px;background:#26076D;color:#FFFBF2;line-height:1.15}
+.pp-bh i{display:block;width:46px;height:11px;margin:0 auto 8px;border-radius:6px;background:#FFFBF2;box-shadow:inset 0 2px 0 rgba(38,7,109,.35)}
+.pp-bh span{display:block;font-weight:800;font-size:1rem;letter-spacing:.14em;text-transform:uppercase}
+.pp-bh small{display:block;margin-top:3px;font:600 .62rem var(--mono,monospace);letter-spacing:.08em;text-transform:uppercase;color:#ECD567}
+.pp-photo{position:relative;width:132px;margin:14px auto 8px;padding:8px 8px 0;background:var(--bf);border:3px solid #26076D;border-radius:14px;box-sizing:border-box}
+.pp-photo .pp-apercu{width:100%}
+.pp-photo .pp-emb{position:absolute;right:-20px;bottom:-12px;width:46px;height:46px;transform:rotate(10deg)}
+.pp-bg>b{display:block;padding:0 10px;font-size:1.45rem;line-height:1.1;overflow-wrap:anywhere}
+.pp-bg>small{display:block;margin-top:5px;padding:0 10px;font:600 .72rem var(--mono,monospace);letter-spacing:.05em;text-transform:uppercase}
+.pp-bp{display:flex;align-items:center;gap:10px;margin:12px 0 0;padding:8px 12px;border-top:3px dashed #26076D;background:var(--bf);font:600 .6rem var(--mono,monospace);letter-spacing:.06em;text-transform:uppercase;text-align:left;line-height:1.3}
+.pp-bp i{flex:1;height:26px;background:repeating-linear-gradient(90deg,#26076D 0 2px,transparent 2px 4px,#26076D 4px 5px,transparent 5px 9px,#26076D 9px 12px,transparent 12px 14px,#26076D 14px 15px,transparent 15px 17px)}
+.pp-balance{animation:pp-balance 1s cubic-bezier(.3,1.5,.5,1)}
+@keyframes pp-balance{from{transform:translateY(-40px) rotate(-16deg);opacity:0}45%{transform:rotate(6deg);opacity:1}75%{transform:rotate(-4deg)}}
 .pp-pop{animation:pp-pop .5s cubic-bezier(.3,1.6,.5,1)}
 @keyframes pp-pop{from{transform:scale(.6) rotate(-6deg);opacity:0}}
 .pp-elus{display:grid;gap:8px;margin:12px 0 0;padding:0;list-style:none}
@@ -261,14 +274,13 @@
 .pp-vote .pp-opts{grid-template-columns:repeat(auto-fill,minmax(74px,1fr))}
 .pp-vote .pp-opt span img,.pp-vote .pp-opt span svg{display:block;width:58px;height:58px}
 img.pp-emb,.pp-elus img.pp-emb{object-fit:contain;border-radius:0}
-.pp-carte img.pp-emb{width:52px;height:52px}
 h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
 .pp-brig img.pp-emb{width:28px;height:28px}
 .eg-rank img.eg-emb{width:26px;height:26px}
 .eg-brig summary img.eg-emb{width:36px;height:36px}
 .pp-opt span em{font:600 .58rem/1.1 var(--mono,monospace);font-style:normal}
-@media(max-width:380px){.pp-desc{font-size:.86rem;line-height:1.2;min-height:4.8em}.pp-apercu{width:96px}.pp-top{gap:10px}.pp-opts{gap:5px}.pp-opt span{padding:6px 0 5px;font-size:.6rem;letter-spacing:-.01em}.pp-opt span svg,.pp-opt span i{width:34px;height:34px}.pp-carte .pp-apercu{width:84px}}
-@media(prefers-reduced-motion:reduce){.pp-pop{animation:none}.pp-opt input:checked+span{transform:none}}`;
+@media(max-width:380px){.pp-desc{font-size:.86rem;line-height:1.2;min-height:4.8em}.pp-apercu{width:96px}.pp-top{gap:10px}.pp-opts{gap:5px}.pp-opt span{padding:6px 0 5px;font-size:.6rem;letter-spacing:-.01em}.pp-opt span svg,.pp-opt span i{width:34px;height:34px}}
+@media(prefers-reduced-motion:reduce){.pp-pop,.pp-balance{animation:none}.pp-opt input:checked+span{transform:none}}`;
   const st = document.createElement("style");
   st.textContent = CSS;
   document.head.appendChild(st);
@@ -401,9 +413,12 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
       jouerTirage(el, () => {
       if (o.reveler) o.reveler(); // la page peut maintenant montrer la brigade : pas avant, la vidéo du tirage vient de finir
       el.innerHTML = '<div class="pp"><p class="ap-m">Affectation · tirage équilibré par le serveur</p><h3 tabindex="-1" id="ppTitre">' + h(B.nom) + "</h3>"
-        + '<div class="pp-carte" style="background:' + B.fond + '"><div class="pp-apercu pp-pop">' + avatar(a, { brigade: r.brigade }) + "</div>"
-        + "<div>" + emblemeSvg(r.brigade) + "<b>" + h(o.pseudo) + "</b><small>" + h(B.nom) + (r.effectif ? " · " + r.effectif + (r.effectif > 1 ? " membres" : " membre") : "") + "</small></div></div>"
-        + '<p class="eg-d">Fiche validée, lot identifié. Vous jouez toujours pour vous, et vos points comptent aussi dans la moyenne de votre brigade. Son nom, son emblème, sa devise et son jeu emblème se votent entre membres : à vous de jouer.</p>'
+        + '<div class="pp-badge pp-balance" style="--bc:' + B.c + ";--bf:" + B.fond + '"><i class="pp-cordon" aria-hidden="true"></i><div class="pp-bg">'
+        + '<p class="pp-bh"><i aria-hidden="true"></i><span>Pharmacotechnie</span><small>Pharmacogames · Noël 2026</small></p>'
+        + '<div class="pp-photo"><div class="pp-apercu">' + avatar(a, { brigade: r.brigade }) + "</div>" + emblemeSvg(r.brigade) + "</div>"
+        + "<b>" + h(o.pseudo) + "</b><small>" + h(B.nom) + (r.effectif ? " · " + r.effectif + (r.effectif > 1 ? " membres" : " membre") : "") + "</small>"
+        + '<p class="pp-bp" aria-hidden="true"><i></i><span>Lot B' + (r.brigade + 1) + " · 2026<br>Libéré</span></p></div></div>"
+        + '<p class="eg-d">Badge délivré, lot identifié ! Vous jouez pour vous, et chaque point nourrit aussi la moyenne de votre brigade. Nom, emblème, devise, jeu emblème : tout se vote entre membres.</p>'
         + '<p class="pp-fin"><button class="go main" type="button" id="ppFin">' + (o.versCarnet ? "Voter pour ma brigade" : "Retour au calendrier") + "</button>"
         + (o.versCarnet ? '<button class="linkbtn" type="button" id="ppPlusTard">Plus tard</button>' : "") + "</p></div>";
       q("#ppFin").addEventListener("click", () => (o.versCarnet ? o.versCarnet() : o.onFin()));
