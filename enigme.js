@@ -152,10 +152,20 @@
     badminton: '<path d="M9.8 13.200L13.5 2.500l8 8-10.7 3.700z" fill="#FFFBF2"/><path d="M11.5 13.400l4.8-8.200M12.6 14.300l7-4.3" stroke-width="1"/><circle cx="8" cy="16" r="3.8" fill="#EC7739"/>',
     quiz: '<rect x="5.5" y="8" width="13" height="13.5" rx="2.8" fill="#FFFBF2"/><rect x="8.8" y="2.8" width="6.4" height="5.2" rx="1" fill="#26076D"/><path d="M9.7 12.600a2.4 2.4 0 1 1 3.5 2.100c-.9.5-1.2 1-1.2 1.8" stroke-width="2"/><circle cx="12" cy="19" r="1.15" fill="#26076D" stroke="none"/>',
     duo: '<path d="M12 2.200l3 6.2 6.8.800-5 4.7 1.3 6.700L12 17.300l-6.1 3.3 1.3-6.7-5-4.7 6.8-.8z" fill="#ECD567"/>',
+    placard: '<rect x="3.5" y="12" width="17" height="8.5" rx="1.5" fill="#EC7739"/><rect x="6" y="4.5" width="12" height="7.5" rx="1.5" fill="#ECD567"/><path d="M9 8.2h6M7.5 16.2h9"/>',
+    fiche: '<rect x="5" y="3" width="14" height="18" rx="2" fill="#FFFBF2"/><rect x="8" y="6" width="5" height="5" rx="1" fill="#E5B4D9"/><path d="M15.2 7h1.3M15.2 10h1.3M8 14.2h8M8 17.2h5.5"/>',
+    quilles: '<rect x="4.5" y="9" width="4.6" height="11.5" rx="2.2" fill="#FFFBF2"/><rect x="10.6" y="5.5" width="4.6" height="15" rx="2.2" fill="#ECD567"/><circle cx="19" cy="17.3" r="3.2" fill="#EC7739"/><path d="M4.5 12.600h4.600M10.6 9.500h4.6"/>',
+    bulle: '<path d="M4 6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-5.500L7 20.500V16a3 3 0 0 1-3-3z" fill="#E5B4D9"/><path d="M8 7.800h8M8 11.300h5"/>',
+    loupe: '<circle cx="10.5" cy="10.5" r="6.8" fill="#DCD3F7"/><path d="M15.6 15.600L21 21" stroke-width="2.8"/><path d="M7.3 10.500a3.2 3.2 0 0 1 3.2-3.2" stroke-width="1.2"/>',
+    boulier: '<rect x="3.5" y="4" width="17" height="16" rx="2" fill="#FFFBF2"/><path d="M3.5 9.300h17M3.5 14.700h17"/><circle cx="8" cy="9.3" r="1.9" fill="#EC7739"/><circle cx="12" cy="9.3" r="1.9" fill="#EC7739"/><circle cx="14.5" cy="14.7" r="1.9" fill="#ECD567"/><circle cx="18" cy="14.7" r="1.9" fill="#ECD567"/>',
+    fiole: '<path d="M10.3 3.500v5.700L5 19.300a1.2 1.2 0 0 0 1.1 1.700h11.800a1.2 1.2 0 0 0 1.1-1.700L13.7 9.200V3.500z" fill="#FFFBF2"/><path d="M7.7 15h8.600l2.2 4.200a.9.9 0 0 1-.8 1.300H6.300a.9.9 0 0 1-.8-1.300z" fill="#7FC8A9" stroke="none"/><path d="M9 3.500h6M10.3 3.500v5.700L5 19.300a1.2 1.2 0 0 0 1.1 1.700h11.800a1.2 1.2 0 0 0 1.1-1.700L13.7 9.200V3.5"/><circle cx="11" cy="17.8" r=".9" fill="#26076D" stroke="none"/>',
+    parchemin: '<rect x="5" y="3.5" width="13" height="17" rx="1.5" fill="#F8EFC0"/><path d="M8 7.500h7M8 10.500h7M8 13.500h3.5"/><circle cx="15.5" cy="16.8" r="2.7" fill="#EC7739"/>',
+    des: '<rect x="3.5" y="9" width="10.5" height="10.5" rx="2.5" fill="#FFFBF2"/><rect x="12.3" y="3.5" width="8.2" height="8.2" rx="2" fill="#E5B4D9"/><circle cx="6.7" cy="12.2" r="1" fill="#26076D" stroke="none"/><circle cx="8.750" cy="14.250" r="1" fill="#26076D" stroke="none"/><circle cx="10.8" cy="16.3" r="1" fill="#26076D" stroke="none"/><circle cx="16.4" cy="7.6" r="1" fill="#26076D" stroke="none"/>',
+    trophee: '<path d="M7.5 4h9v4.500a4.5 4.5 0 0 1-9 0z" fill="#ECD567"/><path d="M7.5 5.500h-3a3 3 0 0 0 3.3 3.600M16.5 5.500h3a3 3 0 0 1-3.3 3.600M12 13v3.500M8 20.500h8"/><rect x="9.5" y="16.5" width="5" height="4" rx=".8" fill="#EC7739"/>',
     de: '<rect x="4" y="4" width="16" height="16" rx="3.5" fill="#ECD567"/><circle cx="8.5" cy="8.5" r="1.3" fill="#26076D" stroke="none"/><circle cx="15.5" cy="8.5" r="1.3" fill="#26076D" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="#26076D" stroke="none"/><circle cx="8.5" cy="15.5" r="1.3" fill="#26076D" stroke="none"/><circle cx="15.5" cy="15.5" r="1.3" fill="#26076D" stroke="none"/>',
   };
   const symbole = p => {
-    const k = p.duo || p.type === "duo" ? "duo" : p.type === "jeu" ? (SYMBOLES[p.jeu] ? p.jeu : "de") : "quiz";
+    const k = p.duo || p.type === "duo" ? "duo" : p.type === "jeu" ? (SYMBOLES[p.jeu] ? p.jeu : "de") : (p.sym && SYMBOLES[p.sym] ? p.sym : "quiz");
     return '<span class="eg-sym"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="#26076D" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">' + SYMBOLES[k] + "</svg></span>";
   };
 
@@ -199,41 +209,28 @@
 .eg-cap b{min-width:0;font-weight:600;text-align:right;overflow-wrap:anywhere}
 .eg-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px 8px}
 .eg-cell{position:relative;aspect-ratio:5/6;min-width:0;margin:0;padding:0;border:0;background:none;color:var(--on-surface);font:800 clamp(.56rem,2.3vw,.78rem)/1.1 var(--display);cursor:pointer;-webkit-tap-highlight-color:transparent}
-.eg-door{position:relative;display:grid;grid-template-rows:minmax(0,1fr) auto;justify-items:center;align-items:center;width:100%;height:100%;padding:16% 2px 9%;overflow:hidden;border:2.5px solid var(--line);border-radius:48% 48% 9px 9px/36% 36% 9px 9px;background:var(--surface);box-shadow:3px 3px 0 var(--shadow);transition:transform .15s cubic-bezier(.2,.8,.2,1)}
-.eg-door::after{content:"";position:absolute;right:11%;top:56%;width:11%;aspect-ratio:1;border-radius:50%;background:currentColor;opacity:.55}
-.eg-door b{font-size:2.05em;line-height:1;font-variant-numeric:tabular-nums}
-.eg-door small{display:flex;align-items:center;gap:3px;font:600 .88em/1.1 var(--mono);letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}
+/* Portes : les deux images viennent de la vidéo d'ouverture (porte fermée au cadenas, porte ouverte sur sa lumière).
+   Fermée : le numéro sur le battant. Ouverte : l'illustration du contenu dans l'embrasure, le numéro en pastille, l'état en étiquette. */
+.eg-door{position:relative;display:block;width:100%;height:100%;border-radius:46% 46% 10% 10%/38% 38% 8% 8%;background:url(img/porte-fermee.webp) center/contain no-repeat;filter:drop-shadow(2px 3px 0 rgba(38,7,109,.28));transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.eg-door b{position:absolute;left:6%;right:6%;top:21%;text-align:center;font-size:2.1em;line-height:1;font-variant-numeric:tabular-nums;color:#26076D;text-shadow:0 0 2px #FFFBF2,0 0 2px #FFFBF2,0 0 5px #FFFBF2,0 0 5px #FFFBF2}
+.eg-door small{position:absolute;left:50%;bottom:-4%;transform:translateX(-50%);display:flex;align-items:center;gap:3px;padding:1px 5px 2px;font:600 .8em/1.15 var(--mono);letter-spacing:.02em;text-transform:uppercase;white-space:nowrap;color:var(--on-surface);background:var(--surface);border:2px solid var(--line);border-radius:999px}
 .eg-ic{width:1.15em;height:1.15em;flex:0 0 auto}
 .eg-cell.av .eg-ic{width:1.5em;height:1.5em}
+.eg-cell.av .eg-door small{display:none}
 @media(hover:hover){.eg-cell:hover .eg-door{transform:translateY(-2px)}}
 .eg-cell:active .eg-door{transform:scale(.95)}
-.eg-cell.av .eg-door{color:var(--muted);background:repeating-linear-gradient(135deg,var(--foil-a) 0 7px,var(--foil-b) 7px 14px);box-shadow:none;border-color:color-mix(in srgb,var(--line) 55%,transparent)}
-.eg-cell.ou .eg-door{background:var(--mu);animation:egPulse 1.9s ease-in-out infinite}
-@keyframes egPulse{0%,100%{box-shadow:3px 3px 0 var(--shadow),0 0 0 0 rgba(236,119,57,.75)}50%{box-shadow:3px 3px 0 var(--shadow),0 0 0 7px rgba(236,119,57,0)}}
-.eg-cell.sc .eg-door{color:var(--pressed-on);background:var(--pressed)}
-.eg-cell.ok .eg-door{background:var(--surface)}
-.eg-cell.ok .eg-door small{font-weight:800;font-size:1.05em;color:var(--cEt)}
-.eg-cell.ok.max .eg-door{background:radial-gradient(120% 90% at 30% 14%,#fffbe3 0 14%,#f6e79a 42%,#ECD567 100%)}
-.eg-cell.ko .eg-door{color:var(--muted);background:var(--foil-b);box-shadow:none}
-.eg-cell.rl .eg-door{background:var(--tF)}
-/* Porte ouverte (.op) : le battant pivote à gauche avec le numéro, l'intérieur éclairé porte le symbole, l'état reste en bas.
-   Une courte vidéo « la porte s'ouvre » pourra se poser dans .eg-door.op, par-dessus .eg-sym, à la première ouverture. */
-.eg-door.op{grid-template-columns:31% minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;padding:0;align-items:stretch;justify-items:stretch;animation:none}
-.eg-door.op::after{content:none}
-.eg-door.op b{position:relative;grid-column:1;grid-row:1;display:grid;place-items:center;padding-top:34%;font-size:1.3em;background:var(--surface);border-right:2.5px solid var(--line);transform-origin:0 50%;transform:perspective(60px) rotateY(24deg);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
-.eg-door.op b::after{content:"";position:absolute;right:9%;top:66%;width:20%;aspect-ratio:1;border-radius:50%;background:currentColor;opacity:.55}
-.eg-sym{grid-column:2;grid-row:1;display:grid;place-items:center;min-width:0;min-height:0;padding:16% 5% 0 0}
-.eg-sym svg{display:block;width:100%;height:100%;max-width:3.5em;max-height:3.5em;overflow:visible}
-.eg-door.op small{grid-column:1/3;grid-row:2;justify-content:center;padding:2px 1px 3px;border-top:2.5px solid var(--line);background:var(--surface);position:relative}
-@media(hover:hover){.eg-cell:hover .eg-door.op b{transform:perspective(60px) rotateY(46deg)}}
-@media(max-width:360px){.eg-door.op{grid-template-columns:34% minmax(0,1fr)}.eg-door.op b{font-size:1.12em;letter-spacing:-.04em}}
-.eg-cell.ou .eg-door.op{box-shadow:3px 3px 0 var(--shadow);animation:egPulse 1.9s ease-in-out infinite}
-.eg-cell.sc .eg-door.op{color:var(--on-surface);background:var(--tI)}
-.eg-cell.sc .eg-door.op b,.eg-cell.sc .eg-door.op small{color:var(--pressed-on);background:var(--pressed)}
-.eg-cell.ok .eg-door.op b{background:var(--tE)}
-.eg-cell.ko .eg-door.op b,.eg-cell.ko .eg-door.op small{background:var(--foil-a)}
-.eg-cell.ko .eg-sym{opacity:.45;filter:grayscale(1)}
-.eg-cell.rl .eg-door.op b,.eg-cell.rl .eg-door.op small{background:var(--surface)}
+.eg-door.op{background-image:url(img/porte-ouverte.webp)}
+.eg-door.op b{left:-5%;right:auto;top:-4%;min-width:1.75em;padding:.2em .28em;font-size:1em;color:#FFFBF2;background:#26076D;border:2px solid #FFFBF2;border-radius:999px;text-shadow:none}
+.eg-sym{position:absolute;left:27%;right:11%;top:16%;bottom:21%;display:grid;place-items:center}
+.eg-sym svg{display:block;width:100%;height:100%;overflow:visible}
+.eg-cell.ou .eg-door{animation:egPulse 1.9s ease-in-out infinite}
+@keyframes egPulse{0%,100%{filter:drop-shadow(2px 3px 0 rgba(38,7,109,.28)) drop-shadow(0 0 0 rgba(255,205,90,0))}50%{filter:drop-shadow(2px 3px 0 rgba(38,7,109,.28)) drop-shadow(0 0 7px rgba(255,205,90,.98))}}
+.eg-cell.ou .eg-door small{background:var(--mu)}
+.eg-cell.sc .eg-door small{color:var(--pressed-on);background:var(--pressed)}
+.eg-cell.ok .eg-door small{font-weight:800;background:var(--tE)}
+.eg-cell.ok.max .eg-door small{background:#ECD567}
+.eg-cell.ko .eg-door{filter:grayscale(.9) opacity(.72)}
+.eg-cell.rl .eg-door small{background:var(--tF)}
 .eg-cell.sel .eg-door{outline:3.5px solid #EC7739;outline-offset:2px;transform:translateY(-2px)}
 .eg-cell:focus-visible{outline:0}
 .eg-cell:focus-visible .eg-door{outline:3.5px solid var(--focus);outline-offset:2px}

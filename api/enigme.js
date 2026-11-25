@@ -557,6 +557,7 @@ function vue(q, etat, r, tout, maintenant, rg) {
 // ou dose, énoncé seulement une fois son chrono lancé), avec `quiz` pour dire où l'on en est. Tout joué : type quiz, `fini`.
 // Close ou en relecture : type quiz et les cinq questions avec leurs solutions.
 function vueQuiz(o, q, etat, r, clos, maintenant) {
+  if (q.sym) o.sym = q.sym; // illustration de la porte ouverte (clé de SYMBOLES dans enigme.js)
   const nb = q.questions.length, L = (r && r.q) || [];
   const enonce = c => {
     const x = { type: c.type, titre: c.titre, duree: c.duree, question: c.question, ill: c.ill || q.ill };
