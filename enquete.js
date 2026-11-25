@@ -277,8 +277,8 @@ button.enq-v{cursor:zoom-in}
       if (erreur[e.k]) s += '<p class="enq-err" role="alert">' + fr(erreur[e.k]) + "</p>";
       if (confirme[e.k]) {
         s += (e.quete
-          ? '<p class="enq-warn" role="alert">Une seule hypothèse par membre, verrouillée pour de bon. À la clôture, l\'hypothèse majoritaire de votre brigade est retenue : concertez-vous avant de verrouiller.</p>'
-          : '<p class="enq-warn" role="alert">Une seule réponse par membre, définitive. À la clôture, la réponse majoritaire de votre brigade est retenue : concertez-vous avant de déposer.</p>')
+          ? '<p class="enq-warn" role="alert">Une seule hypothèse, définitive. L\'hypothèse majoritaire de la brigade compte : concertez-vous d\'abord.</p>'
+          : '<p class="enq-warn" role="alert">Une seule réponse, définitive. La réponse majoritaire de la brigade compte : concertez-vous d\'abord.</p>')
           + '<div class="enq-b"><button type="button" data-envoi="' + e.k + '"' + (occupe ? " disabled" : "") + ">" + (e.quete ? "Je confirme, je verrouille" : "Je confirme, je dépose") + '</button><button type="button" class="sec" data-non="' + e.k + '">Pas maintenant</button></div>';
       } else s += '<div class="enq-b"><button type="button" data-rep="' + e.k + '">' + (e.quete ? "Verrouiller mon hypothèse" : "Répondre") + "</button></div>";
       return s;
@@ -296,8 +296,8 @@ button.enq-v{cursor:zoom-in}
         s += e.quete && !e.resolue
           ? '<p class="enq-etat ko">Hypothèse non retenue : hypothèse majoritaire fausse ou aucune hypothèse. Pas de point.</p>'
           : e.resolue
-          ? '<p class="enq-etat ok">' + (e.quete ? "Hypothèse juste : celle de la majorité de la brigade était la bonne." : "Énigme acquise : la réponse majoritaire de la brigade était la bonne.") + (e.quete && e.prime ? (e.premiere ? " Votre brigade a été la première : prime de " + pl(e.prime, "point", "points") + "." : " Une autre brigade a été plus rapide : pas de prime.") : "") + (e.repondu ? (e.juste ? " La vôtre aussi." : " La vôtre ne l'était pas.") : "") + "</p>"
-          : '<p class="enq-etat ko">Énigme non acquise : réponse majoritaire fausse ou aucune réponse. ' + (e.revelation ? "Révélation d'office, sans point." : "Pas de point.") + "</p>";
+          ? '<p class="enq-etat ok">' + (e.quete ? "Hypothèse juste." : "Énigme acquise par la brigade.") + (e.quete && e.prime ? (e.premiere ? " Première brigade : +" + pl(e.prime, "point", "points") + "." : " Une autre brigade a été plus rapide : pas de prime.") : "") + (e.repondu ? (e.quete ? (e.juste ? " La vôtre aussi." : " La vôtre ne l'était pas.") : (e.juste ? " Votre réponse était juste." : " Votre réponse ne l'était pas.")) : "") + "</p>"
+          : '<p class="enq-etat ko">Énigme non acquise : 0 point.</p>';
         s += revelation(e);
       } else if (e.repondu) {
         const nomDe = x => { const f = (Q.fiches || []).find(y => y.id === x); return f ? f.nom : String(x); };
@@ -401,7 +401,7 @@ button.enq-v{cursor:zoom-in}
             + (v ? '<small class="enq-vd ' + (v.ok ? "ok" : "ko") + '" title="' + h(v.texte) + '">' + h(v.court) + '<span class="enq-sr"> (' + h(v.texte.slice(2)) + ")</span></small>" : "") + "</li>";
         };
         return '<p class="enq-alb">' + pl(F.filter(recue).length, "carte reçue", "cartes reçues") + " sur " + F.length + "." + (F.every(recue) ? "" : " Les autres paraîtront dans le sapin.") + (F.some(recue) ? " Touchez une carte pour la voir en grand, puis feuilletez l'album avec les flèches." : "") + "</p>"
-          + (actif && F.some(recue) ? '<p class="enq-next">Vos tampons : touchez une carte pour la marquer « Hors de cause ? » ou « Coupable ? ». La brigade voit le décompte ; la révélation les confirme ou les dément. Sans effet sur les points.</p>' : "")
+          + (actif && F.some(recue) ? '<p class="enq-next">Touchez une carte pour la tamponner « Hors de cause ? » ou « Coupable ? ». Sans effet sur les points.</p>' : "")
           + (erreurTp ? '<p class="enq-err" role="alert">' + h(erreurTp) + "</p>" : "")
           + '<div class="enq-cols alb">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(li).join("") + "</ul></div>").join("") + "</div>"
           + cartesRev();
@@ -541,10 +541,10 @@ button.enq-v{cursor:zoom-in}
         s += '<section class="enq-sec enq-am" aria-live="polite">' + une(A[0]) + "</section>";
         if (A.length > 1) s += '<section class="enq-sec"><details><summary>' + pl(A.length - 1, "message précédent", "messages précédents") + "</summary>" + A.slice(1).map(a => '<div style="margin-top:10px">' + une(a) + "</div>").join("") + "</details></section>";
       }
-      if (commence) s += '<p class="enq-pts" role="status">Votre brigade : ' + pl(Q.points || 0, "point", "points") + " sur " + max + ". À la clôture de chaque énigme, la réponse majoritaire de la brigade est retenue.</p>";
+      if (commence) s += '<p class="enq-pts" role="status">Votre brigade : ' + pl(Q.points || 0, "point", "points") + " sur " + max + ". La réponse majoritaire compte.</p>";
       if (enJeu) s += '<section class="enq-sec" aria-labelledby="enqT1"><h4 id="enqT1">' + (aFaire.length ? pl(aFaire.length, "énigme à résoudre", "énigmes à résoudre") : "Aucune énigme à résoudre pour l'instant") + "</h4>"
         + (aFaire.length ? '<ol class="enq-l">' + aFaire.map(carte).join("") + "</ol>" : "")
-        + (aVenir.length ? '<p class="enq-next">Prochaine énigme' + (dateDe(aVenir[0].jour) ? " le " + dateDe(aVenir[0].jour) : " bientôt") + ". Chaque énigme reste ouverte son jour et les deux jours suivants.</p>" : "") + "</section>";
+        + (aVenir.length ? '<p class="enq-next">Prochaine énigme' + (dateDe(aVenir[0].jour) ? " le " + dateDe(aVenir[0].jour) : " bientôt") + ", ouverte trois jours.</p>" : "") + "</section>";
       if (scellees.length) s += '<section class="enq-sec" aria-labelledby="enqT6"><h4 id="enqT6">' + pl(scellees.length, "réponse scellée", "réponses scellées") + '</h4><ol class="enq-l">' + scellees.map(carte).join("") + "</ol></section>";
       if (enJeu && Array.isArray(Q.fiches) && Q.fiches.length) s += '<section class="enq-sec" aria-labelledby="enqT2"><h4 id="enqT2">' + (album() ? "Album de la brigade" : "Fiche de suivi de la brigade") + "</h4>" + suivi() + "</section>";
       if (indices.length) s += '<section class="enq-sec" aria-labelledby="enqT3"><h4 id="enqT3">Carnet d\'indices</h4><ol class="enq-ind">' + indices.map(e => "<li>" + nl(e.revelation) + "</li>").join("") + "</ol></section>";

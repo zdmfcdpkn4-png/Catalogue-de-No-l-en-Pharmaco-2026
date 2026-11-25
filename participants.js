@@ -341,17 +341,17 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
       + liste.map((x, i) => '<label class="pp-opt"><input class="pp-vh" type="radio" name="pp' + k + '" value="' + i + '"' + (a[k] === i ? " checked" : "") + '><span data-k="' + k + '" data-i="' + i + '"></span></label>').join("") + "</div></fieldset>";
     el.innerHTML = '<div class="pp"><p class="ap-m">Fiche d\'identification · ' + (retouche ? "retouche" : "avant la première prise") + "</p>"
       + '<h3 tabindex="-1" id="ppTitre">' + (retouche ? "Retoucher ma fiche" : "Composez votre avatar, " + h(o.choisirPseudo ? o.nom : o.pseudo)) + "</h3>"
-      + (retouche ? "" : '<p class="eg-d">Pas de lot sans étiquette : avant d\'ouvrir votre première porte, composez votre meeple. Le serveur vous affectera ensuite à l\'une des cinq brigades.</p>')
+      + (retouche ? "" : '<p class="eg-d">Pas de lot sans étiquette : composez votre meeple.</p>')
       + '<div class="pp-top"><div class="pp-apercu" id="ppApercu"></div><div><p class="pp-desc" id="ppDesc" role="status"></p>'
       + '<button class="go" type="button" id="ppHasard">Au hasard</button></div></div>'
       + '<form id="ppForm" novalidate>'
       + (!retouche && o.choisirPseudo ? '<label for="ppPseudo">Votre pseudo au classement</label><input class="pp-jeu" id="ppPseudo" type="text" autocomplete="off" maxlength="24" value="' + h(o.pseudo || "") + '">'
-        + '<p class="eg-hint">Un seul mot, de 2 à 24 lettres : votre prénom ou un nom de scène. Il se retouche ensuite quand vous voulez.</p>' : "")
+        + '<p class="eg-hint">Un seul mot, 2 à 24 lettres, modifiable ensuite.</p>' : "")
       + (retouche && o.renommer ? '<label for="ppPseudo">Pseudo ou prénom</label><input class="pp-jeu" id="ppPseudo" type="text" autocomplete="off" maxlength="24" value="' + h(o.pseudo) + '">'
         + '<p class="eg-hint">Un seul mot, de 2 à 24 lettres. Vos réponses, votre avatar et votre brigade vous suivent sous le nouveau nom.</p>' : "")
       + groupe(0, "Couleur", COULEURS) + groupe(1, "Coiffe", COIFFES) + groupe(2, "Accessoire", ACCESSOIRES) + groupe(3, "Fleur du logo", FLEURS)
       + '<p class="eg-hint">' + (retouche ? "Votre brigade ne change pas : seuls le pseudo et l'avatar se retouchent."
-        : "La brigade est tirée au sort par le serveur, pour des effectifs équilibrés : elle est définitive. L'avatar, lui, se retouche quand vous voulez.") + "</p>"
+        : "Brigade tirée au sort, définitive. Avatar modifiable à tout moment.") + "</p>"
       + '<p class="eg-msg err" id="ppMsg" role="status"></p>'
       + '<p class="pp-fin"><button class="go main" type="submit" id="ppOk">' + (retouche ? "Enregistrer ma fiche" : "Valider ma fiche et tirer ma brigade") + "</button>"
       + '<button class="linkbtn" type="button" id="ppNon">' + (retouche ? "Annuler" : "Plus tard") + "</button></p></form></div>";
@@ -421,7 +421,7 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
         + '<div class="pp-photo"><div class="pp-apercu">' + avatar(a, { brigade: r.brigade }) + "</div>" + emblemeSvg(r.brigade) + "</div>"
         + "<b>" + h(o.pseudo) + "</b><small>" + h(B.nom) + (r.effectif ? " · " + r.effectif + (r.effectif > 1 ? " membres" : " membre") : "") + "</small>"
         + '<p class="pp-bp" aria-hidden="true"><i></i><span>Lot B' + (r.brigade + 1) + " · 2026<br>Libéré</span></p></div></div>"
-        + '<p class="eg-d">Badge délivré, lot identifié ! Vous jouez pour vous, et chaque point nourrit aussi la moyenne de votre brigade. Nom, emblème, devise, jeu emblème : tout se vote entre membres.</p>'
+        + '<p class="eg-d">Badge délivré ! Vos points comptent aussi pour votre brigade. Nom, emblème et devise se votent entre membres.</p>'
         + '<p class="pp-fin"><button class="go main" type="button" id="ppFin">' + (o.versCarnet ? "Voter pour ma brigade" : "Retour au calendrier") + "</button>"
         + (o.versCarnet ? '<button class="linkbtn" type="button" id="ppPlusTard">Plus tard</button>' : "") + "</p></div>";
       q("#ppFin").addEventListener("click", () => (o.versCarnet ? o.versCarnet() : o.onFin()));
@@ -476,18 +476,18 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
           + section("n", "Nom de la brigade", maVoix(moi.n, h(court(moi.n || ""))), '<div class="pp-devises" role="group" aria-label="Nom de la brigade">'
             + auVote.map((t, i) => '<label class="pp-dev"><input class="pp-vh" type="radio" name="ppNom" value="' + h(t) + '"' + (monNom === cle(t) ? " checked" : "") + "><span>" + h(t) + note(voixNom[cle(t)], nomsPris.has(cle(t))) + "</span></label>").join("") + "</div>"
             + '<label for="ppNomLibre">Ou proposer un autre nom</label><input class="pp-jeu" id="ppNomLibre" type="text" autocomplete="off" maxlength="40" placeholder="Brigade des…">'
-            + '<p class="eg-hint">De 3 à 40 caractères, lettres et chiffres. Il s\'ajoute aux choix de votre brigade, et il est visible de tous : restez dans le ton, jamais moqueur.</p>')
+            + '<p class="eg-hint">3 à 40 caractères. Visible de tous : jamais moqueur.</p>')
           + section("e", "Emblème", maVoix(moi.e, EMBLEMES[moi.e] ? EMBLEMES[moi.e].nom : ""), '<div class="pp-opts" role="group" aria-label="Emblème de la brigade">'
             + EMBLEMES.map((t, i) => '<label class="pp-opt"><input class="pp-vh" type="radio" name="ppEmbleme" value="' + i + '"' + (moi.e === i ? " checked" : "") + '><span>' + image(IMAGES[i], "pp-img", 'data-e="' + i + '"') + h(t.nom) + note(voix.e[i], emblPris.has(i)) + "</span></label>").join("") + "</div>")
           + section("d", "Devise", maVoix(moi.d, "choisie"), '<div class="pp-devises" role="group" aria-label="Devise de la brigade">'
             + DEVISES.map((t, i) => '<label class="pp-dev"><input class="pp-vh" type="radio" name="ppDevise" value="' + i + '"' + (maDevise === i ? " checked" : "") + "><span>" + h(t) + note(voixDev[i]) + "</span></label>").join("")
             + devAjoutees.map(t => '<label class="pp-dev"><input class="pp-vh" type="radio" name="ppDevise" value="' + h(t) + '"' + (maDevise === cle(t) ? " checked" : "") + "><span>" + h(t) + note(voixDev[cle(t)]) + "</span></label>").join("") + "</div>"
             + '<label for="ppDeviseLibre">Ou proposer une autre devise</label><input class="pp-jeu" id="ppDeviseLibre" type="text" autocomplete="off" maxlength="120" placeholder="Notre devise…">'
-            + '<p class="eg-hint">De 5 à 120 caractères. Elle s\'ajoute aux choix de votre brigade, et elle est visible de tous : restez dans le ton, jamais moqueur.</p>')
+            + '<p class="eg-hint">5 à 120 caractères. Visible de tous : jamais moqueur.</p>')
           + section("g", "Jeu emblème", maVoix(moi.g, h(moi.g || "")), '<select class="pp-jeu" id="ppJeu" aria-label="Jeu emblème de la brigade"><option value="">Choisir un jeu du catalogue</option>'
             + cats.map(c => '<optgroup label="' + h((fam[c] || {}).n || c) + '">' + jeux.filter(g => g.c === c).sort((x, y) => x.n.localeCompare(y.n, "fr")).map(g => '<option value="' + h(g.n) + '"' + (moi.g === g.n ? " selected" : "") + ">" + h(g.n) + "</option>").join("") + "</optgroup>").join("") + "</select>"
             + (cites.length ? '<p class="eg-hint">Déjà cités : ' + cites.map(n => h(n) + " (" + voix.g[n] + ")").join(", ") + ".</p>" : ""))
-          + '<p class="eg-hint">Une voix par rubrique, à changer tant que vous voulez jusqu\'au ' + quand + " à minuit. Après, c'est scellé ! Deux brigades sur le même nom ou le même emblème ? Le plus de voix l'emporte, l'autre prend son choix suivant. Pas de voix, pas de nom : on garde son numéro.</p>"
+          + '<p class="eg-hint">Une voix par rubrique, modifiable jusqu\'au ' + quand + " à minuit.</p><details class=\"eg-plus\"><summary>En cas d'égalité</summary><p>Deux brigades sur le même nom ou le même emblème : le plus de voix l'emporte, l'autre prend son choix suivant. Sans voix, la brigade garde son numéro.</p></details>"
           : '<p class="eg-hint">' + (o.choix && o.choix.etat === "fige" ? "Nom, emblème, devise et jeu emblème sont scellés depuis le " + quand + "." : "Le vote de la brigade est encore sous scellé.") + "</p>")
         + '<p class="eg-msg ok" id="ppMsg" role="status">' + h(msg || "") + "</p>"
         + '<p class="pp-fin">' + (ouvert ? '<button class="go main" type="submit" id="ppOk">Enregistrer mes voix</button>' : "") + '<button class="' + (ouvert ? "linkbtn" : "go main") + '" type="button" id="ppNon">Retour au calendrier</button></p>'

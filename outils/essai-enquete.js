@@ -69,7 +69,7 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
   ok(await page.locator('.enq-cols li.x').count() === 1 && (await txt('.enq-cols li.x')).includes('Objet factice 1'), 'fiche de suivi : la carte éliminée est cochée');
   ok((await txt('.enq-ind')).includes('donné d\'office'), 'carnet d\'indices : la révélation d\'office y figure');
   ok((await txt('details li[data-k="2"]')).includes('non acquise'), 'énigme close non acquise : dite comme telle, même si ma réponse était juste');
-  ok((await txt('details li[data-k="1"]')).includes('acquise') && (await txt('details li[data-k="1"]')).includes('La vôtre aussi'), 'énigme close acquise : majorité juste');
+  ok((await txt('details li[data-k="1"]')).includes('acquise') && (await txt('details li[data-k="1"]')).includes('Votre réponse était juste'), 'énigme close acquise : majorité juste');
   ok(await page.locator('li[data-k="5"]').count() === 0 && (await txt('.enq-next')).includes('8 décembre'), 'énigme à venir : rien que sa date');
   await page.screenshot({ path: path.join(dossier, '1-accueil.png'), fullPage: true });
 
@@ -98,7 +98,7 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
   ok((await txt('.enq-pts')).includes('1 point'), 'aucun point avant la clôture');
   // Clôture de la 3 : majorité juste, la carte se coche.
   await page.evaluate(() => { const Q = window.S.Q, e = Q.enigmes[2]; Object.assign(e, { etat: 'close', resolue: true, juste: false, revelation: 'Une autre carte factice sort du jeu.', elimine: 'f12' }); Q.points = 2; window.S.bloc.maj(Q); });
-  ok(await page.locator('.enq-cols li.x').count() === 2 && (await txt('details li[data-k="3"]')).includes('La vôtre ne l\'était pas'), 'clôture : la fiche de suivi suit, et ma réponse fausse est dite');
+  ok(await page.locator('.enq-cols li.x').count() === 2 && (await txt('details li[data-k="3"]')).includes('Votre réponse ne l\'était pas'), 'clôture : la fiche de suivi suit, et ma réponse fausse est dite');
   // Sans fiche ni brigade : énoncé visible, pas de formulaire.
   await page.evaluate(() => { const Q = window.S.Q; Q.enigmes[4] = { k: 5, jour: 8, etat: 'ouverte', titre: 'Factice cinq', enonce: 'Énoncé factice cinq.', saisie: 'texte', repondu: false }; window.S.fiche = false; window.S.bloc.maj(Q); });
   ok((await txt('li[data-k="5"]')).includes('Énoncé factice cinq') && await page.locator('li[data-k="5"] [data-rep]').count() === 0, 'sans fiche : énoncé visible, pas de réponse possible');
@@ -178,7 +178,7 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
   ok((await txt(li(8) + ' .enq-aide small')).includes('avancée de 1 rang'), 'aide décalée : la clé est dite');
   ok((await txt(li(9) + ' .enq-aide p')) === 'Aide telle quelle' && await page.locator(li(9) + ' .enq-aide small').count() === 0, 'forme inconnue : affichée telle quelle');
   const t2b = await txt('details ' + li(2));
-  ok(t2b.includes('Révélation le 9 décembre') && t2b.includes('Pas de point') && !t2b.includes("d'office") && await page.locator('details ' + li(1) + ' .enq-de').count() === 0, 'révélation décalée : la date est annoncée, pas de révélation vide');
+  ok(t2b.includes('Révélation le 9 décembre') && t2b.includes('0 point') && !t2b.includes("d'office") && await page.locator('details ' + li(1) + ' .enq-de').count() === 0, 'révélation décalée : la date est annoncée, pas de révélation vide');
   const carnet = await txt('.enq-ind');
   ok(carnet.includes('Indice factice') && !carnet.includes('sans rapport') && (await txt('details ' + li(10) + ' .enq-rev b')) === 'Rien de neuf au dossier' && (await txt('details ' + li(11) + ' .enq-rev b')) === 'Indice', 'énigme libre : étiquette neutre, hors du carnet d\'indices');
   await page.waitForFunction(() => document.querySelectorAll('.enq-v img').length === 0);
@@ -355,7 +355,7 @@ const ok = (cond, texte) => { console.log((cond ? 'OK   ' : 'ECHEC ') + texte); 
   await page.evaluate(() => { const T = window.tp; const e = T.Q.enigmes.find(x => x.k === 26); Object.assign(e, { etat: 'close', resolue: true, premiere: true, trio: ['p1', 'l2', 'o3'], revelation: 'Trio factice.' }); T.Q.denouement = 'Dénouement factice.'; T.b.maj(T.Q); });
   const t26c = await txt('#zT li[data-k="26"]');
   ok((await txt('#zT li[data-f="p1"] .enq-vd.ko')).includes('« hors de cause » : démenti') && (await txt('#zT li[data-f="l2"]')).includes('Lieu factice 2') && await page.locator('#zT li[data-f="p3"] .enq-vd.ok').count() === 0 && (await txt('#zT li[data-f="p3"] .enq-vd.ko')).includes('« coupable » : démenti'), 'dénouement : le trio juge les tampons restants');
-  ok(t26c.includes('Hypothèse juste') && t26c.includes('prime de 3 points') && !/\b0 point/.test(t26c) && await page.locator('#zT [data-tp]').count() === 0, 'trio clos : hypothèse juste et prime dites, plus de bouton de tampon après le dénouement');
+  ok(t26c.includes('Hypothèse juste') && t26c.includes('Première brigade : +3 points') && !/\b0 point/.test(t26c) && await page.locator('#zT [data-tp]').count() === 0, 'trio clos : hypothèse juste et prime dites, plus de bouton de tampon après le dénouement');
   // Relecture (sans option tamponner) : les tampons se voient, rien ne se pose.
   await page.evaluate(() => { const T = window.tp; delete T.Q.denouement; T.b2 = window.PharmacoEnquete.monter(document.getElementById('zT'), { jour: () => 18, peutRepondre: () => false }); T.b2.maj(T.Q); });
   await page.click('#zT .enq-v[data-carte="l3"]');

@@ -116,7 +116,7 @@
     sec.setAttribute("aria-labelledby", "vote-t");
     sec.innerHTML = '<p class="adv-back"><a class="go" href="#">Retour au catalogue</a></p>'
       + '<div class="adv-head"><h2 id="vote-t">Le palmarès <span>des jeux</span></h2>'
-      + '<p class="adv-intro">Un vote par personne : un prénom, une voix, pour votre préparation préférée du catalogue. Le hall of fame classe les jeux, pas les joueurs, et se met à jour à chaque vote. Pour marquer des points, direction les <a href="#pharmacogames">Pharmacogames</a>.</p></div>'
+      + '<p class="adv-intro">Une voix par personne pour votre jeu préféré du catalogue. Le hall of fame classe les jeux, pas les joueurs.</p></div>'
       + '<div class="vt-body"><div>'
       + '<form class="vt-panel" id="vtGate" novalidate><h3>Réservé à l\'équipe</h3>'
       + '<label for="vtCode">Code d\'équipe</label><input id="vtCode" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" required>'

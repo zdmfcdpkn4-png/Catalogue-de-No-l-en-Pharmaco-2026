@@ -521,14 +521,14 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     sec.setAttribute("aria-labelledby", "pharmacogames-t");
     sec.innerHTML = '<p class="adv-back"><a class="go" href="#">Retour au catalogue</a></p>'
       + '<div class="adv-head"><h2 id="pharmacogames-t">Pharmacogames <span>de Noël</span></h2>'
-      + '<p class="adv-intro">Le concours de l\'équipe, chacun pour soi : 25 petits jeux, un par jour du 1<sup>er</sup> au 25 décembre. Derrière chaque porte, cinq questions au chrono ou un jeu d\'adresse. Votre jeu préféré se vote au <a href="#vote">Palmarès</a>.</p></div>'
+      + '<p class="adv-intro">25 portes, une par jour du 1<sup>er</sup> au 25 décembre : cinq questions au chrono ou un jeu d\'adresse. Vos points comptent aussi pour votre brigade.</p></div>'
       + NOTICE
       + '<form class="eg-panel eg-gate" id="egGate" novalidate><h3>Entrer dans le calendrier</h3>'
       + '<details class="eg-notice" id="egProfil"><summary>Première connexion : votre fiche en quatre cases</summary><p class="eg-bd-aide" id="egBdProfil">Faites glisser.</p><div class="eg-bd" role="region" aria-labelledby="egBdProfil" tabindex="0"><img src="img/notice-profil-1.svg" alt="Case 1, Le code. Un champ de saisie masqué et un cadenas, le flacon dit : « Tapez le code d\'équipe, puis choisissez votre nom dans la liste : on entre en zone. »" width="400" height="300" loading="lazy"><img src="img/notice-profil-2.svg" alt="Case 2, Le pseudo. Le flacon montre une étiquette « Dr Meeple » : « Choisissez un pseudo : c\'est lui qui paraîtra au classement. Étiquette obligatoire ! »" width="400" height="300" loading="lazy"><img src="img/notice-profil-3.svg" alt="Case 3, L\'avatar. Trois meeples coiffés d\'une couronne, d\'un bonnet et d\'un chapeau : « Couleur, coiffe, accessoire : composez le meeple qui vous ressemble. Dosage libre. »" width="400" height="300" loading="lazy"><img src="img/notice-profil-4.svg" alt="Case 4, La brigade. Cinq jetons numérotés, le troisième tiré au sort, le flacon dit : « Le sort vous range dans une des cinq brigades. Nom, emblème et devise : au vote jusqu\'au 10 décembre. »" width="400" height="300" loading="lazy"></div></details>'
       + '<label for="egCode">Code d\'équipe</label><input id="egCode" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" required>'
       + '<div id="egListe" hidden><label for="egNom">Votre nom</label><select id="egNom"></select></div>'
       + '<div id="egLibre"><label for="egPrenom">Pseudo ou prénom</label><input id="egPrenom" type="text" autocomplete="given-name" maxlength="24" required></div>'
-      + '<p class="eg-hint">Même nom, même fiche, sur tous vos appareils : vos réponses sont gardées par le serveur de l\'équipe. Deux collègues du même prénom ? Ajoutez une initiale collée, par exemple CamilleB. Avatar et brigade se règlent à la création de votre fiche.</p>'
+      + '<p class="eg-hint">Choisissez votre nom dans la liste : votre fiche vous suit sur tous vos appareils.</p>'
       + '<div id="egConf" hidden><p class="eg-warn" id="egConfQui" role="alert"></p><label for="egConfPrenom">Les 3 premières lettres de votre prénom</label><input id="egConfPrenom" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="40"><button class="linkbtn" type="button" id="egConfNon">Ce n\'est pas moi</button></div>'
       + '<p class="eg-msg err" id="egGateMsg" role="status"></p><button class="go main" type="submit" id="egOuvrir">Ouvrir mon calendrier</button></form>'
       + '<p class="eg-banner" id="egBanner" hidden>Mode relecture : les 25 portes s\'affichent avec leur solution. Rien n\'est enregistré.</p>'
@@ -975,7 +975,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   const forme = p => (p.type === "quiz" ? "cinq questions" : p.type === "duo" ? "finale, deux jeux d'adresse" : (p.quiz ? "question " + p.quiz.i + " sur " + p.quiz.nb + " · " : "") + (p.type === "qcm" ? "quatre flacons" : p.type === "jeu" ? "jeu d'adresse" : "dosage de 0 à 100"));
 
   function saisie(p) {
-    const fin = '<p class="eg-hint">Une seule prise par ' + (p.quiz ? "question" : "porte") + ' : la réponse est définitive. Si le chrono tombe à zéro, la proposition affichée part telle quelle.</p>'
+    const fin = '<p class="eg-hint">À zéro, la proposition affichée part telle quelle.</p>'
       + '<button class="go main" type="button" id="egSend" disabled>Sceller ma réponse</button>';
     const chrono = '<div class="eg-time" id="egTime" role="timer" aria-live="off"><b>' + Math.ceil(p.reste) + ' s</b><span><i></i></span></div>';
     if (p.type === "qcm") return chrono + '<div class="eg-opts' + (p.options.some(o => o.img) ? " img" : "") + '" role="group" aria-label="Quatre propositions">' + p.options.map((o, i) => flacon(o, i, "button")).join("") + "</div>" + fin;
@@ -1021,7 +1021,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         + (p.verrou === "ordre"
           ? '<p class="eg-d"><b>Chaque dose en son temps !</b> Les portes se prennent dans l\'ordre : celle du ' + jour(dt(E.portes[p.avant - 1].ouvre)) + " passe d'abord.</p>"
             + '<button class="go main" type="button" id="egAvant" style="margin-top:14px" data-n="' + p.avant + '">Aller à la porte ' + p.avant + "</button>"
-          : '<p class="eg-d"><b>Pas si vite !</b> Un mystère t\'attend d\'abord auprès du sapin : ouvre la goutte du ' + jour(dt(p.ouvre)) + ", puis reviens ici, la porte sera libérée.</p>"
+          : '<p class="eg-d"><b>Pas si vite !</b> Ouvrez d\'abord la goutte du ' + jour(dt(p.ouvre)) + " dans le sapin.</p>"
             + '<a class="go main" id="egSapin" href="#sapin" style="display:inline-block;margin-top:14px;text-decoration:none">Filer au sapin</a>');
     } else {
       const ouverte = p.etat === "ouverte" && !relecture;
@@ -1037,7 +1037,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         else if (ouverte) {
           if (p.duo) html += p.duo.avant.map(a => '<div class="eg-seal">' + SCEAU + "<span><small>" + fr(a.titre) + " : note scellée</small><b>" + (a.meilleur || 0) + " / 10</b></span></div>").join("");
           html += essaisFaits(p);
-          if (nb < p.essais) html += '<p class="eg-hint">Chrono de ' + p.duree + " s par tentative. " + pl(p.essais, "tentative", "tentatives") + ", la meilleure compte ; une tentative lancée est décomptée, même interrompue. Clôture le " + jour(dt(p.ferme)) + ' à minuit : les points viennent alors du classement ' + (p.duo ? "de chacun des " + p.duo.nb + " jeux" : "de la porte") + ', de 10 pour le premier à 1 pour le dernier.</p>'
+          if (nb < p.essais) html += '<p class="eg-hint">' + p.duree + " s par tentative, " + pl(p.essais, "tentative", "tentatives") + ", la meilleure compte. Clôture " + jour(dt(p.ferme)) + " à minuit.</p>"
             + '<button class="go main" type="button" id="egPlay">Lancer la tentative ' + (nb + 1) + " sur " + p.essais + "</button>" + boutonLibre(p);
           else html += '<div class="eg-seal">' + SCEAU + "<span><small>Note scellée</small><b>" + p.meilleur + " / 10</b></span></div>"
             + '<p class="eg-d">Vos points seront libérés à la clôture de la porte : rendez-vous le ' + jour(dt(p.ferme, 1)) + ".</p>" + REJOUER;
@@ -1059,8 +1059,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
           + p.qs.map((c, i) => '<section class="eg-sub"><p class="ap-m">Question ' + (i + 1) + " sur " + p.nb + " · " + forme(c) + (relecture ? " · " + c.duree + " s" : "") + "</p><h4>" + fr(c.titre || "") + '</h4><div class="eg-ill">' + c.ill + '</div><p class="eg-q">' + fr(c.question) + "</p>" + solution(Object.assign({ deCase: true }, c, p.pts === undefined ? { pts: undefined } : {})) + "</section>").join("");
       } else if (ouverte && p.rep === undefined && !p.hors && p.reste === undefined) {
         // Énoncé encore sous scellé : il n'arrive qu'avec le chrono.
-        html += '<div class="eg-chrono"><b>' + p.duree + ' s</b><span>' + (p.quiz ? "Cinq questions à la suite, chacune avec son chrono. " : "") + 'Une seule tentative. Le chrono part dès que l\'énoncé s\'affiche et ne s\'arrête plus, même si vous quittez la page.</span></div>'
-          + '<p class="eg-hint">Installez-vous : pas le temps d\'aller chercher la réponse ailleurs. Clôture de la porte le ' + jour(dt(p.ferme)) + ' à minuit.</p>'
+        html += '<div class="eg-chrono"><b>' + p.duree + ' s</b><span>' + (p.quiz ? p.quiz.nb + " questions, " + p.duree + " s chacune, une seule tentative." : p.duree + " s, une seule tentative.") + " Le chrono ne s'arrête plus une fois lancé. Clôture le " + jour(dt(p.ferme)) + " à minuit.</span></div>"
           + '<button class="go main" type="button" id="egStart">' + (p.quiz ? "Lancer la question " + p.quiz.i + " sur " + p.quiz.nb : "Lancer le chrono") + "</button>";
       } else {
         html += enonce();
@@ -1105,7 +1104,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     const reste = p.type === "jeu" ? p.essais - tentatives(p) : 1;
     const msg = p.type === "jeu"
       ? (reste > 1 ? "Il vous reste " + pl(reste, "tentative", "tentatives") + " sur " + p.essais + " pour ce jeu." : "C'est votre dernière tentative pour ce jeu.") + " Dès le lancement, elle est décomptée, même interrompue."
-      : "Une seule tentative pour cette question : le chrono de " + p.duree + " s part au lancement et ne s'arrête plus, même si vous quittez la page.";
+      : "Chrono de " + p.duree + " s, impossible à arrêter.";
     b.dataset.ok = "1"; b.textContent = "Je confirme, je lance";
     b.insertAdjacentHTML("beforebegin", '<p class="eg-warn" role="alert">' + (mem.prenom ? "Vous jouez en tant que <b>" + h(mem.prenom) + "</b>. " : "") + msg + "</p>");
     b.insertAdjacentHTML("afterend", '<button class="go" type="button" id="egNon">Pas maintenant</button>');
