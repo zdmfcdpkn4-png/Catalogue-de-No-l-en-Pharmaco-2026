@@ -14,7 +14,11 @@
    suivi devient l'album de la brigade : une vignette par fiche, de face (img/enquete/vignettes/<id>.webp) dès que le
    jour courant atteint `vue`, de dos (img/enquete/vignettes/dos.webp) avant ; sans image, un pavé de repli. Une carte
    parue s'ouvre en grand au toucher (img/enquete/<id>.webp), un second toucher la double. Carte éliminée : tampon
-   « Hors de cause » sur la vignette et en grand, nom lisible avec la mention en dessous. Animations, une fois par
+   « Hors de cause » sur la vignette et en grand, nom lisible avec la mention en dessous. Cartes révélation : chaque
+   révélation acquise à la brigade (énigme close avec `revelation`) se range dans l'album, section « Cartes révélation »,
+   sur le modèle img/enquete/carte-revelation.webp (vignette dans vignettes/), et s'ouvre en grand comme les autres, son
+   texte repris lisiblement sous la carte. En grand, deux flèches (ou les flèches du clavier) feuillettent toutes les
+   cartes reçues, fiches puis révélations. Animations, une fois par
    appareil (localStorage) : arrivée des cartes reçues à la première vue du classeur, coup de tampon sur une carte
    nouvellement éliminée ; aucune avec prefers-reduced-motion. Le jour courant vient de
    `enquete.jour`, sinon de l'option `jour()`, sinon du jour de la dernière énigme ouverte ou close.
@@ -143,6 +147,26 @@ button.enq-v{cursor:zoom-in}
 .enq-zi img{display:block;width:100%;height:auto;aspect-ratio:680/1024;border:3px solid #C9A24B;border-radius:12px;background:#F4E9CF}
 .enq-zoom button:focus-visible{outline:3px solid #fff;outline-offset:2px}
 .enq-zoom p{margin:10px 0 0;font-size:.9rem}
+.enq-zn{position:fixed;top:10px;left:10px;z-index:1;display:flex;align-items:center;gap:8px;font-weight:800}
+.enq-zn button{min-width:44px;min-height:44px;padding:0 10px;border:2px solid #16302F;border-radius:8px;font:inherit;font-weight:800;font-size:1.3rem;line-height:1;background:#C9A24B;color:#16302F;cursor:pointer}
+.enq-zn button:disabled{opacity:.4;cursor:default}
+.enq-zi.rv{container-type:inline-size}
+.enq-zi.rv img{aspect-ratio:768/1376;border-radius:5.5% / 3.2%}
+.enq-rt{position:absolute;left:24.5%;top:33%;width:51%;height:42.5%;display:flex;flex-direction:column;justify-content:center;gap:.5em;overflow:hidden;text-align:center;font-family:Georgia,"Times New Roman",serif;font-size:4.2cqw;line-height:1.2;color:#3A2410;overflow-wrap:anywhere}
+.enq-rt b{font-size:1.05em;letter-spacing:.04em;text-transform:uppercase}
+.enq-zi.rv.sf{aspect-ratio:768/1376;border:3px solid #C9A24B;border-radius:12px;background:#F3E3BE}
+.enq-zi.rv.sf .enq-rt{left:9%;top:8%;width:82%;height:84%}
+.enq-zt{box-sizing:border-box;width:min(100%,440px);margin:12px auto 0;padding:10px 12px;border-radius:10px;background:#F4E9CF;color:#16302F;text-align:left;font-size:1rem;line-height:1.5}
+.enq-zt b{display:block;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase}
+.enq-rvl{margin-top:14px}
+.enq-rvl h5{margin:0 0 6px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--eq-laiton)}
+.enq-rvl ul{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px 8px;margin:0;padding:0;list-style:none}
+.enq-rvl li{text-align:center;font-size:.8rem;line-height:1.25}
+.enq-rvl li small{display:block;opacity:.85}
+.enq-rv{position:relative;display:block;width:100%;aspect-ratio:768/1376;margin:0 0 4px;padding:0;font-family:inherit;border:2px solid var(--eq-laiton);border-radius:8px;overflow:hidden;background:#F3E3BE;color:#3A2410;cursor:zoom-in;container-type:inline-size}
+.enq-rv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.enq-rv span{position:absolute;left:24.5%;top:33%;width:51%;height:42.5%;display:grid;place-items:center;font-family:Georgia,"Times New Roman",serif;font-weight:800;font-size:.8rem;font-size:13cqw;line-height:1.15;overflow-wrap:anywhere}
+.enq-rv:focus-visible{outline:3px solid var(--eq-encre);outline-offset:2px}
 .enq-v{container-type:inline-size}
 .enq-cols.alb li.x .enq-v::after,.enq-zi.x::after{content:"HORS\\A DE CAUSE";white-space:pre;position:absolute;left:50%;top:50%;width:84%;transform:translate(-50%,-50%) rotate(-18deg);padding:.2em 0;border:3px solid #A8472F;border-radius:5px;background:rgba(244,233,207,.3);text-shadow:0 0 4px #F4E9CF,0 0 2px #F4E9CF;color:#A8472F;font-size:.72rem;font-size:min(.72rem,10.5cqw);font-weight:900;letter-spacing:.05em;text-align:center;line-height:1.15;pointer-events:none}
 .enq-zi{position:relative}
@@ -209,8 +233,9 @@ button.enq-v{cursor:zoom-in}
     const saisie = {}, confirme = {}, erreur = {};
     const peut = () => (opts.peutRepondre ? Boolean(opts.peutRepondre()) : true);
 
+    const genre = e => (e.quete ? "Quête secondaire" : e.elimine ? "Carte éliminée" : e.libre ? "Rien de neuf au dossier" : e.k > 21 ? "Pièce à conviction" : "Indice");
     const revelation = e => (e.revelation
-      ? '<p class="enq-rev"><b>' + (e.quete ? "Quête secondaire" : e.elimine ? "Carte éliminée" : e.libre ? "Rien de neuf au dossier" : e.k > 21 ? "Pièce à conviction" : "Indice") + "</b>" + nl(e.revelation) + "</p>"
+      ? '<p class="enq-rev"><b>' + genre(e) + "</b>" + nl(e.revelation) + "</p>"
       : e.attente && dateDe(e.attente) ? '<p class="enq-rev"><b>Révélation</b>Révélation le ' + dateDe(e.attente) + ".</p>" : "");
 
     // Le dé de la brigade pour cette énigme, dessiné face visible, et l'aide qu'il donne à partir de 3.
@@ -343,6 +368,21 @@ button.enq-v{cursor:zoom-in}
       if (majZoom) majZoom();
     };
 
+    // Les cartes révélation acquises à la brigade, rangées dans l'album après les fiches, dans l'ordre des énigmes.
+    const revs = () => (Q.enigmes || []).filter(e => e.etat === "close" && e.revelation).sort((a, b) => a.k - b.k);
+    const nomRev = e => (e.quete ? "Quête" : Number.isInteger(e.jour) ? "Jour " + e.jour : "Énigme " + e.k);
+    const cartesRev = () => {
+      const R = revs();
+      if (!R.length) return "";
+      return '<div class="enq-rvl"><h5 id="enqT7">Cartes révélation</h5><p class="enq-alb">' + pl(R.length, "carte révélation acquise", "cartes révélation acquises") + '.</p><ul aria-labelledby="enqT7">' + R.map(e =>
+        '<li><button type="button" class="enq-rv" data-rev="' + e.k + '" aria-label="Voir en grand : révélation, ' + h(nomRev(e)) + ", " + h(genre(e)) + '"><img src="img/enquete/vignettes/carte-revelation.webp" alt="" loading="lazy"><span aria-hidden="true">' + h(nomRev(e)) + "</span></button><span>" + h(nomRev(e)) + "</span><small>" + h(genre(e)) + "</small></li>").join("") + "</ul></div>";
+    };
+    // L'ordre de feuilletage des cartes en grand : les fiches reçues, colonne par colonne, puis les révélations.
+    const ordre = () => {
+      const F = Array.isArray(Q.fiches) ? Q.fiches : [], j = aujourdhui(), cats = [...new Set(F.map(f => f.cat))];
+      return cats.flatMap(c => F.filter(f => f.cat === c && (!Number.isInteger(f.vue) || j >= f.vue)).map(f => String(f.id))).concat(revs().map(e => "rev:" + e.k));
+    };
+
     const suivi = () => {
       const F = Array.isArray(Q.fiches) ? Q.fiches : [], cats = [...new Set(F.map(f => f.cat))];
       const hors = new Set((Q.enigmes || []).filter(e => e.elimine).map(e => e.elimine));
@@ -360,10 +400,11 @@ button.enq-v{cursor:zoom-in}
             + (cpt ? '<small class="enq-cpt">' + h(cpt) + "</small>" : "")
             + (v ? '<small class="enq-vd ' + (v.ok ? "ok" : "ko") + '" title="' + h(v.texte) + '">' + h(v.court) + '<span class="enq-sr"> (' + h(v.texte.slice(2)) + ")</span></small>" : "") + "</li>";
         };
-        return '<p class="enq-alb">' + pl(F.filter(recue).length, "carte reçue", "cartes reçues") + " sur " + F.length + "." + (F.every(recue) ? "" : " Les autres paraîtront dans le sapin.") + "</p>"
+        return '<p class="enq-alb">' + pl(F.filter(recue).length, "carte reçue", "cartes reçues") + " sur " + F.length + "." + (F.every(recue) ? "" : " Les autres paraîtront dans le sapin.") + (F.some(recue) ? " Touchez une carte pour la voir en grand, puis feuilletez l'album avec les flèches." : "") + "</p>"
           + (actif && F.some(recue) ? '<p class="enq-next">Vos tampons : touchez une carte pour la marquer « Hors de cause ? » ou « Coupable ? ». La brigade voit le décompte ; la révélation les confirme ou les dément. Sans effet sur les points.</p>' : "")
           + (erreurTp ? '<p class="enq-err" role="alert">' + h(erreurTp) + "</p>" : "")
-          + '<div class="enq-cols alb">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(li).join("") + "</ul></div>").join("") + "</div>";
+          + '<div class="enq-cols alb">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(li).join("") + "</ul></div>").join("") + "</div>"
+          + cartesRev();
       }
       return '<div class="enq-cols">' + cats.map(c => "<div><h5>" + h(c) + "</h5><ul>" + F.filter(f => f.cat === c).map(f =>
         '<li' + (hors.has(f.id) ? ' class="x"' : "") + '><i aria-hidden="true">' + (hors.has(f.id) ? "×" : "") + "</i><div><span>" + h(f.nom) + "</span>" + (hors.has(f.id) ? "<small>Hors de cause</small>" : "") + "</div></li>").join("") + "</ul></div>").join("") + "</div>";
@@ -483,7 +524,7 @@ button.enq-v{cursor:zoom-in}
     function rendre() {
       if (!Q) return cacher();
       const actif = document.activeElement && el.contains(document.activeElement) ? document.activeElement : null;
-      const repere = actif ? (actif.id ? "#" + actif.id : actif.dataset.rep ? '[data-rep="' + actif.dataset.rep + '"]' : actif.dataset.envoi ? '[data-envoi="' + actif.dataset.envoi + '"]' : actif.dataset.carte ? '[data-carte="' + actif.dataset.carte + '"]' : actif.dataset.tp ? '[data-tp="' + actif.dataset.tp + '"][data-t="' + actif.dataset.t + '"]' : actif.dataset.trio ? '[data-trio="' + actif.dataset.trio + '"]' : "") : "";
+      const repere = actif ? (actif.id ? "#" + actif.id : actif.dataset.rep ? '[data-rep="' + actif.dataset.rep + '"]' : actif.dataset.envoi ? '[data-envoi="' + actif.dataset.envoi + '"]' : actif.dataset.carte ? '[data-carte="' + actif.dataset.carte + '"]' : actif.dataset.rev ? '[data-rev="' + actif.dataset.rev + '"]' : actif.dataset.tp ? '[data-tp="' + actif.dataset.tp + '"][data-t="' + actif.dataset.t + '"]' : actif.dataset.trio ? '[data-trio="' + actif.dataset.trio + '"]' : "") : "";
       const L = Q.enigmes || [], aVenir = L.filter(e => e.etat === "avenir");
       // Amorce : sans le champ, tout s'affiche ; avec, on ne montre que ce que les étapes reçues autorisent.
       const amorce = Array.isArray(Q.amorces), A = amorce ? Q.amorces.slice().sort((a, b) => b.n - a.n) : [];
@@ -523,15 +564,23 @@ button.enq-v{cursor:zoom-in}
       if (repere) { const f = el.querySelector(repere); if (f) f.focus({ preventScroll: true }); }
     }
 
-    // Une carte parue en grand, par-dessus la page : un toucher la double, « Fermer » ou Échap la referme.
-    const grand = id => {
-      const f = (Q.fiches || []).find(x => String(x.id) === id);
-      if (!f || document.querySelector(".enq-zoom")) return;
-      const d = document.createElement("div"), x = (Q.enigmes || []).some(e => e.elimine === f.id);
-      d.className = "enq-zoom"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", f.nom + (x ? ", hors de cause" : ""));
-      d.innerHTML = '<button type="button" data-fin="1">Fermer</button><button type="button" class="enq-zi' + (x ? " x" : "") + '" aria-pressed="false" aria-label="Doubler la taille de la carte"><img src="img/enquete/' + encodeURIComponent(id) + '.webp" alt="' + h(f.nom) + '"></button><p>' + (x ? "Hors de cause. " : "") + 'Touchez la carte pour la doubler.</p><div class="enq-tpz"></div>';
+    // Une carte de l'album en grand, par-dessus la page : un toucher la double, « Fermer » ou Échap la referme, les flèches
+    // (boutons ou clavier) passent à la carte voisine. `cle` : identifiant de fiche, ou « rev:<k> » pour une révélation.
+    const grand = (cle, sens) => {
+      const rv = cle.startsWith("rev:") ? revs().find(e => "rev:" + e.k === cle) : null;
+      const f = rv ? null : (Q.fiches || []).find(x => String(x.id) === cle);
+      if ((!f && !rv) || document.querySelector(".enq-zoom")) return;
+      const d = document.createElement("div"), x = !rv && (Q.enigmes || []).some(e => e.elimine === f.id);
+      const L = ordre(), i = L.indexOf(cle), nom = rv ? "Révélation, " + nomRev(rv) : f.nom;
+      d.className = "enq-zoom"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-label", nom + (x ? ", hors de cause" : ""));
+      d.innerHTML = '<button type="button" data-fin="1">Fermer</button>'
+        + (L.length > 1 && i >= 0 ? '<div class="enq-zn"><button type="button" data-va="-1" aria-label="Carte précédente"' + (i ? "" : " disabled") + '>‹</button><span aria-live="polite">' + (i + 1) + "/" + L.length + '</span><button type="button" data-va="1" aria-label="Carte suivante"' + (i < L.length - 1 ? "" : " disabled") + ">›</button></div>" : "")
+        + (rv
+          ? '<button type="button" class="enq-zi rv" aria-pressed="false" aria-label="Doubler la taille de la carte"><img src="img/enquete/carte-revelation.webp" alt=""><span class="enq-rt" aria-hidden="true"><b>' + h(nomRev(rv)) + "</b><span>" + h(rv.revelation) + '</span></span></button><p>Touchez la carte pour la doubler.</p><div class="enq-zt"><b>' + h(nomRev(rv)) + " · " + h(genre(rv)) + "</b>" + nl(rv.revelation) + "</div>"
+          : '<button type="button" class="enq-zi' + (x ? " x" : "") + '" aria-pressed="false" aria-label="Doubler la taille de la carte"><img src="img/enquete/' + encodeURIComponent(cle) + '.webp" alt="' + h(f.nom) + '"></button><p>' + (x ? "Hors de cause. " : "") + "Touchez la carte pour la doubler.</p>")
+        + '<div class="enq-tpz"></div>';
       // Panneau des tampons du joueur sous la carte, redessiné à chaque état reçu tant que la carte est ouverte.
-      majZoom = () => {
+      majZoom = rv ? null : () => {
         const hs = horsDeCause(), xx = hs.has(f.id), m = xx ? undefined : tampon(f.id).moi, v = verdict(f.id, hs, trioConnu()), cpt = xx ? "" : decompte(f.id), z = d.querySelector(".enq-zi");
         if (z) { z.classList.toggle("mh", m === "h"); z.classList.toggle("mc", m === "c"); }
         const actif = d.contains(document.activeElement) ? document.activeElement : null, t = actif && actif.dataset.t;
@@ -540,23 +589,34 @@ button.enq-v{cursor:zoom-in}
           + (erreurTp ? '<p class="enq-err" role="alert">' + h(erreurTp) + "</p>" : "");
         if (t) { const b = d.querySelector('[data-t="' + t + '"]'); if (b) b.focus({ preventScroll: true }); }
       };
-      majZoom();
-      const fermer = () => { majZoom = null; d.remove(); document.removeEventListener("keydown", touche, true); const v = [...el.querySelectorAll("[data-carte]")].find(x => x.dataset.carte === id); if (v) v.focus({ preventScroll: true }); };
+      if (majZoom) majZoom();
+      // Le texte d'une révélation tient dans le parchemin de la carte : on réduit le corps jusqu'à ce qu'il rentre.
+      const ajuster = () => { const c = d.querySelector(".enq-rt"); if (!c) return; for (let v = 5.6; v >= 2.6; v -= 0.2) { c.style.fontSize = v.toFixed(1) + "cqw"; if (c.scrollHeight <= c.clientHeight + 1) break; } };
+      const fermer = suite => { majZoom = null; d.remove(); document.removeEventListener("keydown", touche, true); if (suite) return; const v = rv ? el.querySelector('[data-rev="' + rv.k + '"]') : [...el.querySelectorAll("[data-carte]")].find(x => x.dataset.carte === cle); if (v) v.focus({ preventScroll: true }); };
+      const aller = pas => { const c = L[i + pas]; if (i < 0 || !c) return; fermer(true); grand(c, pas); };
       const touche = ev => {
         if (ev.key === "Escape") { ev.stopPropagation(); fermer(); }
+        else if (ev.key === "ArrowLeft" || ev.key === "ArrowRight") { ev.preventDefault(); aller(ev.key === "ArrowLeft" ? -1 : 1); }
         else if (ev.key === "Tab" && !d.contains(ev.target)) { ev.preventDefault(); d.querySelector("button").focus(); }
       };
       d.addEventListener("click", ev => {
         const tp = ev.target.closest("[data-tp]");
         if (tp) return poser(tp.dataset.tp, tp.dataset.t);
+        const va = ev.target.closest("[data-va]");
+        if (va) return aller(Number(va.dataset.va));
         const z = ev.target.closest(".enq-zi");
-        if (z) { z.setAttribute("aria-pressed", String(z.classList.toggle("zz"))); return; }
+        if (z) { z.setAttribute("aria-pressed", String(z.classList.toggle("zz"))); ajuster(); return; }
         if (ev.target === d || ev.target.closest("[data-fin]")) fermer();
       });
-      d.querySelector("img").addEventListener("error", () => { d.querySelector(".enq-zi").remove(); d.querySelector("p").textContent = (x ? "Hors de cause. " : "") + "Cette carte n'a pas encore son image en grand."; });
+      d.querySelector("img").addEventListener("error", ev => {
+        if (rv) { ev.target.remove(); d.querySelector(".enq-zi").classList.add("sf"); return ajuster(); }
+        d.querySelector(".enq-zi").remove(); d.querySelector("p").textContent = (x ? "Hors de cause. " : "") + "Cette carte n'a pas encore son image en grand.";
+      });
       document.addEventListener("keydown", touche, true);
       document.body.appendChild(d);
-      d.querySelector("button").focus();
+      ajuster();
+      const va = sens && d.querySelector('[data-va="' + sens + '"]:not(:disabled)');
+      (va || d.querySelector("button")).focus();
     };
 
     const lire = k => {
@@ -568,7 +628,7 @@ button.enq-v{cursor:zoom-in}
       return t && t.value.trim() ? t.value.trim() : undefined;
     };
 
-    el.addEventListener("error", ev => { const t = ev.target; if (t && t.tagName === "IMG" && t.closest(".enq-v")) t.remove(); }, true);
+    el.addEventListener("error", ev => { const t = ev.target; if (t && t.tagName === "IMG" && t.closest(".enq-v,.enq-rv")) t.remove(); }, true);
     // Les listes du trio : « change » en plus de « input », pour les navigateurs qui ne signalent que le premier.
     el.addEventListener("change", ev => { const t = ev.target; if (t.matches("[data-trio]")) { const k = Number(t.dataset.trio.split("-")[0]), L = [...el.querySelectorAll('[data-trio^="' + k + '-"]')].map(x => x.value); if (JSON.stringify(L) !== JSON.stringify(saisie[k])) { saisie[k] = L; erreur[k] = ""; rendre(); } } });
     el.addEventListener("input", ev => {
@@ -582,6 +642,7 @@ button.enq-v{cursor:zoom-in}
       if (!b || !Q) return;
       if (b.dataset.fiche) return opts.identifier && opts.identifier();
       if (b.dataset.carte) return grand(b.dataset.carte);
+      if (b.dataset.rev) return grand("rev:" + b.dataset.rev);
       if (b.dataset.tp) return poser(b.dataset.tp, b.dataset.t);
       if (b.dataset.rep) {
         const k = Number(b.dataset.rep), v = lire(k);
