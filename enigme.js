@@ -642,6 +642,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     versFiche = location.hash === "#pharmacomeeple";
     document.querySelectorAll("#avent,.ind,.bar,main").forEach(e => { e.hidden = true; });
     sec.scrollIntoView({ block: "start" });
+    if (versFiche && !q("#egGate").hidden) q("#egGate").scrollIntoView({ block: "start" }); // pastille Pharmacomeeple sans joueur : droit sur la zone de connexion
     if (relecture || ((mem.prenom || mem.nom) && mem.code)) charger();
     else if (q("#egCode").value.trim()) chercherListe(q("#egCode").value.trim());
   }

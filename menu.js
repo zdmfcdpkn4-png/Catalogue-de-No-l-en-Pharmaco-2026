@@ -111,10 +111,10 @@
 .pm-qui[hidden]{display:none}
 .pm-qn{display:block;font-weight:800;font-size:.86rem;line-height:1.2}
 .pm-qd{display:inline-flex;align-items:center;gap:5px;margin-top:4px;padding:3px 8px 4px;background:var(--li);color:#26076D;border:2px solid var(--line);border-radius:8px;box-shadow:2px 2px 0 var(--shadow);font:600 .64rem/1.2 var(--mono,monospace);letter-spacing:.03em;text-transform:uppercase;transform:rotate(-3deg)}
-.pm-qd svg{width:13px;height:13px;flex:none;animation:pmTour 2.4s linear infinite}
+.pm-qd svg{width:13px;height:13px;flex:none;animation:pmFleches 2.4s linear infinite}
 .pm-qui:hover .pm-qd{background:#ECD567}.pm-qui:active .pm-qd{transform:rotate(-3deg) translate(1px,1px);box-shadow:1px 1px 0 var(--shadow)}
 .pm-qui:focus-visible{outline:0}.pm-qui:focus-visible .pm-qd{outline:3px solid var(--focus);outline-offset:3px}
-@keyframes pmTour{to{transform:rotate(360deg)}}
+@keyframes pmFleches{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.pm-qd svg{animation:none}}
 @media(min-width:861px){.pm.pm-haut{position:absolute;z-index:2;top:30px;right:22px;margin:0}}
 @media(min-width:861px) and (max-width:1100px){.pm:not(.pm-haut) b{padding:2px 3px;font-size:.68rem}.pm:not(.pm-haut) small,.pm:not(.pm-haut) .pm-s i{display:none}.pm:not(.pm-haut) .pm-s{max-width:74px;padding:2px 4px 3px;font-size:.56rem}}
@@ -177,6 +177,8 @@
     a.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") tourner(a); });
     a.addEventListener("click", e => {
       tourner(a);
+      // Déjà sur cette page (adresse inchangée) : aucun « hashchange » ne partirait, on le donne pour que la page se recale sur sa zone.
+      if ((calme.matches || e.detail === 0) && !e.defaultPrevented && a.getAttribute("href") === location.hash) setTimeout(() => window.dispatchEvent(new Event("hashchange")), 0);
       // Clic ou toucher simple : la page attend que le jeton montre son dos, sinon elle défile et l'emporte hors de l'écran.
       // Pas d'attente au clavier (detail à 0), avec une touche de modification (nouvel onglet), ni en animation réduite.
       if (calme.matches || e.detail === 0 || e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
