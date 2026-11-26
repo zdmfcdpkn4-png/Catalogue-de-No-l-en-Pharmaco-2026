@@ -25,11 +25,21 @@
     { nom: "bonbon", g: ["#F2A0C4", "#ECD567", "#5AA9E6", "#F2A0C4", "#ECD567", "#5AA9E6"], sens: "v" },
     { nom: "sapin enneigé", g: ["#FFFBF2", "#2F8F63"], sens: "h", doux: true },
     { nom: "feu de cheminée", g: ["#ECD567", "#EC7739", "#DC4B4F"], sens: "h", doux: true },
+    // Tenues : c (teinte de la tête et pastille du choix), t (habit dessiné dans la silhouette), t2 (ce qui en dépasse).
+    { nom: "tenue de soirée", c: "#FFCBA4", p: "linear-gradient(180deg,#FFCBA4 34%,#2B2540 34%)",
+      t: '<rect x="0" y="35" width="100" height="65" fill="#2B2540"/><path d="M41 35l9 27 9-27z" fill="#fff"/><path d="M41 35l5 15 4-6zM59 35l-5 15-4-6z" fill="#4B3F72"/><circle cx="50" cy="52" r="1.600" fill="#2B2540"/><circle cx="50" cy="57" r="1.600" fill="#2B2540"/><path d="M50 40l-7-4v8zM50 40l7-4v8z" fill="#DC4B4F" stroke="#26076D" stroke-width="1.500" stroke-linejoin="round"/><circle cx="50" cy="40" r="2" fill="#DC4B4F" stroke="#26076D" stroke-width="1.500"/>' },
+    { nom: "robe de soirée", c: "#FFCBA4", p: "linear-gradient(180deg,#FFCBA4 34%,#DC4B4F 34%)",
+      t: '<rect x="33" y="38" width="34" height="24" fill="#DC4B4F"/><path d="M40 38c3 4 17 4 20 0" fill="none" stroke="#FFCBA4" stroke-width="6"/>',
+      t2: '<path d="M35 58L17 92q33 9 66 0L65 58z" fill="#DC4B4F" stroke="#26076D" stroke-width="5" stroke-linejoin="round"/><path d="M35 59h30" fill="none" stroke="#ECD567" stroke-width="4"/><path d="M30 82q5 4 11 5M52 88q8 0 16-3" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="2.500" stroke-linecap="round"/>' },
+    { nom: "treillis militaire", c: "#FFCBA4", p: "linear-gradient(135deg,#6F8552 30%,#4F6340 30% 55%,#A9BC8C 55% 75%,#6F8552 75%)",
+      t: '<rect x="0" y="35" width="100" height="65" fill="#6F8552"/><path d="M8 52c8-5 16 0 14 7s-12 6-16 3zM40 40c7-3 14 1 12 7s-13 4-14-1zM66 56c9-4 20 1 18 7s-16 5-20 1zM30 68c8-4 15 1 13 8s-13 5-15 0zM58 78c7-3 13 2 11 8s-11 5-13 1zM34 88c5-3 10 0 9 5s-9 4-10 1z" fill="#4F6340"/><path d="M24 58c5-3 10 0 9 4s-8 4-10 1zM56 44c5-2 9 1 8 5s-8 3-9 0zM46 62c6-3 12 1 10 6s-10 4-11 0zM70 84c5-2 9 1 8 5s-8 3-9 0z" fill="#A9BC8C"/><rect x="30" y="64" width="40" height="5" fill="#3A2A1C"/><rect x="46.500" y="63" width="7" height="7" rx="1" fill="#ECD567"/>' },
+    { nom: "blouse de scientifique", c: "#FFCBA4", p: "linear-gradient(180deg,#FFCBA4 34%,#FFFFFF 34% 80%,#5AA9E6 80%)",
+      t: '<rect x="0" y="35" width="100" height="65" fill="#fff"/><rect x="0" y="80" width="100" height="20" fill="#5AA9E6"/><path d="M42 35l8 16 8-16z" fill="#5AA9E6"/><path d="M42 35l8 16M58 35l-8 16M50 51v29" fill="none" stroke="#26076D" stroke-width="2"/><circle cx="53.500" cy="58" r="1.500" fill="#26076D"/><circle cx="53.500" cy="66" r="1.500" fill="#26076D"/><circle cx="53.500" cy="74" r="1.500" fill="#26076D"/><rect x="35" y="56" width="9" height="9" fill="none" stroke="#26076D" stroke-width="1.800"/><path d="M38 52v7M41.500 53v6" fill="none" stroke="#DC4B4F" stroke-width="2.200" stroke-linecap="round"/>' },
   ];
   // Teinte d'une couleur à plusieurs teintes : son dégradé SVG (remplissage du meeple) et son équivalent CSS (pastille du choix).
   const arrets = C => C.g.map((c, i) => (C.doux ? [[c, i / (C.g.length - 1)]] : [[c, i / C.g.length], [c, (i + 1) / C.g.length]])).flat();
   const degrade = (C, id) => '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="' + (C.sens === "h" ? 0 : 1) + '" y2="' + (C.sens === "v" ? 0 : 1) + '">' + arrets(C).map(([c, t]) => '<stop offset="' + Math.round(t * 1000) / 10 + '%" stop-color="' + c + '"/>').join("") + "</linearGradient></defs>";
-  COULEURS.forEach(C => { if (C.g) C.c = "linear-gradient(" + (C.sens === "h" ? "180deg" : C.sens === "v" ? "90deg" : "135deg") + "," + arrets(C).map(([c, t]) => c + " " + Math.round(t * 1000) / 10 + "%").join(",") + ")"; });
+ COULEURS.forEach(C => { if (C.p) C.pastille = C.p; }); COULEURS.forEach(C => { if (C.g) C.c = C.pastille = "linear-gradient(" + (C.sens === "h" ? "180deg" : C.sens === "v" ? "90deg" : "135deg") + "," + arrets(C).map(([c, t]) => c + " " + Math.round(t * 1000) / 10 + "%").join(",") + ")"; });
   // La goutte du logo de l'unité (pointe en bas, longueur 100) : pétale des fleurs, des couronnes et des bouquets.
   const GOUTTE = "M0 0C-4-29-27-50-27-73A27 27 0 0 1 27-73C27-50 4-29 0 0Z";
   const LOGO = ["#26076D", "#EC7739", "#ECD567", "#E5B4D9"];
@@ -232,6 +242,7 @@
       // Le meeple en autocollant : liseré blanc, contour, reflet et petit visage, puis la coiffe et l'accessoire.
       + '<g transform="translate(20 33) scale(.78)"><path d="' + MEEPLE + '" fill="none" stroke="#fff" stroke-width="17" stroke-linejoin="round"/>'
       + (C.g ? degrade(C, "ppc" + a[0]) : "") + '<path d="' + MEEPLE + '" fill="' + (C.g ? "url(#ppc" + a[0] + ")" : C.c) + '" stroke="' + L + '" stroke-width="8" stroke-linejoin="round"/>'
+      + (C.t ? '<clipPath id="ppk"><path d="' + MEEPLE + '"/></clipPath><g clip-path="url(#ppk)">' + C.t + "</g>" + (C.t2 || "") + '<path d="' + MEEPLE + '" fill="none" stroke="' + L + '" stroke-width="8" stroke-linejoin="round"/>' : "")
       + '<path d="M39 15c1.5-4 5-7 10-7.5M19 53c3-2.5 8-5 13-6.5" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="3.5" stroke-linecap="round"/>'
       + '<circle cx="40" cy="30" r="2.6" fill="#F2A0C4" fill-opacity=".85"/><circle cx="60" cy="30" r="2.6" fill="#F2A0C4" fill-opacity=".85"/>'
       + '<path d="M42 26q2.8-4 5.6 0M52.4 26q2.8-4 5.6 0M46 29.5q4 4 8 0" fill="none" stroke="' + (C.sombre ? "#FFFBF2" : L) + '" stroke-width="2.4" stroke-linecap="round"/>'
@@ -398,7 +409,7 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
       el.querySelectorAll(".pp-opt span").forEach(s => {
         const k = Number(s.dataset.k), i = Number(s.dataset.i);
         const nom = LISTES[k][i].nom;
-        s.innerHTML = (k === 0 ? '<i style="background:' + COULEURS[i].c + '"></i>' : avatar(k === 1 ? [a[0], i, 0, 0] : k === 2 ? [a[0], 0, i, 0] : [a[0], 0, 0, i])) + h(nom);
+        s.innerHTML = (k === 0 ? '<i style="background:' + (COULEURS[i].pastille || COULEURS[i].c) + '"></i>' : avatar(k === 1 ? [a[0], i, 0, 0] : k === 2 ? [a[0], 0, i, 0] : [a[0], 0, 0, i])) + h(nom);
       });
     };
     peindre();
