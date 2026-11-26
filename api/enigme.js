@@ -18,6 +18,7 @@ const MAX_JOUEURS = 300;
 let DELAI = 5; // jours de classement après le jour de la porte (décision du 25 novembre : J+5 ; les bancs le règlent avec handler.delai)
 const DELAI_ENQ = 2; // l'enquête des brigades garde son rythme : une énigme reste ouverte son jour et les deux suivants
 const GRACE = 4; // secondes tolérées après la fin du chrono d'une question, pour le trajet réseau
+const NB_LIBRES = 2; // essais libres par joueur et par jeu d'adresse
 const JEU_MIN = 3, JEU_MARGE = 45; // une note de jeu n'est acceptée ni trop tôt ni trop longtemps après le départ
 // Score brut le plus haut qu'un jeu puisse rendre : au-delà, la note est refusée.
 const PLAFOND = { bowling: 50, tir: 40, flipper: 20000, tennis: 10099, labyrinthe: 1000, pastilles: 3000, penalty: 1500, etageres: 600, basket: 300, volley: 10099, haies: 4400, twirling: 600, tour: 6500, seringue: 1800, minigolf: 2000, badminton: 3000 };
@@ -638,6 +639,7 @@ function etat(B, joueurs, cle, jour, maintenant) {
     jour,
     prenom: j ? j.p : undefined,
     sapin: j && j.s ? Object.keys(j.s).map(Number) : [],
+    libres: j && j.l2 ? j.l2 : {},
     profil: j && (j.a || j.b !== undefined) ? { a: j.a, b: j.b, d: j.d, g: j.g, n: j.n, e: j.e } : undefined,
     nom: j ? j.l : undefined,
     fiche: { etat: ficheFermee(jour, maintenant) ? 'avenir' : 'ouvert', ouvre: dateDe(FICHE_JOUR), heure: FICHE_HEURE },
@@ -897,6 +899,23 @@ async function handler(req, res) {
     const vu = J => etat(B, J, cle, jour, maintenant);
     const refus = (code, error) => ({ fin: J => ({ code, corps: { error, ...vu(J) } }) });
     let sortie;
+
+    // Essai libre d'un jeu d'adresse (entraînement, hors classement) : compté par joueur et par jeu, NB_LIBRES au plus,
+    // quel que soit l'appareil. Rien d'autre n'est gardé : ni note, ni durée.
+    if (b.action === 'libre') {
+      if (q.type !== 'jeu' && q.type !== 'duo') return res.status(400).json({ error: 'porte' });
+      sortie = await modifier(joueurs => {
+        const j = joueurs[cle];
+        if (!j || j.b === undefined) return refus(403, 'profil');
+        const v = verrou(B, j, q.n, jour);
+        if (v) return refus(403, v.verrou);
+        const k = q.n + (q.type === 'duo' ? '-' + (Math.min(rangDuo(q, j.r[q.n] || { g: [] }), q.jeux.length - 1) + 1) : ''); // même clé que la page : porte, et rang du jeu dans une finale
+        if (((j.l2 || {})[k] || 0) >= NB_LIBRES) return refus(409, 'libres');
+        (j.l2 || (j.l2 = {}))[k] = ((j.l2 || {})[k] || 0) + 1;
+        return { ok: J => ({ code: 200, corps: { ok: true, ...vu(J) } }) };
+      });
+      return res.status(sortie.code).json(sortie.corps);
+    }
 
     if (b.action === 'ouvrir') {
       // Lancement du chrono d'une question, ou d'une tentative de jeu.

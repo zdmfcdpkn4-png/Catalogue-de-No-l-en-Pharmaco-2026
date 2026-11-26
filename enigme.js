@@ -24,9 +24,11 @@
   // Vidéo d'ouverture : jouée une fois par porte et par appareil, au premier clic sur une porte disponible.
   // Le panneau est déjà affiché dessous. Le voile n'apparaît que si la lecture démarre : sans fichier, sans
   // démarrage sous 1,5 s ou en mouvement réduit, rien ne se montre et rien n'est bloqué. Elle ne lance rien.
-  const KEY_VUES = KEY + "-portes";
+  // Traces de confort gardées sur l'appareil : rangées par joueur, pour les postes partagés.
+  const parJoueur = cle => cle + (mem.prenom ? ":" + String(mem.prenom).toLowerCase() : "");
   const ouverture = n => {
     let vues = {};
+    const KEY_VUES = parJoueur(KEY + "-portes");
     try { vues = JSON.parse(localStorage.getItem(KEY_VUES) || "{}") || {}; } catch (e) {}
     if (vues[n] || q(".eg-ouv") || (window.matchMedia && matchMedia("(prefers-reduced-motion:reduce)").matches)) return;
     const o = document.createElement("button"), v = document.createElement("video"), avant = document.activeElement;
@@ -137,6 +139,22 @@
       return { pseudo: mem.prenom };
     },
     oublier() { oublierJoueur(); },
+    // Gouttes du sapin : gardées par le serveur, par joueur. gouttes() rend celles du joueur mémorisé (ou rien) ;
+    // declarer(jours) en ajoute, sans attendre le passage par les Pharmacogames. cle(nom) : clé de rangement par joueur.
+    cle: nom => parJoueur(nom),
+    async gouttes() {
+      if (!mem.code || !mem.prenom) return null;
+      let r;
+      try { r = await call({ code: mem.code, prenom: mem.prenom }); } catch (e) { return null; }
+      return r.status === 200 && Array.isArray(r.j.sapin) ? r.j.sapin : null;
+    },
+    async declarer(jours) {
+      if (!mem.code || !mem.prenom || !Array.isArray(jours) || !jours.length) return null;
+      let r;
+      try { r = await call({ code: mem.code, prenom: mem.prenom, action: "sapin", jours }); } catch (e) { return null; }
+      if (r.status === 200 && r.j.portes && E && !enJeu && !enFiche && brouillon === null && !q("#egTime") && !sec.hidden) recevoir(r.j);
+      return r.status === 200 && Array.isArray(r.j.sapin) ? r.j.sapin : null;
+    },
     dessin: (avatar, brigade) => chargerParticipants().then(() => window.PharmacoParticipants.avatar(avatar, { brigade })),
   };
 
@@ -818,7 +836,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   async function declarerSapin() {
     if (relecture || !E || !E.profil || !mem.prenom || enJeu || q("#egTime")) return;
     let L = [];
-    try { L = JSON.parse(localStorage.getItem("pharmacotechnie-avent-2026") || "[]") || []; } catch (e) {}
+    try { L = JSON.parse(localStorage.getItem(parJoueur("pharmacotechnie-avent-2026")) || "[]") || []; } catch (e) {}
     const vus = E.sapin || [], N = L.filter(n => Number.isInteger(n) && n >= 1 && n <= 25 && !vus.includes(n) && !sapinDit.has(n));
     if (!N.length) return;
     N.forEach(n => sapinDit.add(n));
@@ -1178,10 +1196,9 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
   const patience = ms => new Promise(r => setTimeout(r, ms));
   // Essais libres avant les tentatives classées : deux par jeu, facultatifs, comptés sur l'appareil seulement (rien ne part
   // au serveur, rien n'est enregistré). Une fois la porte close ou les tentatives jouées, le jeu se rejoue hors classement.
-  const KEY_ESSAIS = KEY + "-essais", NB_LIBRES = 2;
+  const NB_LIBRES = 2;
   const cleEssai = p => p.n + (p.duo ? "-" + p.duo.i : "");
-  const libres = p => { try { return Number((JSON.parse(localStorage.getItem(KEY_ESSAIS) || "{}") || {})[cleEssai(p)]) || 0; } catch (e) { return 0; } };
-  const compterLibre = p => { try { const o = JSON.parse(localStorage.getItem(KEY_ESSAIS) || "{}") || {}; o[cleEssai(p)] = (Number(o[cleEssai(p)]) || 0) + 1; localStorage.setItem(KEY_ESSAIS, JSON.stringify(o)); } catch (e) {} };
+  const libres = p => Number(((E && E.libres) || {})[cleEssai(p)]) || 0; // compté par le serveur, par joueur : le même sur tous les appareils
   const boutonLibre = p => (libres(p) < NB_LIBRES ? '<button class="go" type="button" id="egTry" style="margin-top:8px">Essai libre ' + (libres(p) + 1) + " sur " + NB_LIBRES + ", non compté</button>" : "");
   const REJOUER = '<button class="go" type="button" id="egTry" style="margin-top:8px">Rejouer hors classement</button>';
   // reel : la tentative compte et sa note part au serveur ; sinon c'est un essai libre de la relecture.
@@ -1202,12 +1219,22 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
         return dire("#egMsg", "La tentative n'est pas partie : le serveur ne répond pas. Rien n'a été décompté.", "err");
       }
       jeton = r.j.jeton; E = r.j; grille();
+    } else if (!relecture && P.etat === "ouverte" && tentatives(P) < P.essais) {
+      // Essai libre : le serveur le décompte (deux par jeu et par joueur), rien d'autre n'est gardé.
+      if (!fiche()) { occupe = false; return identifier(); }
+      let r;
+      try { r = await call({ code: mem.code, prenom: mem.prenom, n: P.n, action: "libre" }); } catch (e) { r = { status: 0, j: {} }; }
+      if (r.status !== 200) {
+        occupe = false;
+        if (r.j && r.j.portes) return recevoir(r.j, r.j.error === "libres" ? "Vos deux essais libres sont déjà joués pour ce jeu." : "L'essai libre n'est pas parti.", "err");
+        return dire("#egMsg", "L'essai libre n'est pas parti : le serveur ne répond pas.", "err");
+      }
+      E = r.j;
     }
     occupe = false;
     const zone = q(P.type === "duo" ? "#egJeu" + i : "#egJeu");
     (P.type === "duo" ? [q('[data-try="' + i + '"]')] : [q("#egPlay"), q("#egTry")]).forEach(b => { if (b) b.hidden = true; });
     const entrainement = !reel && !relecture && P.etat === "ouverte" && tentatives(P) < P.essais;
-    if (entrainement) compterLibre(P);
     zone.classList.add("jeu");
     dire("#egMsg", "");
     enJeu = window.PharmacoJeux[p.jeu](zone, { duree: p.duree, onFin: async (note, bilan, brut) => {
