@@ -14,7 +14,13 @@
   const pl = (n, un, des) => n + " " + (n > 1 ? des : un);
   let mem = {};
   try { mem = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { mem = {}; }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} try { window.dispatchEvent(new Event("pharmaco-joueur")); } catch (e) {} }; // le menu suit le joueur mémorisé
+  // Déconnexion à chaque changement de journée (heure de Paris) : le joueur mémorisé porte le jour de son entrée (mem.jour) ;
+  // le lendemain, il est oublié, le code d'équipe restant gardé. Simple confort pour les postes partagés.
+  const ceJour = () => { try { return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Paris" }).format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); } };
+  const perime = () => Boolean(mem.prenom && mem.jour) && mem.jour !== ceJour(); // sans jour (joueur entré avant cette règle) : daté d'aujourd'hui au premier enregistrement
+  const save = () => { if (mem.prenom) { if (!mem.jour) mem.jour = ceJour(); } else delete mem.jour; try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} try { window.dispatchEvent(new Event("pharmaco-joueur")); } catch (e) {} }; // le menu suit le joueur mémorisé
+  const oublierJoueur = () => { ["prenom", "nom", "av", "br", "jour"].forEach(k => delete mem[k]); try { localStorage.removeItem("pharmacotechnie-avent-2026-moi"); } catch (e) {} save(); };
+  if (perime()) oublierJoueur(); else if (mem.prenom && !mem.jour) { mem.jour = ceJour(); try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} }
   // Vidéo d'ouverture : jouée une fois par porte et par appareil, au premier clic sur une porte disponible.
   // Le panneau est déjà affiché dessous. Le voile n'apparaît que si la lecture démarre : sans fichier, sans
   // démarrage sous 1,5 s ou en mouvement réduit, rien ne se montre et rien n'est bloqué. Elle ne lance rien.
@@ -130,10 +136,12 @@
       mem.code = String(code).trim(); mem.prenom = String(pseudo); delete mem.nom; save();
       return { pseudo: mem.prenom };
     },
-    oublier() { delete mem.prenom; delete mem.nom; delete mem.av; delete mem.br; save(); },
+    oublier() { oublierJoueur(); },
     dessin: (avatar, brigade) => chargerParticipants().then(() => window.PharmacoParticipants.avatar(avatar, { brigade })),
   };
 
+  // Page restée ouverte après minuit : au retour sur l'onglet, hors partie et hors chrono, le joueur de la veille est oublié.
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && perime() && !enJeu && !document.querySelector("#egTime")) { oublierJoueur(); location.reload(); } });
   fetch(API, { cache: "no-store" }).then(r => (r.ok ? r.json() : null)).then(j => { if (j && j.ready) init(); }).catch(() => {});
 
   // Dates : le serveur parle en AAAA-MM-JJ, heure de Paris.
@@ -538,7 +546,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<div class="eg-grid" id="egGrid" role="group" aria-label="Calendrier des 25 portes"></div>'
       + '<p class="eg-legend" aria-hidden="true"><span><i class="k0"></i>Sous scellé</span><span><i class="k1"></i>Ouverte</span><span><i class="k2"></i>Réponse scellée</span><span><i class="k3"></i>Résultat libéré</span></p>'
       + '<p class="eg-score" id="egScore" role="status"></p>'
-      + '<p class="eg-tools"><button class="go" type="button" id="egReload">Actualiser</button><button class="linkbtn" type="button" id="egBrigade" hidden>Ma brigade</button><button class="linkbtn" type="button" id="egAvatar" hidden>Retoucher ma fiche</button><button class="linkbtn" type="button" id="egChange">Changer de joueur</button></p></div>'
+      + '<p class="eg-tools"><button class="go" type="button" id="egReload">Actualiser</button><button class="linkbtn" type="button" id="egBrigade" hidden>Ma brigade</button><button class="linkbtn" type="button" id="egAvatar" hidden>Retoucher ma fiche</button><button class="linkbtn" type="button" id="egChange">Déconnexion</button></p></div>'
       + '<aside class="eg-panel" id="egPanel" aria-live="polite"></aside>'
       + "</div>"
       + '<section id="egEnquete" aria-label="L\'enquête des brigades" hidden></section>'

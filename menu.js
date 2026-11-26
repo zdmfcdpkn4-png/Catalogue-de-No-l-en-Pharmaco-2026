@@ -107,8 +107,15 @@
 .pm-haut b{padding-right:0}
 .pm-haut a[aria-current="page"] b{padding-right:8px}
 .pm-haut .pm-s{margin-top:2px}
-.pm-qui{display:block;margin:5px 0 0 auto;padding:2px 0;border:0;background:none;color:inherit;font:600 .72rem/1.3 var(--mono,monospace);text-decoration:underline;text-underline-offset:2px;cursor:pointer;opacity:.85}
-.pm-qui:hover{opacity:1}.pm-qui:focus-visible{outline:3px solid var(--focus);outline-offset:2px}.pm-qui[hidden]{display:none}
+.pm-qui{display:block;margin:4px 0 0 auto;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:right;cursor:pointer}
+.pm-qui[hidden]{display:none}
+.pm-qn{display:block;font-weight:800;font-size:.86rem;line-height:1.2}
+.pm-qd{display:inline-flex;align-items:center;gap:5px;margin-top:4px;padding:3px 8px 4px;background:var(--li);color:#26076D;border:2px solid var(--line);border-radius:8px;box-shadow:2px 2px 0 var(--shadow);font:600 .64rem/1.2 var(--mono,monospace);letter-spacing:.03em;text-transform:uppercase;transform:rotate(-3deg)}
+.pm-qd svg{width:13px;height:13px;flex:none;animation:pmTour 2.4s linear infinite}
+.pm-qui:hover .pm-qd{background:#ECD567}.pm-qui:active .pm-qd{transform:rotate(-3deg) translate(1px,1px);box-shadow:1px 1px 0 var(--shadow)}
+.pm-qui:focus-visible{outline:0}.pm-qui:focus-visible .pm-qd{outline:3px solid var(--focus);outline-offset:3px}
+@keyframes pmTour{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.pm-qd svg{animation:none}}
 @media(min-width:861px){.pm.pm-haut{position:absolute;z-index:2;top:30px;right:22px;margin:0}}
 @media(min-width:861px) and (max-width:1100px){.pm:not(.pm-haut) b{padding:2px 3px;font-size:.68rem}.pm:not(.pm-haut) small,.pm:not(.pm-haut) .pm-s i{display:none}.pm:not(.pm-haut) .pm-s{max-width:74px;padding:2px 4px 3px;font-size:.56rem}}
 .pm a[hidden]{display:none}
@@ -143,9 +150,10 @@
   // module repart alors sans joueur (les Pharmacogames redemandent le nom, le sapin son avatar).
   const qui = document.createElement("button");
   qui.type = "button"; qui.className = "pm-qui"; qui.hidden = true;
+  qui.innerHTML = '<span class="pm-qn"></span><span class="pm-qd"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 0-13.7-5.6L4 8.5"/><path d="M4 4v4.5h4.5"/><path d="M4 12a8 8 0 0 0 13.7 5.6L20 15.5"/><path d="M20 20v-4.5h-4.5"/></svg>Déconnexion</span>';
   haut.appendChild(qui);
-  const joueur = () => { let i = null; try { i = window.PharmacoAcces && window.PharmacoAcces.identite(); } catch (e) {} qui.hidden = !i; if (i) { qui.textContent = i.pseudo + " · changer de joueur"; qui.setAttribute("aria-label", "Vous jouez en tant que " + i.pseudo + " : changer de joueur"); } };
-  qui.addEventListener("click", () => { try { window.PharmacoAcces.oublier(); localStorage.removeItem("pharmacotechnie-avent-2026-moi"); } catch (e) {} location.reload(); });
+  const joueur = () => { let i = null; try { i = window.PharmacoAcces && window.PharmacoAcces.identite(); } catch (e) {} qui.hidden = !i; if (i) { qui.querySelector(".pm-qn").textContent = i.pseudo; qui.setAttribute("aria-label", "Vous jouez en tant que " + i.pseudo + " : déconnexion"); } };
+  qui.addEventListener("click", () => { try { window.PharmacoAcces.oublier(); } catch (e) {} location.reload(); });
   window.addEventListener("pharmaco-joueur", joueur); [800, 3000].forEach(t => setTimeout(joueur, t));
   const liens = [...nav.querySelectorAll("a"), ...haut.querySelectorAll("a")];
 
