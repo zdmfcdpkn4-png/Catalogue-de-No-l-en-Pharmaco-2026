@@ -14,7 +14,7 @@
   const pl = (n, un, des) => n + " " + (n > 1 ? des : un);
   let mem = {};
   try { mem = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { mem = {}; }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} try { window.dispatchEvent(new Event("pharmaco-joueur")); } catch (e) {} }; // le menu suit le joueur mémorisé
   // Vidéo d'ouverture : jouée une fois par porte et par appareil, au premier clic sur une porte disponible.
   // Le panneau est déjà affiché dessous. Le voile n'apparaît que si la lecture démarre : sans fichier, sans
   // démarrage sous 1,5 s ou en mouvement réduit, rien ne se montre et rien n'est bloqué. Elle ne lance rien.
@@ -130,7 +130,7 @@
       mem.code = String(code).trim(); mem.prenom = String(pseudo); delete mem.nom; save();
       return { pseudo: mem.prenom };
     },
-    oublier() { delete mem.prenom; delete mem.nom; save(); },
+    oublier() { delete mem.prenom; delete mem.nom; delete mem.av; delete mem.br; save(); },
     dessin: (avatar, brigade) => chargerParticipants().then(() => window.PharmacoParticipants.avatar(avatar, { brigade })),
   };
 
@@ -538,7 +538,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<div class="eg-grid" id="egGrid" role="group" aria-label="Calendrier des 25 portes"></div>'
       + '<p class="eg-legend" aria-hidden="true"><span><i class="k0"></i>Sous scellé</span><span><i class="k1"></i>Ouverte</span><span><i class="k2"></i>Réponse scellée</span><span><i class="k3"></i>Résultat libéré</span></p>'
       + '<p class="eg-score" id="egScore" role="status"></p>'
-      + '<p class="eg-tools"><button class="go" type="button" id="egReload">Actualiser</button><button class="linkbtn" type="button" id="egBrigade" hidden>Ma brigade</button><button class="linkbtn" type="button" id="egAvatar" hidden>Retoucher ma fiche</button><button class="linkbtn" type="button" id="egChange">Changer de prénom</button></p></div>'
+      + '<p class="eg-tools"><button class="go" type="button" id="egReload">Actualiser</button><button class="linkbtn" type="button" id="egBrigade" hidden>Ma brigade</button><button class="linkbtn" type="button" id="egAvatar" hidden>Retoucher ma fiche</button><button class="linkbtn" type="button" id="egChange">Changer de joueur</button></p></div>'
       + '<aside class="eg-panel" id="egPanel" aria-live="polite"></aside>'
       + "</div>"
       + '<section id="egEnquete" aria-label="L\'enquête des brigades" hidden></section>'
@@ -596,7 +596,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
     });
     q("#egPanel").addEventListener("click", e => { const b = e.target.closest("#egAvant"); if (b) { choix = Number(b.dataset.n); brouillon = null; aConfirmer = false; grille(); panneau(); } });
     q("#egPanel").addEventListener("input", e => { if (e.target.id === "egRange") noter(Number(e.target.value)); });
-    q("#egChange").addEventListener("click", sortir);
+    q("#egChange").addEventListener("click", () => { window.PharmacoAcces.oublier(); q("#egNom").value = ""; q("#egPrenom").value = ""; sortir(); }); // poste partagé : le joueur suivant ne retrouve pas la fiche du précédent
     q("#egAvatar").addEventListener("click", () => { if (!enJeu && brouillon === null && !q("#egTime")) identifier(); });
     q("#egBrigade").addEventListener("click", () => { if (!enJeu && brouillon === null && !q("#egTime")) carnet(); });
     q("#egTout").addEventListener("click", () => { toutVoir = !toutVoir; rang(); });

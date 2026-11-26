@@ -107,6 +107,8 @@
 .pm-haut b{padding-right:0}
 .pm-haut a[aria-current="page"] b{padding-right:8px}
 .pm-haut .pm-s{margin-top:2px}
+.pm-qui{display:block;margin:5px 0 0 auto;padding:2px 0;border:0;background:none;color:inherit;font:600 .72rem/1.3 var(--mono,monospace);text-decoration:underline;text-underline-offset:2px;cursor:pointer;opacity:.85}
+.pm-qui:hover{opacity:1}.pm-qui:focus-visible{outline:3px solid var(--focus);outline-offset:2px}.pm-qui[hidden]{display:none}
 @media(min-width:861px){.pm.pm-haut{position:absolute;z-index:2;top:30px;right:22px;margin:0}}
 @media(min-width:861px) and (max-width:1100px){.pm:not(.pm-haut) b{padding:2px 3px;font-size:.68rem}.pm:not(.pm-haut) small,.pm:not(.pm-haut) .pm-s i{display:none}.pm:not(.pm-haut) .pm-s{max-width:74px;padding:2px 4px 3px;font-size:.56rem}}
 .pm a[hidden]{display:none}
@@ -137,6 +139,14 @@
   // Fiche déjà créée (avatar mémorisé par enigme.js) : plus besoin de guider.
   const eteindre = () => { try { const i = window.PharmacoAcces && window.PharmacoAcces.identite(); if (i && i.avatar) haut.querySelectorAll(".pm-flash").forEach(a => { a.classList.remove("pm-flash"); const g = a.querySelector(".pm-go"); if (g) g.remove(); }); } catch (e) {} };
   [800, 3000].forEach(t => setTimeout(eteindre, t)); window.addEventListener("hashchange", () => setTimeout(eteindre, 300));
+  // Poste partagé : sous la pastille, le joueur mémorisé et un raccourci pour le faire oublier. La page se recharge, chaque
+  // module repart alors sans joueur (les Pharmacogames redemandent le nom, le sapin son avatar).
+  const qui = document.createElement("button");
+  qui.type = "button"; qui.className = "pm-qui"; qui.hidden = true;
+  haut.appendChild(qui);
+  const joueur = () => { let i = null; try { i = window.PharmacoAcces && window.PharmacoAcces.identite(); } catch (e) {} qui.hidden = !i; if (i) { qui.textContent = i.pseudo + " · changer de joueur"; qui.setAttribute("aria-label", "Vous jouez en tant que " + i.pseudo + " : changer de joueur"); } };
+  qui.addEventListener("click", () => { try { window.PharmacoAcces.oublier(); localStorage.removeItem("pharmacotechnie-avent-2026-moi"); } catch (e) {} location.reload(); });
+  window.addEventListener("pharmaco-joueur", joueur); [800, 3000].forEach(t => setTimeout(joueur, t));
   const liens = [...nav.querySelectorAll("a"), ...haut.querySelectorAll("a")];
 
   const page = () => (location.hash === "#sapin" ? "sapin" : location.hash === "#vote" ? "vote" : location.hash === "#pharmacomeeple" ? "pharmacomeeple" : location.hash === "#pharmacogames" || location.hash === "#enigme" ? "pharmacogames" : "catalogue");
