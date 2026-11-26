@@ -162,10 +162,14 @@ function points(q, r) {
   return q.type === 'qcm' ? (r.v === q.bonne ? 10 : 0) : Math.max(0, 10 - Math.ceil(Math.abs(r.v - q.bonne) / 2));
 }
 
+// Étiquette de version du fichier : au-delà d'environ 1 Ko, le magasin sert le fichier compressé et son étiquette devient
+// « faible » (W/"…"), que l'écriture conditionnelle refuse. On demande donc le fichier non compressé et on retire ce préfixe.
+const LECTURE = { access: 'private', useCache: false, headers: { 'accept-encoding': 'identity' } };
+const etiquette = e => (typeof e === 'string' ? e.replace(/^W\//, '') : e);
 async function lire() {
-  const r = await get(FILE, { access: 'private', useCache: false });
+  const r = await get(FILE, LECTURE);
   if (!r || r.statusCode !== 200) return { joueurs: {}, etag: null };
-  return { joueurs: JSON.parse(await new Response(r.stream).text()), etag: r.blob.etag };
+  return { joueurs: JSON.parse(await new Response(r.stream).text()), etag: etiquette(r.blob.etag) };
 }
 async function lireListe() {
   const r = await get(FILE_LISTE, { access: 'private', useCache: false });

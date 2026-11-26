@@ -19,10 +19,14 @@ const codeOk = c =>
   typeof c === 'string' && c.length <= 64 &&
   crypto.timingSafeEqual(digest(norm(c.trim())), digest(norm(process.env.VOTE_CODE.trim())));
 
+// Étiquette de version du fichier : au-delà d'environ 1 Ko, le magasin sert le fichier compressé et son étiquette devient
+// « faible » (W/"…"), que l'écriture conditionnelle refuse. On demande donc le fichier non compressé et on retire ce préfixe.
+const LECTURE = { access: 'private', useCache: false, headers: { 'accept-encoding': 'identity' } };
+const etiquette = e => (typeof e === 'string' ? e.replace(/^W\//, '') : e);
 async function readVotes() {
-  const r = await get(FILE, { access: 'private', useCache: false });
+  const r = await get(FILE, LECTURE);
   if (!r || r.statusCode !== 200) return { votes: {}, etag: null };
-  return { votes: JSON.parse(await new Response(r.stream).text()), etag: r.blob.etag };
+  return { votes: JSON.parse(await new Response(r.stream).text()), etag: etiquette(r.blob.etag) };
 }
 
 // Écriture conditionnelle : refusée si le fichier a changé depuis la lecture (deux votes simultanés).
