@@ -682,6 +682,15 @@ async function handler(req, res) {
         return { ok: J => ({ ok: true, retire: true, classement: classement(B, J, jour) }) };
       }));
     }
+    // Diagnostic du magasin (administration, lecture seule) : l'étiquette du fichier des joueurs vue par l'API et par la lecture.
+    if (admin && b.diag === 'magasin') {
+      const blob = require('@vercel/blob'), o = {};
+      try { const h = await blob.head(FILE); o.head = { etag: h.etag, size: h.size, uploadedAt: h.uploadedAt, cacheControl: h.cacheControl }; } catch (e) { o.head = { erreur: String(e && e.message) }; }
+      for (const [nom, opt] of [['get', { access: 'private', useCache: false }], ['getIdentity', { access: 'private', useCache: false, headers: { 'accept-encoding': 'identity' } }]]) {
+        try { const r = await blob.get(FILE, opt); const t = r && r.stream ? await new Response(r.stream).text() : ''; o[nom] = r ? { statut: r.statusCode, etag: r.blob.etag, octets: Buffer.byteLength(t), joueurs: (() => { try { return Object.keys(JSON.parse(t)).length; } catch (e) { return null; } })(), entetes: Object.fromEntries(['etag', 'content-encoding', 'content-length', 'cache-control', 'age', 'x-vercel-cache', 'last-modified', 'vary'].map(k => [k, r.headers.get(k)])) } : null; } catch (e) { o[nom] = { erreur: String(e && e.message) }; }
+      }
+      return res.status(200).json({ ok: true, diag: o });
+    }
     // Liste des participants : l'administration la remplace (tableau de noms) ou la relit ("lire").
     // Un nom : 2 à 40 caractères, lettres, espaces, points, apostrophes et traits d'union ; pas de doublon.
     if (admin && b.participants !== undefined) {
