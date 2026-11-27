@@ -37,10 +37,10 @@
       t: '<rect x="0" y="35" width="100" height="65" fill="#fff"/><rect x="0" y="80" width="100" height="20" fill="#5AA9E6"/><path d="M42 35l8 16 8-16z" fill="#5AA9E6"/><path d="M42 35l8 16M58 35l-8 16M50 51v29" fill="none" stroke="#26076D" stroke-width="2"/><circle cx="53.500" cy="58" r="1.500" fill="#26076D"/><circle cx="53.500" cy="66" r="1.500" fill="#26076D"/><circle cx="53.500" cy="74" r="1.500" fill="#26076D"/><rect x="35" y="56" width="9" height="9" fill="none" stroke="#26076D" stroke-width="1.800"/><path d="M38 52v7M41.500 53v6" fill="none" stroke="#DC4B4F" stroke-width="2.200" stroke-linecap="round"/>' },
     { nom: "tenue Hellfest", c: "#FFCBA4", p: "linear-gradient(180deg,#FFCBA4 34%,#1C1A24 34% 72%,#DC4B4F 72% 86%,#EC7739 86%)",
       t: '<rect x="0" y="35" width="100" height="65" fill="#1C1A24"/><path d="M0 100V84l7-10 5 9 7-15 6 13 7-11 6 12 6-16 6 15 6-12 7 12 6-14 6 13 6-10 6 12 6-8v26z" fill="#DC4B4F"/><path d="M0 100V92l8-6 6 6 7-10 6 9 8-8 6 8 6-11 6 10 7-8 7 9 6-10 7 9 7-7 6 7 7-5v15z" fill="#EC7739"/><path d="M14 100l6-7 7 6 8-8 7 7 8-9 8 9 7-7 8 8 7-6 6 7z" fill="#ECD567"/><path d="M52 40l-9 12h6l-4 11 12-14h-6l5-9z" fill="#ECD567" stroke="#fff" stroke-width="1.200" stroke-linejoin="round"/><rect x="2" y="50" width="14" height="6" fill="#3A2A1C"/><rect x="84" y="50" width="14" height="6" fill="#3A2A1C"/><path d="M5 53h.1M9 53h.1M13 53h.1M87 53h.1M91 53h.1M95 53h.1" stroke="#C9C6D6" stroke-width="2.600" stroke-linecap="round"/>' },
-    { nom: "déguisement d'Halloween", c: "#EC7739", p: "linear-gradient(180deg,#EC7739 34%,#2B2540 34% 70%,#ECD567 70% 82%,#2B2540 82%)",
+    { nom: "costume d'Halloween", c: "#EC7739", p: "linear-gradient(180deg,#EC7739 34%,#2B2540 34% 70%,#ECD567 70% 82%,#2B2540 82%)",
       t: '<rect x="0" y="35" width="100" height="65" fill="#2B2540"/><path d="M38 35l4 6 4-5 4 6 4-6 4 5 4-6z" fill="#4CAF7D"/><path d="M36 50l7-8 5 8zM52 50l5-8 7 8z" fill="#ECD567"/><path d="M32 58h7l3 5 4-5h8l4 5 3-5h7l-5 12-5-5-4 6-4-6-4 6-4-6-5 5z" fill="#ECD567"/><path d="M4 50l4 6 4-6 4 6M84 56l4-6 4 6 4-6" fill="none" stroke="#EC7739" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 84l4 6 4-6M70 84l4 6 4-6" fill="none" stroke="#EC7739" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"/>' },
     { nom: "fantôme", c: "#FFFFFF", p: "linear-gradient(180deg,#FFFFFF 62%,#CFC6EC 62%)",
-      t: '<path d="M62 36q14 6 30 14v12l-20-4q8 22 12 42H58l-8-14z" fill="#EEEAF8"/><path d="M31 42q-5 18-7 30M69 42q5 18 7 30" fill="none" stroke="#CFC6EC" stroke-width="3" stroke-linecap="round"/><path d="M10 100V84q4-7 8 0t8 0 8 0 8 0v16zM58 100V84q4-7 8 0t8 0 8 0 8 0v16z" fill="#CFC6EC"/><path d="M0 64V52q5-6 10 0v12zM90 64V52q5-6 10 0v12z" fill="#CFC6EC"/>' },
+      t: '<path d="M62 36q14 6 30 14v12l-20-4q8 22 12 42H58l-8-14z" fill="#EEEAF8"/><path d="M31 42q-5 18-7 30M69 42q5 18 7 30" fill="none" stroke="#CFC6EC" stroke-width="3" stroke-linecap="round"/><path d="M10 100V84q4-7 8 0t8 0 8 0 8 0v16zM58 100V84q4-7 8 0t8 0 8 0 8 0v16z" fill="#CFC6EC"/><path d="M0 64V52q5-6 10 0v12zM90 64V52q5-6 10 0v12z" fill="#CFC6EC"/>', visage: '<ellipse cx="43.500" cy="21" rx="3.600" ry="5.200" fill="#26076D"/><ellipse cx="56.500" cy="21" rx="3.600" ry="5.200" fill="#26076D"/><circle cx="44.600" cy="19" r="1.200" fill="#fff"/><circle cx="57.600" cy="19" r="1.200" fill="#fff"/><ellipse cx="50" cy="31" rx="3.200" ry="4" fill="#26076D"/>' },
   ];
   // Teinte d'une couleur à plusieurs teintes : son dégradé SVG (remplissage du meeple) et son équivalent CSS (pastille du choix).
   const arrets = C => C.g.map((c, i) => (C.doux ? [[c, i / (C.g.length - 1)]] : [[c, i / C.g.length], [c, (i + 1) / C.g.length]])).flat();
@@ -252,8 +252,8 @@
       + (C.g ? degrade(C, "ppc" + a[0]) : "") + '<path d="' + MEEPLE + '" fill="' + (C.g ? "url(#ppc" + a[0] + ")" : C.c) + '" stroke="' + L + '" stroke-width="8" stroke-linejoin="round"/>'
       + (C.t ? '<clipPath id="ppk"><path d="' + MEEPLE + '"/></clipPath><g clip-path="url(#ppk)">' + C.t + "</g>" + (C.t2 || "") + '<path d="' + MEEPLE + '" fill="none" stroke="' + L + '" stroke-width="8" stroke-linejoin="round"/>' : "")
       + '<path d="M39 15c1.5-4 5-7 10-7.5M19 53c3-2.5 8-5 13-6.5" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="3.5" stroke-linecap="round"/>'
-      + '<circle cx="40" cy="30" r="2.6" fill="#F2A0C4" fill-opacity=".85"/><circle cx="60" cy="30" r="2.6" fill="#F2A0C4" fill-opacity=".85"/>'
-      + '<path d="M42 26q2.8-4 5.6 0M52.4 26q2.8-4 5.6 0M46 29.5q4 4 8 0" fill="none" stroke="' + (C.sombre ? "#FFFBF2" : L) + '" stroke-width="2.4" stroke-linecap="round"/>'
+      // Le visage : celui de la tenue quand elle en a un (le fantôme), sinon les pommettes et le sourire.
+      + (C.visage || '<circle cx="40" cy="30" r="2.6" fill="#F2A0C4" fill-opacity=".85"/><circle cx="60" cy="30" r="2.6" fill="#F2A0C4" fill-opacity=".85"/>' + '<path d="M42 26q2.8-4 5.6 0M52.4 26q2.8-4 5.6 0M46 29.5q4 4 8 0" fill="none" stroke="' + (C.sombre ? "#FFFBF2" : L) + '" stroke-width="2.4" stroke-linecap="round"/>')
       // Le second accessoire : le même dessin, retourné dans la main gauche.
       + COIFFES[a[1]].d + ACCESSOIRES[a[2]].d + (a[4] ? '<g transform="translate(100 0) scale(-1 1)">' + ACCESSOIRES[a[4]].d + "</g>" : "") + "</g></svg>";
   }
@@ -272,9 +272,9 @@
 .pp-top .go{margin-top:10px}
 .pp-set{min-width:0;margin:14px 0 0;padding:0;border:0}
 .pp-set legend{padding:0;margin:0 0 6px;font:600 .72rem var(--mono,monospace);letter-spacing:.05em;text-transform:uppercase;color:var(--muted,#4E3D7C)}
-.pp-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:8px}
+.pp-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px}
 .pp-opt{position:relative;display:block;margin:0!important;cursor:pointer;text-transform:none!important;letter-spacing:0!important}
-.pp-opt span{display:grid;justify-items:center;gap:3px;height:100%;padding:6px 2px 5px;background:#fff;color:var(--on-surface,#26076D);border:2.5px solid var(--line,#26076D);border-radius:12px;font:700 .68rem/1.15 var(--display,sans-serif);text-align:center;overflow-wrap:break-word}
+.pp-opt span{display:grid;justify-items:center;gap:3px;height:100%;padding:6px 2px 5px;background:#fff;color:var(--on-surface,#26076D);border:2.5px solid var(--line,#26076D);border-radius:12px;font:700 .68rem/1.15 var(--display,sans-serif);text-align:center;overflow-wrap:anywhere}
 #ppTitre:focus{outline:none}
 .pp-opt span svg,.pp-opt span i{display:block;width:40px;height:40px}
 .pp-opt span i{border:2.5px solid var(--line,#26076D);border-radius:50%}
