@@ -953,7 +953,7 @@ function avContent(d){
     +(c.audio?'<audio class="ap-audio" controls preload="auto" src="'+esc(c.audio)+'" aria-label="'+esc(c.titre)+'"></audio>':'')
     +(c.lien?'<a class="go main" href="'+esc(c.lien)+'" target="_blank" rel="noopener">Écouter</a>':'');
   else if(t==="cartes"){const mv=!matchMedia("(prefers-reduced-motion:reduce)").matches,L=c.cartes||[];
-    h+='<div class="ap-ca'+(mv?'" data-plv="'+esc(c.video||AV_BOOSTER)+'" data-amb="enquete':' fin')+'"><div class="cas">'+L.map((k,i)=>avCarte(k,d,i)).join("")+'</div>'+avCaNav(L.length)+'</div>'
+    h+='<div class="ap-ca'+(mv?'" data-plv="'+esc(c.video||(L.length===1?AV_BOOSTER_1:AV_BOOSTER))+'" data-amb="enquete':' fin')+'"><div class="cas">'+L.map((k,i)=>avCarte(k,d,i)).join("")+'</div>'+avCaNav(L.length)+'</div>'
       +(c.titre?'<p class="ap-t">'+esc(c.titre)+'</p>':'')+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+(c.texte?'<p class="ap-p">'+esc(c.texte)+'</p>':'')+(c.lien?'<a class="go" href="'+esc(c.lien)+'">'+esc(c.bouton||"Voir")+'</a>':'')+'<p class="ap-src">'+(L.length>1?'Faites glisser ou utilisez les flèches pour voir les '+L.length+' cartes. ':'')+'Touchez une carte pour la voir en grand.</p>'}
   else if(t==="bd")h+='<div class="ap-bd'+(c.comme==="origami"?' og':'')+(c.video&&!matchMedia("(prefers-reduced-motion:reduce)").matches?'" data-plv="'+esc(c.video)+(c.comme==="origami"?'" data-amb="origami':''):' fin')+'"><a href="'+esc(c.image)+'" target="_blank" rel="noopener" aria-label="'+(c.comme==="origami"?"Voir en grand":"Lire en grand")+' : '+esc(c.titre)+'"><img src="'+esc(c.image)+'" alt="'+esc(c.alt||c.titre)+'"></a>'+'</div>'
     +'<p class="ap-t">'+esc(c.titre)+'</p>'+(c.credit?'<p class="ap-src">'+esc(c.credit)+'</p>':'')+'<p class="ap-src">'+(c.comme==="origami"?"Touchez le pliage pour le voir en grand.":"Touchez la planche pour la lire en grand.")+'</p>';
@@ -1091,7 +1091,7 @@ function avEv(force){
    l'image s'affiche seule, sans gabarit ni texte superposé. Format conseillé : 680 x 1024 px (rapport 0,664, celui du gabarit), 1020 x 1536 px si le texte est fin, WebP.
    Une à trois cartes en général (pas de limite : la goutte du 3 en livre 18, les images se chargent à mesure). Image : portrait 580 x 630 px environ (rapport 0,92), WebP ou JPEG, recadrée en « cover » dans la fenêtre du gabarit ;
    garder le sujet au centre. Titre : 22 caractères au plus pour tenir sur une ligne. Texte : 34 caractères au plus. Symbole : un à deux caractères. */
-const AV_FL=["M15 5l-7 7 7 7","M9 5l7 7-7 7"].map(d=>'<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="'+d+'" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'),AV_BOOSTER="video/booster-cartes.mp4",AV_GABARIT="img/carte-gabarit.webp";
+const AV_FL=["M15 5l-7 7 7 7","M9 5l7 7-7 7"].map(d=>'<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="'+d+'" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'),AV_BOOSTER="video/booster-cartes.mp4",AV_BOOSTER_1="video/booster-carte.mp4",AV_GABARIT="img/carte-gabarit.webp";
 function avCarte(k,d,i){if(k.pleine)return '<button class="carte pl" type="button" aria-label="Voir en grand : '+esc(k.titre||k.alt||"carte")+'"><img class="cp"'+(i?' loading="lazy" decoding="async"':'')+' src="'+esc(k.image)+'" alt="'+esc(k.alt||k.titre||"")+'"></button>';
   return '<button class="carte" type="button" aria-label="Voir en grand : '+esc(k.titre||"carte")+'"><img class="cg" src="'+AV_GABARIT+'" alt="">'+(k.image?'<img class="ci" src="'+esc(k.image)+'" alt="'+esc(k.alt||k.titre||"")+'">':'')+'<span class="cm" aria-hidden="true">'+esc(k.symbole||String(d))+'</span><span class="cb"><b>'+esc(k.titre||"")+'</b>'+(k.texte?'<small>'+esc(k.texte)+'</small>':'')+'</span></button>'}
 function avCaNav(n){return n>1?'<button class="cn p" type="button" data-cn="-1" aria-label="Carte précédente" disabled>'+AV_FL[0]+'</button><button class="cn n" type="button" data-cn="1" aria-label="Carte suivante">'+AV_FL[1]+'</button><span class="cc" aria-live="polite">1/'+n+'</span>':''}
@@ -1116,8 +1116,11 @@ function avCaMaj(s){
 }
 async function avBoOpen(btn){
   const d=+btn.dataset.bo,o=btn.parentNode,mv=!matchMedia("(prefers-reduced-motion:reduce)").matches;
-  o.innerHTML='<p class="ap-t">Le booster de l\'enquête</p><div class="ap-ca'+(mv?'" data-plv="'+AV_BOOSTER+'" data-amb="enquete':' fin')+'"><div class="cas"></div></div><div class="bo-su"></div>';avPleinAuto(o);
-  let r=null;try{if(window.PharmacoBooster)r=await window.PharmacoBooster.cartes(d)}catch(e){}
+  /* Le film suit le contenu : une seule carte, le booster à une carte ; sinon, ou si le serveur tarde plus de 1,2 s, celui à trois cartes. */
+  btn.disabled=true;const pr=(async()=>{try{if(window.PharmacoBooster)return await window.PharmacoBooster.cartes(d)}catch(e){}return null})();
+  const tot=mv?await Promise.race([pr,new Promise(f=>setTimeout(f,1200))]):null;if(!o.isConnected)return;
+  o.innerHTML='<p class="ap-t">Le booster de l\'enquête</p><div class="ap-ca'+(mv?'" data-plv="'+(tot&&tot.identifie&&(tot.cartes||[]).length===1?AV_BOOSTER_1:AV_BOOSTER)+'" data-amb="enquete':' fin')+'"><div class="cas"></div></div><div class="bo-su"></div>';avPleinAuto(o);
+  const r=await pr;
   if(!o.isConnected)return;
   const s=o.querySelector(".cas"),su=o.querySelector(".bo-su"),L=r&&r.identifie?(r.cartes||[]):null;
   if(!L){s.innerHTML=('<span class="carte pl dos"><img class="cp" src="'+AV_ENQ+'dos.webp" alt="Carte de dos"></span>').repeat(2);
