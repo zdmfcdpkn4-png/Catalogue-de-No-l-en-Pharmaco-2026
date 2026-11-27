@@ -73,6 +73,7 @@
 .pm-f.plein{border:0;background:none}
 .pm-f.plein img{left:-4%;top:-4%;width:108%;height:108%}
 .pm-d svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.pm-f.moi{border:0;background:none}.pm-f.moi>img,.pm-f.moi>svg{display:none}.pm-moi{position:absolute;inset:0;display:block}.pm-moi svg{inset:-3%;width:106%;height:106%;max-width:none}
 .pm a.tourne .pm-j{animation:pmTour 1.6s linear both}
 .pm a.tourne .pm-o{animation:pmOmbre 1.6s linear both}
 @keyframes pmTour{0%{transform:rotateX(0) rotateY(0)}12%{transform:rotateX(14deg) rotateY(-24deg)}30%{transform:translateY(-5px) rotateX(10deg) rotateY(60deg)}40%{transform:translateY(-7px) rotateX(8deg) rotateY(90deg)}55%{transform:translateY(-7px) rotateX(8deg) rotateY(180deg)}68%{transform:translateY(-5px) rotateX(6deg) rotateY(270deg)}80%{transform:rotateX(2deg) rotateY(345deg)}90%{transform:rotateX(0) rotateY(367deg)}100%{transform:rotateX(0) rotateY(360deg)}}
@@ -162,7 +163,17 @@
   qui.type = "button"; qui.className = "pm-qui"; qui.hidden = true;
   qui.innerHTML = '<span class="pm-qn"></span><span class="pm-qd"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 0-13.7-5.6L4 8.5"/><path d="M4 4v4.5h4.5"/><path d="M4 12a8 8 0 0 0 13.7 5.6L20 15.5"/><path d="M20 20v-4.5h-4.5"/></svg>Déconnexion</span>';
   haut.appendChild(qui);
-  const joueur = () => { let i = null; try { i = window.PharmacoAcces && window.PharmacoAcces.identite(); } catch (e) {} qui.hidden = !i; if (i) { qui.querySelector(".pm-qn").textContent = i.pseudo; qui.setAttribute("aria-label", "Vous jouez en tant que " + i.pseudo + " : déconnexion"); } };
+  // Joueur connecté : son meeple remplace le dessin de la pastille (l'image d'origine revient à la déconnexion).
+  let vu = "";
+  const portrait = i => {
+    const f = haut.querySelector(".pm-f"), cle = i && i.avatar ? JSON.stringify([i.avatar, i.brigade]) : "";
+    if (!f || cle === vu) return;
+    vu = cle;
+    const retirer = () => { const m = f.querySelector(".pm-moi"); if (m) m.remove(); f.classList.remove("moi"); };
+    if (!cle) return retirer();
+    try { window.PharmacoAcces.dessin(i.avatar, i.brigade).then(svg => { if (vu !== cle) return; retirer(); f.insertAdjacentHTML("beforeend", '<span class="pm-moi">' + svg + "</span>"); f.classList.add("moi"); }).catch(() => { vu = ""; }); } catch (e) { vu = ""; }
+  };
+  const joueur = () => { let i = null; try { i = window.PharmacoAcces && window.PharmacoAcces.identite(); } catch (e) {} qui.hidden = !i; if (i) { qui.querySelector(".pm-qn").textContent = i.pseudo; qui.setAttribute("aria-label", "Vous jouez en tant que " + i.pseudo + " : déconnexion"); } portrait(i); };
   qui.addEventListener("click", () => { try { window.PharmacoAcces.oublier(); } catch (e) {} location.reload(); });
   window.addEventListener("pharmaco-joueur", joueur); [800, 3000].forEach(t => setTimeout(joueur, t));
   // Lucioles derrière le sapin : vingt points lumineux qui tombent en clignotant (douze sur téléphone, aucun en mouvement réduit).
