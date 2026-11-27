@@ -218,8 +218,8 @@
 
   const borne = (v, n) => (Number.isInteger(v) && v >= 0 && v < n ? v : 0);
   // Un avatar : [couleur, coiffe, accessoire, fleur]. Les fiches d'avant la fleur n'ont que trois numéros : la fleur vaut alors 0.
-  const sain = a => { a = Array.isArray(a) ? a : []; return [borne(a[0], COULEURS.length), borne(a[1], COIFFES.length), borne(a[2], ACCESSOIRES.length), borne(a[3], FLEURS.length)]; };
-  const decrire = a => { a = sain(a); return "Meeple " + COULEURS[a[0]].nom + ", " + COIFFES[a[1]].nom + ", " + ACCESSOIRES[a[2]].nom + (a[3] ? ", " + FLEURS[a[3]].nom : ""); };
+  const sain = a => { a = Array.isArray(a) ? a : []; return [borne(a[0], COULEURS.length), borne(a[1], COIFFES.length), borne(a[2], ACCESSOIRES.length), borne(a[3], FLEURS.length), borne(a[4], ACCESSOIRES.length)]; };
+  const decrire = a => { a = sain(a); return "Meeple " + COULEURS[a[0]].nom + ", " + COIFFES[a[1]].nom + ", " + ACCESSOIRES[a[2]].nom + (a[4] ? ", " + ACCESSOIRES[a[4]].nom + " dans l'autre main" : "") + (a[3] ? ", " + FLEURS[a[3]].nom : ""); };
   // Emblème d'une brigade : l'autocollant illustré (img/emblemes), ou à défaut le dessin au trait ci-dessus.
   // Les images portent le même ordre que EMBLEMES ; « jeton-N » est le jeton numéroté d'une brigade encore sans emblème.
   const IMAGES = ["flacon", "seringue", "poche", "gelule", "ampoule", "de", "meeple", "etoile", "goutte", "sablier", "mortier", "sapin", "pipette", "balance", "becher",
@@ -249,7 +249,8 @@
       + '<path d="M39 15c1.5-4 5-7 10-7.5M19 53c3-2.5 8-5 13-6.5" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="3.5" stroke-linecap="round"/>'
       + '<circle cx="40" cy="30" r="2.6" fill="#F2A0C4" fill-opacity=".85"/><circle cx="60" cy="30" r="2.6" fill="#F2A0C4" fill-opacity=".85"/>'
       + '<path d="M42 26q2.8-4 5.6 0M52.4 26q2.8-4 5.6 0M46 29.5q4 4 8 0" fill="none" stroke="' + (C.sombre ? "#FFFBF2" : L) + '" stroke-width="2.4" stroke-linecap="round"/>'
-      + COIFFES[a[1]].d + ACCESSOIRES[a[2]].d + "</g></svg>";
+      // Le second accessoire : le même dessin, retourné dans la main gauche.
+      + COIFFES[a[1]].d + ACCESSOIRES[a[2]].d + (a[4] ? '<g transform="translate(100 0) scale(-1 1)">' + ACCESSOIRES[a[4]].d + "</g>" : "") + "</g></svg>";
   }
 
   const CSS = `
@@ -384,8 +385,8 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
   }
   function fiche(el, o) {
     const retouche = Array.isArray(o.avatar) && o.brigade !== undefined;
-    const LISTES = [COULEURS, COIFFES, ACCESSOIRES, FLEURS];
-    let a = o.avatar ? sain(o.avatar) : [Math.floor(Math.random() * COULEURS.length), 0, 0, 0], occupe = false;
+    const LISTES = [COULEURS, COIFFES, ACCESSOIRES, FLEURS, ACCESSOIRES];
+    let a = o.avatar ? sain(o.avatar) : [Math.floor(Math.random() * COULEURS.length), 0, 0, 0, 0], occupe = false;
     const q = s => el.querySelector(s);
     const groupe = (k, titre, liste) => '<fieldset class="pp-set"><legend>' + titre + '</legend><div class="pp-opts">'
       + liste.map((x, i) => '<label class="pp-opt"><input class="pp-vh" type="radio" name="pp' + k + '" value="' + i + '"' + (a[k] === i ? " checked" : "") + '><span data-k="' + k + '" data-i="' + i + '"></span></label>').join("") + "</div></fieldset>";
@@ -399,7 +400,7 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
         + '<p class="eg-hint">Un seul mot, 2 à 24 lettres, modifiable ensuite.</p>' : "")
       + (retouche && o.renommer ? '<label for="ppPseudo">Pseudo ou prénom</label><input class="pp-jeu" id="ppPseudo" type="text" autocomplete="off" maxlength="24" value="' + h(o.pseudo) + '">'
         + '<p class="eg-hint">Un seul mot, de 2 à 24 lettres. Vos réponses, votre avatar et votre brigade vous suivent sous le nouveau nom.</p>' : "")
-      + groupe(0, "Couleur", COULEURS) + groupe(1, "Coiffe", COIFFES) + groupe(2, "Accessoire", ACCESSOIRES) + groupe(3, "Fleur du logo", FLEURS)
+      + groupe(0, "Couleur", COULEURS) + groupe(1, "Coiffe", COIFFES) + groupe(2, "Accessoire", ACCESSOIRES) + groupe(4, "Second accessoire (autre main)", ACCESSOIRES) + groupe(3, "Fleur du logo", FLEURS)
       + '<p class="eg-hint">' + (retouche ? "Votre brigade ne change pas : seuls le pseudo et l'avatar se retouchent."
         : "Brigade tirée au sort, définitive. Avatar modifiable à tout moment.") + "</p>"
       + '<p class="eg-msg err" id="ppMsg" role="status"></p>'
@@ -412,7 +413,7 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
       el.querySelectorAll(".pp-opt span").forEach(s => {
         const k = Number(s.dataset.k), i = Number(s.dataset.i);
         const nom = LISTES[k][i].nom;
-        s.innerHTML = (k === 0 ? '<i style="background:' + (COULEURS[i].pastille || COULEURS[i].c) + '"></i>' : avatar(k === 1 ? [a[0], i, 0, 0] : k === 2 ? [a[0], 0, i, 0] : [a[0], 0, 0, i])) + h(nom);
+        s.innerHTML = (k === 0 ? '<i style="background:' + (COULEURS[i].pastille || COULEURS[i].c) + '"></i>' : avatar(k === 1 ? [a[0], i, 0, 0] : k === 2 ? [a[0], 0, i, 0] : k === 4 ? [a[0], 0, 0, 0, i] : [a[0], 0, 0, i])) + h(nom);
       });
     };
     peindre();
@@ -426,7 +427,7 @@ h3 img.pp-emb{width:1.7em;height:1.7em;vertical-align:-.45em}
       peindre();
     });
     q("#ppHasard").addEventListener("click", () => {
-      a = LISTES.map(l => Math.floor(Math.random() * l.length));
+      a = LISTES.map((l, k) => (k === 4 && Math.random() < .7 ? 0 : Math.floor(Math.random() * l.length))); // un second accessoire trois fois sur dix
       a.forEach((v, k) => { el.querySelector('input[name="pp' + k + '"][value="' + v + '"]').checked = true; });
       peindre();
     });
