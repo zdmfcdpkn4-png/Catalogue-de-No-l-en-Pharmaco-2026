@@ -125,6 +125,16 @@
    encadrés d'introduction et de citation (index.html) en texte plus petit et marges réduites. */
 @media(max-width:560px){.hero .hero-in{padding-top:18px;padding-bottom:18px;gap:10px 34px}.hero .lead{margin-top:12px;padding:8px 11px;border-width:2.5px;box-shadow:4px 4px 0 var(--shadow);font-size:.84rem;line-height:1.4}.hero .pensee{margin-top:10px;padding:7px 11px 8px;border-width:2.5px;box-shadow:4px 4px 0 var(--shadow)}.hero .pensee figcaption{font-size:.68rem}.hero .pensee blockquote{margin-top:3px;font-size:.9rem;line-height:1.25}.hero .pensee .src{margin-top:3px;font-size:.74rem}.hero .pensee .src a{font-size:.68rem}.pm{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 6px;max-width:none;margin-top:18px}.pm a{gap:5px}.pm-d{width:62px;height:62px}.pm b{padding:1px 4px;font-size:.66rem;line-height:1.15}.pm small{display:none}.pm-s{max-width:66px;margin-top:1px;padding:2px 4px 3px;font-size:.5rem;letter-spacing:0;border-width:1.5px;border-radius:6px}.pm-s i{display:none}.ind{padding-top:14px}.pm.pm-haut{margin:12px 0 0}.pm-haut a{column-gap:10px}.pm-haut .pm-d{width:50px;height:50px}.pm-haut b{font-size:.84rem}.pm-haut .pm-s{max-width:none}}
 @media(max-width:350px){.pm{gap:8px 3px}.pm-d{width:56px;height:56px}.pm b{font-size:.56rem;padding:1px 2px}.pm-haut .pm-d{width:50px;height:50px}.pm-haut b{font-size:.84rem;padding:1px 0 1px 4px}}
+/* Lucioles derrière le sapin de l'Avent : calque posé dans .adv-body, sur la case du sapin, au-dessus de l'image de décor
+   et sous le dessin du sapin. Ajout pur : rien n'est retiré, rien ne capte les clics. */
+.adv-body{position:relative}
+.pm-luc{position:absolute;grid-column:1/2;grid-row:1/2;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.pm-luc i{position:absolute;top:0;left:var(--l);width:0;height:100%;animation:pmLucChute var(--t) linear var(--dl) infinite}
+.pm-luc i::before{content:"";position:absolute;left:calc(var(--s)*-1.5);top:calc(var(--s)*-1.5);width:calc(var(--s)*3);height:calc(var(--s)*3);border-radius:50%;background:radial-gradient(circle,#FFFEF0 0 15%,#FFF39A 27%,rgba(255,232,120,.7) 42%,rgba(255,232,120,.22) 58%,rgba(255,232,120,0) 71%);animation:pmLucEclat var(--c) ease-in-out var(--dl) infinite}
+@keyframes pmLucChute{0%{opacity:0;transform:translate3d(0,-2%,0)}9%,90%{opacity:1}25%{transform:translate3d(var(--x),21%,0)}50%{transform:translate3d(0,49%,0)}75%{transform:translate3d(calc(var(--x)*-1),77%,0)}100%{opacity:0;transform:translate3d(0,102%,0)}}
+@keyframes pmLucEclat{0%,100%{opacity:.3;transform:scale(.7)}50%{opacity:1;transform:scale(1.2)}}
+@media(max-width:560px){.pm-luc i:nth-child(n+13){display:none}}
+@media(prefers-reduced-motion:reduce){.pm-luc{display:none}}
 @media(prefers-reduced-motion:reduce){.pm-d,.pm-o{transition:none}.pm a.tourne .pm-j,.pm a.tourne .pm-o,.pm-s{animation:none}}`;
   document.head.appendChild(st);
 
@@ -155,6 +165,14 @@
   const joueur = () => { let i = null; try { i = window.PharmacoAcces && window.PharmacoAcces.identite(); } catch (e) {} qui.hidden = !i; if (i) { qui.querySelector(".pm-qn").textContent = i.pseudo; qui.setAttribute("aria-label", "Vous jouez en tant que " + i.pseudo + " : déconnexion"); } };
   qui.addEventListener("click", () => { try { window.PharmacoAcces.oublier(); } catch (e) {} location.reload(); });
   window.addEventListener("pharmaco-joueur", joueur); [800, 3000].forEach(t => setTimeout(joueur, t));
+  // Lucioles derrière le sapin : vingt points lumineux qui tombent en clignotant (douze sur téléphone, aucun en mouvement réduit).
+  const arbre = q("#avent .adv-body > #avTree");
+  if (arbre) {
+    const al = (a, b) => a + Math.random() * (b - a);
+    let h = "";
+    for (let i = 0; i < 20; i++) h += '<i style="--l:' + (2 + (i * 37 % 20) * 4.8 + al(0, 3)).toFixed(1) + "%;--s:" + al(5, 9.5).toFixed(1) + "px;--t:" + al(11, 20).toFixed(1) + "s;--c:" + al(1.6, 3.4).toFixed(1) + "s;--dl:-" + al(0, 20).toFixed(1) + "s;--x:" + al(-22, 22).toFixed(0) + 'px"></i>';
+    arbre.insertAdjacentHTML("afterend", '<div class="pm-luc" aria-hidden="true">' + h + "</div>");
+  }
   const liens = [...nav.querySelectorAll("a"), ...haut.querySelectorAll("a")];
 
   const page = () => (location.hash === "#sapin" ? "sapin" : location.hash === "#vote" ? "vote" : location.hash === "#pharmacomeeple" ? "pharmacomeeple" : location.hash === "#pharmacogames" || location.hash === "#enigme" ? "pharmacogames" : "catalogue");

@@ -21,6 +21,13 @@
   const save = () => { if (mem.prenom) { if (!mem.jour) mem.jour = ceJour(); } else delete mem.jour; try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} try { window.dispatchEvent(new Event("pharmaco-joueur")); } catch (e) {} }; // le menu suit le joueur mémorisé
   const oublierJoueur = () => { ["prenom", "nom", "av", "br", "jour"].forEach(k => delete mem[k]); try { localStorage.removeItem("pharmacotechnie-avent-2026-moi"); } catch (e) {} save(); };
   if (perime()) oublierJoueur(); else if (mem.prenom && !mem.jour) { mem.jour = ceJour(); try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} }
+  // Neige derrière les portes : trente-quatre flocons (vingt-deux sur téléphone, aucun en mouvement réduit), décor seul.
+  const neige = () => {
+    const al = (a, b) => a + Math.random() * (b - a);
+    let h = "";
+    for (let i = 0; i < 34; i++) h += '<i style="--l:' + (1.5 + (i * 13 % 34) * 2.85 + al(0, 2)).toFixed(1) + "%;--s:" + al(5, 10).toFixed(1) + "px;--o:" + al(.8, 1).toFixed(2) + ";--t:" + al(9, 17).toFixed(1) + "s;--dl:-" + al(0, 17).toFixed(1) + "s;--x:" + al(-14, 14).toFixed(0) + 'px"></i>';
+    return '<div class="eg-neige" aria-hidden="true">' + h + "</div>";
+  };
   // Vidéo d'ouverture : jouée une fois par porte et par appareil, au premier clic sur une porte disponible.
   // Le panneau est déjà affiché dessous. Le voile n'apparaît que si la lecture démarre : sans fichier, sans
   // démarrage sous 1,5 s ou en mouvement réduit, rien ne se montre et rien n'est bloqué. Elle ne lance rien.
@@ -513,6 +520,13 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 @media(min-width:861px){.eg-rules{grid-template-columns:1fr 1fr;gap:11px 30px}.eg-rbody.duo{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}}
 @media(max-width:860px){.eg-body{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:480px){.eg-sheet{padding:10px 8px 12px}.eg-grid{gap:8px 6px}.eg-notice{padding:6px 12px}.eg-notice[open]{padding-bottom:14px}.eg-panel{padding:14px 14px 16px}}
+/* Neige derrière le calendrier des 25 portes : calque au fond de la feuille, sous les portes. Ajout pur, sans prise sur les clics. */
+.eg-sheet{isolation:isolate}
+.eg-neige{position:absolute;inset:0;z-index:-1;overflow:hidden;border-radius:15px;pointer-events:none}
+.eg-neige i{position:absolute;top:0;left:var(--l);width:0;height:100%;animation:egNeige var(--t) linear var(--dl) infinite}
+.eg-neige i::before{content:"";position:absolute;left:calc(var(--s)/-2);top:calc(var(--s)/-2);width:var(--s);height:var(--s);border-radius:50%;background:#fff;box-shadow:0 0 0 .5px rgba(38,7,109,.12),0 1px 4px rgba(38,7,109,.34);opacity:var(--o)}
+@keyframes egNeige{0%{opacity:0;transform:translate3d(0,-3%,0)}6%,94%{opacity:1}25%{transform:translate3d(var(--x),23%,0)}50%{transform:translate3d(0,50%,0)}75%{transform:translate3d(calc(var(--x)*-1),77%,0)}100%{opacity:0;transform:translate3d(0,103%,0)}}
+@media(max-width:480px){.eg-neige i:nth-child(n+23){display:none}}
 .eg-ouv{position:fixed;inset:0;z-index:60;display:grid;place-items:center;margin:0;padding:0;border:0;background:rgba(24,10,58,.94);opacity:0;pointer-events:none;cursor:pointer;transition:opacity .25s ease;-webkit-tap-highlight-color:transparent}
 .eg-ouv.on{opacity:1;pointer-events:auto}
 .eg-ouv.off{opacity:0;pointer-events:none;transition-duration:.45s}
@@ -522,7 +536,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
 .eg-son.on{opacity:1;pointer-events:auto}
 .eg-son:focus-visible{outline:3.5px solid var(--focus);outline-offset:3px}
 .eg-ouv:focus-visible video{outline:3.5px solid var(--focus);outline-offset:3px}
-@media(prefers-reduced-motion:reduce){.eg-face{transition:none}.eg-brig summary i{transition:none}.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door,.eg-cell.ou .eg-door.op{animation:none}.eg-door,.eg-door.op b{transition:none}}`;
+@media(prefers-reduced-motion:reduce){.eg-neige{display:none}.eg-face{transition:none}.eg-brig summary i{transition:none}.eg-lib.neuf,.eg-lib.neuf .eg-gain>span{animation:none}.eg-cell.ou .eg-door,.eg-cell.ou .eg-door.op{animation:none}.eg-door,.eg-door.op b{transition:none}}`;
 
   // Icônes des blocs de classement et bascule Joueurs / Brigades (gabarit).
   const TR = 'stroke="#26076D" stroke-width="3"';
@@ -559,7 +573,7 @@ div.eg-opt.bon i{background:var(--ok);border-color:var(--ok);color:#fff}
       + '<p class="eg-msg err" id="egGateMsg" role="status"></p><button class="go main" type="submit" id="egOuvrir">Ouvrir mon calendrier</button></form>'
       + '<p class="eg-banner" id="egBanner" hidden>Mode relecture : les 25 portes s\'affichent avec leur solution. Rien n\'est enregistré.</p>'
       + '<div class="eg-body" id="egBody" hidden>'
-      + '<div class="eg-sheet"><div class="eg-cap"><span>Calendrier des 25 portes</span><b id="egWho"></b></div>'
+      + '<div class="eg-sheet">' + neige() + '<div class="eg-cap"><span>Calendrier des 25 portes</span><b id="egWho"></b></div>'
       + '<p class="pp-brig" id="egBrig" hidden></p>'
       + '<div class="eg-grid" id="egGrid" role="group" aria-label="Calendrier des 25 portes"></div>'
       + '<p class="eg-legend" aria-hidden="true"><span><i class="k0"></i>Sous scellé</span><span><i class="k1"></i>Ouverte</span><span><i class="k2"></i>Réponse scellée</span><span><i class="k3"></i>Résultat libéré</span></p>'
