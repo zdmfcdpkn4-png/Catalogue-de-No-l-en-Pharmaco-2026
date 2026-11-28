@@ -793,39 +793,109 @@
       while (gerbes.length && gerbes[0].t > 0.9) gerbes.shift();
       if (combo && (combo.t += dt) > 1.5) combo = null;
     }
-    const quad = (pts, coul) => { ctx.fillStyle = coul; ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.fill(); };
-    const ligne = (x1, y1, x2, y2) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); };
-    // Le décor : l'intérieur d'une hotte à flux laminaire, vu de face. Le fond de l'enceinte va de (44,74) à (316,396).
+    const quad = (c, pts, coul) => { c.fillStyle = coul; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath(); c.fill(); };
+    const ligne = (c, x1, y1, x2, y2) => { c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); };
+    // Les traits du décor sont plus fins et plus doux que ceux du jeu : les particules et la seringue restent au premier plan.
+    const FIN = "#6E6A9C", ENCRE = "#4A3F8C";
+    const fin = (c, w) => { c.strokeStyle = FIN; c.lineWidth = w || 1.4; c.lineJoin = "round"; c.lineCap = "round"; };
+    const boite = (c, x, y, w, h, r, coul) => { c.fillStyle = coul; c.beginPath(); c.roundRect(x, y, w, h, r); c.fill(); c.stroke(); };
+    const degrade = (c, y1, y2, a, b) => { const g = c.createLinearGradient(0, y1, 0, y2); g.addColorStop(0, a); g.addColorStop(1, b); return g; };
+    // Le décor fixe : l'intérieur d'une hotte à flux laminaire vu par l'opérateur. Fond de l'enceinte de (52,86) à (308,388).
+    // Il est peint une seule fois dans une image, recopiée ensuite à chaque tour.
+    function peindre(c) {
+      c.fillStyle = "#D9DDE8"; c.fillRect(0, 0, W, H);
+      quad(c, [[8, 47], [352, 47], [308, 86], [52, 86]], degrade(c, 47, 86, "#FFFFFF", "#EDF1F8"));      // plafond : le filtre absolu, éclairé
+      quad(c, [[8, 47], [52, 86], [52, 388], [8, 452]], "#C3C8D8");                                       // vitres latérales
+      quad(c, [[352, 47], [308, 86], [308, 388], [352, 452]], "#C3C8D8");
+      c.fillStyle = degrade(c, 86, 388, "#ECEFF5", "#DADEE9"); c.fillRect(52, 86, 256, 302);              // fond en inox
+      quad(c, [[52, 388], [308, 388], [352, 452], [8, 452]], degrade(c, 388, 452, "#BCC1D1", "#E3E6EF")); // plan de travail
+      c.strokeStyle = "rgba(110,106,156,.32)"; c.lineWidth = 1;
+      for (let i = 0; i <= 16; i++) ligne(c, 8 + i * 21.5, 47, 52 + i * 16, 86);                          // plis du filtre
+      ligne(c, 23, 60, 337, 60); ligne(c, 38, 73, 322, 73);
+      c.fillStyle = "rgba(110,106,156,.4)";                                                               // reprise d'air : tôle perforée au bas du fond
+      for (let r = 0; r < 3; r++) for (let i = 0; i < 31; i++) { c.beginPath(); c.arc(60 + i * 8 + (r % 2) * 4, 362 + r * 8, 1.3, 0, 6.3); c.fill(); }
+      c.strokeStyle = "rgba(110,106,156,.5)"; c.lineWidth = 1.6; c.lineCap = "round";
+      for (let i = 0; i < 27; i++) ligne(c, 20 + i * 12.3, 443, 19 + i * 12.4, 449);                      // grille d'aspiration à l'avant
+      quad(c, [[15, 70], [28, 82], [28, 300], [15, 330]], "rgba(255,255,255,.38)");                       // reflets des vitres
+      quad(c, [[345, 70], [332, 82], [332, 300], [345, 330]], "rgba(255,255,255,.38)");
+      quad(c, [[34, 96], [40, 101], [40, 240], [34, 250]], "rgba(255,255,255,.22)");
+      // Le champ stérile, posé au milieu du plan de travail.
+      fin(c, 1.4); quad(c, [[104, 400], [256, 400], [284, 442], [76, 442]], "#CDE9DF"); c.stroke();
+      c.strokeStyle = "rgba(110,106,156,.3)"; ligne(c, 180, 400, 180, 442); ligne(c, 91, 420, 269, 420);
+      fin(c, 2); c.strokeRect(52, 86, 256, 302);
+      ligne(c, 8, 47, 52, 86); ligne(c, 352, 47, 308, 86); ligne(c, 8, 452, 52, 388); ligne(c, 352, 452, 308, 388);
+      // Les plaques vissées au fond.
+      fin(c, 1.4);
+      boite(c, 62, 97, 152, 22, 4, C); boite(c, 224, 97, 74, 22, 4, C);
+      texte(c, "Zéro particule, même à Noël", 138, 109, 10, ENCRE); texte(c, "ZAC · ISO 5", 261, 109, 10, ENCRE);
+      c.fillStyle = FIN; for (const x of [66, 210, 228, 294]) { c.beginPath(); c.arc(x, 108, 1.2, 0, 6.3); c.fill(); }
+      // La barre de suspension, ses crochets, la poche et sa tubulure.
+      fin(c, 3); ligne(c, 64, 136, 296, 136);
+      fin(c, 2); ligne(c, 64, 130, 64, 142); ligne(c, 296, 130, 296, 142);
+      fin(c, 1.6); for (const x of [104, 152]) { c.beginPath(); c.arc(x, 141, 4, -1.4, 2.6); c.stroke(); }
+      c.beginPath(); c.moveTo(104, 210); c.bezierCurveTo(104, 262, 132, 250, 128, 300); c.bezierCurveTo(126, 322, 112, 318, 114, 338); c.stroke();
+      boite(c, 122, 292, 11, 15, 3, "#EEF1F6");                                                          // la roulette de réglage
+      boite(c, 80, 146, 48, 64, 9, C);
+      c.save(); c.beginPath(); c.roundRect(80, 146, 48, 64, 9); c.clip(); c.fillStyle = "#F3D9EC"; c.fillRect(80, 172, 48, 40); c.restore();
+      c.beginPath(); c.roundRect(80, 146, 48, 64, 9); c.stroke();
+      boite(c, 85, 160, 38, 28, 3, "#FFFFFF");
+      texte(c, "Bonne", 104, 169, 9, ENCRE); texte(c, "humeur", 104, 180, 9, ENCRE);
+      texte(c, "500 mL", 104, 199, 7.5, ENCRE);
+      boite(c, 98, 208, 5, 7, 1, "#EEF1F6"); boite(c, 106, 208, 5, 7, 1, "#EEF1F6");
+      c.beginPath(); c.ellipse(152, 162, 9, 17, 0, 0, 6.3); c.stroke(); c.beginPath(); c.ellipse(153, 164, 6, 13, 0.2, 0, 6.3); c.stroke();   // une tubulure lovée
+      // Le manomètre (son aiguille est dessinée à chaque tour).
+      fin(c, 2); boite(c, 240, 152, 44, 52, 6, "#EEF1F6");
+      c.fillStyle = C; c.beginPath(); c.arc(262, 176, 17, 0, 6.3); c.fill(); c.stroke();
+      c.lineWidth = 3.5; c.strokeStyle = G; c.beginPath(); c.arc(262, 176, 12.5, Math.PI * 1.1, Math.PI * 1.72); c.stroke();
+      c.strokeStyle = R; c.beginPath(); c.arc(262, 176, 12.5, Math.PI * 1.76, Math.PI * 1.98); c.stroke();
+      texte(c, "Pa", 262, 198, 7.5, ENCRE);
+      // Au fond du plan de travail : le plateau, ses compresses et deux seringues capuchonnées ; le collecteur jaune.
+      fin(c, 1.4); quad(c, [[64, 378], [126, 378], [132, 392], [58, 392]], "#F2F4F8"); c.stroke();
+      boite(c, 70, 371, 16, 10, 2, "#FFFFFF"); boite(c, 72, 367, 16, 10, 2, "#FFFFFF");
+      for (const y of [376, 384]) { boite(c, 94, y, 24, 5, 2, C); c.fillStyle = O; c.fillRect(110, y + 0.8, 7, 3.4); c.fillStyle = FIN; c.fillRect(88, y + 1.4, 6, 2.2); }
+      boite(c, 264, 352, 34, 38, 5, "#E9CF52"); boite(c, 261, 345, 40, 10, 4, "#F3DE7A");
+      c.fillStyle = ENCRE; c.beginPath(); c.roundRect(272, 348, 18, 4, 2); c.fill();
+      c.beginPath(); c.arc(275, 366, 1.6, 0, 6.3); c.arc(287, 366, 1.6, 0, 6.3); c.fill();                // le collecteur a l'air content : il a déjà mangé
+      c.strokeStyle = ENCRE; c.lineWidth = 1.6; c.beginPath(); c.arc(281, 371, 6, 0.35, Math.PI - 0.35); c.stroke();
+      texte(c, "OPCT", 281, 384, 6.5, ENCRE);
+      // Le cadre de la hotte et le bord de la vitre relevée.
+      c.fillStyle = "#8A8FA6"; c.fillRect(0, 39, 8, 413); c.fillRect(352, 39, 8, 413); c.fillRect(0, 39, W, 8);
+      c.fillStyle = "rgba(255,255,255,.35)"; c.fillRect(2, 47, 2, 405); c.fillRect(354, 47, 2, 405);
+      fin(c, 1.4); boite(c, 150, 40.5, 60, 5, 2.5, "#D9DDE8");
+      c.fillStyle = degrade(c, 452, H, "#D9DDE8", "#C2C7D6"); c.fillRect(0, 452, W, H - 452);             // le bandeau de commande
+      fin(c, 1.4); boite(c, 8, 457, 132, 19, 4, "#17251F");
+    }
+    let fond = null;
+    if (typeof document !== "undefined" && document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fond = null; });
+    // Les trois flacons en attente au fond suivent des yeux la particule la plus basse, et sursautent quand elle passe.
+    function flacons() {
+      let vise = null;
+      for (const g of s.germes) if (!vise || g.y > vise.y) vise = g;
+      const saut = alerte < 0.5 && !calme ? Math.sin(Math.PI * alerte / 0.5) * 7 : 0, joie = combo && !calme ? Math.abs(Math.sin(combo.t * 9)) * 3 : 0;
+      [[178, P], [202, Y], [226, V]].forEach(([x, coul], i) => {
+        const y = 374 - saut * (1 - i * 0.15) - joie;
+        flacon(ctx, x, y, 0, coul);
+        const dx = vise ? vise.x - x : 0, dy = vise ? vise.y - y : -1, d = Math.hypot(dx, dy) || 1, r = alerte < 0.5 ? 3.4 : 2.8;
+        for (const k of [-3.6, 3.6]) {
+          ctx.fillStyle = "#FFFFFF"; ctx.strokeStyle = N; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x + k, y - 4, r, 0, 6.3); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = N; ctx.beginPath(); ctx.arc(x + k + dx / d * 1.3, y - 4 + dy / d * 1.3, 1.3, 0, 6.3); ctx.fill();
+        }
+      });
+    }
     function decor() {
-      quad([[0, 39], [W, 39], [316, 74], [44, 74]], "#F8F6FD");                   // plafond : le filtre absolu
-      quad([[0, 39], [44, 74], [44, 396], [0, 452]], "#D9D4EC");                  // paroi gauche
-      quad([[W, 39], [316, 74], [316, 396], [W, 452]], "#D9D4EC");                // paroi droite
-      ctx.fillStyle = "#E8E5F5"; ctx.fillRect(44, 74, 272, 322);                  // fond de l'enceinte
-      const sol = ctx.createLinearGradient(0, 396, 0, 452); sol.addColorStop(0, "#CCC7DF"); sol.addColorStop(1, "#E4E1F0");
-      quad([[44, 396], [316, 396], [W, 452], [0, 452]], sol);                     // plan de travail en inox
-      ctx.strokeStyle = "rgba(38,7,109,.13)"; ctx.lineWidth = 1.2;
-      for (let i = 0; i <= 8; i++) ligne(i * 45, 39, 44 + i * 34, 74);            // plis du filtre
-      ligne(15, 51, 345, 51); ligne(30, 63, 330, 63);
-      for (let i = 1; i < 8; i++) ligne(44 + i * 34, 396, i * 45, 452);           // rainures du plan de travail
-      ligne(33, 410, 327, 410); ligne(18, 429, 342, 429);
-      quad([[8, 60], [20, 70], [20, 410], [8, 428]], "rgba(255,251,242,.35)");    // reflets des vitres latérales
-      quad([[W - 8, 60], [W - 20, 70], [W - 20, 410], [W - 8, 428]], "rgba(255,251,242,.35)");
-      ctx.strokeStyle = "rgba(38,7,109,.3)"; ctx.lineWidth = 2; ctx.lineJoin = "round";
-      ctx.strokeRect(44, 74, 272, 322);
-      ligne(0, 39, 44, 74); ligne(W, 39, 316, 74); ligne(0, 452, 44, 396); ligne(W, 452, 316, 396);
-      // Au fond : la potence et sa poche, la plaque de classe, trois flacons en attente.
-      ctx.globalAlpha = 0.5;
-      trait(ctx, 2.2); ligne(78, 396, 78, 132); ligne(78, 132, 104, 132); ligne(104, 132, 104, 142);
-      ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(90, 142, 28, 42, 6); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = B; ctx.beginPath(); ctx.roundRect(90, 160, 28, 24, [0, 0, 6, 6]); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(104, 184); ctx.bezierCurveTo(104, 230, 130, 220, 128, 262); ctx.stroke();
-      ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(214, 92, 84, 26, 5); ctx.fill(); ctx.stroke();
-      texte(ctx, "ZAC · ISO 5", 256, 106, 11, N);
-      flacon(ctx, 236, 384, 0, P); flacon(ctx, 258, 386, 0, Y); flacon(ctx, 284, 384, 0, V);
-      ctx.globalAlpha = 1;
+      if (!fond || fond.width !== cv.width || fond.height !== cv.height) {
+        fond = document.createElement("canvas"); fond.width = cv.width; fond.height = cv.height;
+        const c = fond.getContext("2d"); c.setTransform(cv.width / W, 0, 0, cv.width / W, 0, 0); peindre(c);
+      }
+      ctx.drawImage(fond, 0, 0, W, H);
+      // L'aiguille du manomètre : elle frémit, et file dans le rouge quand une particule passe.
+      const a = (-118 + (calme ? 0 : Math.sin(tt * 2.3) * 5) + 92 * Math.max(0, 1 - alerte / 0.9)) * Math.PI / 180;
+      trait(ctx, 1.8); ligne(ctx, 262, 176, 262 + Math.cos(a) * 12, 176 + Math.sin(a) * 12);
+      ctx.fillStyle = N; ctx.beginPath(); ctx.arc(262, 176, 2.2, 0, 6.3); ctx.fill();
+      flacons();
       // Le flux laminaire : des filets d'air qui descendent du filtre.
-      ctx.strokeStyle = "rgba(38,7,109,.1)"; ctx.lineWidth = 2; ctx.lineCap = "round";
-      for (let i = 0; i < 12; i++) for (let j = 0; j < 2; j++) { const x = 15 + i * 30, y = 80 + ((calme ? 0 : tt * 46) + i * 67 + j * 170) % 340; ligne(x, y, x, y + 16); }
+      ctx.strokeStyle = "rgba(74,63,140,.11)"; ctx.lineWidth = 2; ctx.lineCap = "round";
+      for (let i = 0; i < 11; i++) for (let j = 0; j < 2; j++) { const x = 30 + i * 30, y = 90 + ((calme ? 0 : tt * 46) + i * 67 + j * 170) % 330; ligne(ctx, x, y, x, y + 16); }
     }
     // Un texte en relief qui pivote autour de son axe vertical : les tranches du fond d'abord, la face ensuite.
     function relief(t, px, a, face) {
@@ -881,13 +951,12 @@
         ctx.font = "800 17px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; trait(ctx, 4); ctx.strokeText("×" + p.n, 0, 0); ctx.fillStyle = Y; ctx.fillText("×" + p.n, 0, 0);
         ctx.restore();
       }
-      // Le bandeau de commande de la hotte : voyant du flux à gauche, série en cours à droite.
-      ctx.fillStyle = "#F7E7B8"; ctx.fillRect(0, 452, W, H - 452);
+      // Le bandeau de commande de la hotte : l'afficheur à gauche, la série en cours à droite. La ligne du plan de travail reste nette.
       ctx.strokeStyle = N; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 452); ctx.lineTo(W, 452); ctx.stroke();
       const rouge = alerte < 0.6;
-      trait(ctx, 2); ctx.fillStyle = rouge ? R : G; ctx.beginPath(); ctx.arc(18, 467, 6, 0, 6.3); ctx.fill(); ctx.stroke();
-      texte(ctx, rouge ? "Contamination !" : "Flux conforme", 31, 468, 12, N, "left");
-      if (s.serie >= 2) texte(ctx, "Série ×" + s.serie, W - 12, 468, 13, N, "right");
+      texte(ctx, rouge ? "CONTAMINATION !" : "FLUX CONFORME", 74, 467, 11, rouge ? "#FF9C8C" : "#8DF0B4");
+      trait(ctx, 2); ctx.fillStyle = rouge ? R : G; ctx.beginPath(); ctx.arc(154, 466.5, 6, 0, 6.3); ctx.fill(); ctx.stroke();
+      if (s.serie >= 2) texte(ctx, "Série ×" + s.serie, W - 14, 467, 13, N, "right");
       // La seringue, pointe en l'air.
       ctx.save(); ctx.translate(s.x, 430); trait(ctx, 2.6);
       ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-9, -12, 18, 30, 3); ctx.fill(); ctx.stroke();
