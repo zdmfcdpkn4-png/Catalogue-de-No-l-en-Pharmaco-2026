@@ -766,15 +766,30 @@
     }
     // Les séries : un petit « ×N » à chaque touche d'affilée, et aux paliers un numéro en relief qui pivote, entouré de flacons en orbite.
     const PALIERS = [[5, "Geste sûr"], [10, "Asepsie parfaite"], [15, "Lot conforme"], [20, "Zone maîtrisée"], [30, "Classe A !"], [40, "Lot libéré !"]];
-    const pops = [], gerbes = [];
-    let tt = 0, combo = null, alerte = 9, serieVue = 0;
+    // Les figures : des coups remarquables salués d'une étiquette. Comme la série, elles ne rapportent rien : c'est du spectacle.
+    const pops = [], gerbes = [], debris = [], mots = [];
+    let tt = 0, combo = null, alerte = 9, serieVue = 0, rafale = 0, rafaleT = -9, teinte = -1, memeTeinte = 0, secousse = 9, souffle = 0;
+    const figure = (mot, x, y, coul) => mots.push({ mot, x: Math.max(62, Math.min(W - 62, x)), y: Math.max(70, y) - 20 - mots.filter(m => m.t < 0.3).length * 22, t: 0, coul: coul || Y });
     // Après chaque pas du cœur : repérer les nouvelles touches et les paliers franchis.
     function suivre() {
       for (const e of s.eclats) {
         if (e.vu) continue;
         e.vu = true;
-        if (e.k < 0) { alerte = 0; continue; }
+        if (e.k < 0) {
+          alerte = 0; secousse = 0; rafale = 0; memeTeinte = 0; teinte = -1;
+          if (serieVue >= 5) figure("Série rompue", e.x, 440, "#FF9C8C");
+          continue;
+        }
+        // La particule éclate : ses piquants s'envolent, quelques gouttes retombent.
+        const mcx = [];
+        for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6 + Math.random() * 0.4, v = 60 + Math.random() * 90; mcx.push({ a, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, w: (Math.random() - 0.5) * 16, pique: i % 3 > 0 }); }
+        debris.push({ x: e.x, y: e.y, k: e.k, t: 0, mcx });
         if (s.serie >= 2) pops.push({ x: e.x, y: e.y, n: s.serie, t: 0 });
+        rafale = s.t - rafaleT < 0.6 ? rafale + 1 : 1; rafaleT = s.t;
+        memeTeinte = e.k === teinte ? memeTeinte + 1 : 1; teinte = e.k;
+        if (rafale === 2) figure("Doublé !", e.x, e.y); else if (rafale === 3) figure("Triplé !", e.x, e.y); else if (rafale > 3) figure("Rafale ×" + rafale, e.x, e.y);
+        if (e.y > 392) figure("In extremis !", e.x, e.y, "#FFD0C2"); else if (e.y < 112) figure("Dès le filtre !", e.x, e.y, "#CFE9FF");
+        if (memeTeinte === 3) { figure("Lot homogène !", e.x, e.y, [G, R, V][e.k] === R ? "#FFB8AC" : [G, R, V][e.k] === G ? "#A9E8CC" : "#DCD0FF"); memeTeinte = 0; }
         const p = PALIERS.find(q => serieVue < q[0] && s.serie >= q[0]);
         if (p) {
           combo = { n: p[0], mot: p[1], t: 0 };
@@ -786,7 +801,12 @@
       serieVue = s.serie;
     }
     function animer(dt) {
-      tt += dt; alerte += dt;
+      tt += dt; alerte += dt; secousse += dt;
+      souffle += dt * 46 * (1 + Math.min(s.serie, 20) / 12);                      // le flux s'emballe avec la série
+      for (const d of debris) d.t += dt;
+      for (const m of mots) m.t += dt;
+      while (debris.length && debris[0].t > 0.55) debris.shift();
+      while (mots.length && mots[0].t > 1.1) mots.shift();
       for (const p of pops) p.t += dt;
       for (const g of gerbes) g.t += dt;
       while (pops.length && pops[0].t > 0.7) pops.shift();
@@ -895,7 +915,7 @@
       flacons();
       // Le flux laminaire : des filets d'air qui descendent du filtre.
       ctx.strokeStyle = "rgba(74,63,140,.11)"; ctx.lineWidth = 2; ctx.lineCap = "round";
-      for (let i = 0; i < 11; i++) for (let j = 0; j < 2; j++) { const x = 30 + i * 30, y = 90 + ((calme ? 0 : tt * 46) + i * 67 + j * 170) % 330; ligne(ctx, x, y, x, y + 16); }
+      for (let i = 0; i < 11; i++) for (let j = 0; j < 2; j++) { const x = 30 + i * 30, y = 90 + ((calme ? 0 : souffle) + i * 67 + j * 170) % 330; ligne(ctx, x, y, x, y + 16); }
     }
     // Un texte en relief qui pivote autour de son axe vertical : les tranches du fond d'abord, la face ensuite.
     function relief(t, px, a, face) {
@@ -939,10 +959,41 @@
       texte(ctx, combo.mot, 0, 46 * k + 15, 16, C);
       ctx.restore();
     }
+    function effets() {
+      for (const d of debris) {                                                   // les éclats de la particule touchée
+        const k = d.t / 0.55, coul = [G, R, V][d.k];
+        ctx.globalAlpha = 1 - k * k;
+        for (const m of d.mcx) {
+          const x = d.x + m.vx * d.t, y = d.y + m.vy * d.t + 220 * d.t * d.t;
+          if (m.pique) { const a = m.a + m.w * d.t; trait(ctx, 2.2); ligne(ctx, x - Math.cos(a) * 4, y - Math.sin(a) * 4, x + Math.cos(a) * 4, y + Math.sin(a) * 4); }
+          else { ctx.fillStyle = coul; trait(ctx, 1.4); ctx.beginPath(); ctx.arc(x, y, 3.6 * (1 - k * 0.5), 0, 6.3); ctx.fill(); ctx.stroke(); }
+        }
+        if (d.t < 0.12) { ctx.globalAlpha = 1 - d.t / 0.12; ctx.fillStyle = "#FFFFFF"; ctx.beginPath(); ctx.arc(d.x, d.y, 10 + d.t * 120, 0, 6.3); ctx.fill(); }
+      }
+      ctx.globalAlpha = 1;
+      for (const m of mots) {                                                     // les étiquettes des figures
+        const k = m.t / 1.1, g = calme ? 1 : 1 + 0.35 * Math.sin(Math.min(1, m.t / 0.25) * Math.PI);
+        ctx.save(); ctx.translate(m.x, m.y - (calme ? 0 : k * 22)); ctx.scale(g, g); ctx.globalAlpha = Math.min(1, (1 - k) * 3);
+        ctx.font = "800 12px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; const l = ctx.measureText(m.mot).width + 18;
+        ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(-l / 2, -10, l, 20, 10); ctx.fill();
+        texte(ctx, m.mot, 0, 0.5, 12, m.coul);
+        ctx.restore();
+      }
+    }
     function dessiner() {
+      const tremble = secousse < 0.3 && !calme, chaud = Math.min(3, Math.floor(s.serie / 5));
+      ctx.save();
+      if (tremble) { const f = (1 - secousse / 0.3) * 4; ctx.translate(Math.sin(secousse * 90) * f, Math.cos(secousse * 70) * f * 0.6); }
       decor();
       animations();
-      for (const t of s.tirs) { ctx.fillStyle = B; trait(ctx, 2); ctx.beginPath(); ctx.moveTo(t.x, t.y - 8); ctx.quadraticCurveTo(t.x + 5, t.y, t.x, t.y + 4); ctx.quadraticCurveTo(t.x - 5, t.y, t.x, t.y - 8); ctx.fill(); ctx.stroke(); }
+      if (chaud) {                                                                // la seringue s'échauffe avec la série : un halo, des gouttes dorées
+        const r = 24 + chaud * 7 + (calme ? 0 : Math.sin(tt * 9) * 2.5), h = ctx.createRadialGradient(s.x, 424, 4, s.x, 424, r);
+        h.addColorStop(0, "rgba(236,213,103," + (0.3 + chaud * 0.12) + ")"); h.addColorStop(1, "rgba(236,213,103,0)");
+        ctx.fillStyle = h; ctx.beginPath(); ctx.arc(s.x, 424, r, 0, 6.3); ctx.fill();
+      }
+      ctx.lineCap = "round"; ctx.lineWidth = 3; ctx.strokeStyle = chaud >= 2 ? "rgba(236,213,103,.55)" : "rgba(143,199,232,.5)";
+      for (const t of s.tirs) ligne(ctx, t.x, t.y + 7, t.x, t.y + 20);            // le sillage des gouttes
+      for (const t of s.tirs) { ctx.fillStyle = chaud >= 2 ? Y : B; trait(ctx, 2); ctx.beginPath(); ctx.moveTo(t.x, t.y - 8); ctx.quadraticCurveTo(t.x + 5, t.y, t.x, t.y + 4); ctx.quadraticCurveTo(t.x - 5, t.y, t.x, t.y - 8); ctx.fill(); ctx.stroke(); }
       for (const g of s.germes) germe(g);
       for (const e of s.eclats) { const k = e.t / 0.45; ctx.globalAlpha = 1 - k; ctx.strokeStyle = e.k < 0 ? R : Y; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y, 8 + k * 22, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
       for (const p of pops) {                                                     // « ×N » qui s'élève de la particule touchée
@@ -951,6 +1002,7 @@
         ctx.font = "800 17px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; trait(ctx, 4); ctx.strokeText("×" + p.n, 0, 0); ctx.fillStyle = Y; ctx.fillText("×" + p.n, 0, 0);
         ctx.restore();
       }
+      effets();
       // Le bandeau de commande de la hotte : l'afficheur à gauche, la série en cours à droite. La ligne du plan de travail reste nette.
       ctx.strokeStyle = N; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(0, 452); ctx.lineTo(W, 452); ctx.stroke();
       const rouge = alerte < 0.6;
@@ -958,11 +1010,20 @@
       trait(ctx, 2); ctx.fillStyle = rouge ? R : G; ctx.beginPath(); ctx.arc(154, 466.5, 6, 0, 6.3); ctx.fill(); ctx.stroke();
       if (s.serie >= 2) texte(ctx, "Série ×" + s.serie, W - 14, 467, 13, N, "right");
       // La seringue, pointe en l'air.
-      ctx.save(); ctx.translate(s.x, 430); trait(ctx, 2.6);
+      const recul = calme ? 0 : Math.max(0, (s.recharge - REGL.cadence + 0.09) / 0.09);                     // le petit recul à chaque goutte
+      if (recul > 0) { ctx.globalAlpha = recul; ctx.strokeStyle = "#FFFFFF"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.x, 404, 4 + (1 - recul) * 7, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
+      ctx.save(); ctx.translate(s.x, 430 + recul * 2.5); trait(ctx, 2.6);
       ctx.fillStyle = C; ctx.beginPath(); ctx.roundRect(-9, -12, 18, 30, 3); ctx.fill(); ctx.stroke();
       ctx.fillStyle = O; ctx.fillRect(-7.5, 2, 15, 14);
       ctx.fillStyle = N; ctx.fillRect(-2, -24, 4, 12); ctx.beginPath(); ctx.roundRect(-13, 18, 26, 5, 2); ctx.fill();
       ctx.restore();
+      ctx.restore();
+      if (alerte < 0.5 && !calme) {                                               // une particule est passée : les bords rougissent
+        const v = ctx.createLinearGradient(0, 0, W, 0), a = 0.5 * (1 - alerte / 0.5);
+        v.addColorStop(0, "rgba(216,64,43," + a + ")"); v.addColorStop(0.16, "rgba(216,64,43,0)"); v.addColorStop(0.84, "rgba(216,64,43,0)"); v.addColorStop(1, "rgba(216,64,43," + a + ")");
+        ctx.fillStyle = v; ctx.fillRect(0, 39, W, 413);
+      }
+      if (combo && combo.t < 0.22 && !calme) { ctx.fillStyle = "rgba(255,255,255," + 0.4 * (1 - combo.t / 0.22) + ")"; ctx.fillRect(0, 39, W, 413); }   // l'éclair du palier
       bandeau(ctx, s.touches + " neutralisées · " + s.rates + " passées", duree - s.t, duree);
       if (clos) { ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(40, 180, 280, 110, 18); ctx.fill(); texte(ctx, noteTir(s) + " / 10", 180, 220, 40, Y); texte(ctx, s.touches + " particules sur " + TOTAL, 180, 262, 16, C); }
     }
