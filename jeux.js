@@ -651,8 +651,38 @@
         }
       }
       ecran();
+      if (phase !== "fin") dessinerFx();
       if (annonceT > 0) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(60, 250, 240, 60, 16); ctx.fill(); texte(ctx, annonce, 180, 281, 24, Y); }
       if (phase === "fin") { ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(50, 230, 260, 100, 18); ctx.fill(); texte(ctx, noteBowling(brutBowling(feuille)) + " / 10", 180, 268, 40, Y); texte(ctx, brutBowling(feuille) + " points sur " + BRUT_MAX_BOWLING + (horsTemps ? " · temps écoulé" : ""), 180, 306, 15, C); }
+    }
+    // Effets visuels (dessin seul, sans effet sur le jeu ni sur le chrono) : strike, spare, tir à zéro.
+    // Ils se jouent pendant la visée suivante. En mouvement réduit : le panneau seul, sans confettis ni rebond.
+    const calme = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let fx = null, fxT = 0, fxMot = "", confettis = [];
+    function lancerFx(genre, mot) {
+      fx = genre; fxT = 0; fxMot = mot; confettis = [];
+      if (calme || genre === "zero") return;
+      const n = genre === "strike" ? 54 : 24, cols = genre === "strike" ? [Y, O, P, V, C, B] : [Y, C, V];
+      for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, v = 120 + Math.random() * (genre === "strike" ? 260 : 170); confettis.push({ x: 180 + (Math.random() - 0.5) * 90, y: 150, vx: Math.cos(a) * v, vy: Math.sin(a) * v, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14, l: 4 + Math.random() * 5, c: cols[i % cols.length] }); }
+    }
+    function dessinerFx() {
+      if (!fx) return;
+      const D = 1.5, k = fxT / D, saut = calme ? 1 : 1 + 0.7 * Math.max(0, 1 - fxT / 0.16), fondu = Math.min(1, (D - fxT) / 0.3);
+      for (const c of confettis) { ctx.save(); ctx.globalAlpha = Math.max(0, 1 - k) ; ctx.translate(c.x, c.y); ctx.rotate(c.rot); ctx.fillStyle = c.c; ctx.fillRect(-c.l / 2, -c.l / 3, c.l, c.l * 0.66); ctx.restore(); }
+      ctx.save(); ctx.globalAlpha = Math.max(0, fondu); ctx.translate(180, 284);
+      if (fx === "zero") {                                                  // un coup de tampon, de travers, qui fait sourire
+        ctx.rotate(-0.12); ctx.scale(saut, saut);
+        ctx.fillStyle = "rgba(255,251,242,.94)"; ctx.beginPath(); ctx.roundRect(-112, -36, 224, 72, 10); ctx.fill();
+        ctx.strokeStyle = O; ctx.lineWidth = 3.5; ctx.stroke(); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.roundRect(-105, -29, 210, 58, 7); ctx.stroke();
+        texte(ctx, "LOT INTACT", 0, -8, 25, O); texte(ctx, fxMot, 0, 16, 13, N);
+      } else {
+        if (!calme) { ctx.strokeStyle = fx === "strike" ? Y : C; ctx.lineWidth = 5 * (1 - k); ctx.globalAlpha = Math.max(0, 1 - k * 1.6) * fondu; ctx.beginPath(); ctx.arc(0, 0, 30 + k * 230, 0, 6.3); ctx.stroke(); ctx.globalAlpha = Math.max(0, fondu); }
+        ctx.scale(saut, saut);
+        ctx.fillStyle = fx === "strike" ? "rgba(236,119,57,.96)" : "rgba(38,7,109,.92)"; ctx.beginPath(); ctx.roundRect(-118, -38, 236, 76, 18); ctx.fill();
+        ctx.strokeStyle = Y; ctx.lineWidth = 3; ctx.stroke();
+        texte(ctx, fx === "strike" ? "STRIKE !" : "SPARE !", 0, -9, fx === "strike" ? 32 : 28, fx === "strike" ? N : Y); texte(ctx, fxMot, 0, 18, 13, C);
+      }
+      ctx.restore();
     }
     // Après un tir : la suite de la série, la série suivante, ou la fin. Dixième série : un tir de plus après un spare, deux après un strike.
     function suite() {
@@ -669,6 +699,7 @@
     }
     const arret = boucle(dt => {
       t += dt; annonceT -= dt;
+      if (fx) { fxT += dt; if (fxT > 1.5) { fx = null; confettis = []; } for (const c of confettis) { c.vy += 520 * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.rot += c.vr * dt; } }
       if (phase !== "fin" && !horsTemps) { reste -= dt; if (reste <= 0) { reste = 0; horsTemps = true; annonce = "Temps écoulé"; annonceT = 1.2; if (phase !== "roule") finir(); } } // le chrono court aussi pendant que la boule roule ; un tir parti est compté
       if (phase === "position" || phase === "angle") {
         horloge += dt * allureSeringue(serie);
@@ -676,11 +707,16 @@
       } else if (phase === "roule") {
         for (let i = 0; i < 4; i++) pasLancer(sim, dt / 4);
         if (sim.fini) {
-          const n = tombees(sim), pique = sim.boule.bloquee;
+          const n = tombees(sim), pique = sim.boule.bloquee, rigole = sim.boule.rigole;
           sim.quilles.forEach((q, i) => { if (q.la && q.tombee) debout[i] = false; });
           horloge = sim.ts; total += n; aTerre += n; sim = null; (feuille[serie - 1] = feuille[serie - 1] || []).push(n);
           const m = marquesBowling(feuille[serie - 1], serie === SERIES), v = m[m.length - 1];
-          if (!horsTemps) { annonce = v === "X" ? "Strike !" : v === "/" ? "Spare !" : pique ? "Piqué au vif !" : n === 0 ? "Dans le vide" : "+" + n; annonceT = 0.9; }
+          if (!horsTemps) {
+            if (v === "X") lancerFx("strike", "Lot libéré d'un seul geste");
+            else if (v === "/") lancerFx("spare", "Lot rattrapé au second tir");
+            else if (n === 0) lancerFx("zero", pique ? "Piqué au vif par la seringue" : rigole ? "Parti dans la rigole" : "Aucun flacon touché");
+            else { annonce = "+" + n; annonceT = 0.9; }
+          }
           suite();
         }
       }
