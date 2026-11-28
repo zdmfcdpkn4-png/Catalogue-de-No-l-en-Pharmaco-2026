@@ -153,9 +153,12 @@
     return L;
   }
   function creerTir() {
-    return { t: 0, x: 180, cible: 180, tirs: [], germes: [], file: pluie(), suivant: 0, recharge: 0, touches: 0, rates: 0, serie: 0, record: 0, gouttes: 0, eclats: [], fini: false };
+    return { t: 0, x: 180, cible: 180, tirs: [], germes: [], file: pluie(), suivant: 0, recharge: 0, touches: 0, rates: 0, serie: 0, record: 0, gouttes: 0, points: 0, eclats: [], fini: false };
   }
-  // serie : particules neutralisées d'affilée, sans en laisser passer une. Elle ne rapporte rien, elle sert au spectacle.
+  // Le barème : chaque particule vaut de 10 points (touchée au ras du plan de travail) à 20 (touchée sous le filtre),
+  // plus un bonus de série : 1 point par particule déjà neutralisée d'affilée, 10 au plus. Laisser passer une particule remet la série à zéro.
+  const TIR_PALIER = 85, TIR_MAX = 1145;                                          // 1 point de note par tranche de 85 points ; score parfait théorique
+  const pointsTir = (y, serie) => 10 + Math.max(0, Math.min(10, Math.round((446 - y) / 36))) + Math.min(10, serie - 1);
   function pasTir(s, dt, duree) {
     s.t += dt;
     const dx = s.cible - s.x, vmax = REGL.vitesse * dt;
@@ -168,7 +171,7 @@
     for (const g of s.germes) {
       g.y += g.v * dt;
       g.x = Math.max(g.r + 20, Math.min(W - g.r - 20, g.x0 + Math.sin(g.ph + g.y / 34) * g.amp));
-      for (const t of s.tirs) if (!t.mort && Math.hypot(t.x - g.x, t.y - g.y) < g.r + REGL.portee) { t.mort = g.mort = true; s.touches++; s.serie++; if (s.serie > s.record) s.record = s.serie; s.eclats.push({ x: g.x, y: g.y, t: 0, k: g.k }); break; }
+      for (const t of s.tirs) if (!t.mort && Math.hypot(t.x - g.x, t.y - g.y) < g.r + REGL.portee) { t.mort = g.mort = true; s.touches++; s.serie++; if (s.serie > s.record) s.record = s.serie; const pts = pointsTir(g.y, s.serie); s.points += pts; s.eclats.push({ x: g.x, y: g.y, t: 0, k: g.k, pts }); break; }
       if (!g.mort && g.y > 446) { g.mort = true; s.rates++; s.serie = 0; s.eclats.push({ x: g.x, y: 452, t: 0, k: -1 }); }
     }
     s.tirs = s.tirs.filter(t => !t.mort);
@@ -177,7 +180,7 @@
     s.eclats = s.eclats.filter(e => e.t < 0.45);
     if (s.t >= duree || (s.suivant >= s.file.length && !s.germes.length)) s.fini = true;
   }
-  const noteTir = s => Math.round(10 * s.touches / TOTAL);
+  const noteTir = s => Math.min(10, Math.floor(s.points / TIR_PALIER));
 
   /* ================= Le flipper du préparatoire : le cœur ================= */
   // Réglages étalonnés par simulation (node outils/etalon.js) : ils fixent la difficulté.
@@ -799,7 +802,7 @@
         const mcx = [];
         for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6 + Math.random() * 0.4, v = 60 + Math.random() * 90; mcx.push({ a, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, w: (Math.random() - 0.5) * 16, pique: i % 3 > 0 }); }
         debris.push({ x: e.x, y: e.y, k: e.k, t: 0, mcx });
-        if (s.serie >= 2) pops.push({ x: e.x, y: e.y, n: s.serie, t: 0 });
+        pops.push({ x: e.x, y: e.y, n: e.pts, t: 0 });
         rafale = s.t - rafaleT < 0.6 ? rafale + 1 : 1; rafaleT = s.t;
         memeTeinte = e.k === teinte ? memeTeinte + 1 : 1; teinte = e.k;
         if (rafale === 2) figure("Doublé !", e.x, e.y); else if (rafale === 3) figure("Triplé !", e.x, e.y); else if (rafale > 3) figure("Rafale ×" + rafale, e.x, e.y);
@@ -1083,7 +1086,7 @@
       for (const p of pops) {                                                     // « ×N » qui s'élève de la particule touchée
         const k = p.t / 0.7, g = 1 + 0.5 * Math.sin(Math.min(1, k * 3) * Math.PI);
         ctx.save(); ctx.translate(Math.max(30, Math.min(W - 30, p.x)), p.y - 14 - k * 30); ctx.scale(g, g); ctx.globalAlpha = 1 - k * k;
-        ctx.font = "800 17px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; trait(ctx, 4); ctx.strokeText("×" + p.n, 0, 0); ctx.fillStyle = Y; ctx.fillText("×" + p.n, 0, 0);
+        ctx.font = "800 17px 'Bricolage Grotesque','Trebuchet MS',sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; trait(ctx, 4); ctx.strokeText("+" + p.n, 0, 0); ctx.fillStyle = Y; ctx.fillText("+" + p.n, 0, 0);
         ctx.restore();
       }
       effets();
@@ -1108,15 +1111,19 @@
         ctx.fillStyle = v; ctx.fillRect(0, 39, W, 413);
       }
       if (combo && combo.t < 0.22 && !calme) { ctx.fillStyle = "rgba(255,255,255," + 0.4 * (1 - combo.t / 0.22) + ")"; ctx.fillRect(0, 39, W, 413); }   // l'éclair du palier
-      bandeau(ctx, s.touches + " neutralisées · " + s.rates + " passées", duree - s.t, duree);
-      if (clos) { ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(40, 180, 280, 110, 18); ctx.fill(); texte(ctx, noteTir(s) + " / 10", 180, 220, 40, Y); texte(ctx, s.touches + " particules sur " + TOTAL, 180, 262, 16, C); }
+      if (s.t < 6 && !clos) {                                                     // la règle du barème, le temps de la lire
+        ctx.globalAlpha = Math.min(1, 6 - s.t) * 0.94; ctx.fillStyle = N; ctx.beginPath(); ctx.roundRect(34, 228, 292, 46, 14); ctx.fill();
+        texte(ctx, "Plus haut, plus de points", 180, 243, 14, Y); texte(ctx, "et chaque série rapporte un bonus", 180, 261, 12, C); ctx.globalAlpha = 1;
+      }
+      bandeau(ctx, s.points + " pts · " + s.touches + "/" + TOTAL, duree - s.t, duree);
+      if (clos) { ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(40, 180, 280, 110, 18); ctx.fill(); texte(ctx, noteTir(s) + " / 10", 180, 220, 40, Y); texte(ctx, s.points + " points · " + s.touches + " sur " + TOTAL, 180, 262, 16, C); }
     }
     const arret = boucle(dt => {
       if (!clos) {
         if (gauche) s.cible = Math.max(24, s.x - 60); if (droite) s.cible = Math.min(W - 24, s.x + 60);
         pasTir(s, dt, duree);
         suivre();
-        if (s.fini) { clos = true; setTimeout(() => { arret(); liberer(); opt.onFin(noteTir(s), s.touches + " particules neutralisées sur " + TOTAL + ".", s.touches, [[s.touches + "/" + TOTAL, s.touches > 1 ? "neutralisées" : "neutralisée"], [s.rates, s.rates > 1 ? "passées" : "passée"], [(s.gouttes ? Math.round(100 * s.touches / s.gouttes) : 0) + " %", "de précision"], [s.record, "d'affilée"]]); }, 1300); }
+        if (s.fini) { clos = true; setTimeout(() => { arret(); liberer(); opt.onFin(noteTir(s), s.points + (s.points > 1 ? " points : " : " point : ") + s.touches + (s.touches > 1 ? " particules neutralisées" : " particule neutralisée") + " sur " + TOTAL + ", meilleure série de " + s.record + ".", s.points, [[s.points, s.points > 1 ? "points" : "point"], [s.touches + "/" + TOTAL, s.touches > 1 ? "neutralisées" : "neutralisée"], [s.record, "d'affilée"], [s.rates, s.rates > 1 ? "passées" : "passée"]]); }, 1300); }
       }
       animer(dt);
       dessiner();
@@ -1509,7 +1516,7 @@
     return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
   }
 
-  const api = { bowling, tir, flipper, tennis, labyrinthe, _logo: ICI + "img/logo-p-verre.png", _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, DEPART, xSeringue, traceLancer, SERIES, noteBowling, brutBowling, BRUT_MAX_BOWLING, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, secouerFlipper, F_PIVOTS, boutBatteur, REGL_LABY: RL, creerLaby, pasLaby, noteLaby, L_PLAN, L_DIRS, L_GERMES, L_DEPART, lOuvert, lDistances, REGL_TENNIS: RT, creerTennis, pasTennis, noteTennis, viseTennis, T_YJ } };
+  const api = { bowling, tir, flipper, tennis, labyrinthe, _logo: ICI + "img/logo-p-verre.png", _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, DEPART, xSeringue, traceLancer, SERIES, noteBowling, brutBowling, BRUT_MAX_BOWLING, creerTir, pasTir, noteTir, TOTAL, TIR_PALIER, TIR_MAX, pointsTir, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, secouerFlipper, F_PIVOTS, boutBatteur, REGL_LABY: RL, creerLaby, pasLaby, noteLaby, L_PLAN, L_DIRS, L_GERMES, L_DEPART, lOuvert, lDistances, REGL_TENNIS: RT, creerTennis, pasTennis, noteTennis, viseTennis, T_YJ } };
 
   /* ===== Nouveaux jeux : chacun vit en entier sous son repère (cœur, dessin, inscription), sans toucher au reste du fichier.
      Inscription : api.<nom> = <fonction> ; Object.assign(api._coeur, { … }) pour ce que les outils doivent voir. ===== */
