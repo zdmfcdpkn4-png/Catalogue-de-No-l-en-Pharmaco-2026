@@ -11,7 +11,7 @@ const gauss = () => (alea() + alea() + alea() + alea() - 2) * 1.7;
 // dans jeux.js) avec une erreur de timing sig (s) et un temps de réaction reac (s). Il vise le centre des flacons restants,
 // angle nul, et attend un passage où la seringue sera dégagée, sauf distraction (probabilité ignore). Hypothèses, pas mesures.
 function partie(sig, ignore, reac) {
-  let total = 0, horloge = alea() * 10, duree = 0;
+  let total = 0, horloge = alea() * 10, duree = 0; const feuille = [];
   for (let f = 0; f < J.SERIES; f++) {
     const debout = J.PLACES.map(() => true); let aTerre = 0;
     for (let l = 0; l < 2 && aTerre < 10; l++) {
@@ -25,18 +25,25 @@ function partie(sig, ignore, reac) {
         if (Math.abs(x - J.xSeringue(horloge + ta + (J.DEPART - R.sy) / 540)) > R.sl + 36) break;
       }
       ta += gauss() * sig; horloge += ta; duree += ta;
-      if (duree > DUREE) return { total, fini: false };
+      if (duree > DUREE) return { total, feuille, fini: false };
       const s = sim(x, Math.sin(ta * 3.6) * 12, debout, horloge); horloge = s.ts;
       s.quilles.forEach((q, i) => { if (q.la && q.tombee) debout[i] = false; });
-      const n = J.tombees(s); total += n; aTerre += n;
+      const n = J.tombees(s); total += n; aTerre += n; (feuille[f] = feuille[f] || []).push(n);
     }
   }
-  return { total, fini: true };
+  return { total, feuille, fini: true };
 }
 function profil(nom, sig, ignore, reac) {
-  const h = Array(11).fill(0); let m = 0, mm = 0, fin = 0; const K = 2000;
-  for (let i = 0; i < K; i++) { const A = partie(sig, ignore, reac), a = J.noteBowling(A.total), b = J.noteBowling(partie(sig, ignore, reac).total); h[a]++; m += a; mm += Math.max(a, b); fin += A.fini; }
-  console.log(nom.padEnd(22), 'une partie :', (m / K).toFixed(1), '| meilleure de deux :', (mm / K).toFixed(1), '| finit en ' + DUREE + ' s :', (100 * fin / K).toFixed(0) + '%', '| répartition', h.map(x => Math.round(100 * x / K)).join(' '));
+  const h = Array(11).fill(0), bruts = []; let m = 0, mm = 0, fin = 0, x = 0, sp = 0; const K = 2000;
+  const brut = A => J.brutBowling ? J.brutBowling(A.feuille) : A.total;
+  for (let i = 0; i < K; i++) {
+    const A = partie(sig, ignore, reac), B = partie(sig, ignore, reac), a = J.noteBowling(brut(A)), b = J.noteBowling(brut(B));
+    h[a]++; m += a; mm += Math.max(a, b); fin += A.fini; bruts.push(Math.max(brut(A), brut(B)));
+    x += A.feuille.filter(f => f[0] === 10).length; sp += A.feuille.filter(f => f.length === 2 && f[0] + f[1] === 10).length;
+  }
+  bruts.sort((a, b) => a - b);
+  console.log(nom.padEnd(20), 'note :', (m / K).toFixed(1), '| meilleure de 2 :', (mm / K).toFixed(1), '| finit :', (100 * fin / K).toFixed(0) + '%', '| strikes/partie :', (x / K).toFixed(2), '| spares/partie :', (sp / K).toFixed(2),
+    '| brut (meilleure de 2) médiane', bruts[K >> 1], 'de', bruts[Math.floor(K * 0.1)], 'à', bruts[Math.floor(K * 0.9)], '| notes', h.map(x => Math.round(100 * x / K)).join(' '));
 }
 console.log(JSON.stringify(R));
 profil('adroit (35 ms)', 0.035, 0, 0.4); profil('moyen (90 ms)', 0.09, 0.15, 0.6); profil('maladroit (180 ms)', 0.18, 0.4, 0.9);

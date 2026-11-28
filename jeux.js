@@ -11,7 +11,7 @@
   /* ================= Bowling des flacons : le cœur ================= */
   const RB = 15, RQ = 11, RS = 7, GAUCHE = 46, DROITE = 314, DEPART = 508, HB = 556; // HB : hauteur propre au bowling, la paillasse est plus longue que le repère commun
   // Réglages étalonnés par simulation (voir le banc d'essai) : ils fixent la difficulté.
-  const REGL = { elan: 180, frein: 5, relais: 0.55, seuil: 60, cadence: 0.4, vitesse: 280, chute: 85, acc: 3, pas: 0.9, portee: 2, sy: 346, sl: 40, sv: 2.4, courbe: 200 };
+  const REGL = { elan: 180, frein: 3.5, relais: 0.85, seuil: 60, cadence: 0.4, vitesse: 280, chute: 85, acc: 3, pas: 0.9, portee: 2, sy: 346, sl: 40, sv: 2.4, courbe: 200, couche: 4 };
   const PLACES = (() => { const q = []; for (let r = 0; r < 4; r++) for (let i = 0; i <= r; i++) q.push({ x: 180 + (i - r / 2) * 37, y: 162 - r * 32 }); return q; })();
   // La seringue de garde : elle balaie la paillasse d'un bord à l'autre, à la hauteur sy. sl = demi-longueur, sv = cadence.
   const xSeringue = t => 180 + ((DROITE - GAUCHE) / 2 - REGL.sl - RS) * Math.sin(t * REGL.sv);
@@ -62,7 +62,13 @@
       if (v > REGL.seuil) for (const o of s.quilles) {
         if (!o.la || o.tombee) continue;
         const dx = o.x - q.x, dy = o.y - q.y, d = Math.hypot(dx, dy);
-        if (d < RQ * 2) { o.tombee = true; o.vx = dx / d * v * REGL.relais; o.vy = dy / d * v * REGL.relais; q.vx *= 0.5; q.vy *= 0.5; }
+        if (d >= RQ * 2 + REGL.couche) continue;                       // un flacon couché balaie plus large qu'un flacon debout
+        // Choc de deux quilles de même masse : la vitesse portée par l'axe du choc passe au flacon percuté (part = relais),
+        // le percuteur garde le reste et sa vitesse de travers : il dévie et peut en toucher un autre.
+        const nx = dx / d, ny = dy / d, vn = q.vx * nx + q.vy * ny;
+        if (vn <= REGL.seuil * 0.5) continue;
+        o.tombee = true; o.vx = nx * vn * REGL.relais; o.vy = ny * vn * REGL.relais;
+        q.vx -= nx * vn * REGL.relais; q.vy -= ny * vn * REGL.relais;
       }
     }
     s.fini = b.sortie && !bouge;
@@ -462,7 +468,12 @@
   }
 
   /* ----- Bowling des flacons : une partie de SERIES séries de 2 lancers, note = flacons à terre ramenés sur 10 ----- */
-  const SERIES = 5, noteBowling = total => Math.round(total / SERIES);
+  // Barème : 1 point par flacon, plus une prime de 5 pour un strike (tout le lot au premier tir) ou de 2 pour un spare (le reste au second).
+  // Le score brut (75 au plus) sert au classement ; la note sur 10 en est l'image.
+  const SERIES = 5, PRIME_STRIKE = 5, PRIME_SPARE = 2, BRUT_MAX_BOWLING = SERIES * (10 + PRIME_STRIKE);
+  const pointsSerie = f => !f || !f.length ? 0 : f[0] + (f[1] || 0) + (f[0] === 10 ? PRIME_STRIKE : f.length === 2 && f[0] + f[1] === 10 ? PRIME_SPARE : 0);
+  const brutBowling = feuille => feuille.reduce((t, f) => t + pointsSerie(f), 0);
+  const noteBowling = brut => Math.min(10, Math.round(10 * brut / BRUT_MAX_BOWLING));
   function bowling(el, opt) {
     const duree = opt.duree || 30, { cv, ctx, liberer } = monter(el, HB);
     cv.setAttribute("aria-label", "Bowling des flacons. Cinq séries de deux lancers. Appuyez ou tapez Espace pour fixer la position, puis l'angle du lancer. Une seringue balaie la paillasse : lancez quand la voie est libre. Flèches gauche et droite, ou boutons du bas : donner de l'effet à la boule.");
@@ -482,11 +493,11 @@
         if (actif) { ctx.strokeStyle = Y; ctx.lineWidth = 1.5; ctx.stroke(); }
         const m1 = f[0] == null ? "" : f[0] === 10 ? "X" : f[0] || "–", m2 = f[1] == null ? "" : f[0] + f[1] === 10 ? "/" : f[1] || "–";
         texte(ctx, m1, x + lc / 2 - 9, 14, 13, f[0] === 10 ? O : C); texte(ctx, m2, x + lc / 2 + 9, 14, 13, m2 === "/" ? O : C);
-        if (f.length) { cumul += f[0] + (f[1] || 0); texte(ctx, cumul, x + lc / 2, 30, 14, Y); }
+        if (f.length) { cumul += pointsSerie(f); texte(ctx, cumul, x + lc / 2, 30, 14, Y); }
       }
       const xt = x0 + SERIES * lc, lt = 58;
       ctx.fillStyle = Y; ctx.beginPath(); ctx.roundRect(xt + 2, 4, lt - 4, h - 8, 5); ctx.fill();
-      texte(ctx, "TOTAL", xt + lt / 2, 13, 9, N); texte(ctx, total, xt + lt / 2, 29, 17, N);
+      texte(ctx, "POINTS", xt + lt / 2, 13, 9, N); texte(ctx, brutBowling(feuille), xt + lt / 2, 29, 17, N);
       texte(ctx, Math.max(0, Math.ceil(reste)) + " s", W - 10, 23, 17, reste <= 5 ? O : C, "right");
       ctx.fillStyle = "rgba(255,251,242,.25)"; ctx.fillRect(0, h, W, 4);
       ctx.fillStyle = reste <= 5 ? O : Y; ctx.fillRect(0, h, W * Math.max(0, reste / duree), 4);
@@ -512,12 +523,14 @@
     // Les quatre chiffres de la partie pour le tableau final : flacons, strikes, spares, meilleure série.
     function chiffres() {
       const sommes = feuille.map(f => f[0] + (f[1] || 0)), x = feuille.filter(f => f[0] === 10).length, sp = feuille.filter(f => f.length === 2 && f[0] + f[1] === 10).length;
-      return [[total, total > 1 ? "flacons renversés" : "flacon renversé"], [x, x > 1 ? "strikes" : "strike"], [sp, sp > 1 ? "spares" : "spare"], [Math.max(0, ...sommes) + "/10", "meilleure série"]];
+      const pts = brutBowling(feuille);
+      return [[pts, pts > 1 ? "points" : "point"], [total + "/" + 10 * SERIES, "flacons"], [x, x > 1 ? "strikes" : "strike"], [sp, sp > 1 ? "spares" : "spare"]];
     }
     function finir() {
       if (clos) return;
       clos = true; phase = "fin";
-      setTimeout(() => { arret(); liberer(); opt.onFin(noteBowling(total), total === 10 * SERIES ? "Lot parfait : les " + total + " flacons sont tombés." : total + (total > 1 ? " flacons renversés" : " flacon renversé") + " sur " + 10 * SERIES + ".", total, chiffres()); }, 1100);
+      setTimeout(() => { arret(); liberer(); const pts = brutBowling(feuille), x = feuille.filter(f => f[0] === 10).length, sp = feuille.filter(f => f.length === 2 && f[0] + f[1] === 10).length;
+        opt.onFin(noteBowling(pts), pts + (pts > 1 ? " points : " : " point : ") + total + (total > 1 ? " flacons renversés" : " flacon renversé") + " sur " + 10 * SERIES + (x ? ", " + x + (x > 1 ? " strikes" : " strike") : "") + (sp ? ", " + sp + (sp > 1 ? " spares" : " spare") : "") + ".", pts, chiffres()); }, 1100);
     }
     // Vue en perspective : la piste fuit vers le fond. Le cœur du jeu reste à plat ; seul le dessin est projeté.
     // PF = échelle au fond de la piste, PH = hauteur d'écran du fond. Une droite du jeu reste une droite à l'écran.
@@ -604,7 +617,7 @@
       }
       ecran();
       if (annonceT > 0) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(60, 250, 240, 60, 16); ctx.fill(); texte(ctx, annonce, 180, 281, 24, Y); }
-      if (phase === "fin") { ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(50, 230, 260, 100, 18); ctx.fill(); texte(ctx, noteBowling(total) + " / 10", 180, 268, 40, Y); texte(ctx, total + " flacons sur " + 10 * SERIES, 180, 306, 16, C); }
+      if (phase === "fin") { ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(50, 230, 260, 100, 18); ctx.fill(); texte(ctx, noteBowling(brutBowling(feuille)) + " / 10", 180, 268, 40, Y); texte(ctx, brutBowling(feuille) + " points · " + total + " flacons sur " + 10 * SERIES, 180, 306, 15, C); }
     }
     const arret = boucle(dt => {
       t += dt; annonceT -= dt; horloge += dt;
@@ -618,7 +631,7 @@
           const n = tombees(sim), pique = sim.boule.bloquee;
           sim.quilles.forEach((q, i) => { if (q.la && q.tombee) debout[i] = false; });
           total += n; aTerre += n; sim = null; (feuille[serie - 1] = feuille[serie - 1] || []).push(n);
-          annonce = aTerre === 10 ? (lancerN === 1 ? "Strike !" : "Spare !") : pique ? "Piqué au vif !" : n === 0 ? "Dans le vide" : "+" + n; annonceT = 0.9;
+          annonce = aTerre === 10 ? (lancerN === 1 ? "Strike ! +" + PRIME_STRIKE : "Spare ! +" + PRIME_SPARE) : pique ? "Piqué au vif !" : n === 0 ? "Dans le vide" : "+" + n; annonceT = 0.9;
           if (aTerre < 10 && lancerN === 1) { lancerN = 2; phase = "position"; t = 0; }
           else if (serie === SERIES) finir();
           else { serie++; lancerN = 1; aTerre = 0; debout.fill(true); phase = "position"; t = 0; } // série suivante : on redresse le lot
@@ -1496,7 +1509,7 @@
     return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
   }
 
-  const api = { bowling, tir, flipper, tennis, labyrinthe, _logo: ICI + "img/logo-p-verre.png", _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, DEPART, xSeringue, traceLancer, SERIES, noteBowling, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, secouerFlipper, F_PIVOTS, boutBatteur, REGL_LABY: RL, creerLaby, pasLaby, noteLaby, L_PLAN, L_DIRS, L_GERMES, L_DEPART, lOuvert, lDistances, REGL_TENNIS: RT, creerTennis, pasTennis, noteTennis, viseTennis, T_YJ } };
+  const api = { bowling, tir, flipper, tennis, labyrinthe, _logo: ICI + "img/logo-p-verre.png", _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, DEPART, xSeringue, traceLancer, SERIES, noteBowling, brutBowling, BRUT_MAX_BOWLING, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, secouerFlipper, F_PIVOTS, boutBatteur, REGL_LABY: RL, creerLaby, pasLaby, noteLaby, L_PLAN, L_DIRS, L_GERMES, L_DEPART, lOuvert, lDistances, REGL_TENNIS: RT, creerTennis, pasTennis, noteTennis, viseTennis, T_YJ } };
 
   /* ===== Nouveaux jeux : chacun vit en entier sous son repère (cœur, dessin, inscription), sans toucher au reste du fichier.
      Inscription : api.<nom> = <fonction> ; Object.assign(api._coeur, { … }) pour ce que les outils doivent voir. ===== */

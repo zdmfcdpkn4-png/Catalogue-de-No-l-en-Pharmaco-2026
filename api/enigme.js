@@ -21,7 +21,7 @@ const GRACE = 4; // secondes tolérées après la fin du chrono d'une question, 
 const NB_LIBRES = 2; // essais libres par joueur et par jeu d'adresse
 const JEU_MIN = 3, JEU_MARGE = 45; // une note de jeu n'est acceptée ni trop tôt ni trop longtemps après le départ
 // Score brut le plus haut qu'un jeu puisse rendre : au-delà, la note est refusée.
-const PLAFOND = { bowling: 50, tir: 40, flipper: 20000, tennis: 10099, labyrinthe: 1000, pastilles: 3000, penalty: 1500, etageres: 600, basket: 300, volley: 10099, haies: 4400, twirling: 600, tour: 6500, seringue: 1800, minigolf: 2000, badminton: 3000 };
+const PLAFOND = { bowling: 75, tir: 40, flipper: 20000, tennis: 10099, labyrinthe: 1000, pastilles: 3000, penalty: 1500, etageres: 600, basket: 300, volley: 10099, haies: 4400, twirling: 600, tour: 6500, seringue: 1800, minigolf: 2000, badminton: 3000 };
 const JOUR1 = Date.UTC(2026, 11, 1);
 const PRENOM = /^\p{L}+(?:[-']\p{L}+)*$/u;
 // Participants : cinq brigades, tirées par le serveur ; un avatar est trois numéros [couleur, coiffe, accessoire],
