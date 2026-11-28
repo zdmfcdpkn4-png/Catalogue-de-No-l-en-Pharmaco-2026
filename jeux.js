@@ -769,6 +769,8 @@
     // Les figures : des coups remarquables salués d'une étiquette. Comme la série, elles ne rapportent rien : c'est du spectacle.
     const pops = [], gerbes = [], debris = [], mots = [];
     let tt = 0, combo = null, alerte = 9, serieVue = 0, rafale = 0, rafaleT = -9, teinte = -1, memeTeinte = 0, secousse = 9, souffle = 0;
+    // De 0 à 1 : la force du souffle, calée sur la vitesse de chute des particules, qui croît au fil de la partie.
+    const vent = () => Math.min(1, s.t * REGL.acc / 110);
     const figure = (mot, x, y, coul) => mots.push({ mot, x: Math.max(62, Math.min(W - 62, x)), y: Math.max(70, y) - 20 - mots.filter(m => m.t < 0.3).length * 22, t: 0, coul: coul || Y });
     // Après chaque pas du cœur : repérer les nouvelles touches et les paliers franchis.
     function suivre() {
@@ -802,7 +804,7 @@
     }
     function animer(dt) {
       tt += dt; alerte += dt; secousse += dt;
-      souffle += dt * 46 * (1 + Math.min(s.serie, 20) / 12);                      // le flux s'emballe avec la série
+      souffle += dt * (46 + 170 * vent());                                        // le flux s'emballe avec la vitesse des particules
       for (const d of debris) d.t += dt;
       for (const m of mots) m.t += dt;
       while (debris.length && debris[0].t > 0.55) debris.shift();
@@ -892,7 +894,7 @@
       c.strokeStyle = FIN; c.lineWidth = 0.9; for (let i = 0; i < 6; i++) ligne(c, 126, 172 + i * 9, i % 2 ? 129 : 130.5, 172 + i * 9);   // graduations
       fin(c, 1); boite(c, 85, 160, 38, 56, 3, "#FFFFFF");
       if (logo.complete && logo.naturalWidth) c.drawImage(logo, 91, 162, 26, 26);
-      texte(c, "Bonne", 104, 194, 8.5, ENCRE); texte(c, "humeur", 104, 203, 8.5, ENCRE);
+      texte(c, "Joyeux", 104, 194, 8.5, ENCRE); texte(c, "Noël", 104, 203, 8.5, ENCRE);
       texte(c, "500 mL", 104, 211.5, 6, ENCRE);
       fin(c, 1.4); boite(c, 95, 227, 6, 9, 1.5, "#EEF1F6"); boite(c, 101, 227, 6, 15, 1.5, "#EEF1F6"); boite(c, 108, 227, 6, 9, 1.5, "#8FC7E8");
       c.beginPath(); c.ellipse(158, 164, 9, 17, 0, 0, 6.3); c.stroke(); c.beginPath(); c.ellipse(159, 166, 6, 13, 0.2, 0, 6.3); c.stroke();   // une tubulure lovée
@@ -948,6 +950,12 @@
       [[178, P], [202, Y], [226, V]].forEach(([x, coul], i) => {
         const y = 374 - saut * (1 - i * 0.15) - joie;
         flacon(ctx, x, y, 0, coul);
+        // Le ruban cadeau : une bande en croix sur le ventre du flacon, le nœud sur le bouchon.
+        const ruban = [R, G, R][i];
+        ctx.fillStyle = ruban; ctx.fillRect(x - 8, y + 3.5, 16, 3); ctx.fillRect(x - 1.5, y + 0.5, 3, 10);
+        trait(ctx, 1.2); ctx.beginPath(); ctx.ellipse(x - 4.2, y - 16.5, 4, 2.6, -0.5, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(x + 4.2, y - 16.5, 4, 2.6, 0.5, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y - 15.5, 2, 0, 6.3); ctx.fill(); ctx.stroke();
         const dx = vise ? vise.x - x : 0, dy = vise ? vise.y - y : -1, d = Math.hypot(dx, dy) || 1, r = alerte < 0.5 ? 3.4 : 2.8;
         for (const k of [-3.6, 3.6]) {
           ctx.fillStyle = "#FFFFFF"; ctx.strokeStyle = N; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x + k, y - 4, r, 0, 6.3); ctx.fill(); ctx.stroke();
@@ -966,9 +974,12 @@
       trait(ctx, 1.8); ligne(ctx, 262, 176, 262 + Math.cos(a) * 12, 176 + Math.sin(a) * 12);
       ctx.fillStyle = N; ctx.beginPath(); ctx.arc(262, 176, 2.2, 0, 6.3); ctx.fill();
       flacons();
-      // Le flux laminaire : des filets d'air qui descendent du filtre.
-      ctx.strokeStyle = "rgba(74,63,140,.11)"; ctx.lineWidth = 2; ctx.lineCap = "round";
-      for (let i = 0; i < 11; i++) for (let j = 0; j < 2; j++) { const x = 30 + i * 30, y = 90 + ((calme ? 0 : souffle) + i * 67 + j * 170) % 330; ligne(ctx, x, y, x, y + 16); }
+      // Le flux laminaire : des filets d'air qui descendent du filtre, plus longs, plus denses et plus rapides quand les particules accélèrent.
+      const f = vent(), nb = f > 0.66 ? 4 : f > 0.33 ? 3 : 2;
+      ctx.strokeStyle = "rgba(74,63,140," + (0.11 + 0.13 * f) + ")"; ctx.lineWidth = 2; ctx.lineCap = "round";
+      for (let i = 0; i < 11; i++) for (let j = 0; j < nb; j++) { const x = 30 + i * 30, y = 90 + ((calme ? 0 : souffle) + i * 67 + j * 330 / nb) % 330; ligne(ctx, x, y, x, y + 16 + 38 * f); }
+      ctx.strokeStyle = "rgba(255,255,255," + (0.5 * f) + ")"; ctx.lineWidth = 1.2;                    // des bouffées claires entre les filets
+      if (f > 0.15) for (let i = 0; i < 10; i++) { const x = 45 + i * 30, y = 90 + ((calme ? 0 : souffle * 1.35) + i * 113) % 330; ligne(ctx, x, y, x, y + 10 + 30 * f); }
     }
     // Un texte en relief qui pivote autour de son axe vertical : les tranches du fond d'abord, la face ensuite.
     function relief(t, px, a, face) {
@@ -1047,6 +1058,13 @@
       ctx.lineCap = "round"; ctx.lineWidth = 3; ctx.strokeStyle = chaud >= 2 ? "rgba(236,213,103,.55)" : "rgba(143,199,232,.5)";
       for (const t of s.tirs) ligne(ctx, t.x, t.y + 7, t.x, t.y + 20);            // le sillage des gouttes
       for (const t of s.tirs) { ctx.fillStyle = chaud >= 2 ? Y : B; trait(ctx, 2); ctx.beginPath(); ctx.moveTo(t.x, t.y - 8); ctx.quadraticCurveTo(t.x + 5, t.y, t.x, t.y + 4); ctx.quadraticCurveTo(t.x - 5, t.y, t.x, t.y - 8); ctx.fill(); ctx.stroke(); }
+      ctx.lineCap = "round"; ctx.lineWidth = 2;                                    // l'air file derrière chaque particule, d'autant plus qu'elle tombe vite
+      for (const g of s.germes) {
+        const l = Math.max(0, (g.v - 80) * 0.3), y0 = g.y - g.r - 7;
+        if (l < 3 || y0 < 50) continue;
+        ctx.strokeStyle = "rgba(74,63,140," + Math.min(0.5, 0.18 + l / 90) + ")";
+        for (const k of [-0.7, 0, 0.7]) ligne(ctx, g.x + k * g.r, y0 - (k ? 0 : 4), g.x + k * g.r, Math.max(48, y0 - l * (k ? 0.7 : 1)));
+      }
       for (const g of s.germes) germe(g);
       for (const e of s.eclats) { const k = e.t / 0.45; ctx.globalAlpha = 1 - k; ctx.strokeStyle = e.k < 0 ? R : Y; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y, 8 + k * 22, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; }
       for (const p of pops) {                                                     // « ×N » qui s'élève de la particule touchée
