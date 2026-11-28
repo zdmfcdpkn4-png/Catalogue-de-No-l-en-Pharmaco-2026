@@ -822,13 +822,23 @@
     const degrade = (c, y1, y2, a, b) => { const g = c.createLinearGradient(0, y1, 0, y2); g.addColorStop(0, a); g.addColorStop(1, b); return g; };
     // Le décor fixe : l'intérieur d'une hotte à flux laminaire vu par l'opérateur. Fond de l'enceinte de (52,86) à (308,388).
     // Il est peint une seule fois dans une image, recopiée ensuite à chaque tour.
+    const ombre = (c, x, y, rx, ry, a) => { c.fillStyle = "rgba(60,55,110," + (a || 0.16) + ")"; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, 6.3); c.fill(); };
     function peindre(c) {
       c.fillStyle = "#D9DDE8"; c.fillRect(0, 0, W, H);
       quad(c, [[8, 47], [352, 47], [308, 86], [52, 86]], degrade(c, 47, 86, "#FFFFFF", "#EDF1F8"));      // plafond : le filtre absolu, éclairé
-      quad(c, [[8, 47], [52, 86], [52, 388], [8, 452]], "#C3C8D8");                                       // vitres latérales
-      quad(c, [[352, 47], [308, 86], [308, 388], [352, 452]], "#C3C8D8");
-      c.fillStyle = degrade(c, 86, 388, "#ECEFF5", "#DADEE9"); c.fillRect(52, 86, 256, 302);              // fond en inox
-      quad(c, [[52, 388], [308, 388], [352, 452], [8, 452]], degrade(c, 388, 452, "#BCC1D1", "#E3E6EF")); // plan de travail
+      const vg = c.createLinearGradient(8, 0, 52, 0); vg.addColorStop(0, "#AEB4C8"); vg.addColorStop(0.5, "#CBD0DE"); vg.addColorStop(1, "#BDC2D3");
+      quad(c, [[8, 47], [52, 86], [52, 388], [8, 452]], vg);                                              // vitres latérales
+      const vd = c.createLinearGradient(352, 0, 308, 0); vd.addColorStop(0, "#AEB4C8"); vd.addColorStop(0.5, "#CBD0DE"); vd.addColorStop(1, "#BDC2D3");
+      quad(c, [[352, 47], [308, 86], [308, 388], [352, 452]], vd);
+      c.fillStyle = degrade(c, 86, 388, "#EEF1F6", "#D6DAE6"); c.fillRect(52, 86, 256, 302);              // fond en inox
+      c.strokeStyle = "rgba(255,255,255,.35)"; c.lineWidth = 0.6;                                         // le brossé de l'inox
+      for (let y = 90; y < 388; y += 5) ligne(c, 53, y, 307, y);
+      c.strokeStyle = "rgba(110,106,156,.07)"; for (let y = 92.5; y < 388; y += 5) ligne(c, 53, y, 307, y);
+      const lum = c.createRadialGradient(180, 86, 10, 180, 86, 230);                                      // la lumière tombe du plafond
+      lum.addColorStop(0, "rgba(255,255,255,.55)"); lum.addColorStop(1, "rgba(255,255,255,0)");
+      c.fillStyle = lum; c.fillRect(52, 86, 256, 302);
+      quad(c, [[52, 388], [308, 388], [352, 452], [8, 452]], degrade(c, 388, 452, "#B4B9CB", "#E3E6EF")); // plan de travail
+      quad(c, [[120, 388], [240, 388], [262, 452], [98, 452]], "rgba(255,255,255,.2)");                   // son reflet
       c.strokeStyle = "rgba(110,106,156,.32)"; c.lineWidth = 1;
       for (let i = 0; i <= 16; i++) ligne(c, 8 + i * 21.5, 47, 52 + i * 16, 86);                          // plis du filtre
       ligne(c, 23, 60, 337, 60); ligne(c, 38, 73, 322, 73);
@@ -839,52 +849,95 @@
       quad(c, [[15, 70], [28, 82], [28, 300], [15, 330]], "rgba(255,255,255,.38)");                       // reflets des vitres
       quad(c, [[345, 70], [332, 82], [332, 300], [345, 330]], "rgba(255,255,255,.38)");
       quad(c, [[34, 96], [40, 101], [40, 240], [34, 250]], "rgba(255,255,255,.22)");
-      // Le champ stérile, posé au milieu du plan de travail.
-      fin(c, 1.4); quad(c, [[104, 400], [256, 400], [284, 442], [76, 442]], "#CDE9DF"); c.stroke();
+      quad(c, [[326, 96], [320, 101], [320, 240], [326, 250]], "rgba(255,255,255,.22)");
+      c.fillStyle = degrade(c, 300, 388, "rgba(60,55,110,0)", "rgba(60,55,110,.1)"); c.fillRect(52, 300, 256, 88);   // le bas du fond, plus sombre
+      // Le champ stérile, posé au milieu du plan de travail, avec ses plis.
+      ombre(c, 180, 424, 108, 21, 0.12);
+      fin(c, 1.4); quad(c, [[104, 400], [256, 400], [284, 442], [76, 442]], degrade(c, 400, 442, "#BFE1D5", "#D6EEE6")); c.stroke();
       c.strokeStyle = "rgba(110,106,156,.3)"; ligne(c, 180, 400, 180, 442); ligne(c, 91, 420, 269, 420);
+      c.strokeStyle = "rgba(255,255,255,.6)"; ligne(c, 182, 400, 182, 442); ligne(c, 91, 421.5, 269, 421.5);
       fin(c, 2); c.strokeRect(52, 86, 256, 302);
       ligne(c, 8, 47, 52, 86); ligne(c, 352, 47, 308, 86); ligne(c, 8, 452, 52, 388); ligne(c, 352, 452, 308, 388);
       // Les plaques vissées au fond.
+      c.fillStyle = "rgba(60,55,110,.14)"; c.beginPath(); c.roundRect(63.5, 99.5, 152, 22, 4); c.roundRect(225.5, 99.5, 74, 22, 4); c.fill();
       fin(c, 1.4);
       boite(c, 62, 97, 152, 22, 4, C); boite(c, 224, 97, 74, 22, 4, C);
       texte(c, "Zéro particule, même à Noël", 138, 109, 10, ENCRE); texte(c, "ZAC · ISO 5", 261, 109, 10, ENCRE);
       c.fillStyle = FIN; for (const x of [66, 210, 228, 294]) { c.beginPath(); c.arc(x, 108, 1.2, 0, 6.3); c.fill(); }
-      // La barre de suspension, ses crochets, la poche et sa tubulure.
-      fin(c, 3); ligne(c, 64, 136, 296, 136);
-      fin(c, 2); ligne(c, 64, 130, 64, 142); ligne(c, 296, 130, 296, 142);
-      fin(c, 1.6); for (const x of [104, 152]) { c.beginPath(); c.arc(x, 141, 4, -1.4, 2.6); c.stroke(); }
-      c.beginPath(); c.moveTo(104, 210); c.bezierCurveTo(104, 262, 132, 250, 128, 300); c.bezierCurveTo(126, 322, 112, 318, 114, 338); c.stroke();
-      boite(c, 122, 292, 11, 15, 3, "#EEF1F6");                                                          // la roulette de réglage
-      boite(c, 80, 146, 48, 64, 9, C);
-      c.save(); c.beginPath(); c.roundRect(80, 146, 48, 64, 9); c.clip(); c.fillStyle = "#F3D9EC"; c.fillRect(80, 172, 48, 40); c.restore();
-      c.beginPath(); c.roundRect(80, 146, 48, 64, 9); c.stroke();
-      boite(c, 85, 160, 38, 28, 3, "#FFFFFF");
-      texte(c, "Bonne", 104, 169, 9, ENCRE); texte(c, "humeur", 104, 180, 9, ENCRE);
-      texte(c, "500 mL", 104, 199, 7.5, ENCRE);
-      boite(c, 98, 208, 5, 7, 1, "#EEF1F6"); boite(c, 106, 208, 5, 7, 1, "#EEF1F6");
-      c.beginPath(); c.ellipse(152, 162, 9, 17, 0, 0, 6.3); c.stroke(); c.beginPath(); c.ellipse(153, 164, 6, 13, 0.2, 0, 6.3); c.stroke();   // une tubulure lovée
+      // La barre de suspension et ses crochets.
+      c.strokeStyle = "rgba(60,55,110,.14)"; c.lineWidth = 3; ligne(c, 66, 140, 298, 140);
+      fin(c, 4); ligne(c, 64, 136, 296, 136);
+      c.strokeStyle = "rgba(255,255,255,.8)"; c.lineWidth = 1.2; ligne(c, 66, 135, 294, 135);
+      fin(c, 2); ligne(c, 64, 129, 64, 143); ligne(c, 296, 129, 296, 143);
+      fin(c, 1.8); for (const x of [104, 158]) { c.beginPath(); c.arc(x, 142, 4.5, -1.5, 2.7); c.stroke(); }
+      // La poche de perfusion : œillet, graduations, étiquette au logo de l'unité, sites d'injection, chambre compte-gouttes, roulette.
+      c.fillStyle = "rgba(60,55,110,.13)"; c.beginPath(); c.roundRect(81, 153, 56, 80, 10); c.fill();     // son ombre sur le fond
+      fin(c, 1.6);
+      c.beginPath(); c.moveTo(104, 242); c.lineTo(104, 250); c.stroke();
+      boite(c, 99.5, 250, 9, 20, 3, "rgba(255,255,255,.75)");                                             // la chambre compte-gouttes
+      c.fillStyle = "#F3D9EC"; c.fillRect(100.5, 262, 7, 7);
+      c.beginPath(); c.moveTo(104, 270); c.bezierCurveTo(104, 300, 134, 292, 130, 322); c.bezierCurveTo(128, 340, 114, 338, 116, 354); c.stroke();
+      boite(c, 123, 306, 13, 17, 3, "#EEF1F6"); c.fillStyle = FIN; c.beginPath(); c.arc(129.5, 316, 3, 0, 6.3); c.fill();   // la roulette
+      boite(c, 113, 353, 6, 7, 2, O);                                                                    // le bouchon de la tubulure
+      const pp = c.createLinearGradient(76, 0, 132, 0); pp.addColorStop(0, "#F4F6FA"); pp.addColorStop(0.5, "#FFFFFF"); pp.addColorStop(1, "#E6E9F1");
+      boite(c, 76, 148, 56, 80, 10, pp);
+      c.save(); c.beginPath(); c.roundRect(76, 148, 56, 80, 10); c.clip();
+      const liq = c.createLinearGradient(76, 0, 132, 0); liq.addColorStop(0, "#EBC6E1"); liq.addColorStop(0.5, "#F6E0F0"); liq.addColorStop(1, "#E2B9D7");
+      c.fillStyle = liq; c.fillRect(76, 166, 56, 64);
+      c.fillStyle = "rgba(255,255,255,.55)"; c.fillRect(76, 166, 56, 1.5);                               // le ménisque
+      c.fillStyle = "rgba(255,255,255,.5)"; c.beginPath(); c.roundRect(80, 154, 4, 66, 2); c.fill();     // le reflet du plastique
+      c.restore();
+      fin(c, 1.6); c.beginPath(); c.roundRect(76, 148, 56, 80, 10); c.stroke();
+      boite(c, 99, 151, 10, 5, 2.5, "#DADEE9");                                                          // l'œillet de suspension
+      c.strokeStyle = FIN; c.lineWidth = 0.9; for (let i = 0; i < 6; i++) ligne(c, 126, 172 + i * 9, i % 2 ? 129 : 130.5, 172 + i * 9);   // graduations
+      fin(c, 1); boite(c, 85, 160, 38, 56, 3, "#FFFFFF");
+      if (logo.complete && logo.naturalWidth) c.drawImage(logo, 91, 162, 26, 26);
+      texte(c, "Bonne", 104, 194, 8.5, ENCRE); texte(c, "humeur", 104, 203, 8.5, ENCRE);
+      texte(c, "500 mL", 104, 211.5, 6, ENCRE);
+      fin(c, 1.4); boite(c, 95, 227, 6, 9, 1.5, "#EEF1F6"); boite(c, 101, 227, 6, 15, 1.5, "#EEF1F6"); boite(c, 108, 227, 6, 9, 1.5, "#8FC7E8");
+      c.beginPath(); c.ellipse(158, 164, 9, 17, 0, 0, 6.3); c.stroke(); c.beginPath(); c.ellipse(159, 166, 6, 13, 0.2, 0, 6.3); c.stroke();   // une tubulure lovée
       // Le manomètre (son aiguille est dessinée à chaque tour).
-      fin(c, 2); boite(c, 240, 152, 44, 52, 6, "#EEF1F6");
+      c.fillStyle = "rgba(60,55,110,.14)"; c.beginPath(); c.roundRect(242, 155, 44, 52, 6); c.fill();
+      fin(c, 2); boite(c, 240, 152, 44, 52, 6, degrade(c, 152, 204, "#F4F6FA", "#DDE1EA"));
       c.fillStyle = C; c.beginPath(); c.arc(262, 176, 17, 0, 6.3); c.fill(); c.stroke();
       c.lineWidth = 3.5; c.strokeStyle = G; c.beginPath(); c.arc(262, 176, 12.5, Math.PI * 1.1, Math.PI * 1.72); c.stroke();
       c.strokeStyle = R; c.beginPath(); c.arc(262, 176, 12.5, Math.PI * 1.76, Math.PI * 1.98); c.stroke();
+      c.strokeStyle = FIN; c.lineWidth = 0.9; for (let i = 0; i <= 8; i++) { const a = Math.PI * (1.1 + i * 0.11); ligne(c, 262 + Math.cos(a) * 15, 176 + Math.sin(a) * 15, 262 + Math.cos(a) * 16.5, 176 + Math.sin(a) * 16.5); }
+      c.strokeStyle = "rgba(255,255,255,.9)"; c.lineWidth = 1.4; c.beginPath(); c.arc(262, 176, 14.5, Math.PI * 0.2, Math.PI * 0.45); c.stroke();
       texte(c, "Pa", 262, 198, 7.5, ENCRE);
-      // Au fond du plan de travail : le plateau, ses compresses et deux seringues capuchonnées ; le collecteur jaune.
-      fin(c, 1.4); quad(c, [[64, 378], [126, 378], [132, 392], [58, 392]], "#F2F4F8"); c.stroke();
+      // Au fond du plan de travail : le plateau, ses compresses et deux seringues capuchonnées ; les flacons ; le collecteur jaune.
+      ombre(c, 95, 393, 42, 5); ombre(c, 202, 388, 40, 4.5); ombre(c, 283, 391, 23, 5);
+      fin(c, 1.4); quad(c, [[64, 378], [126, 378], [132, 392], [58, 392]], degrade(c, 378, 392, "#FFFFFF", "#DDE1EA")); c.stroke();
       boite(c, 70, 371, 16, 10, 2, "#FFFFFF"); boite(c, 72, 367, 16, 10, 2, "#FFFFFF");
-      for (const y of [376, 384]) { boite(c, 94, y, 24, 5, 2, C); c.fillStyle = O; c.fillRect(110, y + 0.8, 7, 3.4); c.fillStyle = FIN; c.fillRect(88, y + 1.4, 6, 2.2); }
-      boite(c, 264, 352, 34, 38, 5, "#E9CF52"); boite(c, 261, 345, 40, 10, 4, "#F3DE7A");
+      c.strokeStyle = "rgba(110,106,156,.4)"; c.lineWidth = 0.8; ligne(c, 75, 370, 85, 370); ligne(c, 75, 373, 85, 373);
+      for (const y of [376, 384]) {
+        fin(c, 1.4); boite(c, 94, y, 24, 5, 2, C); c.fillStyle = O; c.fillRect(110, y + 0.8, 7, 3.4); c.fillStyle = FIN; c.fillRect(88, y + 1.4, 6, 2.2);
+        c.strokeStyle = FIN; c.lineWidth = 0.7; for (let i = 0; i < 4; i++) ligne(c, 97 + i * 3.2, y + 0.8, 97 + i * 3.2, y + 2.4);
+      }
+      fin(c, 1.4);
+      const cj = c.createLinearGradient(264, 0, 298, 0); cj.addColorStop(0, "#DDBF3E"); cj.addColorStop(0.4, "#F2DC6C"); cj.addColorStop(1, "#D2B436");
+      c.fillStyle = cj; c.beginPath(); c.moveTo(264, 353); c.lineTo(298, 353); c.lineTo(295, 388); c.quadraticCurveTo(295, 391, 292, 391); c.lineTo(270, 391); c.quadraticCurveTo(267, 391, 267, 388); c.closePath(); c.fill(); c.stroke();
+      boite(c, 261, 345, 40, 10, 4, "#F3DE7A");
       c.fillStyle = ENCRE; c.beginPath(); c.roundRect(272, 348, 18, 4, 2); c.fill();
       c.beginPath(); c.arc(275, 366, 1.6, 0, 6.3); c.arc(287, 366, 1.6, 0, 6.3); c.fill();                // le collecteur a l'air content : il a déjà mangé
       c.strokeStyle = ENCRE; c.lineWidth = 1.6; c.beginPath(); c.arc(281, 371, 6, 0.35, Math.PI - 0.35); c.stroke();
       texte(c, "OPCT", 281, 384, 6.5, ENCRE);
-      // Le cadre de la hotte et le bord de la vitre relevée.
-      c.fillStyle = "#8A8FA6"; c.fillRect(0, 39, 8, 413); c.fillRect(352, 39, 8, 413); c.fillRect(0, 39, W, 8);
-      c.fillStyle = "rgba(255,255,255,.35)"; c.fillRect(2, 47, 2, 405); c.fillRect(354, 47, 2, 405);
+      c.fillStyle = "rgba(255,255,255,.45)"; c.beginPath(); c.roundRect(269, 357, 3, 28, 1.5); c.fill();
+      // Le cadre de la hotte, le bord de la vitre relevée et son reflet.
+      const mo = c.createLinearGradient(0, 0, 8, 0); mo.addColorStop(0, "#7C8199"); mo.addColorStop(0.45, "#A9AEC2"); mo.addColorStop(1, "#80859C");
+      c.fillStyle = mo; c.fillRect(0, 39, 8, 413); c.save(); c.translate(352, 0); c.fillRect(0, 39, 8, 413); c.restore();
+      c.fillStyle = degrade(c, 39, 47, "#A9AEC2", "#7C8199"); c.fillRect(0, 39, W, 8);
+      c.fillStyle = degrade(c, 47, 62, "rgba(190,215,235,.45)", "rgba(190,215,235,0)"); c.fillRect(8, 47, 344, 15);
       fin(c, 1.4); boite(c, 150, 40.5, 60, 5, 2.5, "#D9DDE8");
       c.fillStyle = degrade(c, 452, H, "#D9DDE8", "#C2C7D6"); c.fillRect(0, 452, W, H - 452);             // le bandeau de commande
+      c.fillStyle = FIN; for (const x of [5, 355]) { c.beginPath(); c.arc(x, 458, 1.3, 0, 6.3); c.arc(x, 475, 1.3, 0, 6.3); c.fill(); }
       fin(c, 1.4); boite(c, 8, 457, 132, 19, 4, "#17251F");
+      c.fillStyle = "rgba(255,255,255,.08)"; c.fillRect(10, 458.5, 128, 6);
     }
+    // Le logo de l'unité, sur l'étiquette de la poche : le décor est repeint dès qu'il est chargé.
+    const logo = new Image();
+    logo.onload = () => { fond = null; };
+    logo.src = opt.logo || ICI + "img/logo-pharmacotechnie.webp";
     let fond = null;
     if (typeof document !== "undefined" && document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fond = null; });
     // Les trois flacons en attente au fond suivent des yeux la particule la plus basse, et sursautent quand elle passe.
