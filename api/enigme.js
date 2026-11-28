@@ -172,12 +172,16 @@ async function lire() {
   if (!r || r.statusCode !== 200) return { joueurs: {}, etag: null };
   return { joueurs: JSON.parse(await new Response(r.stream).text()), etag: etiquette(r.blob.etag) };
 }
-async function lireListe() {
+// Le fichier de la liste : `noms` (les participants) et `hors` (ceux qui connaissent la solution de l'enquête : ils y jouent,
+// mais leurs réponses et leurs tampons ne comptent ni ne se voient dans leur brigade ; champ `hx` de leur fiche).
+async function lireFichierListe() {
   const r = await get(FILE_LISTE, { access: 'private', useCache: false });
-  if (!r || r.statusCode !== 200) return [];
+  if (!r || r.statusCode !== 200) return { noms: [], hors: [] };
   const o = JSON.parse(await new Response(r.stream).text());
-  return Array.isArray(o.noms) ? o.noms : [];
+  return { noms: Array.isArray(o.noms) ? o.noms : [], hors: Array.isArray(o.hors) ? o.hors : [] };
 }
+const lireListe = async () => (await lireFichierListe()).noms;
+const ecrireListe = (noms, hors) => put(FILE_LISTE, JSON.stringify({ noms, hors }), { access: 'private', contentType: 'application/json', cacheControlMaxAge: 60, allowOverwrite: true });
 async function lireFilm() {
   const r = await get(FILE_FILM, { access: 'private', useCache: false });
   if (!r || r.statusCode !== 200) return null;
@@ -280,7 +284,7 @@ function voix(E, joueurs) {
   for (const c of E.enigmes) C[c.k] = c;
   for (const cle of Object.keys(joueurs)) {
     const j = joueurs[cle], s = S[j.b];
-    if (!s || !j.x) continue;
+    if (!s || !j.x || j.hx) continue; // hors enquête : sa réponse reste la sienne, la brigade ne la compte pas
     for (const k of Object.keys(j.x)) {
       if (!C[k]) continue;
       const v = C[k].saisie === 'choix' ? String(j.x[k].v) : justeEnq(C[k], j.x[k].v) ? '=' : C[k].saisie === 'trio' ? [].concat(j.x[k].v).join('|') : normRep(j.x[k].v), u = s[k] || (s[k] = { n: 0, v: {}, t: {} });
@@ -356,8 +360,8 @@ function vueEnquete(E, joueurs, cle, jour, tout) {
   // joueur ; la brigade voit le décompte par fiche, et chacun son propre tampon (`moi`).
   if (s && E.fiches) {
     const ids = new Set(E.fiches.map(f => f.id)); o.tampons = {};
-    for (const m of Object.values(joueurs)) if (m.b === j.b && m.tp) for (const id of Object.keys(m.tp)) if (ids.has(id) && (m.tp[id] === 'h' || m.tp[id] === 'c')) { const t = o.tampons[id] || (o.tampons[id] = { h: 0, c: 0 }); t[m.tp[id]]++; }
-    for (const id of Object.keys(j.tp || {})) if (o.tampons[id]) o.tampons[id].moi = j.tp[id];
+    for (const m of Object.values(joueurs)) if (m.b === j.b && m.tp && !m.hx) for (const id of Object.keys(m.tp)) if (ids.has(id) && (m.tp[id] === 'h' || m.tp[id] === 'c')) { const t = o.tampons[id] || (o.tampons[id] = { h: 0, c: 0 }); t[m.tp[id]]++; }
+    for (const id of Object.keys(j.tp || {})) if (ids.has(id) && (j.tp[id] === 'h' || j.tp[id] === 'c')) (o.tampons[id] || (o.tampons[id] = { h: 0, c: 0 })).moi = j.tp[id]; // hors enquête : il garde son tampon, sans le compter
   }
   const P = pointsEnq(E, S, jour);
   if (s) o.points = P[j.b];
@@ -703,11 +707,29 @@ async function handler(req, res) {
       if (b.participants !== 'lire') {
         const N = Array.isArray(b.participants) ? b.participants.map(x => (typeof x === 'string' ? propre(x) : '')) : null;
         if (!N || N.length > MAX_LISTE || N.some(x => !NOM_LISTE.test(x)) || new Set(N.map(norm)).size !== N.length) return res.status(400).json({ error: 'participants' });
-        await put(FILE_LISTE, JSON.stringify({ noms: N }), { access: 'private', contentType: 'application/json', cacheControlMaxAge: 60, allowOverwrite: true });
+        await ecrireListe(N, (await lireFichierListe()).hors.filter(x => N.some(y => norm(y) === norm(x))));
       }
       const liste = await lireListe(), { joueurs } = await lire();
       const pris = Object.keys(joueurs).filter(c => joueurs[c].l).map(c => ({ nom: joueurs[c].l, pseudo: joueurs[c].p }));
       return res.status(200).json({ ok: true, participants: liste, pris, horsListe: Object.keys(joueurs).filter(c => !joueurs[c].l).map(c => joueurs[c].p) });
+    }
+    // Hors enquête : l'administration donne les noms de la liste qui connaissent la solution (tableau, vide pour n'en garder
+    // aucun), ou relit ("lire"). Les fiches déjà créées sont marquées aussitôt (`hx`), les autres le seront à leur création.
+    if (admin && b.horsEnquete !== undefined) {
+      const F = await lireFichierListe();
+      if (b.horsEnquete !== 'lire') {
+        const H = Array.isArray(b.horsEnquete) ? b.horsEnquete.map(x => dansListe(F.noms, x)) : null;
+        if (!H || H.some(x => !x) || new Set(H.map(norm)).size !== H.length) return res.status(400).json({ error: 'horsEnquete' });
+        await ecrireListe(F.noms, H); F.hors = H;
+        const dedans = j => Boolean(j.l) && H.some(x => norm(x) === norm(j.l));
+        await modifier(joueurs => {
+          if (!Object.values(joueurs).some(j => Boolean(j.hx) !== dedans(j))) return { fin: () => null };
+          for (const j of Object.values(joueurs)) { if (dedans(j)) j.hx = 1; else delete j.hx; }
+          return { ok: () => null };
+        });
+      }
+      const { joueurs } = await lire();
+      return res.status(200).json({ ok: true, horsEnquete: F.hors, fiches: Object.values(joueurs).filter(j => j.hx).map(j => ({ nom: j.l, pseudo: j.p })) });
     }
     // Film de clôture : l'administration le dépose (MP4 en base64), le retire ("effacer") ou en relit la taille ("lire").
     if (admin && b.film !== undefined) {
@@ -777,6 +799,7 @@ async function handler(req, res) {
       const nom = b.nom === undefined ? undefined : dansListe(await lireListe(), b.nom);
       if (b.nom !== undefined && !nom) return res.status(400).json({ error: 'nom' });
       const fermee = !nom && !admin && (await lireListe()).length > 0;
+      const hors = Boolean(nom) && (await lireFichierListe()).hors.some(x => norm(x) === norm(nom));
       const s = await modifier(joueurs => {
         if (nom) {
           const c = Object.keys(joueurs).find(x => joueurs[x].l && norm(joueurs[x].l) === norm(nom));
@@ -788,6 +811,7 @@ async function handler(req, res) {
           if (Object.keys(joueurs).length >= MAX_JOUEURS) return { fin: () => ({ code: 403, corps: { error: 'complet' } }) };
           joueurs[cle] = { p: prenom, t: maintenant, r: {} };
           if (nom) joueurs[cle].l = nom;
+          if (hors) joueurs[cle].hx = 1;
         }
         const j = joueurs[cle];
         j.a = b.avatar.slice();
