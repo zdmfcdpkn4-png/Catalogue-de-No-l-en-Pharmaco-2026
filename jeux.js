@@ -9,27 +9,28 @@
   const ICI = (typeof document !== "undefined" && document.currentScript && document.currentScript.src || "").replace(/[^/]*$/, "");
 
   /* ================= Bowling des flacons : le cœur ================= */
-  const RB = 15, RQ = 11, RS = 7, GAUCHE = 46, DROITE = 314, DEPART = 508, HB = 556; // HB : hauteur propre au bowling, la paillasse est plus longue que le repère commun
+  const RB = 15, RQ = 11, RS = 7, GAUCHE = 46, DROITE = 314, DEPART = 526, HB = 574, B_HAUT = 66; // B_HAUT : hauteur de la feuille de marque en tête du bowling // HB : hauteur propre au bowling, la paillasse est plus longue que le repère commun
   // Réglages étalonnés par simulation (voir le banc d'essai) : ils fixent la difficulté.
-  const REGL = { elan: 180, frein: 3.5, relais: 0.85, seuil: 60, cadence: 0.4, vitesse: 280, chute: 85, acc: 3, pas: 0.9, portee: 2, sy: 346, sl: 40, sv: 2.4, courbe: 200, couche: 4 };
-  const PLACES = (() => { const q = []; for (let r = 0; r < 4; r++) for (let i = 0; i <= r; i++) q.push({ x: 180 + (i - r / 2) * 37, y: 162 - r * 32 }); return q; })();
+  const REGL = { elan: 180, frein: 3.5, relais: 0.85, seuil: 60, cadence: 0.4, vitesse: 280, chute: 85, acc: 3, pas: 0.9, portee: 2, sy: 364, sl: 40, sv: 2.4, courbe: 200, couche: 4, hate: 0.08 };
+  const PLACES = (() => { const q = []; for (let r = 0; r < 4; r++) for (let i = 0; i <= r; i++) q.push({ x: 180 + (i - r / 2) * 37, y: 180 - r * 32 }); return q; })();
   // La seringue de garde : elle balaie la paillasse d'un bord à l'autre, à la hauteur sy. sl = demi-longueur, sv = cadence.
   const xSeringue = t => 180 + ((DROITE - GAUCHE) / 2 - REGL.sl - RS) * Math.sin(t * REGL.sv);
   // Un lancer : la boule part de x avec un angle en degrés (0 = tout droit). debout[i] dit si le flacon i est encore là.
   // t0 = horloge de la seringue à l'instant du lancer (sans t0, pas de seringue).
   // effet = -1 (la boule crochète à gauche), 0 (tout droit) ou 1 (à droite) : le crochet se creuse en fin de course, comme sur une vraie piste.
-  function creerLancer(x, angle, debout, t0, effet) {
+  // cadence = allure de la seringue pendant ce lancer (1 par défaut) : elle presse le pas au fil des séries.
+  function creerLancer(x, angle, debout, t0, effet, cadence) {
     const a = angle * Math.PI / 180;
     return {
       boule: { x, y: DEPART, vx: Math.sin(a) * 540, vy: -Math.cos(a) * 540, rigole: false, sortie: false, bloquee: false, tour: 0, effet: effet || 0 },
       quilles: PLACES.map((p, i) => ({ x: p.x, y: p.y, vx: 0, vy: 0, la: debout[i], tombee: false, rot: 0 })),
-      ts: t0, fini: false,
+      ts: t0, cadence: cadence || 1, fini: false,
     };
   }
   function pasLancer(s, dt) {
     const b = s.boule;
     if (s.ts != null) {
-      s.ts += dt;
+      s.ts += dt * s.cadence;
       if (!b.sortie && !b.bloquee && !b.rigole) {
         const sx = xSeringue(s.ts), px = Math.max(sx - REGL.sl, Math.min(sx + REGL.sl, b.x));
         // Touchée, la boule repart vers le lanceur : le lancer est perdu.
@@ -37,7 +38,7 @@
       }
     }
     if (!b.sortie) {
-      if (b.effet && !b.rigole && !b.bloquee) b.vx += b.effet * REGL.courbe * 2 * Math.max(0, Math.min(1, (DEPART - b.y) / (DEPART - 190))) * dt;
+      if (b.effet && !b.rigole && !b.bloquee) b.vx += b.effet * REGL.courbe * 2 * Math.max(0, Math.min(1, (DEPART - b.y) / (DEPART - 208))) * dt;
       b.x += b.vx * dt; b.y += b.vy * dt; b.tour += dt * (9 + 5 * b.effet);
       if (!b.rigole && (b.x < GAUCHE + RB - 4 || b.x > DROITE - RB + 4)) { b.rigole = true; b.x = b.x < 180 ? GAUCHE - 8 : DROITE + 8; b.vx = 0; }
       if (b.y < -30 || b.y > HB + 30) b.sortie = true;
@@ -467,45 +468,72 @@
     return () => { vivant = false; };
   }
 
-  /* ----- Bowling des flacons : une partie de SERIES séries de 2 lancers, note = flacons à terre ramenés sur 10 ----- */
-  // Barème : 1 point par flacon, plus une prime de 5 pour un strike (tout le lot au premier tir) ou de 2 pour un spare (le reste au second).
-  // Le score brut (75 au plus) sert au classement ; la note sur 10 en est l'image.
-  const SERIES = 5, PRIME_STRIKE = 5, PRIME_SPARE = 2, BRUT_MAX_BOWLING = SERIES * (10 + PRIME_STRIKE);
-  const pointsSerie = f => !f || !f.length ? 0 : f[0] + (f[1] || 0) + (f[0] === 10 ? PRIME_STRIKE : f.length === 2 && f[0] + f[1] === 10 ? PRIME_SPARE : 0);
-  const brutBowling = feuille => feuille.reduce((t, f) => t + pointsSerie(f), 0);
-  const noteBowling = brut => Math.min(10, Math.round(10 * brut / BRUT_MAX_BOWLING));
+  /* ----- Bowling des flacons : une vraie partie de bowling, dix séries, score de 0 à 300 ----- */
+  // Feuille de marque : feuille[série] = flacons renversés à chaque tir de la série (deux tirs, un seul après un strike,
+  // jusqu'à trois dans la dixième). Comptage du bowling : un spare vaut 10 plus le tir suivant, un strike 10 plus les deux
+  // tirs suivants ; la dixième série donne un tir de plus après un spare, deux après un strike.
+  // cumulBowling rend le cumul série par série ; une case dont la prime n'est pas encore jouée est rendue « en attente »
+  // (attente : true) avec ce qui est acquis. Partie arrêtée par le chrono : les tirs non joués comptent zéro.
+  const SERIES = 10, BRUT_MAX_BOWLING = 300;
+  function cumulBowling(feuille) {
+    const tirs = [], debut = []; feuille.forEach((f, i) => { debut[i] = tirs.length; (f || []).forEach(n => tirs.push(n)); });
+    const cases = []; let cumul = 0;
+    for (let i = 0; i < SERIES && feuille[i] && feuille[i].length; i++) {
+      const f = feuille[i], d = debut[i]; let pts, attente = false;
+      if (i === SERIES - 1) { pts = f.reduce((a, b) => a + b, 0); attente = !(f.length === 3 || (f.length === 2 && f[0] + f[1] < 10)); }
+      else if (f[0] === 10) { pts = 10 + (tirs[d + 1] || 0) + (tirs[d + 2] || 0); attente = tirs[d + 2] == null; }
+      else if (f.length === 2 && f[0] + f[1] === 10) { pts = 10 + (tirs[d + 2] || 0); attente = tirs[d + 2] == null; }
+      else { pts = f[0] + (f[1] || 0); attente = f.length < 2; }
+      cumul += pts; cases.push({ cumul, attente });
+    }
+    return cases;
+  }
+  const brutBowling = feuille => { const c = cumulBowling(feuille); return c.length ? c[c.length - 1].cumul : 0; };
+  const noteBowling = brut => Math.min(10, Math.round(brut / 20));
+  // Les marques d'une série, comme sur une feuille de bowling : X strike, / spare, – rien.
+  function marquesBowling(f, derniere) {
+    const m = v => v === 10 ? "X" : v || "–";
+    if (!f || !f.length) return [];
+    if (!derniere) return f[0] === 10 ? ["X"] : [m(f[0])].concat(f.length > 1 ? [f[0] + f[1] === 10 ? "/" : m(f[1])] : []);
+    const out = [m(f[0])];
+    if (f.length > 1) out.push(f[0] < 10 && f[0] + f[1] === 10 ? "/" : m(f[1]));
+    if (f.length > 2) out.push(f[0] === 10 && f[1] < 10 && f[1] + f[2] === 10 ? "/" : m(f[2]));
+    return out;
+  }
+  const allureSeringue = serie => 1 + REGL.hate * (serie - 1);
   function bowling(el, opt) {
-    const duree = opt.duree || 30, { cv, ctx, liberer } = monter(el, HB);
-    cv.setAttribute("aria-label", "Bowling des flacons. Cinq séries de deux lancers. Appuyez ou tapez Espace pour fixer la position, puis l'angle du lancer. Une seringue balaie la paillasse : lancez quand la voie est libre. Flèches gauche et droite, ou boutons du bas : donner de l'effet à la boule.");
+    const duree = opt.duree || 150, { cv, ctx, liberer } = monter(el, HB);
+    cv.setAttribute("aria-label", "Bowling des flacons. Dix séries comptées comme au bowling : un spare vaut 10 plus le tir suivant, un strike 10 plus les deux suivants. La seringue accélère au fil des séries. Appuyez ou tapez Espace pour fixer la position, puis l'angle du lancer. Une seringue balaie la paillasse : lancez quand la voie est libre. Flèches gauche et droite, ou boutons du bas : donner de l'effet à la boule.");
     const debout = PLACES.map(() => true);
-    let phase = "position", lancerN = 1, serie = 1, aTerre = 0, t = 0, reste = duree, posX = 180, angle = 0, effet = 0, sim = null, total = 0, annonce = "", annonceT = 0, clos = false, horloge = 0;
+    let phase = "position", lancerN = 1, serie = 1, aTerre = 0, horsTemps = false, t = 0, reste = duree, posX = 180, angle = 0, effet = 0, sim = null, total = 0, annonce = "", annonceT = 0, clos = false, horloge = 0;
     const COUL = [O, Y, P, V, Y, O, V, P, O, Y];
     const feuille = [];                       // feuille[série - 1] = [flacons du tir 1, flacons du tir 2]
     const logo = new Image(); logo.src = "img/menu-pharmacogames.webp"; // le logo de l'unité roule sur la boule ; sans image, un comprimé sécable
-    // L'écran suspendu, en un seul bandeau compact : une case par série (les deux tirs, puis le cumul), le total, le chrono.
+    // La feuille de marque suspendue : dix cases (les tirs, puis le cumul), et une ligne d'état (série, seringue, score, chrono).
     function ecran() {
-      const h = 44, lc = 44, x0 = 6;
-      ctx.fillStyle = N; ctx.fillRect(0, 0, W, h);
-      let cumul = 0;
+      const h = 40, lc = 34, x0 = 5;
+      ctx.fillStyle = N; ctx.fillRect(0, 0, W, B_HAUT - 4);
+      const cases = cumulBowling(feuille);
       for (let i = 0; i < SERIES; i++) {
-        const x = x0 + i * lc, f = feuille[i] || [], actif = i === serie - 1 && phase !== "fin";
-        ctx.fillStyle = actif ? "rgba(236,213,103,.22)" : "rgba(255,251,242,.08)"; ctx.beginPath(); ctx.roundRect(x + 2, 4, lc - 4, h - 8, 5); ctx.fill();
+        const der = i === SERIES - 1, x = x0 + i * lc, l = der ? W - x0 - x : lc, f = feuille[i] || [], actif = i === serie - 1 && phase !== "fin";
+        ctx.fillStyle = actif ? "rgba(236,213,103,.24)" : "rgba(255,251,242,.08)"; ctx.beginPath(); ctx.roundRect(x + 1.5, 3, l - 3, h - 5, 4); ctx.fill();
         if (actif) { ctx.strokeStyle = Y; ctx.lineWidth = 1.5; ctx.stroke(); }
-        const m1 = f[0] == null ? "" : f[0] === 10 ? "X" : f[0] || "–", m2 = f[1] == null ? "" : f[0] + f[1] === 10 ? "/" : f[1] || "–";
-        texte(ctx, m1, x + lc / 2 - 9, 14, 13, f[0] === 10 ? O : C); texte(ctx, m2, x + lc / 2 + 9, 14, 13, m2 === "/" ? O : C);
-        if (f.length) { cumul += pointsSerie(f); texte(ctx, cumul, x + lc / 2, 30, 14, Y); }
+        const m = marquesBowling(f, der), pas = der ? 13 : 12, x1 = x + l / 2 - pas * ((der ? 3 : 2) - 1) / 2;
+        m.forEach((v, k) => texte(ctx, v, x1 + (!der && v === "X" ? pas / 2 : k * pas), 13, 12, v === "X" || v === "/" ? O : C));
+        if (cases[i]) texte(ctx, cases[i].cumul, x + l / 2, 28, 12, cases[i].attente ? "rgba(236,213,103,.5)" : Y);
       }
-      const xt = x0 + SERIES * lc, lt = 58;
-      ctx.fillStyle = Y; ctx.beginPath(); ctx.roundRect(xt + 2, 4, lt - 4, h - 8, 5); ctx.fill();
-      texte(ctx, "POINTS", xt + lt / 2, 13, 9, N); texte(ctx, brutBowling(feuille), xt + lt / 2, 29, 17, N);
-      texte(ctx, Math.max(0, Math.ceil(reste)) + " s", W - 10, 23, 17, reste <= 5 ? O : C, "right");
-      ctx.fillStyle = "rgba(255,251,242,.25)"; ctx.fillRect(0, h, W, 4);
-      ctx.fillStyle = reste <= 5 ? O : Y; ctx.fillRect(0, h, W * Math.max(0, reste / duree), 4);
+      const pts = brutBowling(feuille), al = allureSeringue(serie);
+      texte(ctx, "Série " + serie + "/" + SERIES, 8, h + 11, 12, C, "left");
+      texte(ctx, "seringue ×" + al.toFixed(1).replace(".", ","), 128, h + 11, 12, al > 1.45 ? O : C);
+      texte(ctx, pts + (pts > 1 ? " pts" : " pt"), 236, h + 11, 13, Y);
+      texte(ctx, Math.max(0, Math.ceil(reste)) + " s", W - 8, h + 11, 13, reste <= 10 ? O : C, "right");
+      ctx.fillStyle = "rgba(255,251,242,.25)"; ctx.fillRect(0, B_HAUT - 4, W, 4);
+      ctx.fillStyle = reste <= 10 ? O : Y; ctx.fillRect(0, B_HAUT - 4, W * Math.max(0, reste / duree), 4);
     }
     function agir() {
       if (clos) return;
       if (phase === "position") { phase = "angle"; t = 0; }
-      else if (phase === "angle") { sim = creerLancer(posX, angle, debout, horloge, effet); phase = "roule"; }
+      else if (phase === "angle") { sim = creerLancer(posX, angle, debout, horloge, effet, allureSeringue(serie)); phase = "roule"; }
     }
     // L'effet se choisit avant le tir : boutons du bas (ou flèches du clavier). Un second appui sur le même bouton revient au tir droit.
     const choisirEffet = v => { if (!clos && (phase === "position" || phase === "angle")) effet = effet === v ? 0 : v; };
@@ -520,47 +548,54 @@
     };
     cv.addEventListener("pointerdown", surClic);
     cv.addEventListener("keydown", surTouche);
-    // Les quatre chiffres de la partie pour le tableau final : flacons, strikes, spares, meilleure série.
+    // Les quatre chiffres de la partie pour le tableau final : points, strikes, spares, flacons.
+    const compte = () => {
+      let x = 0, sp = 0;
+      feuille.forEach((f, i) => marquesBowling(f, i === SERIES - 1).forEach(v => { if (v === "X") x++; else if (v === "/") sp++; }));
+      return { x, sp, pts: brutBowling(feuille) };
+    };
     function chiffres() {
-      const sommes = feuille.map(f => f[0] + (f[1] || 0)), x = feuille.filter(f => f[0] === 10).length, sp = feuille.filter(f => f.length === 2 && f[0] + f[1] === 10).length;
-      const pts = brutBowling(feuille);
-      return [[pts, pts > 1 ? "points" : "point"], [total + "/" + 10 * SERIES, "flacons"], [x, x > 1 ? "strikes" : "strike"], [sp, sp > 1 ? "spares" : "spare"]];
+      const c = compte();
+      return [[c.pts, c.pts > 1 ? "points" : "point"], [c.x, c.x > 1 ? "strikes" : "strike"], [c.sp, c.sp > 1 ? "spares" : "spare"], [total, total > 1 ? "flacons" : "flacon"]];
     }
     function finir() {
       if (clos) return;
       clos = true; phase = "fin";
-      setTimeout(() => { arret(); liberer(); const pts = brutBowling(feuille), x = feuille.filter(f => f[0] === 10).length, sp = feuille.filter(f => f.length === 2 && f[0] + f[1] === 10).length;
-        opt.onFin(noteBowling(pts), pts + (pts > 1 ? " points : " : " point : ") + total + (total > 1 ? " flacons renversés" : " flacon renversé") + " sur " + 10 * SERIES + (x ? ", " + x + (x > 1 ? " strikes" : " strike") : "") + (sp ? ", " + sp + (sp > 1 ? " spares" : " spare") : "") + ".", pts, chiffres()); }, 1100);
+      setTimeout(() => {
+        arret(); liberer(); const c = compte();
+        opt.onFin(noteBowling(c.pts), c.pts + (c.pts > 1 ? " points sur " : " point sur ") + BRUT_MAX_BOWLING + (c.x ? ", " + c.x + (c.x > 1 ? " strikes" : " strike") : "") + (c.sp ? ", " + c.sp + (c.sp > 1 ? " spares" : " spare") : "")
+          + (horsTemps ? ". Temps écoulé à la série " + serie + " : les tirs non joués comptent zéro." : "."), c.pts, chiffres());
+      }, 1100);
     }
     // Vue en perspective : la piste fuit vers le fond. Le cœur du jeu reste à plat ; seul le dessin est projeté.
     // PF = échelle au fond de la piste, PH = hauteur d'écran du fond. Une droite du jeu reste une droite à l'écran.
-    const PF = 0.74, PH = 62, PD = PF * (HB - 48) / (1 - PF), PK = (HB - PH) / (1 - PF);
+    const PF = 0.74, PH = B_HAUT + 14, PD = PF * (HB - B_HAUT) / (1 - PF), PK = (HB - PH) / (1 - PF);
     const proj = (x, y) => { const s = PD / Math.max(60, PD + HB - y); return { x: 180 + (x - 180) * s, y: HB - PK * (1 - s), s }; };
     const quad = (x1, y1, x2, y2) => { const a = proj(x1, y1), b = proj(x2, y1), c = proj(x2, y2), d = proj(x1, y2); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath(); };
     const ligne = (x1, y1, x2, y2) => { const a = proj(x1, y1), b = proj(x2, y2); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); };
     const pose = (x, y, f) => { const q = proj(x, y); ctx.save(); ctx.translate(q.x, q.y); ctx.scale(q.s, q.s); f(); ctx.restore(); };
     const ombre = (x, y, rx, ry) => pose(x, y, () => { ctx.fillStyle = "rgba(38,7,109,.2)"; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 6.3); ctx.fill(); });
     function piste() {
-      let g = ctx.createLinearGradient(0, 48, 0, HB); g.addColorStop(0, "#1B0550"); g.addColorStop(1, "#3B1C8E");
+      let g = ctx.createLinearGradient(0, B_HAUT, 0, HB); g.addColorStop(0, "#1B0550"); g.addColorStop(1, "#3B1C8E");
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, HB);                                                    // la salle
       g = ctx.createLinearGradient(0, PH, 0, HB); g.addColorStop(0, "#A79BC8"); g.addColorStop(1, "#E4DFF0");
-      ctx.fillStyle = g; quad(-400, 48, GAUCHE - 16, HB + 40); ctx.fill(); quad(DROITE + 16, 48, W + 400, HB + 40); ctx.fill(); // les abords
+      ctx.fillStyle = g; quad(-400, B_HAUT, GAUCHE - 16, HB + 40); ctx.fill(); quad(DROITE + 16, B_HAUT, W + 400, HB + 40); ctx.fill(); // les abords
       g = ctx.createLinearGradient(0, PH, 0, HB); g.addColorStop(0, "#12033A"); g.addColorStop(1, "#2A0B78");
-      ctx.fillStyle = g; quad(GAUCHE - 16, 48, GAUCHE, HB + 40); ctx.fill(); quad(DROITE, 48, DROITE + 16, HB + 40); ctx.fill();   // les rigoles, en creux
-      ctx.strokeStyle = "rgba(255,251,242,.35)"; ctx.lineWidth = 1.5; ligne(GAUCHE - 16, 48, GAUCHE - 16, HB + 40); ligne(DROITE + 16, 48, DROITE + 16, HB + 40);
+      ctx.fillStyle = g; quad(GAUCHE - 16, B_HAUT, GAUCHE, HB + 40); ctx.fill(); quad(DROITE, B_HAUT, DROITE + 16, HB + 40); ctx.fill();   // les rigoles, en creux
+      ctx.strokeStyle = "rgba(255,251,242,.35)"; ctx.lineWidth = 1.5; ligne(GAUCHE - 16, B_HAUT, GAUCHE - 16, HB + 40); ligne(DROITE + 16, B_HAUT, DROITE + 16, HB + 40);
       g = ctx.createLinearGradient(0, PH, 0, HB); g.addColorStop(0, "#D2B47A"); g.addColorStop(0.45, "#EFD79E"); g.addColorStop(1, "#FBEBC2");
-      ctx.fillStyle = g; quad(GAUCHE, 48, DROITE, HB + 40); ctx.fill();                               // la paillasse vernie
+      ctx.fillStyle = g; quad(GAUCHE, B_HAUT, DROITE, HB + 40); ctx.fill();                               // la paillasse vernie
       ctx.strokeStyle = "rgba(120,78,20,.16)"; ctx.lineWidth = 1;
-      for (let k = 1; k < 12; k++) { const x = GAUCHE + k * (DROITE - GAUCHE) / 12; ligne(x, 48, x, HB + 40); }          // les lattes
-      ctx.fillStyle = "rgba(255,251,242,.3)"; quad(GAUCHE, 48, DROITE, 190); ctx.fill();              // le plateau des flacons
-      ctx.strokeStyle = "rgba(120,78,20,.3)"; ctx.lineWidth = 1.5; ligne(GAUCHE, 190, DROITE, 190);
+      for (let k = 1; k < 12; k++) { const x = GAUCHE + k * (DROITE - GAUCHE) / 12; ligne(x, B_HAUT, x, HB + 40); }          // les lattes
+      ctx.fillStyle = "rgba(255,251,242,.3)"; quad(GAUCHE, B_HAUT, DROITE, 208); ctx.fill();              // le plateau des flacons
+      ctx.strokeStyle = "rgba(120,78,20,.3)"; ctx.lineWidth = 1.5; ligne(GAUCHE, 208, DROITE, 208);
       ctx.fillStyle = "rgba(236,119,57,.6)";                                                           // les flèches de visée
-      for (let k = -2; k <= 2; k++) { const x = 180 + k * 46, y = 404 + Math.abs(k) * 15, a = proj(x, y - 16), b = proj(x - 6, y + 6), c = proj(x + 6, y + 6); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.fill(); }
+      for (let k = -2; k <= 2; k++) { const x = 180 + k * 46, y = 422 + Math.abs(k) * 15, a = proj(x, y - 16), b = proj(x - 6, y + 6), c = proj(x + 6, y + 6); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.fill(); }
       g = ctx.createLinearGradient(0, PH, 0, HB); g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(0.5, "rgba(255,255,255,.3)"); g.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = g; quad(150, 48, 206, HB + 40); ctx.fill();                                      // le reflet du vernis
+      ctx.fillStyle = g; quad(150, B_HAUT, 206, HB + 40); ctx.fill();                                      // le reflet du vernis
       g = ctx.createLinearGradient(0, PH, 0, PH + 170); g.addColorStop(0, "rgba(27,5,80,.45)"); g.addColorStop(1, "rgba(27,5,80,0)");
       ctx.fillStyle = g; ctx.fillRect(0, PH, W, 170);                                                  // le fond s'assombrit
-      ctx.fillStyle = "#0E022E"; ctx.fillRect(0, 48, W, PH - 48);                                      // la fosse
+      ctx.fillStyle = "#0E022E"; ctx.fillRect(0, B_HAUT, W, PH - B_HAUT);                                      // la fosse
       ctx.strokeStyle = O; ctx.lineWidth = 3; ligne(GAUCHE, DEPART - 26, DROITE, DEPART - 26);         // la ligne de tir
     }
     function dessiner() {
@@ -617,24 +652,36 @@
       }
       ecran();
       if (annonceT > 0) { ctx.fillStyle = "rgba(38,7,109,.86)"; ctx.beginPath(); ctx.roundRect(60, 250, 240, 60, 16); ctx.fill(); texte(ctx, annonce, 180, 281, 24, Y); }
-      if (phase === "fin") { ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(50, 230, 260, 100, 18); ctx.fill(); texte(ctx, noteBowling(brutBowling(feuille)) + " / 10", 180, 268, 40, Y); texte(ctx, brutBowling(feuille) + " points · " + total + " flacons sur " + 10 * SERIES, 180, 306, 15, C); }
+      if (phase === "fin") { ctx.fillStyle = "rgba(38,7,109,.9)"; ctx.beginPath(); ctx.roundRect(50, 230, 260, 100, 18); ctx.fill(); texte(ctx, noteBowling(brutBowling(feuille)) + " / 10", 180, 268, 40, Y); texte(ctx, brutBowling(feuille) + " points sur " + BRUT_MAX_BOWLING + (horsTemps ? " · temps écoulé" : ""), 180, 306, 15, C); }
+    }
+    // Après un tir : la suite de la série, la série suivante, ou la fin. Dixième série : un tir de plus après un spare, deux après un strike.
+    function suite() {
+      const f = feuille[serie - 1], der = serie === SERIES, redresser = () => { aTerre = 0; debout.fill(true); };
+      if (horsTemps) return finir();
+      if (!der) {
+        if (aTerre < 10 && f.length === 1) lancerN = 2;
+        else { serie++; lancerN = 1; redresser(); }
+      } else {
+        if (f.length === 3 || (f.length === 2 && f[0] < 10 && f[0] + f[1] < 10)) return finir();
+        lancerN = f.length + 1; if (aTerre === 10) redresser();
+      }
+      phase = "position"; t = 0;
     }
     const arret = boucle(dt => {
-      t += dt; annonceT -= dt; horloge += dt;
+      t += dt; annonceT -= dt;
+      if (phase !== "fin" && !horsTemps) { reste -= dt; if (reste <= 0) { reste = 0; horsTemps = true; annonce = "Temps écoulé"; annonceT = 1.2; if (phase !== "roule") finir(); } } // le chrono court aussi pendant que la boule roule ; un tir parti est compté
       if (phase === "position" || phase === "angle") {
-        reste -= dt;
+        horloge += dt * allureSeringue(serie);
         if (phase === "position") posX = 180 + Math.sin(t * 2.5) * 100; else angle = Math.sin(t * 3.6) * 12;
-        if (reste <= 0) { reste = 0; annonce = "Temps écoulé"; annonceT = 1; finir(); }
       } else if (phase === "roule") {
         for (let i = 0; i < 4; i++) pasLancer(sim, dt / 4);
         if (sim.fini) {
           const n = tombees(sim), pique = sim.boule.bloquee;
           sim.quilles.forEach((q, i) => { if (q.la && q.tombee) debout[i] = false; });
-          total += n; aTerre += n; sim = null; (feuille[serie - 1] = feuille[serie - 1] || []).push(n);
-          annonce = aTerre === 10 ? (lancerN === 1 ? "Strike ! +" + PRIME_STRIKE : "Spare ! +" + PRIME_SPARE) : pique ? "Piqué au vif !" : n === 0 ? "Dans le vide" : "+" + n; annonceT = 0.9;
-          if (aTerre < 10 && lancerN === 1) { lancerN = 2; phase = "position"; t = 0; }
-          else if (serie === SERIES) finir();
-          else { serie++; lancerN = 1; aTerre = 0; debout.fill(true); phase = "position"; t = 0; } // série suivante : on redresse le lot
+          horloge = sim.ts; total += n; aTerre += n; sim = null; (feuille[serie - 1] = feuille[serie - 1] || []).push(n);
+          const m = marquesBowling(feuille[serie - 1], serie === SERIES), v = m[m.length - 1];
+          if (!horsTemps) { annonce = v === "X" ? "Strike !" : v === "/" ? "Spare !" : pique ? "Piqué au vif !" : n === 0 ? "Dans le vide" : "+" + n; annonceT = 0.9; }
+          suite();
         }
       }
       dessiner();
@@ -1308,7 +1355,7 @@
     return () => { clearTimeout(minuterie); arret(); liberer(); retirer(); };
   }
 
-  const api = { bowling, tir, flipper, tennis, labyrinthe, _logo: ICI + "img/logo-p-verre.png", _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, DEPART, xSeringue, traceLancer, SERIES, noteBowling, brutBowling, BRUT_MAX_BOWLING, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, secouerFlipper, F_PIVOTS, boutBatteur, REGL_LABY: RL, creerLaby, pasLaby, noteLaby, L_PLAN, L_DIRS, L_GERMES, L_DEPART, lOuvert, lDistances, REGL_TENNIS: RT, creerTennis, pasTennis, noteTennis, viseTennis, T_YJ } };
+  const api = { bowling, tir, flipper, tennis, labyrinthe, _logo: ICI + "img/logo-p-verre.png", _coeur: { REGL, creerLancer, pasLancer, tombees, PLACES, DEPART, xSeringue, traceLancer, SERIES, noteBowling, brutBowling, cumulBowling, marquesBowling, allureSeringue, BRUT_MAX_BOWLING, creerTir, pasTir, noteTir, TOTAL, REGL_FLIPPER: RF, creerFlipper, pasFlipper, noteFlipper, secouerFlipper, F_PIVOTS, boutBatteur, REGL_LABY: RL, creerLaby, pasLaby, noteLaby, L_PLAN, L_DIRS, L_GERMES, L_DEPART, lOuvert, lDistances, REGL_TENNIS: RT, creerTennis, pasTennis, noteTennis, viseTennis, T_YJ } };
 
   /* ===== Nouveaux jeux : chacun vit en entier sous son repère (cœur, dessin, inscription), sans toucher au reste du fichier.
      Inscription : api.<nom> = <fonction> ; Object.assign(api._coeur, { … }) pour ce que les outils doivent voir. ===== */
